@@ -75,8 +75,8 @@ export function LiveCodeDisplay({ secret }: LiveCodeDisplayProps) {
         ))}
       </div>
       
-      <p className="text-[14px] text-apple-ink-muted mt-8 text-center max-w-[220px] leading-[1.43] tracking-[-0.016em]">
-        Code updates every 30 seconds. Tell your partner to enter this code.
+      <p className="text-[15px] text-apple-ink-muted mt-8 text-center max-w-[220px] leading-[1.43] tracking-[-0.016em]">
+        Enter this code on your other device.
       </p>
     </div>
   );

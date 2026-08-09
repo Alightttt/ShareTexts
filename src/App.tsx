@@ -13,7 +13,13 @@ import { AnimatePresence, motion } from 'motion/react';
 
 function AppContent() {
   const { session } = useSession();
-  const [view, setView] = useState<'landing' | 'join'>('landing');
+  const [view, setView] = useState<'landing' | 'join'>(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      return searchParams.has('join') ? 'join' : 'landing';
+    }
+    return 'landing';
+  });
 
   if (typeof window !== 'undefined' && !window.RTCPeerConnection) {
     return (
@@ -56,14 +62,13 @@ function AppContent() {
     // If joiner and waiting for partner...
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black px-6 text-center">
-        <div className="flex items-center gap-3 py-2 px-4 bg-apple-parchment dark:bg-apple-tile-1 rounded-full mb-8">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-apple-blue opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-apple-blue"></span>
-          </span>
-          <span className="text-[14px] text-apple-ink dark:text-white font-medium tracking-tight">
-            {session.connectionType === 'connecting' ? 'Negotiating connection...' : 'Searching for session...'}
-          </span>
+        <div className="flex flex-col items-center">
+          <div className="relative flex h-8 w-8 mb-6">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-apple-blue opacity-50"></span>
+            <span className="relative inline-flex rounded-full h-8 w-8 bg-apple-blue"></span>
+          </div>
+          <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">Connecting...</h2>
+          <p className="text-[17px] text-apple-ink-muted">This usually takes a moment.</p>
         </div>
       </div>
     );

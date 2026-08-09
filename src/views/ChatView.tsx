@@ -145,8 +145,7 @@ export function ChatView() {
         {session.messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-[50vh] text-center opacity-70">
             <ClipboardPaste className="w-12 h-12 text-apple-ink-muted mb-4" />
-            <h2 className="text-[21px] font-semibold text-apple-ink dark:text-white tracking-[-0.018em] mb-2">Your private clipboard</h2>
-            <p className="text-[17px] text-apple-ink-muted tracking-[-0.022em] max-w-[260px]">Anything you paste here will appear on the other device.</p>
+            <h2 className="text-[21px] font-semibold text-apple-ink dark:text-white tracking-[-0.018em] mb-2">What do you want to send?</h2>
           </div>
         ) : (
           <AnimatePresence initial={false}>
@@ -175,7 +174,7 @@ export function ChatView() {
                   <button 
                     onClick={() => copyToClipboard(msg.text, msg.id)}
                     className={cn(
-                      "absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-2.5 rounded-full bg-white dark:bg-apple-tile-3 border border-apple-hairline dark:border-transparent shadow-sm overflow-hidden flex items-center justify-center",
+                      "absolute top-1/2 -translate-y-1/2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity p-2.5 rounded-full bg-white dark:bg-apple-tile-3 border border-apple-hairline dark:border-transparent shadow-sm overflow-hidden flex items-center justify-center",
                       msg.sender === 'me' ? "-left-14" : "-right-14"
                     )}
                     title="Copy to clipboard"
@@ -213,7 +212,7 @@ export function ChatView() {
         {!session.partnerConnected && session.messages.length > 0 && (
           <div className="flex justify-center my-6">
             <span className="text-[14px] text-[#d69511] bg-[#fdf5e6] dark:bg-[#3b2a0c] px-4 py-1.5 rounded-full tracking-[-0.016em]">
-              Partner disconnected. Waiting for reconnect...
+              Your other device disconnected. Waiting for them to reconnect...
             </span>
           </div>
         )}
