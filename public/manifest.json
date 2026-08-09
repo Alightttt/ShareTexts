@@ -1,0 +1,16 @@
+{
+  "name": "ShareText",
+  "short_name": "ShareText",
+  "description": "Share text instantly between two devices. No app, no account, temporary private rooms.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#0066CC",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  
+  --color-apple-blue: #0066cc;
+  --color-apple-blue-focus: #0071e3;
+  --color-apple-blue-dark: #2997ff;
+  
+  --color-apple-ink: #1d1d1f;
+  --color-apple-ink-muted: #7a7a7a;
+  --color-apple-ink-muted-80: #333333;
+  
+  --color-apple-canvas: #ffffff;
+  --color-apple-parchment: #f5f5f7;
+  --color-apple-pearl: #fafafc;
+  
+  --color-apple-tile-1: #272729;
+  --color-apple-tile-2: #2a2a2c;
+  --color-apple-tile-3: #252527;
+  
+  --color-apple-divider: #f0f0f0;
+  --color-apple-hairline: #e0e0e0;
+}
+
+@layer base {
+  body {
+    @apply font-sans bg-apple-canvas text-apple-ink antialiased;
+    font-size: 17px;
+    line-height: 1.44;
+    letter-spacing: -0.022em;
+  }
+  
+  .dark body {
+    @apply bg-black text-white;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold;
+    letter-spacing: -0.025em;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
