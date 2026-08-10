@@ -8,7 +8,8 @@ interface SessionContextValue {
   createSession: () => Promise<void>;
   joinWithCode: (code: string) => Promise<{ success: boolean; error?: string }>;
   joinWithLink: (roomId: string) => Promise<{ success: boolean; error?: string }>;
-  sendMessage: (text: string) => void;
+  sendMessage: (text: string, attachment?: import('../types').Attachment, file?: File) => void;
+  updateMessageAttachment: (messageId: string, updates: Partial<ChatMessage['attachment']>) => void;
   closeSession: () => void;
   leaveView: () => void;
 }
@@ -38,7 +39,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
     socket.on('peer_joined', ({ peerId }) => {
       setSession(s => ({ ...s, partnerConnected: true }));
-      // If we are creator, initiate WebRTC connection now
       if (session.isCreator && session.roomId && session.secret) {
         if (peerManagerRef.current) peerManagerRef.current.destroy();
         peerManagerRef.current = new PeerManager(session.roomId, session.secret, true);
@@ -66,12 +66,70 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     pm.onConnectionTypeChange = (type) => {
       setSession(s => ({ ...s, connectionType: type }));
     };
-    pm.onMessage = (text) => {
+    
+    pm.onMessage = (dataStr) => {
+      try {
+        const parsed = JSON.parse(dataStr);
+        if (parsed.id && parsed.sender) {
+          // New structured format
+          setSession(s => ({
+            ...s,
+            messages: [...s.messages, parsed]
+          }));
+          if (parsed.attachment) {
+            pm.expectBinaryTransfer(parsed.attachment.id, Math.ceil(parsed.attachment.size / (64 * 1024)));
+          }
+          return;
+        }
+      } catch (e) {
+        // Fallback
+      }
       setSession(s => ({
         ...s,
-        messages: [...s.messages, { id: crypto.randomUUID(), sender: 'partner', text, timestamp: Date.now() }]
+        messages: [...s.messages, { id: crypto.randomUUID(), sender: 'partner', text: dataStr, timestamp: Date.now() }]
       }));
     };
+    
+    pm.onFileProgress = (transferId, progress, total) => {
+      setSession(s => ({
+        ...s,
+        messages: s.messages.map(m => {
+          if (m.attachment?.id === transferId) {
+            return {
+              ...m,
+              attachment: {
+                ...m.attachment,
+                status: 'receiving',
+                progress: progress / total
+              }
+            };
+          }
+          return m;
+        })
+      }));
+    };
+    
+    pm.onFileComplete = (transferId, blob) => {
+       const url = URL.createObjectURL(blob);
+       setSession(s => ({
+        ...s,
+        messages: s.messages.map(m => {
+          if (m.attachment?.id === transferId) {
+            return {
+              ...m,
+              attachment: {
+                ...m.attachment,
+                status: 'complete',
+                url,
+                progress: 1
+              }
+            };
+          }
+          return m;
+        })
+      }));
+    };
+
     pm.onDisconnect = () => {
       setSession(s => ({ ...s, connectionType: 'disconnected' }));
     };
@@ -131,14 +189,54 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setupPeerManager(peerManagerRef.current);
   };
 
-  const sendMessage = (text: string) => {
+  const sendMessage = async (text: string, attachment?: import('../types').Attachment, file?: File) => {
     if (peerManagerRef.current) {
-      peerManagerRef.current.send(text);
+      const msg: ChatMessage = {
+        id: crypto.randomUUID(),
+        sender: 'me',
+        text,
+        timestamp: Date.now(),
+        attachment: attachment ? { ...attachment, status: file ? 'sending' : 'complete' } : undefined
+      };
+      
       setSession(s => ({
         ...s,
-        messages: [...s.messages, { id: crypto.randomUUID(), sender: 'me', text, timestamp: Date.now() }]
+        messages: [...s.messages, msg]
       }));
+
+      const partnerMsg = { ...msg, sender: 'partner' };
+      const payload = JSON.stringify(partnerMsg);
+      await peerManagerRef.current.send(payload);
+      
+      if (file && attachment) {
+        const localUrl = URL.createObjectURL(file);
+        updateMessageAttachment(msg.id, { url: localUrl });
+        
+        try {
+          await peerManagerRef.current.sendFile(file, attachment.id);
+          updateMessageAttachment(msg.id, { status: 'complete', progress: 1 });
+        } catch (e) {
+          updateMessageAttachment(msg.id, { status: 'failed' });
+        }
+      }
     }
+  };
+  
+  const updateMessageAttachment = (messageId: string, updates: Partial<ChatMessage['attachment']>) => {
+    setSession(s => {
+      return {
+        ...s,
+        messages: s.messages.map(m => {
+          if (m.id === messageId && m.attachment) {
+            return {
+              ...m,
+              attachment: { ...m.attachment, ...updates }
+            };
+          }
+          return m;
+        })
+      };
+    });
   };
 
   const closeSession = () => {
@@ -169,7 +267,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, sendMessage, closeSession, leaveView }}>
+    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, sendMessage, updateMessageAttachment, closeSession, leaveView }}>
       {children}
     </SessionContext.Provider>
   );

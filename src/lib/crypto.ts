@@ -59,3 +59,26 @@ export async function decryptText(encrypted: string, key: CryptoKey): Promise<st
   const dec = new TextDecoder();
   return dec.decode(decrypted);
 }
+
+export async function encryptBinaryChunk(chunk: ArrayBuffer, key: CryptoKey): Promise<ArrayBuffer> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    chunk
+  );
+  const result = new Uint8Array(iv.length + ciphertext.byteLength);
+  result.set(iv, 0);
+  result.set(new Uint8Array(ciphertext), iv.length);
+  return result.buffer;
+}
+
+export async function decryptBinaryChunk(encrypted: ArrayBuffer, key: CryptoKey): Promise<ArrayBuffer> {
+  const iv = new Uint8Array(encrypted, 0, 12);
+  const ciphertext = new Uint8Array(encrypted, 12);
+  return crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    key,
+    ciphertext
+  );
+}

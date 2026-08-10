@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { LiveCodeDisplay } from '../components/LiveCodeDisplay';
 import { QRCodeSVG } from 'qrcode.react';
-import { Copy, Share, QrCode, Check } from 'lucide-react';
+import { Copy, QrCode, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 
@@ -21,33 +21,21 @@ export function RoomHub() {
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
-  const shareNearby = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Join ShareText Session',
-          url: shareUrl
-        });
-      } catch (err) {}
-    } else {
-      copyLink();
-    }
-  };
-
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black p-6">
-      <div className="w-full max-w-md text-center flex flex-col items-center">
-        
-        <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-8">
-          Connect your other device
-        </h2>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black p-6 relative">
+      <div className="absolute top-6 left-6 flex items-center gap-2">
+        <div className="w-6 h-6 bg-apple-ink dark:bg-white rounded-[6px] flex items-center justify-center">
+          <span className="text-white dark:text-black font-bold text-[14px]">S</span>
+        </div>
+        <span className="text-[14px] font-semibold tracking-tight text-apple-ink dark:text-white">ShareText</span>
+      </div>
 
-        {/* Primary: Live Code */}
-        <div className="w-full mb-6">
+      <div className="w-full max-w-sm text-center flex flex-col items-center">
+        
+        <div className="w-full mb-8">
           <LiveCodeDisplay secret={session.secret} />
         </div>
 
-        {/* Secondary Actions */}
         <div className="w-full space-y-3">
           <AnimatePresence mode="popLayout">
             {showQR ? (
@@ -58,13 +46,13 @@ export function RoomHub() {
                 exit={{ opacity: 0, height: 0, scale: 0.95 }}
                 className="overflow-hidden"
               >
-                <div className="flex flex-col items-center justify-center p-8 bg-apple-parchment dark:bg-apple-tile-1 rounded-[18px]">
-                  <div className="bg-white p-4 rounded-[11px] mb-4">
-                    <QRCodeSVG value={shareUrl} size={160} />
+                <div className="flex flex-col items-center justify-center p-6 bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 rounded-[16px] shadow-sm">
+                  <div className="bg-white p-3 rounded-[11px] mb-4">
+                    <QRCodeSVG value={shareUrl} size={140} />
                   </div>
                   <button 
                     onClick={() => setShowQR(false)} 
-                    className="text-[15px] font-medium text-apple-blue hover:text-apple-blue-focus transition-colors"
+                    className="text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink transition-colors"
                   >
                     Hide QR Code
                   </button>
@@ -77,46 +65,25 @@ export function RoomHub() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setShowQR(true)}
-                className="w-full flex items-center justify-between p-4 bg-apple-parchment dark:bg-apple-tile-1 hover:bg-apple-divider dark:hover:bg-apple-tile-2 rounded-[18px] transition-colors active:scale-95"
+                className="w-full flex items-center justify-between p-4 bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-apple-tile-2 rounded-[14px] transition-colors active:scale-[0.98] shadow-sm"
               >
-                <div className="flex items-center gap-4 text-[17px] font-medium text-apple-ink dark:text-white">
-                  <div className="w-10 h-10 rounded-full bg-white dark:bg-apple-tile-3 flex items-center justify-center shadow-sm">
-                    <QrCode className="w-5 h-5 text-apple-ink dark:text-white" />
-                  </div>
-                  Scan QR
+                <div className="flex items-center gap-3 text-[15px] font-medium text-apple-ink dark:text-white">
+                  <QrCode className="w-5 h-5 text-apple-ink-muted" />
+                  Show QR Code
                 </div>
               </motion.button>
             )}
           </AnimatePresence>
 
-          <div className="flex gap-3">
-            {navigator.share ? (
-              <>
-                <button 
-                  onClick={copyLink}
-                  className="flex-1 flex items-center justify-center gap-2 p-4 bg-apple-parchment dark:bg-apple-tile-1 hover:bg-apple-divider dark:hover:bg-apple-tile-2 rounded-[18px] transition-colors text-[17px] font-medium text-apple-ink dark:text-white active:scale-95"
-                >
-                  {copiedLink ? <Check className="w-5 h-5 text-[#34c759]" /> : <Copy className="w-5 h-5" />}
-                  {copiedLink ? 'Copied' : 'Copy Code'}
-                </button>
-                <button 
-                  onClick={shareNearby}
-                  className="flex-1 flex items-center justify-center gap-2 p-4 bg-apple-parchment dark:bg-apple-tile-1 hover:bg-apple-divider dark:hover:bg-apple-tile-2 rounded-[18px] transition-colors text-[17px] font-medium text-apple-ink dark:text-white active:scale-95"
-                >
-                  <Share className="w-5 h-5" />
-                  Share Link
-                </button>
-              </>
-            ) : (
-              <button 
-                onClick={copyLink}
-                className="w-full flex items-center justify-center gap-2 p-4 bg-apple-parchment dark:bg-apple-tile-1 hover:bg-apple-divider dark:hover:bg-apple-tile-2 rounded-[18px] transition-colors text-[17px] font-medium text-apple-ink dark:text-white active:scale-95"
-              >
-                {copiedLink ? <Check className="w-5 h-5 text-[#34c759]" /> : <Copy className="w-5 h-5" />}
-                {copiedLink ? 'Copied' : 'Copy Link'}
-              </button>
-            )}
-          </div>
+          <button 
+            onClick={copyLink}
+            className="w-full flex items-center justify-between p-4 bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-apple-tile-2 rounded-[14px] transition-colors active:scale-[0.98] shadow-sm"
+          >
+            <div className="flex items-center gap-3 text-[15px] font-medium text-apple-ink dark:text-white">
+              {copiedLink ? <Check className="w-5 h-5 text-[#34c759]" /> : <Copy className="w-5 h-5 text-apple-ink-muted" />}
+              {copiedLink ? 'Copied Link' : 'Copy Link'}
+            </div>
+          </button>
         </div>
 
       </div>

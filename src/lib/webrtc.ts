@@ -1,5 +1,6 @@
 import { getSocket } from './socket';
-import { encryptText, decryptText, generateKey } from './crypto';
+import { encryptText, decryptText, generateKey, encryptBinaryChunk, decryptBinaryChunk } from './crypto';
+import { uuidToBytes, bytesToUuid } from './binaryUtils';
 
 type SignalData = { type: 'offer' | 'answer'; sdp: string } | { type: 'candidate'; candidate: RTCIceCandidateInit };
 
@@ -13,7 +14,7 @@ export interface TransferPayload {
 }
 
 const CHUNK_SIZE = 64 * 1024; // 64 KB
-const MAX_TRANSFER_SIZE = 5 * 1024 * 1024; // 5 MB max total
+const MAX_TRANSFER_SIZE = 200 * 1024 * 1024; // 200 MB max total
 const MAX_CHUNKS = Math.ceil(MAX_TRANSFER_SIZE / CHUNK_SIZE);
 
 export class PeerManager {
@@ -25,13 +26,16 @@ export class PeerManager {
   private cryptoKey: CryptoKey | null = null;
   
   public onMessage: ((data: string) => void) | null = null;
+  public onFileProgress: ((transferId: string, progress: number, total: number) => void) | null = null;
+  public onFileComplete: ((transferId: string, blob: Blob) => void) | null = null;
   public onConnectionTypeChange: ((type: 'local' | 'direct' | 'relay') => void) | null = null;
   public onDisconnect: (() => void) | null = null;
 
   private isRelayFallback = false;
   private iceCandidatesQueue: RTCIceCandidateInit[] = [];
   
-  private incomingTransfers: Map<string, { chunks: string[]; received: number; total: number }> = new Map();
+  private incomingTextTransfers: Map<string, { chunks: string[]; received: number; total: number }> = new Map();
+  private incomingBinaryTransfers: Map<string, { chunks: ArrayBuffer[]; received: number; total: number }> = new Map();
 
   constructor(roomId: string, secret: string, isInitiator: boolean) {
     this.roomId = roomId;
@@ -98,6 +102,7 @@ export class PeerManager {
   }
 
   private setupDataChannel(channel: RTCDataChannel) {
+    channel.binaryType = 'arraybuffer';
     channel.onopen = () => {
       this.isRelayFallback = false;
       this.determineConnectionType();
@@ -110,38 +115,80 @@ export class PeerManager {
     };
   }
   
-  private async handleIncomingData(data: string) {
+  public expectBinaryTransfer(transferId: string, totalChunks: number) {
+     this.incomingBinaryTransfers.set(transferId, { chunks: new Array(totalChunks), received: 0, total: totalChunks });
+  }
+
+  private async handleIncomingData(data: string | ArrayBuffer) {
     if (!this.cryptoKey) return;
     
-    try {
-      const parsed = JSON.parse(data) as TransferPayload;
-      if (parsed.version !== 1 || parsed.type !== 'chunk') return;
-      if (parsed.total > MAX_CHUNKS || parsed.total <= 0) return;
-      if (parsed.sequence < 0 || parsed.sequence >= parsed.total) return;
-      
-      let transfer = this.incomingTransfers.get(parsed.transferId);
-      if (!transfer) {
-        transfer = { chunks: new Array(parsed.total), received: 0, total: parsed.total };
-        this.incomingTransfers.set(parsed.transferId, transfer);
-      }
-      
-      if (!transfer.chunks[parsed.sequence]) {
-        transfer.chunks[parsed.sequence] = parsed.payload;
-        transfer.received++;
+    if (typeof data === 'string') {
+      try {
+        const parsed = JSON.parse(data) as TransferPayload;
+        if (parsed.version !== 1 || parsed.type !== 'chunk') return;
+        if (parsed.total > MAX_CHUNKS || parsed.total <= 0) return;
+        if (parsed.sequence < 0 || parsed.sequence >= parsed.total) return;
         
-        if (transfer.received === transfer.total) {
-          const fullEncryptedText = transfer.chunks.join('');
-          this.incomingTransfers.delete(parsed.transferId);
-          try {
-            const decrypted = await decryptText(fullEncryptedText, this.cryptoKey);
-            if (this.onMessage) this.onMessage(decrypted);
-          } catch (e) {
-            console.error("Failed to decrypt text");
+        let transfer = this.incomingTextTransfers.get(parsed.transferId);
+        if (!transfer) {
+          transfer = { chunks: new Array(parsed.total), received: 0, total: parsed.total };
+          this.incomingTextTransfers.set(parsed.transferId, transfer);
+        }
+        
+        if (!transfer.chunks[parsed.sequence]) {
+          transfer.chunks[parsed.sequence] = parsed.payload;
+          transfer.received++;
+          
+          if (transfer.received === transfer.total) {
+            const fullEncryptedText = transfer.chunks.join('');
+            this.incomingTextTransfers.delete(parsed.transferId);
+            try {
+              const decrypted = await decryptText(fullEncryptedText, this.cryptoKey);
+              if (this.onMessage) this.onMessage(decrypted);
+            } catch (e) {
+              console.error("Failed to decrypt text");
+            }
           }
         }
+      } catch (e) {
+        console.error("Invalid packet");
       }
-    } catch (e) {
-      console.error("Invalid packet");
+    } else if (data instanceof ArrayBuffer) {
+       // Binary chunk
+       if (data.byteLength < 20) return;
+       const view = new DataView(data);
+       const transferIdBytes = new Uint8Array(data, 0, 16);
+       const transferId = bytesToUuid(transferIdBytes);
+       const sequence = view.getUint32(16, true);
+       const payload = data.slice(20);
+       
+       let transfer = this.incomingBinaryTransfers.get(transferId);
+       if (!transfer) {
+         // Expected to be pre-registered via metadata message
+         return;
+       }
+       
+       if (!transfer.chunks[sequence]) {
+         try {
+           const decrypted = await decryptBinaryChunk(payload, this.cryptoKey);
+           transfer.chunks[sequence] = decrypted;
+           transfer.received++;
+           
+           if (this.onFileProgress) {
+             this.onFileProgress(transferId, transfer.received, transfer.total);
+           }
+           
+           if (transfer.received === transfer.total) {
+             const blob = new Blob(transfer.chunks);
+             this.incomingBinaryTransfers.delete(transferId);
+             if (this.onFileComplete) {
+               this.onFileComplete(transferId, blob);
+             }
+           }
+         } catch (e) {
+           console.error("Failed to decrypt binary chunk", e);
+         }
+       }
     }
   }
 
@@ -239,7 +286,6 @@ export class PeerManager {
       const serialized = JSON.stringify(packet);
       
       if (this.dc && this.dc.readyState === 'open') {
-        // Simple backpressure checking could be added here by awaiting dc.bufferedAmountLow
         if (this.dc.bufferedAmount > 1024 * 1024) {
           await new Promise(resolve => {
             const check = () => {
@@ -254,6 +300,45 @@ export class PeerManager {
         this.isRelayFallback = true;
         if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
         getSocket().emit('relay_message', { roomId: this.roomId, data: serialized });
+      }
+    }
+  }
+
+  public async sendFile(file: File, transferId: string) {
+    if (!this.cryptoKey) return;
+    const numChunks = Math.ceil(file.size / CHUNK_SIZE);
+    const transferIdBytes = uuidToBytes(transferId);
+    
+    for (let i = 0; i < numChunks; i++) {
+      const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+      const arrayBuffer = await chunk.arrayBuffer();
+      const encrypted = await encryptBinaryChunk(arrayBuffer, this.cryptoKey);
+      
+      const packet = new Uint8Array(20 + encrypted.byteLength);
+      packet.set(transferIdBytes, 0);
+      const view = new DataView(packet.buffer);
+      view.setUint32(16, i, true);
+      packet.set(new Uint8Array(encrypted), 20);
+      
+      if (this.dc && this.dc.readyState === 'open') {
+        if (this.dc.bufferedAmount > 2 * 1024 * 1024) {
+          await new Promise(resolve => {
+            const check = () => {
+              if (this.dc!.bufferedAmount < 1 * 1024 * 1024) resolve(true);
+              else setTimeout(check, 50);
+            };
+            check();
+          });
+        }
+        this.dc.send(packet.buffer);
+      } else {
+        this.isRelayFallback = true;
+        if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
+        getSocket().emit('relay_message', { roomId: this.roomId, data: packet.buffer });
+      }
+      
+      if (this.onFileProgress) {
+         this.onFileProgress(transferId, i + 1, numChunks);
       }
     }
   }
