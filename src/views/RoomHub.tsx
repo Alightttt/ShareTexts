@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Copy, QrCode, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { ShareTextLogo } from '../components/ShareTextLogo';
 
 export function RoomHub() {
   const { session } = useSession();
@@ -24,9 +25,7 @@ export function RoomHub() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black p-6 relative">
       <div className="absolute top-6 left-6 flex items-center gap-2">
-        <div className="w-6 h-6 bg-apple-ink dark:bg-white rounded-[6px] flex items-center justify-center">
-          <span className="text-white dark:text-black font-bold text-[14px]">S</span>
-        </div>
+        <ShareTextLogo size={24} className="text-apple-ink dark:text-white" />
         <span className="text-[14px] font-semibold tracking-tight text-apple-ink dark:text-white">ShareText</span>
       </div>
 

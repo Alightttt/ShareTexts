@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { cn, formatBytes } from '../lib/utils';
 import { ChatMessage, Attachment } from '../types';
+import { ShareTextLogo } from '../components/ShareTextLogo';
 
 export function ChatView() {
   const { session, sendMessage, closeSession } = useSession();
@@ -82,41 +83,44 @@ export function ChatView() {
     <div className="flex flex-col h-full bg-apple-canvas dark:bg-black font-sans">
       {/* Header */}
       <div className="flex items-center justify-between p-4 sm:p-6 shrink-0 border-b border-apple-divider/50 dark:border-apple-tile-3/50 backdrop-blur-xl bg-apple-canvas/80 dark:bg-black/80 z-20 sticky top-0">
-        <div className="flex flex-col relative">
-          <h2 className="text-[17px] font-semibold text-apple-ink dark:text-white leading-tight">Session Active</h2>
-          <button 
-            onPointerDown={() => setShowConnectionDetails(!showConnectionDetails)}
-            className="flex items-center gap-2 mt-0.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue rounded-[4px]"
-          >
-            <div className="w-2 h-2 rounded-full bg-[#34c759] shadow-[0_0_8px_rgba(52,199,89,0.4)]" />
-            <span className="text-[13px] text-apple-ink-muted font-medium hover:text-apple-ink dark:hover:text-white transition-colors">
-              Connected securely
-            </span>
-          </button>
+        <div className="flex items-center gap-3 relative">
+          <ShareTextLogo size={24} className="text-apple-ink dark:text-white shrink-0" />
+          <div className="flex flex-col">
+            <h2 className="text-[17px] font-semibold text-apple-ink dark:text-white leading-tight">Partner Device</h2>
+            <button 
+              onPointerDown={() => setShowConnectionDetails(!showConnectionDetails)}
+              className="flex items-center gap-2 mt-0.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue rounded-[4px]"
+            >
+              <div className={cn("w-2 h-2 rounded-full", session.connectionType === 'relay' ? "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]" : "bg-[#34c759] shadow-[0_0_8px_rgba(52,199,89,0.4)]")} />
+              <span className="text-[13px] text-apple-ink-muted font-medium hover:text-apple-ink dark:hover:text-white transition-colors">
+                Connected securely
+              </span>
+            </button>
 
-          <AnimatePresence>
-            {showConnectionDetails && (
-              <motion.div 
-                initial={{ opacity: 0, y: -5, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -5, scale: 0.95 }}
-                transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                className="absolute top-[100%] left-0 mt-2 p-3 bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 rounded-[12px] shadow-lg min-w-[200px]"
-              >
-                <div className="text-[13px] font-medium text-apple-ink dark:text-white mb-1">Connection Details</div>
-                <div className="text-[13px] text-apple-ink-muted">
-                  {session.connectionType === 'direct' ? 'Direct P2P Connection' : 
-                   session.connectionType === 'local' ? 'Local Network Connection' : 'Encrypted Relay Connection'}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+            <AnimatePresence>
+              {showConnectionDetails && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -5, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -5, scale: 0.95 }}
+                  transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+                  className="absolute top-[100%] left-0 mt-2 p-3 bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 rounded-[12px] shadow-lg min-w-[200px]"
+                >
+                  <div className="text-[13px] font-medium text-apple-ink dark:text-white mb-1">Connection Details</div>
+                  <div className="text-[13px] text-apple-ink-muted">
+                    {session.connectionType === 'direct' ? 'Direct P2P Connection' : 
+                     session.connectionType === 'local' ? 'Local Network Connection' : 'Encrypted Relay Connection'}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
         <button 
           onPointerDown={closeSession}
-          className="px-4 py-2 text-[14px] font-medium text-[#ff3b30] hover:bg-[#ff3b30]/10 rounded-full transition-colors active:scale-95"
+          className="px-4 py-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-apple-tile-3/50 rounded-full transition-colors active:scale-95"
         >
-          End Session
+          Close Room
         </button>
       </div>
 

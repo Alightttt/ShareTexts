@@ -10,6 +10,7 @@ import { RoomHub } from './views/RoomHub';
 import { JoinSession } from './views/JoinSession';
 import { ChatView } from './views/ChatView';
 import { AnimatePresence, motion } from 'motion/react';
+import { ShareTextLogo } from './components/ShareTextLogo';
 
 function AppContent() {
   const { session } = useSession();
@@ -63,10 +64,7 @@ function AppContent() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black px-6 text-center">
         <div className="flex flex-col items-center">
-          <div className="relative flex h-8 w-8 mb-6">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-apple-blue opacity-50"></span>
-            <span className="relative inline-flex rounded-full h-8 w-8 bg-apple-blue"></span>
-          </div>
+          <ShareTextLogo size={64} animated className="text-apple-ink dark:text-white mb-8" />
           <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">Connecting...</h2>
           <p className="text-[17px] text-apple-ink-muted">This usually takes a moment.</p>
         </div>

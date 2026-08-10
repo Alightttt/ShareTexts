@@ -6,6 +6,8 @@ import { ChevronLeft, Loader2, QrCode, Keyboard } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 
+import { ShareTextLogo } from '../components/ShareTextLogo';
+
 export function JoinSession({ onBack }: { onBack: () => void }) {
   const { joinWithCode, joinWithLink } = useSession();
   const [activeTab, setActiveTab] = useState<'code' | 'qr' | 'linkConfirm'>('code');
@@ -66,9 +68,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
       </div>
 
       <div className="absolute top-6 right-6 hidden sm:flex items-center gap-2">
-        <div className="w-6 h-6 bg-apple-ink dark:bg-white rounded-[6px] flex items-center justify-center shadow-sm">
-          <span className="text-white dark:text-black font-bold text-[14px]">S</span>
-        </div>
+        <ShareTextLogo size={24} className="text-apple-ink dark:text-white" />
         <span className="text-[14px] font-semibold tracking-tight text-apple-ink dark:text-white">ShareText</span>
       </div>
 

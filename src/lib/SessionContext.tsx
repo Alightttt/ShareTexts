@@ -136,9 +136,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   };
 
   const createSession = async () => {
-    return new Promise<void>((resolve) => {
-      getSocket().emit('create_room', (res: { success: boolean; roomId: string; secret: string }) => {
-        if (res.success) {
+    return new Promise<void>((resolve, reject) => {
+      const socket = getSocket();
+      
+      const timeout = setTimeout(() => {
+        reject(new Error("Taking longer than expected."));
+      }, 8000);
+
+      socket.emit('create_room', (res: { success: boolean; roomId?: string; secret?: string; error?: string }) => {
+        clearTimeout(timeout);
+        if (res.success && res.roomId && res.secret) {
           setSession({
             roomId: res.roomId,
             secret: res.secret,
@@ -148,6 +155,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             messages: []
           });
           resolve();
+        } else {
+          reject(new Error(res.error || "Couldn't create a session."));
         }
       });
     });
