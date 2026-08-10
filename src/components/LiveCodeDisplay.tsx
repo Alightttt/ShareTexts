@@ -56,15 +56,15 @@ export function LiveCodeDisplay({ secret }: LiveCodeDisplayProps) {
       <div className="flex space-x-2">
         {digits.map((digit, i) => (
           <React.Fragment key={i}>
-            <div className="w-12 h-16 bg-apple-parchment dark:bg-black border border-apple-divider/50 dark:border-apple-tile-3 rounded-[12px] flex items-center justify-center overflow-hidden relative shadow-inner">
+            <div className="w-12 h-16 sm:w-14 sm:h-20 bg-apple-parchment dark:bg-black border border-apple-divider/50 dark:border-apple-tile-3 rounded-[12px] flex items-center justify-center overflow-hidden relative shadow-inner">
               <AnimatePresence mode="popLayout">
                 <motion.span
                   key={digit + i}
                   initial={{ y: 24, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -24, opacity: 0 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                  className="text-[36px] font-semibold text-apple-ink dark:text-white absolute tracking-tight"
+                  transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+                  className="text-[32px] sm:text-[40px] font-semibold text-apple-ink dark:text-white absolute font-mono tracking-tighter"
                 >
                   {digit}
                 </motion.span>

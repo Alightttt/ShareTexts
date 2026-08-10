@@ -44,15 +44,16 @@ export function RoomHub() {
                 initial={{ opacity: 0, height: 0, scale: 0.95 }}
                 animate={{ opacity: 1, height: 'auto', scale: 1 }}
                 exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                transition={{ type: "spring", bounce: 0, duration: 0.4 }}
                 className="overflow-hidden"
               >
-                <div className="flex flex-col items-center justify-center p-6 bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 rounded-[16px] shadow-sm">
+                <div className="flex flex-col items-center justify-center p-6 bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 rounded-[16px] shadow-sm">
                   <div className="bg-white p-3 rounded-[11px] mb-4">
                     <QRCodeSVG value={shareUrl} size={140} />
                   </div>
                   <button 
-                    onClick={() => setShowQR(false)} 
-                    className="text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink transition-colors"
+                    onPointerDown={() => setShowQR(false)} 
+                    className="text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors"
                   >
                     Hide QR Code
                   </button>
@@ -64,8 +65,8 @@ export function RoomHub() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                onClick={() => setShowQR(true)}
-                className="w-full flex items-center justify-between p-4 bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-apple-tile-2 rounded-[14px] transition-colors active:scale-[0.98] shadow-sm"
+                onPointerDown={() => setShowQR(true)}
+                className="w-full flex items-center justify-between p-4 bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-[#2c2c2e] rounded-[14px] transition-colors active:scale-[0.98] shadow-sm"
               >
                 <div className="flex items-center gap-3 text-[15px] font-medium text-apple-ink dark:text-white">
                   <QrCode className="w-5 h-5 text-apple-ink-muted" />
@@ -76,8 +77,8 @@ export function RoomHub() {
           </AnimatePresence>
 
           <button 
-            onClick={copyLink}
-            className="w-full flex items-center justify-between p-4 bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-apple-tile-2 rounded-[14px] transition-colors active:scale-[0.98] shadow-sm"
+            onPointerDown={copyLink}
+            className="w-full flex items-center justify-between p-4 bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-[#2c2c2e] rounded-[14px] transition-colors active:scale-[0.98] shadow-sm"
           >
             <div className="flex items-center gap-3 text-[15px] font-medium text-apple-ink dark:text-white">
               {copiedLink ? <Check className="w-5 h-5 text-[#34c759]" /> : <Copy className="w-5 h-5 text-apple-ink-muted" />}

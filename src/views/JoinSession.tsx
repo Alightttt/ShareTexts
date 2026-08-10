@@ -55,18 +55,18 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-apple-canvas dark:bg-black p-6 relative">
+    <div className="flex flex-col min-h-screen bg-apple-canvas dark:bg-black p-6 relative selection:bg-apple-blue/20">
       <div className="absolute top-6 left-6 flex items-center">
         <button 
-          onClick={onBack}
-          className="flex items-center gap-1 text-apple-ink-muted hover:text-apple-ink transition-colors text-[14px] font-medium active:scale-95"
+          onPointerDown={onBack}
+          className="flex items-center gap-1 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors text-[14px] font-medium active:scale-95"
         >
           <ChevronLeft className="w-5 h-5 -ml-1" /> Cancel
         </button>
       </div>
 
       <div className="absolute top-6 right-6 hidden sm:flex items-center gap-2">
-        <div className="w-6 h-6 bg-apple-ink dark:bg-white rounded-[6px] flex items-center justify-center">
+        <div className="w-6 h-6 bg-apple-ink dark:bg-white rounded-[6px] flex items-center justify-center shadow-sm">
           <span className="text-white dark:text-black font-bold text-[14px]">S</span>
         </div>
         <span className="text-[14px] font-semibold tracking-tight text-apple-ink dark:text-white">ShareText</span>
@@ -78,10 +78,10 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
           <AnimatePresence mode="wait">
             <motion.div 
               key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.98 }}
+              transition={{ type: "spring", bounce: 0, duration: 0.3 }}
               className="w-full flex justify-center"
             >
               {activeTab === 'code' && (
@@ -93,16 +93,16 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
                 </div>
               )}
               {activeTab === 'linkConfirm' && (
-                <div className="flex flex-col items-center p-8 bg-white dark:bg-apple-tile-1 rounded-[16px] w-full text-center border border-apple-divider dark:border-apple-tile-3 shadow-sm">
+                <div className="flex flex-col items-center p-8 bg-white dark:bg-[#1c1c1e] rounded-[24px] w-full text-center border border-apple-divider dark:border-apple-tile-3 shadow-sm">
                   <h3 className="text-[21px] font-semibold text-apple-ink dark:text-white mb-6 tracking-tight">Join Session?</h3>
                   <div className="mb-8">
                     <p className="text-[15px] text-apple-ink-muted">You are about to connect to a temporary room.</p>
                   </div>
                   
                   <button 
-                    onClick={() => pendingLink && handleLinkJoin(pendingLink)}
+                    onPointerDown={() => pendingLink && handleLinkJoin(pendingLink)}
                     disabled={isJoining}
-                    className="w-full py-3.5 bg-apple-ink dark:bg-white text-white dark:text-black rounded-[12px] text-[15px] font-medium transition-transform active:scale-95 flex items-center justify-center gap-2"
+                    className="w-full py-3.5 bg-apple-ink dark:bg-white text-white dark:text-black rounded-[14px] text-[15px] font-semibold transition-transform active:scale-[0.98] flex items-center justify-center gap-2 shadow-sm"
                   >
                     {isJoining ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Join Now'}
                   </button>
@@ -116,15 +116,15 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
           <div className="mt-4 flex justify-center w-full">
             {activeTab === 'code' ? (
               <button 
-                onClick={() => { setActiveTab('qr'); setError(null); }}
-                className="flex items-center gap-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink active:scale-95 transition-all bg-apple-parchment dark:bg-apple-tile-1 px-4 py-2 rounded-full"
+                onPointerDown={() => { setActiveTab('qr'); setError(null); }}
+                className="flex items-center gap-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white active:scale-95 transition-all bg-apple-parchment dark:bg-[#1c1c1e] px-4 py-2 rounded-full border border-apple-divider/50 dark:border-white/5"
               >
                 <QrCode className="w-4 h-4" /> Scan QR instead
               </button>
             ) : (
               <button 
-                onClick={() => { setActiveTab('code'); setError(null); }}
-                className="flex items-center gap-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink active:scale-95 transition-all bg-apple-parchment dark:bg-apple-tile-1 px-4 py-2 rounded-full"
+                onPointerDown={() => { setActiveTab('code'); setError(null); }}
+                className="flex items-center gap-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white active:scale-95 transition-all bg-apple-parchment dark:bg-[#1c1c1e] px-4 py-2 rounded-full border border-apple-divider/50 dark:border-white/5"
               >
                 <Keyboard className="w-4 h-4" /> Enter code manually
               </button>

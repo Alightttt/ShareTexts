@@ -57,11 +57,11 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
         {Array.from({ length: 6 }).map((_, i) => (
           <React.Fragment key={i}>
             <div className={cn(
-              "w-12 h-16 rounded-[12px] flex items-center justify-center overflow-hidden transition-colors relative shadow-inner",
+              "w-12 h-16 sm:w-14 sm:h-20 rounded-[12px] flex items-center justify-center overflow-hidden transition-colors relative shadow-inner",
               code[i] ? "bg-white dark:bg-apple-tile-3 border border-apple-divider dark:border-apple-tile-3" : "bg-apple-parchment dark:bg-black border border-apple-divider/50 dark:border-apple-tile-3",
               error && "border-[#ff3b30] bg-red-50 dark:bg-red-900/20"
             )}>
-              <span className="text-[36px] font-semibold text-apple-ink dark:text-white tracking-tight">
+              <span className="text-[32px] sm:text-[40px] font-semibold text-apple-ink dark:text-white tracking-tighter font-mono">
                 {code[i] || ''}
               </span>
               {/* Caret */}
@@ -70,7 +70,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
                   initial={{ opacity: 0 }}
                   animate={{ opacity: [1, 0] }}
                   transition={{ repeat: Infinity, duration: 1 }}
-                  className="w-[2px] h-8 bg-apple-blue absolute"
+                  className="w-[2px] h-8 sm:h-10 bg-apple-blue absolute"
                 />
               )}
             </div>
