@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { LiveCodeInput } from '../components/LiveCodeInput';
-import { QRScanner } from '../components/QRScanner';
 import { ChevronLeft, Loader2, QrCode, Keyboard } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
 
 import { ShareTextLogo } from '../components/ShareTextLogo';
+
+// html5-qrcode is heavy — load it only when the user opens the scanner.
+const QRScanner = lazy(() => import('../components/QRScanner').then(m => ({ default: m.QRScanner })));
 
 export function JoinSession({ onBack }: { onBack: () => void }) {
   const { joinWithCode, joinWithLink } = useSession();
@@ -32,7 +33,10 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
     setError(null);
     const res = await joinWithCode(code);
     if (!res.success) {
-      setError(res.error || 'Invalid code');
+      const friendly = res.error === 'This session already has two devices.'
+        ? 'This session already has two devices.'
+        : (res.error === 'Too many attempts. Try again later.' ? res.error : "That code isn't active. Check the other device and try the latest code.");
+      setError(friendly);
       setIsJoining(false);
     }
   };
@@ -61,7 +65,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
       <div className="absolute top-6 left-6 flex items-center">
         <button 
           onPointerDown={onBack}
-          className="flex items-center gap-1 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors text-[14px] font-medium active:scale-95"
+          className="flex items-center gap-1 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors text-[14px] font-medium active:scale-95 px-2 py-2 -m-2 min-h-[44px]"
         >
           <ChevronLeft className="w-5 h-5 -ml-1" /> Cancel
         </button>
@@ -89,22 +93,29 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
               )}
               {activeTab === 'qr' && (
                 <div className="w-full max-w-sm">
-                  <QRScanner onScan={handleQRScan} onErrorFallback={() => setActiveTab('code')} />
+                  <Suspense fallback={
+                    <div className="flex flex-col items-center justify-center p-8 bg-apple-parchment dark:bg-apple-tile-1 rounded-[18px] text-center min-h-[300px]">
+                      <Loader2 className="w-8 h-8 animate-spin text-apple-ink-muted mb-4" />
+                      <p className="text-[15px] font-medium text-apple-ink-muted">Starting camera…</p>
+                    </div>
+                  }>
+                    <QRScanner onScan={handleQRScan} onErrorFallback={() => setActiveTab('code')} />
+                  </Suspense>
                 </div>
               )}
               {activeTab === 'linkConfirm' && (
-                <div className="flex flex-col items-center p-8 bg-white dark:bg-[#1c1c1e] rounded-[24px] w-full text-center border border-apple-divider dark:border-apple-tile-3 shadow-sm">
-                  <h3 className="text-[21px] font-semibold text-apple-ink dark:text-white mb-6 tracking-tight">Join Session?</h3>
+                <div className="flex flex-col items-center p-8 bg-white dark:bg-surface-dark rounded-[24px] w-full text-center border border-apple-divider dark:border-apple-tile-3 shadow-sm">
+                  <h3 className="text-[21px] font-semibold text-apple-ink dark:text-white mb-2 tracking-tight">Join this room?</h3>
                   <div className="mb-8">
-                    <p className="text-[15px] text-apple-ink-muted">You are about to connect to a temporary room.</p>
+                    <p className="text-[15px] text-apple-ink-muted">You’re about to connect to a temporary room shared from another device.</p>
                   </div>
                   
                   <button 
                     onPointerDown={() => pendingLink && handleLinkJoin(pendingLink)}
                     disabled={isJoining}
-                    className="w-full py-3.5 bg-apple-ink dark:bg-white text-white dark:text-black rounded-[14px] text-[15px] font-semibold transition-transform active:scale-[0.98] flex items-center justify-center gap-2 shadow-sm"
+                    className="w-full py-3.5 bg-linear-to-r from-azure-500 to-azure-700 text-white rounded-[14px] text-[15px] font-semibold transition-transform active:scale-[0.98] flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(46,139,255,0.35)]"
                   >
-                    {isJoining ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Join Now'}
+                    {isJoining ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Join Room'}
                   </button>
                 </div>
               )}
@@ -117,14 +128,14 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
             {activeTab === 'code' ? (
               <button 
                 onPointerDown={() => { setActiveTab('qr'); setError(null); }}
-                className="flex items-center gap-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white active:scale-95 transition-all bg-apple-parchment dark:bg-[#1c1c1e] px-4 py-2 rounded-full border border-apple-divider/50 dark:border-white/5"
+                className="flex items-center gap-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white active:scale-95 transition-all bg-apple-parchment dark:bg-surface-dark px-4 py-2.5 rounded-full border border-apple-divider/50 dark:border-white/5 min-h-[44px]"
               >
                 <QrCode className="w-4 h-4" /> Scan QR instead
               </button>
             ) : (
               <button 
                 onPointerDown={() => { setActiveTab('code'); setError(null); }}
-                className="flex items-center gap-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white active:scale-95 transition-all bg-apple-parchment dark:bg-[#1c1c1e] px-4 py-2 rounded-full border border-apple-divider/50 dark:border-white/5"
+                className="flex items-center gap-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white active:scale-95 transition-all bg-apple-parchment dark:bg-surface-dark px-4 py-2.5 rounded-full border border-apple-divider/50 dark:border-white/5 min-h-[44px]"
               >
                 <Keyboard className="w-4 h-4" /> Enter code manually
               </button>

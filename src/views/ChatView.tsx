@@ -1,13 +1,16 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Send, X, Plus, Image as ImageIcon, Paperclip, 
-  Copy, Check, File as FileIcon, Play, Download, ExternalLink, RefreshCw, AlertCircle, FileText
+import {
+  Send, X, Plus, Image as ImageIcon, ClipboardPaste,
+  Copy, Check, File as FileIcon, Play, Download, RefreshCw, AlertCircle, FileText, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { cn, formatBytes } from '../lib/utils';
 import { ChatMessage, Attachment } from '../types';
 import { ShareTextLogo } from '../components/ShareTextLogo';
+
+const LARGE_TEXT_THRESHOLD = 8000; // chars
+const LARGE_TEXT_PREVIEW = 1400;
 
 export function ChatView() {
   const { session, sendMessage, closeSession } = useSession();
@@ -16,22 +19,38 @@ export function ChatView() {
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [showConnectionDetails, setShowConnectionDetails] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  
+  const [copiedAll, setCopiedAll] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
 
+  const previewUrl = useMemo(
+    () => (attachment?.type === 'image' && attachment.file ? URL.createObjectURL(attachment.file) : null),
+    [attachment]
+  );
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [session.messages]);
+    return () => { if (previewUrl) URL.revokeObjectURL(previewUrl); };
+  }, [previewUrl]);
+
+  const disconnected = !session.partnerConnected && session.connectionType === 'disconnected';
+
+  useEffect(() => {
+    if (!disconnected) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [session.messages, disconnected]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setShowAttachmentMenu(false);
         setShowConnectionDetails(false);
+        setConfirmClose(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -43,14 +62,14 @@ export function ChatView() {
     if (!file) return;
 
     if (type === 'image' && file.size > 100 * 1024 * 1024) {
-      setErrorMsg("This image is larger than 100 MB.");
+      setErrorMsg("This image is larger than 100 MB. Choose a smaller image to continue.");
       return;
     }
     if (file.size > 200 * 1024 * 1024) {
-      setErrorMsg("This file is larger than 200 MB.");
+      setErrorMsg("This file is larger than 200 MB. ShareText supports files up to 200 MB.");
       return;
     }
-    
+
     setErrorMsg(null);
     setAttachment({
       id: crypto.randomUUID(),
@@ -67,17 +86,51 @@ export function ChatView() {
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!inputText.trim() && !attachment) return;
-    
+    if (disconnected) return;
+
     if (attachment) {
       const { file, ...attachmentMeta } = attachment;
       sendMessage(inputText, attachmentMeta, file);
     } else {
       sendMessage(inputText);
     }
-    
+
     setInputText('');
     setAttachment(null);
   };
+
+  const canPaste = typeof navigator !== 'undefined' && !!navigator.clipboard?.readText;
+
+  const handlePaste = async () => {
+    if (!canPaste) return;
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) setInputText(t => (t ? t + '\n' : '') + text);
+    } catch {
+      setErrorMsg("Couldn't read your clipboard. Paste manually instead.");
+    }
+  };
+
+  const inputBytes = useMemo(() => new TextEncoder().encode(inputText).length, [inputText]);
+  const isLargeInput = inputBytes > 50000;
+
+  const copyAll = async () => {
+    const texts = session.messages.map(m => m.text).filter(t => t.trim());
+    if (texts.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(texts.join('\n\n'));
+      setCopiedAll(true);
+      setTimeout(() => setCopiedAll(false), 2000);
+    } catch {
+      setErrorMsg("Couldn't copy. Select the text and copy manually.");
+    }
+  };
+
+  const connectionLabel = session.connectionType === 'relay'
+    ? 'Encrypted relay'
+    : session.connectionType === 'local'
+      ? 'Connected directly'
+      : 'Connected';
 
   return (
     <div className="flex flex-col h-full bg-apple-canvas dark:bg-black font-sans">
@@ -86,71 +139,165 @@ export function ChatView() {
         <div className="flex items-center gap-3 relative">
           <ShareTextLogo size={24} className="text-apple-ink dark:text-white shrink-0" />
           <div className="flex flex-col">
-            <h2 className="text-[17px] font-semibold text-apple-ink dark:text-white leading-tight">Partner Device</h2>
-            <button 
+            <h2 className="text-[17px] font-semibold text-apple-ink dark:text-white leading-tight">
+              {session.partnerName || 'Partner Device'}
+            </h2>
+            <button
               onPointerDown={() => setShowConnectionDetails(!showConnectionDetails)}
-              className="flex items-center gap-2 mt-0.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue rounded-[4px]"
+              className="flex items-center gap-2 mt-0.5 py-1.5 -my-1.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue rounded-[6px] min-h-[40px]"
             >
-              <div className={cn("w-2 h-2 rounded-full", session.connectionType === 'relay' ? "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]" : "bg-[#34c759] shadow-[0_0_8px_rgba(52,199,89,0.4)]")} />
+              <div className={cn(
+                "w-2 h-2 rounded-full",
+                session.connectionType === 'relay' ? "bg-status-warning shadow-[0_0_8px_rgba(251,191,36,0.4)]" : "bg-status-success shadow-[0_0_8px_rgba(52,199,89,0.4)]"
+              )} />
               <span className="text-[13px] text-apple-ink-muted font-medium hover:text-apple-ink dark:hover:text-white transition-colors">
-                Connected securely
+                {connectionLabel}
               </span>
             </button>
 
             <AnimatePresence>
               {showConnectionDetails && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: -5, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -5, scale: 0.95 }}
                   transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                  className="absolute top-[100%] left-0 mt-2 p-3 bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 rounded-[12px] shadow-lg min-w-[200px]"
+                  className="absolute top-[100%] left-0 mt-2 p-3 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[12px] shadow-lg min-w-[220px] z-30"
                 >
-                  <div className="text-[13px] font-medium text-apple-ink dark:text-white mb-1">Connection Details</div>
+                  <div className="text-[13px] font-medium text-apple-ink dark:text-white mb-1">Connection</div>
                   <div className="text-[13px] text-apple-ink-muted">
-                    {session.connectionType === 'direct' ? 'Direct P2P Connection' : 
-                     session.connectionType === 'local' ? 'Local Network Connection' : 'Encrypted Relay Connection'}
+                    {session.connectionType === 'relay' ? 'Connected securely through an encrypted relay — a direct connection wasn\u2019t available.' :
+                     session.connectionType === 'local' ? 'Connected directly between devices on the same network.' :
+                     session.connectionType === 'direct' ? 'Connected directly between devices.' :
+                     'Connecting…'}
+                  </div>
+                  <div className="text-[13px] text-apple-ink-muted mt-2 pt-2 border-t border-apple-divider/50 dark:border-apple-tile-3">
+                    Encryption: Enabled
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
         </div>
-        <button 
-          onPointerDown={closeSession}
-          className="px-4 py-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-apple-tile-3/50 rounded-full transition-colors active:scale-95"
+        <button
+          onPointerDown={() => setConfirmClose(true)}
+          className="px-4 py-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-apple-tile-3/50 rounded-full transition-colors active:scale-95 min-h-[44px] flex items-center"
         >
           Close Room
         </button>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-        {session.messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-apple-ink-muted space-y-4 opacity-70">
-            <div className="w-16 h-16 rounded-2xl bg-apple-parchment dark:bg-apple-tile-2 flex items-center justify-center">
-              <Send className="w-8 h-8" />
-            </div>
-            <p className="text-[15px]">Connection secure. Ready to transfer.</p>
-          </div>
-        ) : (
-          <AnimatePresence initial={false}>
-            {session.messages.map((msg) => (
-              <MessageCard key={msg.id} msg={msg} />
-            ))}
-          </AnimatePresence>
+      {/* Close confirmation */}
+      <AnimatePresence>
+        {confirmClose && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/40 dark:bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 sm:p-6"
+            onPointerDown={() => setConfirmClose(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 24, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 24, scale: 0.97 }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="w-full max-w-sm bg-white dark:bg-surface-dark rounded-[20px] p-6 shadow-2xl text-center"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Close this session?"
+            >
+              <h3 className="text-[19px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">Close this session?</h3>
+              <p className="text-[15px] text-apple-ink-muted leading-relaxed mb-6">
+                Both devices will be disconnected and this temporary room will be destroyed.
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  onPointerDown={() => setConfirmClose(false)}
+                  className="w-full py-3.5 bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white rounded-[14px] text-[15px] font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
+                >
+                  Keep Session
+                </button>
+                <button
+                  onPointerDown={closeSession}
+                  className="w-full py-3.5 bg-status-danger hover:bg-[#e0352b] text-white rounded-[14px] text-[15px] font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
+                >
+                  Close Room
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
-        <div ref={messagesEndRef} />
+      </AnimatePresence>
+
+      {/* Disconnect banner */}
+      <AnimatePresence>
+        {disconnected && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden bg-status-warning/10 border-b border-status-warning/20"
+          >
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-2 text-[14px] font-medium text-status-warning-ink dark:text-status-warning-ink-dark">
+              <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse shrink-0" />
+              Your other device disconnected. Waiting for reconnect…
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="max-w-3xl mx-auto flex flex-col space-y-4">
+          {session.messages.length === 0 ? (
+            <div className="h-full min-h-[40vh] flex flex-col items-center justify-center text-center space-y-3 opacity-80">
+              <div className="w-14 h-14 rounded-[20px] bg-apple-parchment dark:bg-apple-tile-2 flex items-center justify-center mb-1">
+                <ShareTextLogo size={26} className="text-apple-ink dark:text-white" />
+              </div>
+              <p className="text-[17px] font-semibold text-apple-ink dark:text-white tracking-tight">Your private clipboard</p>
+              <p className="text-[14px] text-apple-ink-muted max-w-[260px] leading-relaxed">
+                Anything you paste here will appear on the other device.
+              </p>
+            </div>
+          ) : (
+            <>
+              {session.messages.length >= 2 && (
+                <div className="flex justify-end">
+                  <button
+                    onPointerDown={copyAll}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold transition-all active:scale-95",
+                      copiedAll
+                        ? "bg-status-success/15 text-status-success"
+                        : "bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white"
+                    )}
+                  >
+                    {copiedAll ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedAll ? `Copied ${session.messages.length} items` : 'Copy All'}
+                  </button>
+                </div>
+              )}
+              <AnimatePresence initial={false}>
+                {session.messages.map((msg) => (
+                  <MessageCard key={msg.id} msg={msg} partnerName={session.partnerName} />
+                ))}
+              </AnimatePresence>
+            </>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Input Area */}
       <div className="p-4 sm:p-6 bg-apple-canvas/90 dark:bg-black/90 backdrop-blur-xl border-t border-apple-divider/50 dark:border-apple-tile-3/50 z-10 pb-[env(safe-area-inset-bottom)] relative">
         <form onSubmit={handleSend} className="max-w-3xl mx-auto flex flex-col gap-3">
-          
+
           <AnimatePresence>
             {errorMsg && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                <div className="px-4 py-3 bg-[#ff3b30]/10 text-[#ff3b30] text-[14px] font-medium rounded-xl flex items-center gap-2">
+                <div className="px-4 py-3 bg-status-danger/10 text-status-danger text-[14px] font-medium rounded-xl flex items-center gap-2">
                   <AlertCircle className="w-4 h-4" /> {errorMsg}
                 </div>
               </motion.div>
@@ -158,32 +305,17 @@ export function ChatView() {
           </AnimatePresence>
 
           <div className="relative">
-            <AnimatePresence>
-              {showAttachmentMenu && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                  className="absolute left-0 bottom-[calc(100%+12px)] bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 rounded-[16px] shadow-2xl p-2 w-[220px] z-20 flex flex-col gap-1"
-                >
-                  <AttachmentOption icon={<ImageIcon className="w-5 h-5 text-blue-500" />} label="Photo" onClick={() => imageInputRef.current?.click()} />
-                  <AttachmentOption icon={<Play className="w-5 h-5 text-purple-500" />} label="Video" onClick={() => videoInputRef.current?.click()} />
-                  <AttachmentOption icon={<FileIcon className="w-5 h-5 text-orange-500" />} label="File" onClick={() => fileInputRef.current?.click()} />
-                </motion.div>
-              )}
-            </AnimatePresence>
             <input type="file" ref={imageInputRef} accept="image/*" className="hidden" onChange={(e) => handleFileSelect(e, 'image')} />
             <input type="file" ref={videoInputRef} accept="video/*" className="hidden" onChange={(e) => handleFileSelect(e, 'video')} />
             <input type="file" ref={audioInputRef} accept="audio/*" className="hidden" onChange={(e) => handleFileSelect(e, 'audio')} />
             <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => handleFileSelect(e, 'file')} />
           </div>
 
-          <motion.div layout className="relative border border-apple-divider dark:border-apple-tile-3 rounded-[24px] bg-white dark:bg-[#1c1c1e] overflow-visible shadow-sm transition-all focus-within:ring-2 focus-within:ring-apple-blue-focus/50 focus-within:border-apple-blue-focus z-20">
-            
+          <motion.div layout className="relative border border-apple-divider dark:border-apple-tile-3 rounded-[24px] bg-white dark:bg-surface-dark overflow-visible shadow-sm transition-all focus-within:ring-2 focus-within:ring-apple-blue-focus/50 focus-within:border-apple-blue-focus z-20">
+
             <AnimatePresence>
               {attachment && (
-                <motion.div 
+                <motion.div
                   initial={{ height: 0, opacity: 0, scale: 0.95 }}
                   animate={{ height: 'auto', opacity: 1, scale: 1 }}
                   exit={{ height: 0, opacity: 0, scale: 0.95 }}
@@ -193,26 +325,26 @@ export function ChatView() {
                   {attachment.type === 'image' && attachment.file ? (
                     <div className="relative group self-start">
                       <div className="w-[120px] h-[120px] sm:w-[160px] sm:h-[160px] rounded-[16px] overflow-hidden bg-apple-canvas dark:bg-black relative border border-apple-divider dark:border-apple-tile-3 shadow-sm">
-                        <img src={URL.createObjectURL(attachment.file)} alt="preview" className="w-full h-full object-cover" />
+                        {previewUrl && <img src={previewUrl} alt="preview" className="w-full h-full object-cover" />}
                       </div>
-                      <button type="button" onPointerDown={() => setAttachment(null)} className="absolute -top-2 -right-2 w-7 h-7 bg-[#ff3b30] text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm active:scale-90 z-10">
+                      <button type="button" onPointerDown={() => setAttachment(null)} className="absolute -top-2 -right-2 w-7 h-7 bg-status-danger text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm active:scale-90 z-10">
                         <X className="w-4 h-4" />
                       </button>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between bg-apple-parchment dark:bg-[#2c2c2e] p-3 rounded-[16px]">
-                       <div className="flex items-center gap-3 overflow-hidden">
-                          <div className="w-10 h-10 bg-white dark:bg-black rounded-[10px] flex items-center justify-center shrink-0 shadow-sm">
-                            {attachment.type === 'video' ? <Play className="w-5 h-5 text-apple-ink dark:text-white" /> : <FileIcon className="w-5 h-5 text-apple-ink dark:text-white" />}
-                          </div>
-                          <div className="flex flex-col truncate">
-                            <span className="text-[14px] font-medium text-apple-ink dark:text-white truncate">{attachment.name}</span>
-                            <span className="text-[12px] text-apple-ink-muted">{formatBytes(attachment.size)}</span>
-                          </div>
-                       </div>
-                       <button type="button" onPointerDown={() => setAttachment(null)} className="p-2 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors rounded-full hover:bg-apple-divider dark:hover:bg-apple-tile-3 shrink-0 active:scale-90">
-                         <X className="w-5 h-5" />
-                       </button>
+                    <div className="flex items-center justify-between bg-apple-parchment dark:bg-surface-dark-2 p-3 rounded-[16px]">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="w-10 h-10 bg-white dark:bg-black rounded-[10px] flex items-center justify-center shrink-0 shadow-sm">
+                          {attachment.type === 'video' ? <Play className="w-5 h-5 text-apple-ink dark:text-white" /> : <FileIcon className="w-5 h-5 text-apple-ink dark:text-white" />}
+                        </div>
+                        <div className="flex flex-col truncate">
+                          <span className="text-[14px] font-medium text-apple-ink dark:text-white truncate">{attachment.name}</span>
+                          <span className="text-[12px] text-apple-ink-muted">{formatBytes(attachment.size)}</span>
+                        </div>
+                      </div>
+                      <button type="button" onPointerDown={() => setAttachment(null)} className="p-2 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors rounded-full hover:bg-apple-divider dark:hover:bg-apple-tile-3 shrink-0 active:scale-90">
+                        <X className="w-5 h-5" />
+                      </button>
                     </div>
                   )}
                 </motion.div>
@@ -220,7 +352,18 @@ export function ChatView() {
             </AnimatePresence>
 
             <div className="flex items-end p-1 relative">
-              <div className="relative">
+              <div className="flex items-center">
+                {canPaste && (
+                  <button
+                    type="button"
+                    onPointerDown={() => { void handlePaste(); }}
+                    className="p-3.5 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-all active:scale-[0.85] rounded-full"
+                    aria-label="Paste from clipboard"
+                    title="Paste from clipboard"
+                  >
+                    <ClipboardPaste className="w-5 h-5" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onPointerDown={() => setShowAttachmentMenu(!showAttachmentMenu)}
@@ -228,18 +371,19 @@ export function ChatView() {
                     "p-3.5 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-all active:scale-[0.85] rounded-full",
                     showAttachmentMenu && "text-apple-blue bg-apple-blue/10 rotate-45"
                   )}
+                  aria-label="Add attachment"
                 >
                   <Plus className="w-6 h-6 transition-transform" />
                 </button>
 
                 <AnimatePresence>
                   {showAttachmentMenu && (
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, y: 10, scale: 0.9, transformOrigin: 'bottom left' }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.9 }}
                       transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                      className="absolute left-0 bottom-[calc(100%+8px)] bg-white/90 dark:bg-[#2c2c2e]/90 backdrop-blur-xl border border-apple-divider dark:border-apple-tile-3 rounded-[20px] shadow-2xl p-2 w-[220px] flex flex-col gap-1"
+                      className="absolute left-0 bottom-[calc(100%+8px)] bg-white/90 dark:bg-surface-dark-2/90 backdrop-blur-xl border border-apple-divider dark:border-apple-tile-3 rounded-[20px] shadow-2xl p-2 w-[220px] flex flex-col gap-1"
                     >
                       <AttachmentOption icon={<ImageIcon className="w-5 h-5 text-blue-500" />} label="Photo" onClick={() => imageInputRef.current?.click()} />
                       <AttachmentOption icon={<Play className="w-5 h-5 text-purple-500" />} label="Video" onClick={() => videoInputRef.current?.click()} />
@@ -248,7 +392,7 @@ export function ChatView() {
                   )}
                 </AnimatePresence>
               </div>
-              
+
               <textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
@@ -258,28 +402,30 @@ export function ChatView() {
                     handleSend(e);
                   }
                 }}
-                placeholder="Message or paste file..."
+                placeholder="Paste or type text…"
                 className="flex-1 min-h-[52px] max-h-[30vh] resize-none bg-transparent py-3.5 pr-4 text-apple-ink dark:text-white placeholder:text-apple-ink-muted focus:outline-none text-[16px] leading-relaxed"
               />
             </div>
           </motion.div>
 
           <div className="flex justify-between items-center mt-1 px-1">
-            <span className="text-[13px] text-apple-ink-muted font-medium">Cmd/Ctrl + Enter to send</span>
-            <button 
+            <span className="text-[13px] text-apple-ink-muted font-medium">
+              {isLargeInput ? `Large text · ${formatBytes(inputBytes)}` : 'Cmd/Ctrl + Enter to send'}
+            </span>
+            <button
               type="button"
               onPointerDown={handleSend}
               disabled={(!inputText.trim() && !attachment) || !session.partnerConnected}
-              className="px-6 py-2.5 bg-apple-blue text-white disabled:opacity-50 disabled:bg-apple-divider disabled:text-apple-ink-muted rounded-full text-[15px] font-semibold transition-all active:scale-95 flex items-center gap-2 shadow-sm shadow-apple-blue/20"
+              className="px-6 py-2.5 bg-linear-to-r from-azure-500 to-azure-700 text-white disabled:opacity-50 disabled:from-apple-divider disabled:to-apple-divider disabled:text-apple-ink-muted rounded-full text-[15px] font-semibold transition-all active:scale-95 flex items-center gap-2 shadow-[0_6px_16px_rgba(46,139,255,0.35)]"
             >
               Send <Send className="w-4 h-4" />
             </button>
           </div>
         </form>
       </div>
-      
+
       {showAttachmentMenu && (
-        <div className="fixed inset-0 z-[15]" onPointerDown={() => setShowAttachmentMenu(false)} />
+        <div className="fixed inset-0 z-[5]" onPointerDown={() => setShowAttachmentMenu(false)} />
       )}
     </div>
   );
@@ -287,9 +433,9 @@ export function ChatView() {
 
 function AttachmentOption({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick: () => void }) {
   return (
-    <button 
-      type="button" 
-      onPointerDown={onClick} 
+    <button
+      type="button"
+      onPointerDown={onClick}
       className="flex items-center gap-3 w-full p-3 hover:bg-apple-divider/50 dark:hover:bg-white/10 rounded-[14px] text-[16px] font-medium text-apple-ink dark:text-white transition-colors active:bg-apple-divider dark:active:bg-white/20"
     >
       {icon} {label}
@@ -297,19 +443,31 @@ function AttachmentOption({ icon, label, onClick }: { icon: React.ReactNode, lab
   );
 }
 
-const MessageCard: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
+const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg, partnerName }) => {
   const isMe = msg.sender === 'me';
   const a = msg.attachment;
 
   const [copied, setCopied] = useState(false);
-  
+  const [expanded, setExpanded] = useState(false);
+
+  const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
+  const preview = isLargeText && !expanded ? msg.text.slice(0, LARGE_TEXT_PREVIEW) : msg.text;
+
   const handleCopy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (e) {
-      console.error("Copy failed", e);
+    } catch {
+      // Fallback copy for older browsers
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -328,16 +486,16 @@ const MessageCard: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
   };
 
   const handleDownload = (url: string, filename: string) => {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 15, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       className={cn(
@@ -349,32 +507,55 @@ const MessageCard: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
         "flex flex-col gap-2 max-w-[85%] sm:max-w-[70%]",
         isMe ? "items-end" : "items-start"
       )}>
-        {/* Unified Card Container */}
+        {/* Sender */}
+        <span className="text-[12px] font-medium text-apple-ink-muted px-1">
+          {isMe ? 'You' : (partnerName || 'Partner')} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </span>
+
+        {/* Unified Card Container — sent messages carry the brand, received stay quiet */}
         <div className={cn(
-          "flex flex-col bg-white dark:bg-[#1c1c1e] border border-apple-divider/50 dark:border-apple-tile-3 rounded-[24px] overflow-hidden shadow-sm",
-          isMe ? "rounded-tr-[8px]" : "rounded-tl-[8px]"
+          "flex flex-col rounded-[24px] overflow-hidden shadow-sm",
+          isMe
+            ? "bg-linear-to-br from-azure-500 to-azure-700 text-white rounded-tr-[8px] border border-transparent"
+            : "bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3 rounded-tl-[8px]"
         )}>
-          
+
           {/* Text Content */}
           {msg.text && (
-            <div className="px-5 py-4 text-[16px] text-apple-ink dark:text-white whitespace-pre-wrap leading-relaxed break-words">
-              {msg.text}
+            <div className={cn("px-5 py-4 text-[16px] whitespace-pre-wrap leading-relaxed break-words", isMe ? "text-white" : "text-apple-ink dark:text-white")}>
+              {preview}
+              {isLargeText && !expanded && (
+                <button
+                  onPointerDown={() => setExpanded(true)}
+                  className={cn("mt-2 flex items-center gap-1 text-[14px] font-semibold active:opacity-70", isMe ? "text-white/90" : "text-apple-blue")}
+                >
+                  <ChevronDown className="w-4 h-4" /> Show full text
+                </button>
+              )}
+              {isLargeText && expanded && (
+                <button
+                  onPointerDown={() => setExpanded(false)}
+                  className={cn("mt-2 flex items-center gap-1 text-[14px] font-semibold active:opacity-70", isMe ? "text-white/90" : "text-apple-blue")}
+                >
+                  <ChevronUp className="w-4 h-4" /> Collapse
+                </button>
+              )}
             </div>
           )}
 
           {/* Attachment Renderers */}
           {a && (
-            <div className="flex flex-col w-full min-w-[280px]">
-              
+            <div className={cn("flex flex-col w-full min-w-[280px]", isMe && "bg-white/10")}>
+
               {/* Image Type */}
               {a.type === 'image' && (
                 <div className="relative w-full overflow-hidden bg-black/5 dark:bg-white/5">
                   {(a.status === 'complete' && a.url) ? (
                     <img src={a.url} alt={a.name} className="w-full h-auto object-contain max-h-[60vh] block" />
                   ) : (
-                    <div className="w-full aspect-video flex flex-col items-center justify-center text-apple-ink-muted">
+                    <div className={cn("w-full aspect-video flex flex-col items-center justify-center", isMe ? "text-white/80" : "text-apple-ink-muted")}>
                       <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
-                      <ProgressState attachment={a} isMe={isMe} />
+                      <ProgressState attachment={a} isMe={isMe} onBlue={isMe} />
                     </div>
                   )}
                 </div>
@@ -383,88 +564,95 @@ const MessageCard: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
               {/* Video Type */}
               {a.type === 'video' && (
                 <div className="relative w-full aspect-video bg-black/90 flex items-center justify-center group overflow-hidden">
-                   {(a.status === 'complete' && a.url) ? (
-                     <video src={a.url} controls className="w-full h-full object-contain" />
-                   ) : (
-                     <div className="text-white/70 flex flex-col items-center">
-                        <Play className="w-10 h-10 mb-3 opacity-50" />
-                        <ProgressState attachment={a} isMe={isMe} />
-                     </div>
-                   )}
+                  {(a.status === 'complete' && a.url) ? (
+                    <video src={a.url} controls className="w-full h-full object-contain" />
+                  ) : (
+                    <div className="text-white/70 flex flex-col items-center">
+                      <Play className="w-10 h-10 mb-3 opacity-50" />
+                      <ProgressState attachment={a} isMe={isMe} onBlue />
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* File / Audio Type */}
               {(a.type === 'file' || a.type === 'audio') && (
-                <div className="p-5 flex items-center gap-4 bg-apple-canvas/50 dark:bg-black/20">
-                  <div className="w-14 h-14 rounded-2xl bg-apple-blue/10 flex items-center justify-center shrink-0 relative">
-                    {a.type === 'audio' ? <Play className="w-6 h-6 text-apple-blue ml-1" /> : <FileText className="w-6 h-6 text-apple-blue" />}
+                <div className={cn("p-5 flex items-center gap-4", isMe ? "bg-white/10" : "bg-apple-canvas/50 dark:bg-black/20")}>
+                  <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 relative", isMe ? "bg-white/20" : "bg-apple-blue/10")}>
+                    {a.type === 'audio' ? <Play className={cn("w-6 h-6 ml-1", isMe ? "text-white" : "text-apple-blue")} /> : <FileText className={cn("w-6 h-6", isMe ? "text-white" : "text-apple-blue")} />}
                   </div>
                   <div className="flex flex-col flex-1 truncate">
-                    <span className="text-[15px] font-semibold text-apple-ink dark:text-white truncate">{a.name}</span>
+                    <span className={cn("text-[15px] font-semibold truncate", isMe ? "text-white" : "text-apple-ink dark:text-white")}>{a.name}</span>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[13px] font-medium text-apple-ink-muted">{formatBytes(a.size)}</span>
-                      <span className="w-1 h-1 rounded-full bg-apple-ink-muted/50" />
-                      <span className="text-[13px] font-medium text-apple-ink-muted uppercase tracking-wider">{a.name.split('.').pop() || 'FILE'}</span>
+                      <span className={cn("text-[13px] font-medium", isMe ? "text-white/75" : "text-apple-ink-muted")}>{formatBytes(a.size)}</span>
+                      <span className={cn("w-1 h-1 rounded-full", isMe ? "bg-white/40" : "bg-apple-ink-muted/50")} />
+                      <span className={cn("text-[13px] font-medium uppercase tracking-wider", isMe ? "text-white/75" : "text-apple-ink-muted")}>{a.name.split('.').pop() || 'FILE'}</span>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* Metadata & Actions Bar */}
-              <div className="px-5 py-3 border-t border-apple-divider/50 dark:border-apple-tile-3 flex items-center justify-between bg-apple-canvas/30 dark:bg-black/10">
-                
-                {/* Status/Metadata */}
+              <div className={cn(
+                "px-5 py-3 border-t flex items-center justify-between",
+                isMe
+                  ? "border-white/15 bg-white/10"
+                  : "border-apple-divider/50 dark:border-apple-tile-3 bg-apple-canvas/30 dark:bg-black/10"
+              )}>
                 <div className="flex flex-col">
-                  <span className="text-[12px] font-medium text-apple-ink-muted flex items-center gap-1">
-                    {a.status === 'complete' && (isMe ? <><Check className="w-3 h-3 text-[#34c759]" /> Sent •</> : 'Received •')} {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  <span className={cn("text-[12px] font-medium flex items-center gap-1", isMe ? "text-white/75" : "text-apple-ink-muted")}>
+                    {a.status === 'complete' && (isMe ? <><Check className="w-3 h-3 text-white/90" /> Sent •</> : 'Received •')} {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                   {a.status !== 'complete' && a.status !== 'draft' && (
-                     <span className={cn("text-[13px] font-semibold mt-0.5", a.status === 'failed' ? "text-[#ff3b30]" : "text-apple-blue")}>
-                       {a.status === 'failed' ? 'Couldn\'t send this file.' : 
-                        a.status === 'sending' ? `Sending... ${Math.round((a.progress || 0) * 100)}%` : 
-                        `Receiving... ${Math.round((a.progress || 0) * 100)}%`}
-                     </span>
+                    <span className={cn("text-[13px] font-semibold mt-0.5", a.status === 'failed' ? (isMe ? "text-white" : "text-status-danger") : isMe ? "text-white" : "text-apple-blue")}>
+                      {a.status === 'failed' ? 'Couldn\u2019t send this file.' :
+                        a.status === 'sending' ? `Sending… ${Math.round((a.progress || 0) * 100)}%` :
+                          `Receiving… ${Math.round((a.progress || 0) * 100)}%`}
+                    </span>
                   )}
                   {a.status !== 'complete' && a.status !== 'draft' && a.status !== 'failed' && (
-                     <span className="text-[11px] text-apple-ink-muted/80">
-                        {formatBytes((a.progress || 0) * a.size)} / {formatBytes(a.size)}
-                     </span>
+                    <span className={cn("text-[11px]", isMe ? "text-white/60" : "text-apple-ink-muted/80")}>
+                      {formatBytes((a.progress || 0) * a.size)} / {formatBytes(a.size)}
+                    </span>
                   )}
                 </div>
 
-                {/* Actions */}
                 <div className="flex gap-2">
                   {a.status === 'complete' && a.url && (
                     <>
                       {a.type === 'image' && (
-                        <ActionButton icon={<Copy />} label={copied ? "Copied" : "Copy Image"} active={copied} onClick={() => handleCopyImage(a.url!)} />
+                        <ActionButton icon={<Copy />} label={copied ? "Copied" : "Copy Image"} active={copied} onClick={() => handleCopyImage(a.url!)} onBlue={isMe} />
                       )}
-                      <ActionButton icon={<Download />} label="Save" onClick={() => handleDownload(a.url!, a.name)} primary />
+                      <ActionButton icon={<Download />} label="Save" onClick={() => handleDownload(a.url!, a.name)} primary onBlue={isMe} />
                     </>
                   )}
                   {a.status === 'failed' && (
-                    <ActionButton icon={<RefreshCw />} label="Retry" onClick={() => {}} />
+                    <ActionButton icon={<RefreshCw />} label="Retry" onClick={() => {}} onBlue={isMe} />
                   )}
                 </div>
               </div>
-              
+
               {/* Progress Bar */}
               {a.status !== 'complete' && a.status !== 'draft' && a.status !== 'failed' && (
-                 <div className="w-full h-1 bg-apple-divider dark:bg-apple-tile-3">
-                   <div className="h-full bg-apple-blue transition-all duration-300 ease-out" style={{ width: `${(a.progress || 0) * 100}%` }} />
-                 </div>
+                <div className={cn("w-full h-1", isMe ? "bg-white/20" : "bg-apple-divider dark:bg-apple-tile-3")}>
+                  <div className={cn("h-full transition-all duration-300 ease-out", isMe ? "bg-white" : "bg-apple-blue")} style={{ width: `${(a.progress || 0) * 100}%` }} />
+                </div>
               )}
             </div>
           )}
 
           {/* Action bar for pure text messages */}
           {!a && msg.text && (
-            <div className="px-5 py-2.5 border-t border-apple-divider/50 dark:border-apple-tile-3 flex items-center justify-between bg-apple-canvas/30 dark:bg-black/10">
-               <span className="text-[12px] font-medium text-apple-ink-muted flex items-center gap-1">
-                 {isMe ? <><Check className="w-3 h-3 text-[#34c759]" /> Sent •</> : 'Received •'} {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-               </span>
-               <ActionButton icon={<Copy />} label={copied ? "Copied" : "Copy"} active={copied} onClick={() => handleCopy(msg.text)} />
+            <div className={cn(
+              "px-5 py-2.5 border-t flex items-center justify-between",
+              isMe
+                ? "border-white/15 bg-white/10"
+                : "border-apple-divider/50 dark:border-apple-tile-3 bg-apple-canvas/30 dark:bg-black/10"
+            )}>
+              <span className={cn("text-[12px] font-medium flex items-center gap-1", isMe ? "text-white/75" : "text-apple-ink-muted")}>
+                {isMe ? <><Check className="w-3 h-3 text-white/90" /> Sent •</> : 'Received •'} {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+              <ActionButton icon={<Copy />} label={copied ? "Copied" : "Copy"} active={copied} onClick={() => handleCopy(msg.text)} onBlue={isMe} />
             </div>
           )}
 
@@ -474,27 +662,31 @@ const MessageCard: React.FC<{ msg: ChatMessage }> = ({ msg }) => {
   );
 }
 
-function ProgressState({ attachment: a, isMe }: { attachment: Attachment, isMe: boolean }) {
-  if (a.status === 'failed') return <span className="text-[#ff3b30] font-medium">Couldn't send this file.</span>;
+function ProgressState({ attachment: a, isMe, onBlue }: { attachment: Attachment, isMe: boolean, onBlue?: boolean }) {
+  if (a.status === 'failed') return <span className={cn("font-medium", onBlue ? "text-white" : "text-status-danger")}>Couldn't send this file.</span>;
   if (a.status === 'complete') return null;
   return (
-    <span className="font-medium animate-pulse">
-      {isMe ? 'Sending...' : 'Receiving...'} {Math.round((a.progress || 0) * 100)}%
+    <span className={cn("font-medium animate-pulse", onBlue ? "text-white" : "text-apple-ink-muted")}>
+      {isMe ? 'Sending…' : 'Receiving…'} {Math.round((a.progress || 0) * 100)}%
     </span>
   );
 }
 
-function ActionButton({ icon, label, onClick, active, primary }: { icon: React.ReactNode, label: string, onClick: () => void, active?: boolean, primary?: boolean }) {
+function ActionButton({ icon, label, onClick, active, primary, onBlue }: { icon: React.ReactNode, label: string, onClick: () => void, active?: boolean, primary?: boolean, onBlue?: boolean }) {
   return (
-    <button 
+    <button
       onPointerDown={onClick}
       className={cn(
-        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-semibold transition-all active:scale-95",
-        active 
-          ? "bg-[#34c759]/15 text-[#34c759]" 
+        "flex items-center gap-1.5 px-3.5 py-2.5 rounded-full text-[13px] font-semibold transition-all active:scale-95 min-h-[44px]",
+        active
+          ? onBlue ? "bg-white/25 text-white" : "bg-status-success/15 text-status-success"
           : primary
-            ? "bg-apple-blue hover:bg-apple-blue-focus text-white"
-            : "bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white"
+            ? onBlue
+              ? "bg-white text-azure-700 hover:bg-white/90"
+              : "bg-apple-blue hover:bg-apple-blue-focus text-white"
+            : onBlue
+              ? "bg-white/15 text-white hover:bg-white/25"
+              : "bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white"
       )}
     >
       <div className="[&>svg]:w-3.5 [&>svg]:h-3.5">{active ? <Check /> : icon}</div>

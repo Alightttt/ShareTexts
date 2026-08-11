@@ -12,8 +12,34 @@ import { ChatView } from './views/ChatView';
 import { AnimatePresence, motion } from 'motion/react';
 import { ShareTextLogo } from './components/ShareTextLogo';
 
+function SessionEndedScreen({ reason, onRestart }: { reason: string, onRestart: () => void }) {
+  const copy = reason === 'expired'
+    ? "This temporary room has expired and can no longer be reopened."
+    : "Your temporary room has been closed.";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black p-6 text-center"
+    >
+      <ShareTextLogo size={56} className="text-apple-ink dark:text-white mb-6 opacity-80" />
+      <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">Session ended.</h2>
+      <p className="text-[17px] text-apple-ink-muted mb-10">{copy}</p>
+      <button
+        onPointerDown={onRestart}
+        className="px-8 py-3.5 bg-linear-to-r from-azure-500 to-azure-700 text-white rounded-full text-[17px] font-semibold transition-transform active:scale-[0.97] shadow-[0_8px_20px_rgba(46,139,255,0.35)]"
+      >
+        Start New Session
+      </button>
+    </motion.div>
+  );
+}
+
 function AppContent() {
-  const { session } = useSession();
+  const { session, leaveView, requestReconnect } = useSession();
   const [view, setView] = useState<'landing' | 'join'>(() => {
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
@@ -42,13 +68,26 @@ function AppContent() {
         </div>
         <h2 className="text-[24px] font-semibold text-apple-ink dark:text-white mb-2">Page Not Found</h2>
         <p className="text-[17px] text-apple-ink-muted max-w-sm mb-8">The page you're looking for doesn't exist.</p>
-        <button 
+        <button
           onClick={() => { window.location.href = '/'; }}
           className="px-6 py-3 bg-apple-blue hover:bg-apple-blue-focus text-white rounded-full text-[17px] font-normal transition-transform active:scale-95"
         >
           Go to Homepage
         </button>
       </div>
+    );
+  }
+
+  // Session ended — show a calm closing state instead of dumping the user on
+  // the landing page with no explanation.
+  if (!session.roomId && session.closedReason) {
+    return (
+      <AnimatePresence mode="wait">
+        <SessionEndedScreen reason={session.closedReason} onRestart={() => {
+          leaveView();
+          setView('landing');
+        }} />
+      </AnimatePresence>
     );
   }
 
@@ -60,13 +99,32 @@ function AppContent() {
     if (session.isCreator) {
       return <RoomHub />;
     }
-    // If joiner and waiting for partner...
+    // Joiner: either the fresh "connecting" state or "partner gone, waiting".
+    const waitingForReconnect = session.connectionType === 'disconnected';
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black px-6 text-center">
         <div className="flex flex-col items-center">
           <ShareTextLogo size={64} animated className="text-apple-ink dark:text-white mb-8" />
-          <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">Connecting...</h2>
-          <p className="text-[17px] text-apple-ink-muted">This usually takes a moment.</p>
+          <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">
+            {waitingForReconnect ? "Your other device disconnected." : "Connecting…"}
+          </h2>
+          <p className="text-[17px] text-apple-ink-muted">
+            {waitingForReconnect ? "Your room is still open — you can rejoin anytime." : "This usually takes a moment."}
+          </p>
+          {waitingForReconnect && (
+            <button
+              onPointerDown={() => { void requestReconnect(); }}
+              className="mt-8 px-8 py-3.5 bg-linear-to-r from-azure-500 to-azure-700 text-white rounded-full text-[16px] font-semibold shadow-[0_8px_20px_rgba(46,139,255,0.35)] transition-transform active:scale-[0.97]"
+            >
+              Reconnect
+            </button>
+          )}
+          <button
+            onPointerDown={leaveView}
+            className="mt-4 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors px-4 py-2 min-h-[44px]"
+          >
+            Leave session
+          </button>
         </div>
       </div>
     );
@@ -82,7 +140,7 @@ function AppContent() {
         transition={{ duration: 0.2 }}
       >
         {view === 'landing' ? (
-          <Landing onJoinClick={() => setView('join')} closedReason={session.closedReason} />
+          <Landing onJoinClick={() => setView('join')} />
         ) : (
           <JoinSession onBack={() => setView('landing')} />
         )}
@@ -98,4 +156,3 @@ export default function App() {
     </SessionProvider>
   );
 }
-

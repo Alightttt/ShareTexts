@@ -51,17 +51,17 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
       <motion.div 
         animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}} 
         transition={{ duration: 0.4 }}
-        className="flex space-x-2"
+        className="flex w-full max-w-[300px] gap-1.5 sm:gap-2"
         onClick={() => inputRef.current?.focus()}
       >
         {Array.from({ length: 6 }).map((_, i) => (
           <React.Fragment key={i}>
             <div className={cn(
-              "w-12 h-16 sm:w-14 sm:h-20 rounded-[12px] flex items-center justify-center overflow-hidden transition-colors relative shadow-inner",
+              "flex-1 aspect-[3/4] rounded-[12px] flex items-center justify-center overflow-hidden transition-colors relative shadow-inner",
               code[i] ? "bg-white dark:bg-apple-tile-3 border border-apple-divider dark:border-apple-tile-3" : "bg-apple-parchment dark:bg-black border border-apple-divider/50 dark:border-apple-tile-3",
-              error && "border-[#ff3b30] bg-red-50 dark:bg-red-900/20"
+              error && "border-status-danger bg-red-50 dark:bg-red-900/20"
             )}>
-              <span className="text-[32px] sm:text-[40px] font-semibold text-apple-ink dark:text-white tracking-tighter font-mono">
+              <span className="text-[clamp(26px,7.5vw,40px)] font-semibold text-apple-ink dark:text-white tracking-tighter font-mono">
                 {code[i] || ''}
               </span>
               {/* Caret */}
@@ -74,13 +74,13 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
                 />
               )}
             </div>
-            {i === 2 && <div className="w-3" />}
+            {i === 2 && <div className="w-2 sm:w-3" />}
           </React.Fragment>
         ))}
       </motion.div>
 
       {error && (
-        <div className="mt-6 text-[14px] text-[#ff3b30] font-medium">
+        <div className="mt-6 text-[14px] text-status-danger font-medium">
           {error}
         </div>
       )}
@@ -88,7 +88,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
       {isJoining && (
         <div className="flex flex-col items-center justify-center mt-8">
           <Loader2 className="w-6 h-6 animate-spin text-apple-ink-muted mb-4" />
-          <p className="text-[15px] font-medium text-apple-ink-muted">Verifying code...</p>
+          <p className="text-[15px] font-medium text-apple-ink-muted">Verifying code…</p>
         </div>
       )}
     </div>
