@@ -1,11 +1,11 @@
 {
   "name": "ShareText",
   "short_name": "ShareText",
-  "description": "Your temporary clipboard for the web.",
+  "description": "Move text, photos and files between your devices. No app, no account.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0066cc",
+  "background_color": "#0a0f1a",
+  "theme_color": "#0a0f1a",
   "icons": [
     {
       "src": "/icon-192.png",

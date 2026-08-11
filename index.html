@@ -2,31 +2,65 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="description" content="Share text instantly between two devices. No app, no account, temporary private rooms." />
-    <meta name="theme-color" content="#0066CC" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
-    
-    <meta property="og:title" content="ShareText" />
-    <meta property="og:description" content="Your temporary clipboard for the web." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- Primary -->
+    <title>ShareText — Move something between your devices</title>
+    <meta name="description" content="Move text, photos and files between your devices in seconds. No app, no account, nothing to install — open ShareText on two devices, connect, transfer, done." />
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="ShareText" />
+    <meta name="application-name" content="ShareText" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#060a13" media="(prefers-color-scheme: dark)" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ShareText" />
+
+    <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://sharetext.app/" />
-    
+    <meta property="og:site_name" content="ShareText" />
+    <meta property="og:title" content="ShareText — Move something between your devices" />
+    <meta property="og:description" content="Text, photos and files. No app. No account. Open ShareText, connect two devices, transfer — done." />
+    <meta property="og:url" content="https://share-texts.vercel.app/" />
+    <meta property="og:image" content="https://share-texts.vercel.app/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt" content="ShareText — move text, photos and files between your devices." />
+
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="ShareText" />
-    <meta name="twitter:description" content="Your temporary clipboard for the web." />
-    
-    <link rel="canonical" href="https://sharetext.app/" />
+    <meta name="twitter:title" content="ShareText — Move something between your devices" />
+    <meta name="twitter:description" content="Text, photos and files. No app. No account. Connect two devices, transfer, done." />
+    <meta name="twitter:image" content="https://share-texts.vercel.app/og.png" />
+    <meta name="twitter:image:alt" content="ShareText — move text, photos and files between your devices." />
+
+    <link rel="canonical" href="https://share-texts.vercel.app/" />
+
+    <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    
-    <title>ShareText - Temporary Internet Clipboard</title>
+
+    <!-- Structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "ShareText",
+      "url": "https://share-texts.vercel.app/",
+      "description": "Move text, photos and files between your devices — no app, no account, nothing to install.",
+      "applicationCategory": "UtilityApplication",
+      "operatingSystem": "Any (browser with WebRTC)",
+      "browserRequirements": "Requires WebRTC",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
