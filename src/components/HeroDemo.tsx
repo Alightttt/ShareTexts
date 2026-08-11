@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Check, FileText, Image as ImageIcon } from 'lucide-react';
+import { Check, FileText, Image as ImageIcon, Send } from 'lucide-react';
 import { ShareTextLogo } from './ShareTextLogo';
 
 type Phase = 0 | 1 | 2; // text | photo | file
@@ -24,8 +24,8 @@ function TransferCard({ phase, size = 'md' }: { phase: Phase, size?: 'md' | 'sm'
   const sm = size === 'sm';
   if (phase === 1) {
     return (
-      <div className={`${sm ? 'w-[86px] h-[64px]' : 'w-[104px] h-[76px]'} rounded-[10px] overflow-hidden bg-linear-to-br from-azure-400 to-azure-700 flex items-center justify-center`}>
-        <ImageIcon className={`${sm ? 'w-5 h-5' : 'w-6 h-6'} text-white/90`} strokeWidth={2.2} />
+      <div className={`${sm ? 'w-[86px] h-[64px]' : 'w-[104px] h-[76px]'} rounded-[10px] overflow-hidden bg-apple-divider dark:bg-apple-tile-3 border border-apple-hairline/60 dark:border-white/[0.06] flex items-center justify-center`}>
+        <ImageIcon className={`${sm ? 'w-5 h-5' : 'w-6 h-6'} text-apple-ink-muted/60`} strokeWidth={2} />
       </div>
     );
   }
@@ -42,15 +42,18 @@ function TransferCard({ phase, size = 'md' }: { phase: Phase, size?: 'md' | 'sm'
   }
   return (
     <div className={`${sm ? 'w-[86px]' : 'w-[104px]'} flex flex-col gap-1 p-[7px] rounded-[10px] bg-white dark:bg-[#2c2c2e] border border-apple-divider/60 dark:border-apple-tile-3 shadow-card`}>
-      <span className={`${sm ? 'text-[7px]' : 'text-[8px]'} font-medium text-apple-ink dark:text-white leading-snug line-clamp-2`}>
-        Meeting notes — Q3 planning at 3pm. Bring the links.
+      <span className="flex items-center gap-1 min-w-0">
+        <span className="w-1 h-1 rounded-full bg-status-success shrink-0" />
+        <span className={`${sm ? 'text-[6.5px]' : 'text-[7.5px]'} font-mono text-apple-ink dark:text-white leading-snug truncate`}>
+          example.com/a/very-long-link
+        </span>
       </span>
-      <span className="text-[6.5px] text-apple-ink-muted font-medium">Now</span>
+      <span className="text-[6.5px] text-apple-ink-muted font-medium">Text</span>
     </div>
   );
 }
 
-export function HeroDemo({ onGradient = false }: { onGradient?: boolean }) {
+export function HeroDemo() {
   const reduced = useReducedMotion();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -133,12 +136,12 @@ export function HeroDemo({ onGradient = false }: { onGradient?: boolean }) {
         style={{ left: beam.left, width: beam.width, top: beam.top, transform: 'translateY(-50%)' }}
         aria-hidden
       >
-        <div className={`h-px w-full ${onGradient ? 'bg-white/30' : 'bg-apple-ink/10 dark:bg-white/10'}`} />
+        <div className="h-px w-full bg-apple-ink/10 dark:bg-white/10" />
         {!reduced && (
-          <div className={`absolute top-1/2 -translate-y-1/2 left-0 w-1.5 h-1.5 rounded-full animate-beam ${onGradient ? 'bg-white shadow-[0_0_10px_rgba(255,255,255,0.9)]' : 'bg-apple-blue shadow-[0_0_8px_rgba(0,102,204,0.7)]'}`} />
+          <div className="absolute top-1/2 -translate-y-1/2 left-0 w-1.5 h-1.5 rounded-full animate-beam bg-apple-blue shadow-[0_0_8px_rgba(0,102,204,0.7)]" />
         )}
         {/* Transit node */}
-        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full shadow-card flex items-center justify-center ${onGradient ? 'bg-white/90' : 'bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3'}`}>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full shadow-card flex items-center justify-center bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3">
           <ShareTextLogo size={16} className="text-apple-blue" />
         </div>
       </div>
@@ -182,9 +185,7 @@ export function HeroDemo({ onGradient = false }: { onGradient?: boolean }) {
                         {PHASE_LABELS[phase]} ready
                       </span>
                       <div className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px] rounded-full bg-apple-blue flex items-center justify-center">
-                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" className="text-white">
-                          <path d="M2 12L22 2L12 22L10 14L2 12Z" fill="currentColor" />
-                        </svg>
+                        <Send className="w-[8px] h-[8px] text-white" strokeWidth={3} />
                       </div>
                     </div>
                   </motion.div>
@@ -192,7 +193,7 @@ export function HeroDemo({ onGradient = false }: { onGradient?: boolean }) {
               </div>
             </div>
           </div>
-          <p className={`mt-2.5 text-center text-[10px] sm:text-[11px] font-medium ${onGradient ? 'text-white/70' : 'text-apple-ink-muted'}`}>Your phone</p>
+          <p className="mt-2.5 text-center text-[10px] sm:text-[11px] font-medium text-apple-ink-muted">Your phone</p>
         </div>
 
         {/* Laptop — the receiver */}
@@ -239,7 +240,7 @@ export function HeroDemo({ onGradient = false }: { onGradient?: boolean }) {
             {/* Laptop base */}
             <div className="h-[8px] sm:h-[10px] -mb-[10px] sm:-mb-[13px] mx-[-8px] sm:mx-[-12px] mt-[5px] rounded-b-[10px] sm:rounded-b-[14px] bg-gradient-to-b from-[#3a3a3d] to-[#2a2a2c]" />
           </div>
-          <p className={`mt-3.5 sm:mt-4 text-center text-[10px] sm:text-[11px] font-medium ${onGradient ? 'text-white/70' : 'text-apple-ink-muted'}`}>Your laptop</p>
+          <p className="mt-3.5 sm:mt-4 text-center text-[10px] sm:text-[11px] font-medium text-apple-ink-muted">Your laptop</p>
         </div>
       </div>
 

@@ -26,12 +26,12 @@ B.on('pageerror', e => errors.push(`[B:ERROR] ${e.message}`));
 
 // A creates, B joins
 await A.goto(URL, { waitUntil: 'networkidle' });
-await A.getByRole('button', { name: 'Send text' }).first().click();
+await A.getByRole('button', { name: 'Create Session' }).first().click();
 await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
 const digits = await A.locator('span').filter({ hasText: /^\d$/ }).allTextContents();
 const code = digits.slice(-6).join('');
 await B.goto(URL, { waitUntil: 'networkidle' });
-await B.getByRole('button', { name: 'Receive text' }).click();
+await B.getByRole('button', { name: 'Join Session' }).first().click();
 await B.locator('input[inputmode="numeric"]').fill(code);
 await sleep(4000);
 

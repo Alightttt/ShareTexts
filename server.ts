@@ -23,6 +23,25 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
+// --- Health + origin policy -------------------------------------------------
+
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, service: 'sharetext-signaling' });
+});
+
+// CORS allowlist. Production must NOT accept `*` — only the intended
+// frontend origins. Defaults: localhost dev origins + the Vercel frontend.
+// Add your own via ALLOWED_ORIGINS (comma-separated) — render.yaml sets this
+// to the Render service URL so same-origin deployments work too.
+const allowedOrigins = new Set<string>([
+  'http://localhost:3000',
+  'http://localhost:3311',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3311',
+  'https://share-texts.vercel.app',
+  ...(process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
+]);
+
 const PORT = process.env.PORT || 3000;
 
 // Rooms are deliberately long-lived so a session can be rejoined for hours.
@@ -30,15 +49,42 @@ const ROOM_TTL = 12 * 60 * 60 * 1000;     // rooms idle-expire after 12 hours
 const ROOM_EMPTY_TTL = 4 * 60 * 60 * 1000; // rooms stay rejoinable 4h after both peers leave
 const RECONNECT_GRACE = 5 * 60 * 1000;    // must match connectionStateRecovery window
 
+function log(...parts: unknown[]) {
+  console.log('[ShareText]', ...parts);
+}
+
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
-  cors: { origin: '*' },
+  // Only the configured frontend origins may open signaling sockets. No
+  // cookies or credentials are used, but a misconfigured `*` would let any
+  // website burn rate-limit buckets and probe codes.
+  cors: {
+    origin(origin, cb) {
+      if (!origin) return cb(null, true); // non-browser clients (curl, agents)
+      if (allowedOrigins.has(origin)) return cb(null, true);
+      return cb(new Error('Origin not allowed'));
+    }
+  },
+  // Cap inbound socket payloads (SDP offers and relayed messages are small).
+  maxHttpBufferSize: 1e6,
   // Allow a briefly-disconnected device to come back to the same room
   // without losing membership (the reconnection grace period).
   connectionStateRecovery: {
     maxDisconnectionDuration: RECONNECT_GRACE
   }
 });
+
+// Behind a proxy (Render/Vercel) every socket's handshake.address is the
+// proxy IP — without this, all visitors share one rate-limit bucket.
+// Prefer the leftmost untrusted-hop x-forwarded-for value.
+function clientIp(socket: import('socket.io').Socket): string {
+  const fwd = socket.handshake.headers['x-forwarded-for'];
+  if (typeof fwd === 'string') {
+    const first = fwd.split(',')[0]?.trim();
+    if (first) return first;
+  }
+  return socket.handshake.address || 'unknown';
+}
 
 interface Room {
   id: string;
@@ -89,7 +135,8 @@ function limited(ip: string, map: Map<string, { count: number, resetAt: number }
 // --- Socket handlers -------------------------------------------------------
 
 io.on('connection', (socket) => {
-  const ip = socket.handshake.address;
+  const ip = clientIp(socket);
+  log('socket connected', socket.id.slice(0, 8), 'ip', ip, 'recovered', !!socket.recovered);
 
   socket.on('create_room', (cb) => {
     if (limited(ip, createAttempts, 20, 60 * 1000)) {
@@ -109,6 +156,7 @@ io.on('connection', (socket) => {
     });
 
     socket.join(roomId);
+    log('room created', roomId.slice(0, 8), 'by', socket.id.slice(0, 8));
     cb({ success: true, roomId, secret });
   });
 
@@ -151,6 +199,7 @@ io.on('connection', (socket) => {
       matchedRoom.activePeers.add(socket.id);
       socket.join(matchedRoom.id);
 
+      log('peer joined room', matchedRoom.id.slice(0, 8));
       socket.to(matchedRoom.id).emit('peer_joined', { peerId: socket.id });
       cb({ success: true, roomId: matchedRoom.id, secret: matchedRoom.secret });
     } else {
@@ -213,6 +262,10 @@ io.on('connection', (socket) => {
     const room = rooms.get(roomId);
     if (!room) return cb?.({ success: false, error: 'Room not found' });
     if (!room.activePeers.has(socket.id)) return cb?.({ success: false, error: 'Not a member' });
+    // SDP offers/answers are a few KB; anything larger is junk.
+    if (signal && typeof signal === 'object' && JSON.stringify(signal).length > 64 * 1024) {
+      return cb?.({ success: false, error: 'Signal too large' });
+    }
     room.lastActive = Date.now();
 
     // Only forward to a peer that is actually in the room.
@@ -230,6 +283,14 @@ io.on('connection', (socket) => {
     const room = rooms.get(roomId);
     if (!room) return cb?.({ success: false, error: 'Room not found' });
     if (!room.activePeers.has(socket.id)) return cb?.({ success: false, error: 'Not a member' });
+    // Relay carries small signaling text AND encrypted 64KB file chunks when
+    // the WebRTC data channel is unavailable. Bulk transfer always prefers
+    // the channel, so generous per-message caps are safe.
+    const isString = typeof data === 'string';
+    const isChunk = data instanceof ArrayBuffer;
+    if ((isString && data.length > 512 * 1024) || (isChunk && data.byteLength > 128 * 1024) || (!isString && !isChunk)) {
+      return cb?.({ success: false, error: 'Message too large' });
+    }
     room.lastActive = Date.now();
 
     socket.to(roomId).emit('relay_message', { from: socket.id, data });
@@ -259,6 +320,7 @@ io.on('connection', (socket) => {
     if (affected.size > 0) {
       socketRooms.set(socket.id, affected);
     }
+    log('socket disconnected', socket.id.slice(0, 8), 'rooms affected', affected.size);
   });
 });
 

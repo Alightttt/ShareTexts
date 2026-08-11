@@ -2,7 +2,7 @@
 # The signaling/relay server MUST run on a persistent host — Vercel/Netlify
 # static hosting cannot run socket.io (no long-lived connections).
 # Deploy: render.com → New → Blueprint → connect this GitHub repo.
-# The frontend then connects via VITE_SOCKET_URL=https://<this-service>.onrender.com
+# The frontend then connects via VITE_SOCKET_URL=wss://<this-service>.onrender.com
 # (set that build-time env var on your static host, e.g. Vercel).
 services:
   - type: web
@@ -11,6 +11,11 @@ services:
     plan: free
     buildCommand: npm run build
     startCommand: npm start
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
+      # Allow the same-origin frontend (this server's own URL) through CORS.
+      # RENDER_EXTERNAL_URL is auto-provided by Render for the service URL.
+      - key: ALLOWED_ORIGINS
+        value: https://${RENDER_EXTERNAL_URL}

@@ -33,9 +33,12 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
     setError(null);
     const res = await joinWithCode(code);
     if (!res.success) {
-      const friendly = res.error === 'This session already has two devices.'
-        ? 'This session already has two devices.'
-        : (res.error === 'Too many attempts. Try again later.' ? res.error : "That code isn't active. Check the other device and try the latest code.");
+      // Connectivity problems must not read as a wrong code.
+      const friendly = res.error === "Couldn't reach ShareText."
+        ? "Couldn't reach ShareText. Check your connection and try again."
+        : (res.error === 'This session already has two devices.'
+          ? 'This session already has two devices.'
+          : (res.error === 'Too many attempts. Try again later.' ? res.error : "That code isn't active. Check the other device and try the latest code."));
       setError(friendly);
       setIsJoining(false);
     }
@@ -50,7 +53,10 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
     }
     const res = await joinWithLink(id);
     if (!res.success) {
-      setError(res.error || 'Failed to join');
+      const friendly = res.error === 'This session already has two devices.'
+        ? 'This session already has two devices.'
+        : (res.error === 'Too many attempts. Try again later.' ? res.error : "This link isn't active anymore. Ask for a fresh code.");
+      setError(friendly);
       setIsJoining(false);
       setActiveTab('code'); // fallback
     }
@@ -89,7 +95,12 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
               className="w-full flex justify-center"
             >
               {activeTab === 'code' && (
-                <LiveCodeInput onComplete={handleCodeComplete} isJoining={isJoining} error={error} />
+                <div className="w-full flex flex-col items-center">
+                  <h1 className="text-[21px] sm:text-[23px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em] mb-8">
+                    Enter the code from your other device.
+                  </h1>
+                  <LiveCodeInput onComplete={handleCodeComplete} isJoining={isJoining} error={error} />
+                </div>
               )}
               {activeTab === 'qr' && (
                 <div className="w-full max-w-sm">
@@ -113,7 +124,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
                   <button 
                     onPointerDown={() => pendingLink && handleLinkJoin(pendingLink)}
                     disabled={isJoining}
-                    className="w-full py-3.5 bg-linear-to-r from-azure-500 to-azure-700 text-white rounded-[14px] text-[15px] font-semibold transition-transform active:scale-[0.98] flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(46,139,255,0.35)]"
+                    className="w-full py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.98] flex items-center justify-center gap-2 shadow-card hover:shadow-float disabled:opacity-60"
                   >
                     {isJoining ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Join Room'}
                   </button>
@@ -128,14 +139,14 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
             {activeTab === 'code' ? (
               <button 
                 onPointerDown={() => { setActiveTab('qr'); setError(null); }}
-                className="flex items-center gap-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white active:scale-95 transition-all bg-apple-parchment dark:bg-surface-dark px-4 py-2.5 rounded-full border border-apple-divider/50 dark:border-white/5 min-h-[44px]"
+                className="flex items-center gap-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white active:scale-95 transition-motion bg-apple-parchment dark:bg-surface-dark px-4 py-2.5 rounded-[10px] border border-apple-divider/50 dark:border-white/5 min-h-[44px]"
               >
                 <QrCode className="w-4 h-4" /> Scan QR instead
               </button>
             ) : (
               <button 
                 onPointerDown={() => { setActiveTab('code'); setError(null); }}
-                className="flex items-center gap-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white active:scale-95 transition-all bg-apple-parchment dark:bg-surface-dark px-4 py-2.5 rounded-full border border-apple-divider/50 dark:border-white/5 min-h-[44px]"
+                className="flex items-center gap-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white active:scale-95 transition-motion bg-apple-parchment dark:bg-surface-dark px-4 py-2.5 rounded-[10px] border border-apple-divider/50 dark:border-white/5 min-h-[44px]"
               >
                 <Keyboard className="w-4 h-4" /> Enter code manually
               </button>

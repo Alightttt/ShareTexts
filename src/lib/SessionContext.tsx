@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { SessionState, ChatMessage, ConnectionType } from '../types';
-import { getSocket } from './socket';
+import { getSocket, devLog } from './socket';
 import { PeerManager } from './webrtc';
 
 interface SessionContextValue {
@@ -73,16 +73,16 @@ export function guessDeviceName(): string {
 }
 
 /** Wait until the shared socket is connected, or fail with a friendly error. */
-function ensureSocketConnected(timeoutMs = 8000): Promise<void> {
+function ensureSocketConnected(timeoutMs = 10000): Promise<void> {
   const socket = getSocket();
   if (socket.connected) return Promise.resolve();
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       cleanup();
-      reject(new Error("Couldn't connect to the server. Check your connection and try again."));
+      reject(new Error("Couldn't reach ShareText."));
     }, timeoutMs);
     const onConnect = () => { cleanup(); resolve(); };
-    const onError = () => { cleanup(); reject(new Error("Couldn't connect to the server. Check your connection and try again.")); };
+    const onError = () => { cleanup(); reject(new Error("Couldn't reach ShareText.")); };
     const cleanup = () => {
       clearTimeout(timer);
       socket.off('connect', onConnect);
@@ -319,17 +319,21 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const createSession = async () => {
+    devLog('Create Session clicked — connecting to socket…');
     await ensureSocketConnected();
+    devLog('Socket connected — sending create request');
     return new Promise<void>((resolve, reject) => {
       const socket = getSocket();
 
       const timeout = setTimeout(() => {
-        reject(new Error("Taking longer than expected. Please try again."));
-      }, 8000);
+        devLog('Create request timed out');
+        reject(new Error("Couldn't reach ShareText."));
+      }, 10000);
 
       socket.emit('create_room', (res: { success: boolean; roomId?: string; secret?: string; error?: string }) => {
         clearTimeout(timeout);
         if (res.success && res.roomId && res.secret) {
+          devLog('Room created — navigating');
           saveStoredSession({ roomId: res.roomId, secret: res.secret, isCreator: true });
           setSession({
             roomId: res.roomId,
@@ -343,7 +347,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           });
           resolve();
         } else {
-          reject(new Error(res.error || "Couldn't create a session."));
+          devLog('Create request failed:', res.error);
+          reject(new Error(res.error || "Couldn't start a session."));
         }
       });
     });
@@ -353,7 +358,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     await ensureSocketConnected();
     return new Promise<{ success: boolean; error?: string }>((resolve) => {
       const timeout = setTimeout(() => {
-        resolve({ success: false, error: "Taking longer than expected. Please try again." });
+        resolve({ success: false, error: "Couldn't reach ShareText." });
       }, 10000);
       getSocket().emit('join_with_code', { code }, (res: { success: boolean; roomId?: string; secret?: string; error?: string }) => {
         clearTimeout(timeout);
@@ -369,7 +374,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     await ensureSocketConnected();
     return new Promise<{ success: boolean; error?: string }>((resolve) => {
       const timeout = setTimeout(() => {
-        resolve({ success: false, error: "Taking longer than expected. Please try again." });
+        resolve({ success: false, error: "Couldn't reach ShareText." });
       }, 10000);
       getSocket().emit('join_with_link', { roomId }, (res: { success: boolean; roomId?: string; secret?: string; error?: string }) => {
         clearTimeout(timeout);

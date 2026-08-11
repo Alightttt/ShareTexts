@@ -25,7 +25,7 @@ export function QRScanner({ onScan, onErrorFallback }: { onScan: (text: string) 
       }
     ).catch(err => {
       if (isMounted) {
-        setError('Camera access isn\'t available.');
+        setError('Camera isn\u2019t available. Enter the code instead.');
       }
     });
 

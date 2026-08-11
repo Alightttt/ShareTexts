@@ -1,0 +1,17 @@
+name = "sharetext-signaling"
+main = "src/index.ts"
+compatibility_date = "2025-07-01"
+
+# Free-tier friendly: two DO classes, both backed by SQLite storage.
+[durable_objects]
+bindings = [
+  { name = "ROOMS", class_name = "Room" },
+  { name = "REGISTRY", class_name = "Registry" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room", "Registry"]
+
+# Extra frontend origins can be added via the ALLOWED_ORIGINS var/secret.
+# Defaults (dev origins + share-texts.vercel.app) are built in.

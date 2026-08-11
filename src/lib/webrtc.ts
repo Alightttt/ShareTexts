@@ -1,17 +1,13 @@
 import { getSocket } from './socket';
 import { encryptText, decryptText, generateKey, encryptBinaryChunk, decryptBinaryChunk } from './crypto';
 import { uuidToBytes, bytesToUuid } from './binaryUtils';
+import type { ChunkEnvelope } from './protocol';
 
 type SignalData = { type: 'offer' | 'answer'; sdp: string } | { type: 'candidate'; candidate: RTCIceCandidateInit };
 
-export interface TransferPayload {
-  version: number;
-  type: 'chunk';
-  transferId: string;
-  sequence: number;
-  total: number;
-  payload: string;
-}
+/** The on-the-wire chunk envelope (see protocol.ts). Text transfers use this
+ *  JSON form; file transfers use the compact binary variant. */
+export type TransferPayload = ChunkEnvelope;
 
 const CHUNK_SIZE = 64 * 1024; // 64 KB
 const MAX_TRANSFER_SIZE = 200 * 1024 * 1024; // 200 MB max total

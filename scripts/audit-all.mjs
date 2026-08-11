@@ -21,7 +21,7 @@ for (const [w, h, label] of viewports) {
   console.log(`[${label}] landing overflow=${r.overflow} h1="${r.title?.trim()}"`);
 
   // 2. Room hub (create session)
-  await A.getByRole('button', { name: 'Send text' }).first().click();
+  await A.getByRole('button', { name: 'Create Session' }).first().click();
   await A.waitForSelector('text=Live Code', { timeout: 8000 });
   await sleep(400);
   r = await A.evaluate(() => ({
@@ -36,7 +36,7 @@ for (const [w, h, label] of viewports) {
   const B = await ctxB.newPage();
   await B.goto(URL, { waitUntil: 'networkidle' });
   await sleep(500);
-  await B.getByRole('button', { name: 'Receive text' }).click();
+  await B.getByRole('button', { name: 'Join Session' }).first().click();
   await B.waitForSelector('text=Scan QR instead', { timeout: 8000 });
   await sleep(300);
   r = await B.evaluate(() => ({

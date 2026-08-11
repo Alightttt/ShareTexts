@@ -2,10 +2,12 @@ export type ConnectionType = 'connecting' | 'local' | 'direct' | 'relay' | 'disc
 
 export interface Attachment {
   id: string; // unique transfer id
-  type: 'image' | 'file' | 'video' | 'audio';
+  type: 'image' | 'file' | 'video' | 'audio'; // maps onto protocol ObjectType (see lib/protocol.ts)
   name: string;
   size: number;
   mimeType: string;
+  encoding?: string; // 'utf-8' | 'binary' — protocol metadata (optional today)
+  checksum?: string; // optional digest — protocol metadata (future)
   url?: string; // object URL for preview/download
   status?: 'draft' | 'sending' | 'receiving' | 'complete' | 'failed';
   progress?: number;

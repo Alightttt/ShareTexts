@@ -100,6 +100,12 @@ export function RoomHub() {
         )}
 
         <div className="w-full mb-8">
+          <h1 className="text-[24px] sm:text-[26px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em] mb-1.5">
+            Connect your other device.
+          </h1>
+          <p className="text-[14px] text-apple-ink-muted dark:text-white/55 font-medium mb-6">
+            Open ShareText on the other device and enter this code.
+          </p>
           <LiveCodeDisplay secret={session.secret} />
         </div>
 
@@ -186,7 +192,7 @@ export function RoomHub() {
 
         <button
           onPointerDown={copyCode}
-          className="mt-6 flex items-center gap-2 px-5 py-2.5 bg-linear-to-r from-azure-500 to-azure-700 text-white rounded-full text-[14px] font-semibold shadow-[0_8px_20px_rgba(46,139,255,0.35)] transition-transform active:scale-[0.97] min-h-[44px]"
+          className="mt-6 flex items-center gap-2 px-5 py-2.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[14px] font-semibold transition-motion active:scale-[0.97] min-h-[44px] shadow-card hover:shadow-float"
         >
           {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
           {copiedCode ? 'Code copied' : 'Copy Code'}

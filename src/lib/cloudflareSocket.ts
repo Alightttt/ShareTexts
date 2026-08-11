@@ -1,0 +1,328 @@
+import type { SignalingSocket } from './socket';
+import { devLog } from './devlog';
+
+/**
+ * CloudflareSocket — the browser side of the Cloudflare Workers signaling
+ * transport. Exposes the exact socket.io-style surface the app already uses
+ * (`on`/`once`/`off`/`emit` with ack callbacks, `connected`, `connect`,
+ * `connect_error`, `disconnect`), but speaks the Worker's minimal protocol:
+ *
+ *   client → server:  {"id","event","payload"}        (JSON text frames)
+ *                     raw binary frames = relay data  (encrypted chunks)
+ *   server → client:  {"type":"ack","id","ok",...}    or
+ *                     {"type":"event","event","payload"}
+ *                     raw binary frames = relay data
+ *
+ * One room WebSocket is opened per command (create/join/resume); it stays open
+ * as the session's signaling channel. Transport drops auto-reopen to the same
+ * room and re-send `resume_room` so the peer can re-establish WebRTC — the
+ * room-level equivalent of socket.io's connectionStateRecovery.
+ */
+
+type Handler = (...args: any[]) => void;
+
+const WS_OPEN_TIMEOUT = 8000;
+
+function uuid(): string {
+  return crypto.randomUUID();
+}
+
+export class CloudflareSocket implements SignalingSocket {
+  connected = false;
+
+  private listeners = new Map<string, Set<Handler>>();
+  private pending = new Map<string, (res: any) => void>();
+  private reqSeq = 0;
+
+  private httpBase: string; // https://host (for POST /lookup)
+  private wsBase: string;   // wss://host/ws (for the room socket)
+  private cid: string;
+
+  private ws: WebSocket | null = null;
+  private currentRoom: string | null = null;
+  private lastSecret: string | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private reconnectAttempts = 0;
+  private stopped = false;
+
+  constructor(endpoint: string) {
+    const normalized = endpoint.replace(/\/+$/, '').replace(/\/ws$/i, '');
+    this.wsBase = normalized.replace(/^http/, 'ws') + '/ws';
+    this.httpBase = normalized.replace(/^ws/, 'http');
+    this.cid = uuid();
+    devLog('Cloudflare signaling transport ready at', this.httpBase);
+    // The transport is command-ready immediately; the room socket opens per
+    // command. Failures surface via connect_error / ack timeouts.
+    queueMicrotask(() => this.emitLocal('connect'));
+  }
+
+  // ---- SignalingSocket surface -------------------------------------------
+
+  on(event: string, listener: Handler): this {
+    if (!this.listeners.has(event)) this.listeners.set(event, new Set());
+    this.listeners.get(event)!.add(listener);
+    return this;
+  }
+
+  once(event: string, listener: Handler): this {
+    const wrapped: Handler = (...args) => {
+      this.off(event, wrapped);
+      listener(...args);
+    };
+    this.on(event, wrapped);
+    return this;
+  }
+
+  off(event: string, listener?: Handler): this {
+    if (!listener) {
+      this.listeners.delete(event);
+      return this;
+    }
+    this.listeners.get(event)?.delete(listener);
+    return this;
+  }
+
+  emit(event: string, ...args: any[]): this {
+    const cb = typeof args[args.length - 1] === 'function' ? (args.pop() as (r: any) => void) : undefined;
+    const payload = args[0];
+
+    if (event === 'create_room') {
+      void this.createRoom(cb);
+    } else if (event === 'join_with_code') {
+      void this.joinWithCode(payload, cb);
+    } else if (event === 'join_with_link') {
+      void this.joinWithLink(payload, cb);
+    } else if (event === 'resume_room') {
+      void this.resumeRoom(payload, cb);
+    } else if (event === 'signal') {
+      void this.sendSignal(payload);
+    } else if (event === 'relay_message') {
+      void this.sendRelay(payload);
+    } else if (event === 'close_room') {
+      void this.sendClose();
+    }
+    return this;
+  }
+
+  // ---- room socket management --------------------------------------------
+
+  private async openRoom(roomId: string): Promise<WebSocket> {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN && this.currentRoom === roomId) {
+      return this.ws;
+    }
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.closeWs();
+    this.currentRoom = roomId;
+
+    return new Promise<WebSocket>((resolve, reject) => {
+      const cid = uuid();
+      const ws = new WebSocket(`${this.wsBase}?room=${roomId}&cid=${cid}`);
+      const timer = setTimeout(() => {
+        try { ws.close(); } catch { /* noop */ }
+        reject(new Error('WebSocket open timed out'));
+      }, WS_OPEN_TIMEOUT);
+
+      ws.onopen = () => {
+        clearTimeout(timer);
+        this.ws = ws;
+        this.connected = true;
+        this.reconnectAttempts = 0;
+        this.emitLocal('connect');
+        // Transport-level recovery: re-seat the session so the peer re-offers.
+        if (this.lastSecret && this.currentRoom) {
+          this.sendJson(ws, 'resume_room', { roomId: this.currentRoom, secret: this.lastSecret });
+        }
+        resolve(ws);
+      };
+      ws.onmessage = (ev) => this.handleMessage(ev.data);
+      ws.onclose = () => {
+        if (this.ws === ws) this.ws = null;
+        this.connected = false;
+        this.emitLocal('disconnect', 'transport close');
+        if (!this.stopped) this.scheduleReconnect();
+      };
+      ws.onerror = () => {
+        this.emitLocal('connect_error', { message: 'Signaling connection failed' });
+      };
+    });
+  }
+
+  private scheduleReconnect() {
+    if (this.reconnectTimer || !this.currentRoom) return;
+    const delay = Math.min(1000 * 2 ** this.reconnectAttempts, 10000);
+    this.reconnectAttempts++;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      void this.openRoom(this.currentRoom!).catch(() => this.scheduleReconnect());
+    }, delay);
+  }
+
+  private closeWs() {
+    if (this.ws) {
+      const old = this.ws;
+      this.ws = null;
+      try { old.close(1000, 'replaced'); } catch { /* noop */ }
+    }
+  }
+
+  // ---- protocol ----------------------------------------------------------
+
+  private sendJson(ws: WebSocket, event: string, payload?: unknown) {
+    ws.send(JSON.stringify({ id: `${Date.now().toString(36)}-${this.reqSeq++}`, event, payload }));
+  }
+
+  private async request(roomId: string, event: string, payload: unknown): Promise<any> {
+    const ws = await this.openRoom(roomId);
+    const id = `${Date.now().toString(36)}-${this.reqSeq++}`;
+    return new Promise<any>((resolve) => {
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        resolve({ success: false, error: "Couldn't reach ShareText." });
+      }, WS_OPEN_TIMEOUT + 4000);
+      this.pending.set(id, (res) => {
+        clearTimeout(timer);
+        resolve(res);
+      });
+      ws.send(JSON.stringify({ id, event, payload }));
+    });
+  }
+
+  private handleMessage(data: any) {
+    if (typeof data === 'string') {
+      let msg: any;
+      try {
+        msg = JSON.parse(data);
+      } catch {
+        return;
+      }
+      if (msg?.type === 'ack') {
+        const resolver = this.pending.get(msg.id);
+        if (resolver) {
+          this.pending.delete(msg.id);
+          resolver(msg.ok ? { success: true, ...msg } : { success: false, error: msg.error || 'Something went wrong' });
+        }
+      } else if (msg?.type === 'event') {
+        this.emitLocal(msg.event, msg.payload);
+      }
+    } else {
+      // Binary frame — relay data (an encrypted text/file chunk).
+      this.emitLocal('relay_message', { data });
+    }
+  }
+
+  private emitLocal(event: string, payload?: unknown) {
+    const set = this.listeners.get(event);
+    if (!set) return;
+    for (const h of [...set]) h(payload);
+  }
+
+  // ---- command handlers --------------------------------------------------
+
+  private async createRoom(cb?: (r: any) => void) {
+    try {
+      const roomId = uuid();
+      const res = await this.request(roomId, 'create_room', undefined);
+      if (res.success) this.lastSecret = res.secret;
+      cb?.(res);
+    } catch {
+      cb?.({ success: false, error: "Couldn't reach ShareText." });
+    }
+  }
+
+  private async joinWithCode(payload: { code?: string } | undefined, cb?: (r: any) => void) {
+    try {
+      const code = payload?.code;
+      if (typeof code !== 'string') return cb?.({ success: false, error: 'Invalid or expired code' });
+      const res = await fetch(`${this.httpBase}/lookup`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      if (!res.ok) {
+        return cb?.({ success: false, error: 'Invalid or expired code' });
+      }
+      const found = (await res.json()) as { roomId?: string };
+      if (!found.roomId) return cb?.({ success: false, error: 'Invalid or expired code' });
+      const joined = await this.request(found.roomId, 'join_with_code', { code });
+      if (joined.success) this.lastSecret = joined.secret;
+      cb?.(joined);
+    } catch {
+      cb?.({ success: false, error: "Couldn't reach ShareText." });
+    }
+  }
+
+  private async joinWithLink(payload: { roomId?: string } | undefined, cb?: (r: any) => void) {
+    try {
+      const roomId = payload?.roomId;
+      if (!roomId) return cb?.({ success: false, error: 'Invalid session' });
+      const res = await this.request(roomId, 'join_with_link', { roomId });
+      if (res.success) this.lastSecret = res.secret;
+      cb?.(res);
+    } catch {
+      cb?.({ success: false, error: "Couldn't reach ShareText." });
+    }
+  }
+
+  private async resumeRoom(payload: { roomId?: string; secret?: string } | undefined, cb?: (r: any) => void) {
+    try {
+      const roomId = payload?.roomId;
+      const secret = payload?.secret;
+      if (!roomId || !secret) return cb?.({ success: false, error: 'Session expired' });
+      this.lastSecret = secret;
+      const res = await this.request(roomId, 'resume_room', { roomId, secret });
+      cb?.(res);
+    } catch {
+      cb?.({ success: false, error: "Couldn't reach ShareText." });
+    }
+  }
+
+  private async sendSignal(payload: { roomId?: string; to?: string; signal?: unknown } | undefined) {
+    if (!payload?.roomId || !this.currentRoom) return;
+    try {
+      const ws = await this.openRoom(payload.roomId);
+      this.sendJson(ws, 'signal', { to: payload.to, signal: payload.signal });
+    } catch {
+      /* signaling is best-effort */
+    }
+  }
+
+  private async sendRelay(payload: { roomId?: string; data?: string | ArrayBuffer } | undefined) {
+    if (!payload?.roomId) return;
+    try {
+      const ws = await this.openRoom(payload.roomId);
+      if (typeof payload.data === 'string') {
+        this.sendJson(ws, 'relay_message', { data: payload.data });
+      } else if (payload.data instanceof ArrayBuffer) {
+        // Binary frames are unambiguous relay data (encrypted chunks) — the
+        // DO forwards the raw frame to the peer without a header.
+        ws.send(payload.data);
+      }
+    } catch {
+      /* relay is best-effort */
+    }
+  }
+
+  private async sendClose() {
+    if (!this.currentRoom) return;
+    try {
+      const ws = await this.openRoom(this.currentRoom);
+      this.sendJson(ws, 'close_room', undefined);
+      this.stopped = true;
+      this.closeWs();
+      this.currentRoom = null;
+      this.lastSecret = null;
+    } catch {
+      /* nothing to close */
+    }
+  }
+
+  /** For tests / hard teardown. */
+  destroy() {
+    this.stopped = true;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.closeWs();
+  }
+}

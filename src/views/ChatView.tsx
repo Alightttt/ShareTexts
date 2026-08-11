@@ -21,6 +21,8 @@ export function ChatView() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [showThatsIt, setShowThatsIt] = useState(false);
+  const firstTransferShown = useRef(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -44,6 +46,17 @@ export function ChatView() {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [session.messages, disconnected]);
+
+  // Post-transfer moment: after the very first successful transfer, a quiet
+  // "That's it." appears once, then the app gets out of the way.
+  useEffect(() => {
+    if (!firstTransferShown.current && session.messages.length >= 1) {
+      firstTransferShown.current = true;
+      setShowThatsIt(true);
+      const t = setTimeout(() => setShowThatsIt(false), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [session.messages.length]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -126,12 +139,6 @@ export function ChatView() {
     }
   };
 
-  const connectionLabel = session.connectionType === 'relay'
-    ? 'Encrypted relay'
-    : session.connectionType === 'local'
-      ? 'Connected directly'
-      : 'Connected';
-
   return (
     <div className="flex flex-col h-full bg-apple-canvas dark:bg-black font-sans">
       {/* Header */}
@@ -151,7 +158,7 @@ export function ChatView() {
                 session.connectionType === 'relay' ? "bg-status-warning shadow-[0_0_8px_rgba(251,191,36,0.4)]" : "bg-status-success shadow-[0_0_8px_rgba(52,199,89,0.4)]"
               )} />
               <span className="text-[13px] text-apple-ink-muted font-medium hover:text-apple-ink dark:hover:text-white transition-colors">
-                {connectionLabel}
+                Connected with ShareText
               </span>
             </button>
 
@@ -181,7 +188,7 @@ export function ChatView() {
         </div>
         <button
           onPointerDown={() => setConfirmClose(true)}
-          className="px-4 py-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-apple-tile-3/50 rounded-full transition-colors active:scale-95 min-h-[44px] flex items-center"
+          className="px-4 py-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-apple-tile-3/50 rounded-[10px] transition-colors active:scale-95 min-h-[44px] flex items-center"
         >
           Close Room
         </button>
@@ -248,6 +255,25 @@ export function ChatView() {
         )}
       </AnimatePresence>
 
+      {/* Post-transfer moment — quiet, one-time */}
+      <div className="shrink-0 flex justify-center">
+        <AnimatePresence>
+          {showThatsIt && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="overflow-hidden"
+            >
+              <p className="px-4 pt-3 pb-1 text-[13px] font-medium text-apple-ink-muted dark:text-white/45 text-center">
+                That's it — it's on the other device.
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         <div className="max-w-3xl mx-auto flex flex-col space-y-4">
@@ -268,7 +294,7 @@ export function ChatView() {
                   <button
                     onPointerDown={copyAll}
                     className={cn(
-                      "flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold transition-all active:scale-95",
+                      "flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold transition-motion active:scale-95",
                       copiedAll
                         ? "bg-status-success/15 text-status-success"
                         : "bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white"
@@ -311,7 +337,7 @@ export function ChatView() {
             <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => handleFileSelect(e, 'file')} />
           </div>
 
-          <motion.div layout className="relative border border-apple-divider dark:border-apple-tile-3 rounded-[24px] bg-white dark:bg-surface-dark overflow-visible shadow-sm transition-all focus-within:ring-2 focus-within:ring-apple-blue-focus/50 focus-within:border-apple-blue-focus z-20">
+          <motion.div layout className="relative border border-apple-divider dark:border-apple-tile-3 rounded-[24px] bg-white dark:bg-surface-dark overflow-visible shadow-sm transition-motion focus-within:ring-2 focus-within:ring-apple-blue-focus/50 focus-within:border-apple-blue-focus z-20">
 
             <AnimatePresence>
               {attachment && (
@@ -357,7 +383,7 @@ export function ChatView() {
                   <button
                     type="button"
                     onPointerDown={() => { void handlePaste(); }}
-                    className="p-3.5 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-all active:scale-[0.85] rounded-full"
+                    className="p-3.5 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-motion active:scale-[0.85] rounded-full"
                     aria-label="Paste from clipboard"
                     title="Paste from clipboard"
                   >
@@ -368,7 +394,7 @@ export function ChatView() {
                   type="button"
                   onPointerDown={() => setShowAttachmentMenu(!showAttachmentMenu)}
                   className={cn(
-                    "p-3.5 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-all active:scale-[0.85] rounded-full",
+                    "p-3.5 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-motion active:scale-[0.85] rounded-full",
                     showAttachmentMenu && "text-apple-blue bg-apple-blue/10 rotate-45"
                   )}
                   aria-label="Add attachment"
@@ -416,7 +442,7 @@ export function ChatView() {
               type="button"
               onPointerDown={handleSend}
               disabled={(!inputText.trim() && !attachment) || !session.partnerConnected}
-              className="px-6 py-2.5 bg-linear-to-r from-azure-500 to-azure-700 text-white disabled:opacity-50 disabled:from-apple-divider disabled:to-apple-divider disabled:text-apple-ink-muted rounded-full text-[15px] font-semibold transition-all active:scale-95 flex items-center gap-2 shadow-[0_6px_16px_rgba(46,139,255,0.35)]"
+              className="px-6 py-2.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 disabled:opacity-40 disabled:bg-apple-divider dark:disabled:bg-apple-tile-2 disabled:text-apple-ink-muted dark:disabled:text-white/40 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-95 flex items-center gap-2 shadow-card"
             >
               Send <Send className="w-4 h-4" />
             </button>
@@ -634,8 +660,8 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
 
               {/* Progress Bar */}
               {a.status !== 'complete' && a.status !== 'draft' && a.status !== 'failed' && (
-                <div className={cn("w-full h-1", isMe ? "bg-white/20" : "bg-apple-divider dark:bg-apple-tile-3")}>
-                  <div className={cn("h-full transition-all duration-300 ease-out", isMe ? "bg-white" : "bg-apple-blue")} style={{ width: `${(a.progress || 0) * 100}%` }} />
+                <div className={cn("w-full h-1 overflow-hidden", isMe ? "bg-white/20" : "bg-apple-divider dark:bg-apple-tile-3")}>
+                  <div className={cn("h-full origin-left transition-transform duration-300 ease-out", isMe ? "bg-white" : "bg-apple-blue")} style={{ transform: `scaleX(${a.progress || 0})` }} />
                 </div>
               )}
             </div>
@@ -677,7 +703,7 @@ function ActionButton({ icon, label, onClick, active, primary, onBlue }: { icon:
     <button
       onPointerDown={onClick}
       className={cn(
-        "flex items-center gap-1.5 px-3.5 py-2.5 rounded-full text-[13px] font-semibold transition-all active:scale-95 min-h-[44px]",
+        "flex items-center gap-1.5 px-3.5 py-2.5 rounded-full text-[13px] font-semibold transition-motion active:scale-95 min-h-[44px]",
         active
           ? onBlue ? "bg-white/25 text-white" : "bg-status-success/15 text-status-success"
           : primary

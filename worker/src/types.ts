@@ -1,0 +1,20 @@
+/** Environment bindings available to every Worker entry / Durable Object. */
+export interface Env {
+  ROOMS: DurableObjectNamespace;
+  REGISTRY: DurableObjectNamespace;
+  /** Comma-separated extra frontend origins allowed to connect. */
+  ALLOWED_ORIGINS?: string;
+}
+
+/** Day key used to shard the Registry — rooms live < 24h so entries never
+ *  outlive their shard; lookups check today + yesterday for the TOTP ±window. */
+export function dayKey(now: number = Date.now()): string {
+  return new Date(now).toISOString().slice(0, 10);
+}
+
+export function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'content-type': 'application/json' },
+  });
+}

@@ -10,6 +10,7 @@ import { RoomHub } from './views/RoomHub';
 import { JoinSession } from './views/JoinSession';
 import { ChatView } from './views/ChatView';
 import { AnimatePresence, motion } from 'motion/react';
+import { WifiOff } from 'lucide-react';
 import { ShareTextLogo } from './components/ShareTextLogo';
 
 function SessionEndedScreen({ reason, onRestart }: { reason: string, onRestart: () => void }) {
@@ -30,7 +31,7 @@ function SessionEndedScreen({ reason, onRestart }: { reason: string, onRestart: 
       <p className="text-[17px] text-apple-ink-muted mb-10">{copy}</p>
       <button
         onPointerDown={onRestart}
-        className="px-8 py-3.5 bg-linear-to-r from-azure-500 to-azure-700 text-white rounded-full text-[17px] font-semibold transition-transform active:scale-[0.97] shadow-[0_8px_20px_rgba(46,139,255,0.35)]"
+        className="px-8 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[16px] font-semibold transition-motion active:scale-[0.97] shadow-card hover:shadow-float min-h-[48px]"
       >
         Start New Session
       </button>
@@ -51,8 +52,8 @@ function AppContent() {
   if (typeof window !== 'undefined' && !window.RTCPeerConnection) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black p-6 text-center">
-        <div className="w-16 h-16 bg-apple-parchment dark:bg-apple-tile-1 rounded-full flex items-center justify-center mb-6">
-          <span className="text-[24px]">⚠️</span>
+        <div className="w-16 h-16 bg-apple-parchment dark:bg-apple-tile-1 rounded-[20px] flex items-center justify-center mb-6">
+          <WifiOff className="w-7 h-7 text-apple-ink-muted" strokeWidth={1.8} />
         </div>
         <h2 className="text-[24px] font-semibold text-apple-ink dark:text-white mb-2">Browser Unsupported</h2>
         <p className="text-[17px] text-apple-ink-muted max-w-sm">ShareText requires WebRTC to connect devices directly. Please update your browser or try a different one.</p>
@@ -63,14 +64,14 @@ function AppContent() {
   if (typeof window !== 'undefined' && window.location.pathname !== '/') {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black p-6 text-center">
-        <div className="w-16 h-16 bg-apple-parchment dark:bg-apple-tile-1 rounded-full flex items-center justify-center mb-6">
-          <span className="text-[24px]">404</span>
+        <div className="w-16 h-16 bg-apple-parchment dark:bg-apple-tile-1 rounded-[20px] flex items-center justify-center mb-6">
+          <span className="text-[22px] font-semibold text-apple-ink-muted tracking-tight">404</span>
         </div>
         <h2 className="text-[24px] font-semibold text-apple-ink dark:text-white mb-2">Page Not Found</h2>
         <p className="text-[17px] text-apple-ink-muted max-w-sm mb-8">The page you're looking for doesn't exist.</p>
         <button
           onClick={() => { window.location.href = '/'; }}
-          className="px-6 py-3 bg-apple-blue hover:bg-apple-blue-focus text-white rounded-full text-[17px] font-normal transition-transform active:scale-95"
+          className="px-6 py-3 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] min-h-[44px]"
         >
           Go to Homepage
         </button>
@@ -114,7 +115,7 @@ function AppContent() {
           {waitingForReconnect && (
             <button
               onPointerDown={() => { void requestReconnect(); }}
-              className="mt-8 px-8 py-3.5 bg-linear-to-r from-azure-500 to-azure-700 text-white rounded-full text-[16px] font-semibold shadow-[0_8px_20px_rgba(46,139,255,0.35)] transition-transform active:scale-[0.97]"
+              className="mt-8 px-8 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] shadow-card hover:shadow-float min-h-[48px]"
             >
               Reconnect
             </button>

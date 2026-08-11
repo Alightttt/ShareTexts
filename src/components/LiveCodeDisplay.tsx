@@ -75,8 +75,8 @@ export function LiveCodeDisplay({ secret }: LiveCodeDisplayProps) {
         ))}
       </div>
       
-      <p className="text-[15px] text-apple-ink-muted mt-8 text-center max-w-[220px] leading-relaxed">
-        Enter this code on your other device.
+      <p className="text-[13px] text-apple-ink-muted dark:text-white/45 mt-8 text-center font-medium">
+        It refreshes every 30 seconds.
       </p>
     </div>
   );

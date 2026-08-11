@@ -38,10 +38,10 @@ export async function waitForChat(page, label) {
 }
 
 export async function pairDevices(A, B) {
-  await A.getByRole('button', { name: 'Send text' }).first().click();
+  await A.getByRole('button', { name: 'Create Session' }).first().click();
   await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   const code = await readLiveCode(A);
-  await B.getByRole('button', { name: 'Receive text' }).click();
+  await B.getByRole('button', { name: 'Join Session' }).first().click();
   await B.locator('input[inputmode="numeric"]').fill(code);
   await waitForChat(B, 'B');
   await waitForChat(A, 'A');

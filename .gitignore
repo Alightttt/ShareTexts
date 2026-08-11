@@ -8,3 +8,8 @@ coverage/
 !.env.example
 
 shots/
+
+# Cloudflare Worker local state
+.wrangler/
+worker/.wrangler/
+.dev.vars
