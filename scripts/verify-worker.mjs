@@ -2,11 +2,12 @@
 //
 // workerd can't run on every machine, so this bundles the REAL Room and
 // Registry Durable Object classes with esbuild (aliasing `cloudflare:workers`
-// to a small runtime shim) and drives them directly in Node: create → lookup →
-// code-join → peer_joined → signal → relay (text + binary) → third-device
-// rejection → disconnect/resume → manual close → closed-room rejection, plus
-// Registry register/lookup.
-//
+// to a small runtime shim) and drives them directly in Node:
+//   create → lookup → code-join → peer_joined → signal → relay (text + binary)
+//   → third-device rejection (ROOM_FULL) → wrong-code (INVALID_CODE) →
+//   brute-force limit (RATE_LIMITED) → disconnect/resume → manual close, plus
+//   the explicit state machine (WAITING→CONNECTED→TRANSFERRING→…→CLOSED),
+//   live idle-timeout expiry, and Registry register/lookup.
 // For a test against a real `wrangler dev` instance, see verify-worker-live.mjs.
 import { build } from 'esbuild';
 import path from 'node:path';
@@ -53,7 +54,7 @@ for (const f of out.outputFiles) writeFileSync(f.path, f.contents);
 
 const cacheBust = '?t=' + Date.now();
 const { FakeCtx } = await import(pathToFileURL(path.join(tmp, 'shim.js')).href + cacheBust);
-const { Room } = await import(pathToFileURL(path.join(tmp, 'room.js')).href + cacheBust);
+const { Room, ROOM_TTL } = await import(pathToFileURL(path.join(tmp, 'room.js')).href + cacheBust);
 const { Registry } = await import(pathToFileURL(path.join(tmp, 'registry.js')).href + cacheBust);
 
 // Capture the pair created inside each DO fetch.
@@ -66,8 +67,7 @@ globalThis.WebSocketPair = class extends OrigPair {
   }
 };
 
-// Node's Response rejects status 101; emulate the Workers upgrade response
-// (a status-101 Response carrying `webSocket`) as a plain object.
+// Node's Response rejects status 101; emulate the Workers upgrade response.
 const RealResponse = globalThis.Response;
 globalThis.Response = class extends RealResponse {
   constructor(body, init = {}) {
@@ -93,9 +93,9 @@ async function connect(room, roomId) {
   };
   const send = async (event, payload) => {
     const id = `r${seq++}`;
-    await room.webSocketMessage(server, JSON.stringify({ id, event, payload }));
+    await room.webSocketMessage(server, JSON.stringify({ v: 1, id, event, payload }));
     const ack = inbox.find((m) => m.type === 'ack' && m.id === id);
-    return ack ? (ack.ok ? { success: true, ...ack } : { success: false, error: ack.error }) : { success: false, error: 'no ack' };
+    return ack ? (ack.ok ? { success: true, ...ack } : { success: false, code: ack.code, error: ack.message }) : { success: false, error: 'no ack' };
   };
   const waitFor = async (pred, timeoutMs = 4000) => {
     const start = Date.now();
@@ -106,26 +106,34 @@ async function connect(room, roomId) {
     }
     return null;
   };
-  return { client, server, inbox, binary, send, waitFor, cid };
+  const close = () => {
+    try { client.close(1000, 'test'); } catch { /* noop */ }
+    try { room.webSocketClose(server); } catch { /* noop */ }
+  };
+  return { client, server, inbox, binary, send, waitFor, cid, close };
 }
 
-function codeFor(secret) {
-  return new OTPAuth.TOTP({ issuer: 'ShareText', label: 'Session', algorithm: 'SHA1', digits: 6, period: 30, secret }).generate();
+const codeFor = (secret) => new OTPAuth.TOTP({ issuer: 'ShareText', label: 'Session', algorithm: 'SHA1', digits: 6, period: 30, secret }).generate();
+const roomState = (ctx) => ctx.storage.map.get('room')?.state ?? null;
+const assertState = (ctx, expected) => check(`state = ${expected}`, roomState(ctx) === expected, `got ${roomState(ctx)}`);
+
+function makeEnv() {
+  return { REGISTRY: { get: () => ({ fetch: async () => new Response(JSON.stringify({ ok: true })) }), idFromName: () => ({}) } };
 }
 
 async function runRoomProtocol() {
   const roomId = uuid();
   const ctx = new FakeCtx();
-  const env = { REGISTRY: { get: () => ({ fetch: async () => new Response(JSON.stringify({ ok: true })) }), idFromName: () => ({}) } };
-  const room = new Room(ctx, env);
+  const room = new Room(ctx, makeEnv());
 
-  // create
+  // create → WAITING
   const creator = await connect(room, roomId);
   const created = await creator.send('create_room');
   check('create_room ack', created.success === true && created.roomId === roomId, `room ${String(created.roomId).slice(0, 8)}`);
   const secret = created.secret;
+  assertState(ctx, 'WAITING');
 
-  // join with code → creator sees peer_joined
+  // join → CONNECTED + peer_joined
   const code = codeFor(secret);
   const joiner = await connect(room, roomId);
   const joined = await joiner.send('join_with_code', { code });
@@ -133,6 +141,7 @@ async function runRoomProtocol() {
   const peerJoined = await creator.waitFor((m) => m.type === 'event' && m.event === 'peer_joined');
   check('creator receives peer_joined', !!peerJoined?.peerId, `peer ${String(peerJoined?.peerId).slice(0, 8)}`);
   const joinerCid = peerJoined.peerId;
+  assertState(ctx, 'CONNECTED');
 
   // signal forwarding
   const sigPromise = creator.waitFor((m) => m.type === 'event' && m.event === 'signal');
@@ -140,11 +149,12 @@ async function runRoomProtocol() {
   const sig = await sigPromise;
   check('signal forwarded to creator', sig?.from === joinerCid && sig?.signal?.type === 'offer');
 
-  // relay text
+  // relay text → TRANSFERRING
   const relayPromise = joiner.waitFor((m) => m.type === 'event' && m.event === 'relay_message');
   await creator.send('relay_message', { data: '{"enc":"ciphertext"}' });
   const relayed = await relayPromise;
   check('relay_message (text) forwarded', relayed?.data === '{"enc":"ciphertext"}');
+  assertState(ctx, 'TRANSFERRING');
 
   // relay binary
   const binPromise = new Promise((resolve) => {
@@ -161,37 +171,99 @@ async function runRoomProtocol() {
   const rb = await binPromise;
   check('relay_message (binary) forwarded intact', rb instanceof ArrayBuffer && new Uint8Array(rb)[21] === 98);
 
-  // third device rejected
+  // third device → ROOM_FULL
   const third = await connect(room, roomId);
   const thirdRes = await third.send('join_with_code', { code });
-  check('third device rejected', thirdRes.success === false && /two devices/.test(thirdRes.error || ''), thirdRes.error);
+  check('third device rejected with ROOM_FULL', thirdRes.success === false && thirdRes.code === 'ROOM_FULL', thirdRes.error);
+  third.close();
 
-  // disconnect → peer_disconnected
+  // wrong code → INVALID_CODE; then brute-force → RATE_LIMITED
+  const wrongCode = await connect(room, roomId);
+  const bad = await wrongCode.send('join_with_code', { code: '000000' });
+  check('wrong code → INVALID_CODE', bad.success === false && bad.code === 'INVALID_CODE', bad.error);
+  let limited = null;
+  for (let i = 0; i < 11; i++) {
+    limited = await wrongCode.send('join_with_code', { code: '000000' });
+  }
+  check('brute-force limit → RATE_LIMITED', limited.success === false && limited.code === 'RATE_LIMITED', limited.error);
+  wrongCode.close();
+
+  // disconnect joiner → peer_disconnected; state → WAITING (1 peer)
   const discPromise = creator.waitFor((m) => m.type === 'event' && m.event === 'peer_disconnected');
   joiner.client.close(1000, 'test');
   await room.webSocketClose(joiner.server);
   const pd = await discPromise;
   check('creator sees peer_disconnected', pd?.peerId === joinerCid);
+  assertState(ctx, 'WAITING');
 
-  // resume → peer_joined again
+  // resume → CONNECTED again
   const rejoiner = await connect(room, roomId);
   const resumed = await rejoiner.send('resume_room', { roomId, secret });
   check('resume_room ack', resumed.success === true);
   const rejoined = await creator.waitFor((m) => m.type === 'event' && m.event === 'peer_joined' && m.payload?.peerId !== joinerCid);
   check('creator sees peer_joined after resume', !!rejoined?.peerId);
+  assertState(ctx, 'CONNECTED');
 
-  // manual close → room_closed to both
+  // manual close → room_closed to both; storage cleared
   const closeA = creator.waitFor((m) => m.type === 'event' && m.event === 'room_closed');
   const closeB = rejoiner.waitFor((m) => m.type === 'event' && m.event === 'room_closed');
   await rejoiner.send('close_room');
   const [ca, cb] = [await closeA, await closeB];
   check('creator got room_closed', ca?.reason === 'manual_close');
   check('rejoiner got room_closed', cb?.reason === 'manual_close');
+  check('storage cleared after close', ctx.storage.map.size === 0);
 
   // closed room rejects a fresh join
   const late = await connect(room, roomId);
   const lateRes = await late.send('join_with_code', { code });
   check('closed room rejects joins', lateRes.success === false, lateRes.error);
+  late.close();
+}
+
+async function runLiveIdleExpiry() {
+  const roomId = uuid();
+  const ctx = new FakeCtx();
+  const room = new Room(ctx, makeEnv());
+  const creator = await connect(room, roomId);
+  const created = await creator.send('create_room');
+  const code = codeFor(created.secret);
+  const joiner = await connect(room, roomId);
+  const joined = await joiner.send('join_with_code', { code });
+  if (!joined.success) { check('expiry: join', false, joined.error); return; }
+  assertState(ctx, 'CONNECTED');
+
+  // Simulate the idle TTL elapsing, then fire the alarm on a fresh instance.
+  ctx.storage.map.set('room', { ...ctx.storage.map.get('room'), lastActive: Date.now() - ROOM_TTL - 1000 });
+  const closeA = creator.waitFor((m) => m.type === 'event' && m.event === 'room_closed');
+  const closeB = joiner.waitFor((m) => m.type === 'event' && m.event === 'room_closed');
+  const fresh = new Room(ctx, makeEnv());
+  await fresh.alarm();
+  const [ca, cb] = [await closeA, await closeB];
+  check('live idle-timeout → room_closed(idle_timeout)', ca?.reason === 'idle_timeout' && cb?.reason === 'idle_timeout');
+  check('expired room storage cleared', ctx.storage.map.size === 0);
+}
+
+async function runDisconnectedState() {
+  const roomId = uuid();
+  const ctx = new FakeCtx();
+  const room = new Room(ctx, makeEnv());
+  const a = await connect(room, roomId);
+  const created = await a.send('create_room');
+  const joiner = await connect(room, roomId);
+  await joiner.send('join_with_code', { code: codeFor(created.secret) });
+  assertState(ctx, 'CONNECTED');
+
+  a.client.close(1000, 'test');
+  await room.webSocketClose(a.server);
+  assertState(ctx, 'WAITING');
+  joiner.client.close(1000, 'test');
+  await room.webSocketClose(joiner.server);
+  assertState(ctx, 'DISCONNECTED');
+
+  // Empty room expires via alarm (no peers to notify).
+  const fresh = new Room(ctx, makeEnv());
+  await fresh.alarm();
+  check('empty room storage cleared by alarm', ctx.storage.map.size === 0);
 }
 
 async function runRegistry() {
@@ -199,19 +271,18 @@ async function runRegistry() {
   const reg = new Registry(ctx, {});
   const roomId = uuid();
   const secret = 'AABBCCDDEEFFGGHHJJKKLLMMNNOOPPQQ';
-  await reg.fetch(
-    new Request('http://x/register', { method: 'POST', body: JSON.stringify({ roomId, secret, expiresAt: Date.now() + 3600e3 }) })
-  );
+  await reg.fetch(new Request('http://x/register', { method: 'POST', body: JSON.stringify({ roomId, secret, expiresAt: Date.now() + 3600e3 }) }));
   const code = codeFor(secret);
   const ok = await reg.fetch(new Request('http://x/lookup', { method: 'POST', body: JSON.stringify({ code }) }));
   const found = await ok.json();
   check('registry lookup finds room by code', ok.status === 200 && found.roomId === roomId);
-
   const miss = await reg.fetch(new Request('http://x/lookup', { method: 'POST', body: JSON.stringify({ code: '000000' }) }));
   check('registry rejects a wrong code', miss.status === 404);
 }
 
 await runRoomProtocol();
+await runLiveIdleExpiry();
+await runDisconnectedState();
 await runRegistry();
 
 rmSync(tmp, { recursive: true, force: true });

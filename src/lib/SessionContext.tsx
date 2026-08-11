@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { SessionState, ChatMessage, ConnectionType } from '../types';
 import { getSocket, devLog } from './socket';
 import { PeerManager } from './webrtc';
+import { humanizeError } from './errors';
 
 interface SessionContextValue {
   session: SessionState;
@@ -330,7 +331,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         reject(new Error("Couldn't reach ShareText."));
       }, 10000);
 
-      socket.emit('create_room', (res: { success: boolean; roomId?: string; secret?: string; error?: string }) => {
+      socket.emit('create_room', (res: { success: boolean; roomId?: string; secret?: string; error?: string; code?: string }) => {
         clearTimeout(timeout);
         if (res.success && res.roomId && res.secret) {
           devLog('Room created — navigating');
@@ -347,8 +348,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           });
           resolve();
         } else {
-          devLog('Create request failed:', res.error);
-          reject(new Error(res.error || "Couldn't start a session."));
+          devLog('Create request failed:', res.code || res.error);
+          reject(new Error(humanizeError(res.code, res.error || "Couldn't start a session.")));
         }
       });
     });
@@ -360,12 +361,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       const timeout = setTimeout(() => {
         resolve({ success: false, error: "Couldn't reach ShareText." });
       }, 10000);
-      getSocket().emit('join_with_code', { code }, (res: { success: boolean; roomId?: string; secret?: string; error?: string }) => {
+      getSocket().emit('join_with_code', { code }, (res: { success: boolean; roomId?: string; secret?: string; error?: string; code?: string }) => {
         clearTimeout(timeout);
         if (res.success) {
           setupJoiner(res.roomId!, res.secret!);
         }
-        resolve(res);
+        resolve({ ...res, error: humanizeError(res.code, res.error || "Couldn't reach ShareText.") });
       });
     });
   };
@@ -376,12 +377,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       const timeout = setTimeout(() => {
         resolve({ success: false, error: "Couldn't reach ShareText." });
       }, 10000);
-      getSocket().emit('join_with_link', { roomId }, (res: { success: boolean; roomId?: string; secret?: string; error?: string }) => {
+      getSocket().emit('join_with_link', { roomId }, (res: { success: boolean; roomId?: string; secret?: string; error?: string; code?: string }) => {
         clearTimeout(timeout);
         if (res.success) {
           setupJoiner(res.roomId!, res.secret!);
         }
-        resolve(res);
+        resolve({ ...res, error: humanizeError(res.code, res.error || "Couldn't reach ShareText.") });
       });
     });
   };

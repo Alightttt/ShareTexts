@@ -157,10 +157,39 @@ content — it is never sent to the relay path).
 - `alarm()` fires → emits `room_closed {reason:"idle_timeout"}` (if peers are
   live), closes sockets, `deleteAll()`.
 
+### Explicit room state machine
+Each room carries a single `state` field (no scattered booleans):
+
+```
+WAITING → CONNECTED → (TRANSFERRING) → DISCONNECTED → CLOSED
+   │          │                            │
+   └──────────┴────────── EXPIRED ─────────┘
+```
+
+- `WAITING` — created, one peer seated. `CONNECTED` — two peers paired.
+- `TRANSFERRING` — data is moving through this room (the DO observes relay
+  activity; real WebRTC bytes are peer-to-peer and invisible to it).
+- `DISCONNECTED` — a peer left; rejoin window. `CLOSING` / `EXPIRED` — manual
+  close / idle-timeout terminal states before storage is deleted.
+- The state is recomputed from the live peer count on join/leave and stored in
+  the room record, so it survives hibernation.
+
+### Protocol version + error contract
+- Every client frame carries `v: 1` (matches `PROTOCOL_VERSION`). Unknown
+  versions get `UNSUPPORTED_VERSION`.
+- Malformed or unknown message types → `INVALID_MESSAGE`. No stack traces are
+  ever sent to clients.
+- Acks return a machine-readable code: `{type:"ack", ok:false, code, message}`
+  with codes `ROOM_FULL`, `INVALID_CODE`, `SESSION_EXPIRED`, `INVALID_SESSION`,
+  `ROOM_EXISTS`, `RATE_LIMITED`, `UNSUPPORTED_VERSION`, `INVALID_MESSAGE`.
+  The frontend maps codes → human copy (`src/lib/errors.ts`).
+- Async connection errors use `{type:"error", code, message}`.
+
 ### Security
 - Room ids are client-generated UUIDs; the **secret** is 128-bit random and the
   actual credential — codes rotate every 30s (TOTP, window ±1), so a leaked
   screenshot of a code is useless within a minute.
+- **Per-room brute-force limit:** >10 wrong pairing codes in 60s → `RATE_LIMITED`.
 - Never logged: message contents, keys, secrets. Log lines truncate ids.
 - Origin allowlist on `/ws` and `/lookup` (dev origins + Vercel + `ALLOWED_ORIGINS`).
 - Size caps on every inbound message; membership checks on every event.

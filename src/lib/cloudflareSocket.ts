@@ -1,6 +1,9 @@
 import type { SignalingSocket } from './socket';
 import { devLog } from './devlog';
 
+/** Must match PROTOCOL_VERSION in worker/src/room.ts. */
+const PROTOCOL_VERSION = 1;
+
 /**
  * CloudflareSocket — the browser side of the Cloudflare Workers signaling
  * transport. Exposes the exact socket.io-style surface the app already uses
@@ -171,7 +174,7 @@ export class CloudflareSocket implements SignalingSocket {
   // ---- protocol ----------------------------------------------------------
 
   private sendJson(ws: WebSocket, event: string, payload?: unknown) {
-    ws.send(JSON.stringify({ id: `${Date.now().toString(36)}-${this.reqSeq++}`, event, payload }));
+    ws.send(JSON.stringify({ v: PROTOCOL_VERSION, id: `${Date.now().toString(36)}-${this.reqSeq++}`, event, payload }));
   }
 
   private async request(roomId: string, event: string, payload: unknown): Promise<any> {
@@ -180,13 +183,13 @@ export class CloudflareSocket implements SignalingSocket {
     return new Promise<any>((resolve) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        resolve({ success: false, error: "Couldn't reach ShareText." });
+        resolve({ success: false, code: 'UNREACHABLE', error: "Couldn't reach ShareText." });
       }, WS_OPEN_TIMEOUT + 4000);
       this.pending.set(id, (res) => {
         clearTimeout(timer);
         resolve(res);
       });
-      ws.send(JSON.stringify({ id, event, payload }));
+      ws.send(JSON.stringify({ v: PROTOCOL_VERSION, id, event, payload }));
     });
   }
 
@@ -202,8 +205,10 @@ export class CloudflareSocket implements SignalingSocket {
         const resolver = this.pending.get(msg.id);
         if (resolver) {
           this.pending.delete(msg.id);
-          resolver(msg.ok ? { success: true, ...msg } : { success: false, error: msg.error || 'Something went wrong' });
+          resolver(msg.ok ? { success: true, ...msg } : { success: false, code: msg.code, error: msg.message || 'Something went wrong' });
         }
+      } else if (msg?.type === 'error') {
+        this.emitLocal('error', { code: msg.code, message: msg.message });
       } else if (msg?.type === 'event') {
         this.emitLocal(msg.event, msg.payload);
       }

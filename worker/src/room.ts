@@ -7,8 +7,13 @@ import { json, dayKey, type Env } from './types';
  * pairing (create / code / link / resume), WebRTC signaling relay, an
  * encrypted-message relay fallback, presence, and expiry. Uses the WebSocket
  * Hibernation API (sockets tagged with their connection id) so idle rooms cost
- * nothing on the free plan. Payloads are capped; the relay path only ever
- * forwards client-side AES-GCM ciphertext.
+ * nothing on the free plan.
+ *
+ * The room has an explicit lifecycle state (WAITING → CONNECTED → … → CLOSED),
+ * a machine-readable error contract ({code, message} on every ack), protocol
+ * versioning, and a per-room wrong-code brute-force limit. Payloads are capped;
+ * the relay path only ever forwards client-side AES-GCM ciphertext — the
+ * backend stores no message history, files, or transfer contents.
  */
 
 export const ROOM_TTL = 12 * 60 * 60 * 1000;       // idle rooms expire after 12h
@@ -18,18 +23,44 @@ const RELAY_TEXT_MAX = 512 * 1024;
 const RELAY_BIN_MAX = 128 * 1024;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Wire protocol version. Bump on breaking message-shape changes. */
+export const PROTOCOL_VERSION = 1;
+
+const CODE_FAIL_MAX = 10;
+const CODE_FAIL_WINDOW = 60 * 1000;
+
+/** Explicit room lifecycle. No scattered booleans. */
+export type RoomPhase =
+  | 'WAITING'      // created, one peer seated
+  | 'CONNECTED'    // two peers paired
+  | 'TRANSFERRING' // data is moving through this room (relay activity observed)
+  | 'DISCONNECTED' // a peer left; rejoin window
+  | 'CLOSING'      // manual close in progress
+  | 'EXPIRED'      // idle-timeout fired
+  | 'CLOSED';      // terminal; storage deleted
+
 interface RoomState {
   roomId: string;
   secret: string;
+  state: RoomPhase;
   createdAt: number;
   lastActive: number;
   expiresAt: number;
   peerA: string | null; // connection ids (cid)
   peerB: string | null;
+  codeFails: number;
+  codeFailReset: number;
 }
 
 interface ConnMeta {
   roomId: string | null;
+}
+
+interface WireMsg {
+  v?: unknown;
+  id?: string;
+  event?: string;
+  payload?: any;
 }
 
 function log(...parts: unknown[]) {
@@ -143,6 +174,15 @@ export class Room extends DurableObject<Env> {
     return 'B';
   }
 
+  /** Derive the lifecycle state from live peer count (2/1/0). */
+  private async recomputeState() {
+    const r = this.room;
+    if (!r) return;
+    const live = await this.livePeers();
+    r.state = live.length >= 2 ? 'CONNECTED' : live.length === 1 ? 'WAITING' : 'DISCONNECTED';
+    await this.ctx.storage.put('room', r);
+  }
+
   private async touch() {
     const r = this.room;
     if (!r) return;
@@ -163,12 +203,17 @@ export class Room extends DurableObject<Env> {
           body: JSON.stringify({ roomId: r.roomId, secret: r.secret, expiresAt: r.expiresAt }),
         })
       );
-    } catch (e) {
+    } catch {
       log('registry register failed', r.roomId.slice(0, 8));
     }
   }
 
-  private async destroyRoom(reason: string) {
+  private async destroyRoom(reason: 'manual_close' | 'idle_timeout') {
+    const r = this.room;
+    if (r) {
+      r.state = reason === 'idle_timeout' ? 'EXPIRED' : 'CLOSING';
+      log('room terminal', r.roomId.slice(0, 8), r.state);
+    }
     // room_closed goes to every live socket, then they all close.
     for (const ws of this.ctx.getWebSockets()) {
       if (ws.readyState === 1) {
@@ -180,8 +225,9 @@ export class Room extends DurableObject<Env> {
     this.room = null;
   }
 
-  // ---- messages ----------------------------------------------------------
+  // ---- wire protocol -----------------------------------------------------
 
+  // Invoked by the runtime on inbound frames (public by contract).
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
     const cid = await this.cidOf(ws);
     if (!cid) return;
@@ -192,6 +238,7 @@ export class Room extends DurableObject<Env> {
       if (message.byteLength > RELAY_BIN_MAX) return;
       if (!(await this.memberOf(cid))) return;
       await this.touch();
+      await this.markTransferring();
       const other = this.otherOf(cid);
       if (other) {
         const ws2 = this.ctx.getWebSockets(other)[0];
@@ -200,32 +247,39 @@ export class Room extends DurableObject<Env> {
       return;
     }
 
-    let msg: { id?: string; event?: string; payload?: any };
+    let msg: WireMsg;
     try {
       msg = JSON.parse(message);
     } catch {
-      return;
+      return this.pushError(ws, 'INVALID_MESSAGE', 'Malformed message.');
     }
-    if (!msg || typeof msg.event !== 'string') return;
-    const { id, event, payload } = msg;
+    if (!msg || typeof msg !== 'object') {
+      return this.pushError(ws, 'INVALID_MESSAGE', 'Malformed message.');
+    }
+    if (msg.v !== PROTOCOL_VERSION) {
+      return this.ackErr(cid, msg.id, 'UNSUPPORTED_VERSION', 'This app is out of date. Refresh to continue.');
+    }
+    if (typeof msg.event !== 'string') {
+      return this.ackErr(cid, msg.id, 'INVALID_MESSAGE', 'Unknown message type.');
+    }
 
-    switch (event) {
+    switch (msg.event) {
       case 'create_room':
-        return this.handleCreate(cid, id);
+        return this.handleCreate(cid, msg.id);
       case 'join_with_code':
-        return this.handleJoinWithCode(cid, id, payload);
+        return this.handleJoinWithCode(cid, msg.id, msg.payload);
       case 'join_with_link':
-        return this.handleJoinWithLink(cid, id, payload);
+        return this.handleJoinWithLink(cid, msg.id, msg.payload);
       case 'resume_room':
-        return this.handleResume(cid, id, payload);
+        return this.handleResume(cid, msg.id, msg.payload);
       case 'signal':
-        return this.handleSignal(cid, id, payload);
+        return this.handleSignal(cid, msg.id, msg.payload);
       case 'relay_message':
-        return this.handleRelayText(cid, id, payload);
+        return this.handleRelayText(cid, msg.id, msg.payload);
       case 'close_room':
         return this.handleClose(cid);
       default:
-        return;
+        return this.ackErr(cid, msg.id, 'INVALID_MESSAGE', 'Unknown message type.');
     }
   }
 
@@ -238,16 +292,22 @@ export class Room extends DurableObject<Env> {
       await this.dropConn(cid);
       return;
     }
+    // Only a seated peer (creator/joiner) counts as a disconnect — a socket
+    // that never joined (e.g. a failed code probe) must not disturb the room.
+    const wasMember = r.peerA === cid || r.peerB === cid;
     if (r.peerA === cid) r.peerA = null;
     if (r.peerB === cid) r.peerB = null;
     r.lastActive = Date.now();
     await this.ctx.storage.put('room', r);
     await this.dropConn(cid);
 
-    await this.notifyOthers(cid, 'peer_disconnected', {
-      peerId: cid,
-      remaining: (await this.livePeers()).length,
-    });
+    await this.recomputeState();
+    if (wasMember) {
+      await this.notifyOthers(cid, 'peer_disconnected', {
+        peerId: cid,
+        remaining: (await this.livePeers()).length,
+      });
+    }
 
     const live = await this.livePeers();
     if (live.length === 0) {
@@ -255,7 +315,7 @@ export class Room extends DurableObject<Env> {
       const emptyAt = Date.now() + ROOM_EMPTY_TTL;
       if (!alarm || alarm > emptyAt) await this.ctx.storage.setAlarm(emptyAt);
     }
-    log('peer disconnected', cid.slice(0, 8), 'remaining', live.length);
+    log('peer disconnected', cid.slice(0, 8), 'remaining', live.length, 'state', r.state);
   }
 
   async alarm() {
@@ -282,18 +342,21 @@ export class Room extends DurableObject<Env> {
 
   private async handleCreate(cid: string, id?: string) {
     const r = await this.loadRoom();
-    if (r) return this.ack(cid, id, false, 'Room already exists');
+    if (r) return this.ackErr(cid, id, 'ROOM_EXISTS', 'This room already exists.');
     const secret = base32Encode(crypto.getRandomValues(new Uint8Array(16)));
     const roomId = this.urlRoomId ?? crypto.randomUUID();
     const now = Date.now();
     this.room = {
       roomId,
       secret,
+      state: 'WAITING',
       createdAt: now,
       lastActive: now,
       expiresAt: now + ROOM_TTL,
       peerA: cid,
       peerB: null,
+      codeFails: 0,
+      codeFailReset: 0,
     };
     await this.ctx.storage.put('room', this.room);
     await this.ensureConns();
@@ -301,45 +364,60 @@ export class Room extends DurableObject<Env> {
     await this.ctx.storage.put('conn:' + cid, { roomId });
     await this.ctx.storage.setAlarm(this.room.expiresAt);
     await this.registerInRegistry(this.room);
-    log('room created', roomId.slice(0, 8));
-    this.ack(cid, id, true, { roomId, secret });
+    log('room created', roomId.slice(0, 8), 'WAITING');
+    this.ackOk(cid, id, { roomId, secret });
   }
 
   private async handleJoinWithCode(cid: string, id?: string, payload?: { code?: unknown }) {
     const r = await this.loadRoom();
     if (!r || r.peerA === cid || r.peerB === cid) {
-      return this.ack(cid, id, false, 'Invalid or expired code');
+      return this.ackErr(cid, id, 'INVALID_CODE', 'Invalid or expired code');
     }
     const code = payload?.code;
-    if (typeof code !== 'string' || !(await validateTOTP(r.secret, code))) {
-      return this.ack(cid, id, false, 'Invalid or expired code');
+    if (typeof code !== 'string') {
+      return this.ackErr(cid, id, 'INVALID_CODE', 'Invalid or expired code');
     }
+    // Per-room brute-force limit on the pairing code.
+    const now = Date.now();
+    if (r.codeFails >= CODE_FAIL_MAX && now < r.codeFailReset) {
+      return this.ackErr(cid, id, 'RATE_LIMITED', 'Too many attempts. Try again in a minute.');
+    }
+    if (!(await validateTOTP(r.secret, code))) {
+      if (now >= r.codeFailReset) {
+        r.codeFails = 0;
+        r.codeFailReset = now + CODE_FAIL_WINDOW;
+      }
+      r.codeFails++;
+      await this.ctx.storage.put('room', r);
+      return this.ackErr(cid, id, 'INVALID_CODE', 'Invalid or expired code');
+    }
+    r.codeFails = 0;
     const slot = await this.assignSlot(cid);
-    if (slot === 'full') return this.ack(cid, id, false, 'This session already has two devices.');
+    if (slot === 'full') return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText session is already full.');
     await this.completeJoin(cid, id);
   }
 
   private async handleJoinWithLink(cid: string, id?: string, payload?: { secret?: unknown }) {
     const r = await this.loadRoom();
-    if (!r) return this.ack(cid, id, false, 'Session expired');
+    if (!r) return this.ackErr(cid, id, 'SESSION_EXPIRED', 'This session has expired.');
     if (payload?.secret && payload.secret !== r.secret) {
-      return this.ack(cid, id, false, 'Invalid session');
+      return this.ackErr(cid, id, 'INVALID_SESSION', 'This session link isn\u2019t valid anymore.');
     }
     if (r.peerA === cid || r.peerB === cid) {
-      return this.ack(cid, id, true, { roomId: r.roomId, secret: r.secret });
+      return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret });
     }
     const slot = await this.assignSlot(cid);
-    if (slot === 'full') return this.ack(cid, id, false, 'This session already has two devices.');
+    if (slot === 'full') return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText session is already full.');
     await this.completeJoin(cid, id);
   }
 
   private async handleResume(cid: string, id?: string, payload?: { secret?: unknown }) {
     const r = await this.loadRoom();
     if (!r || r.secret !== payload?.secret) {
-      return this.ack(cid, id, false, 'Session expired');
+      return this.ackErr(cid, id, 'SESSION_EXPIRED', 'This session has expired.');
     }
     if (r.peerA === cid || r.peerB === cid) {
-      return this.ack(cid, id, true, { roomId: r.roomId, secret: r.secret });
+      return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret });
     }
     // Drop stale seats whose sockets are gone so the returning device can sit.
     const live = await this.livePeers();
@@ -347,7 +425,7 @@ export class Room extends DurableObject<Env> {
     if (r.peerB && !live.includes(r.peerB)) r.peerB = null;
     await this.ctx.storage.put('room', r);
     const slot = await this.assignSlot(cid);
-    if (slot === 'full') return this.ack(cid, id, false, 'This session already has two devices.');
+    if (slot === 'full') return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText session is already full.');
     await this.completeJoin(cid, id);
   }
 
@@ -357,9 +435,10 @@ export class Room extends DurableObject<Env> {
     this.conns!.set(cid, { roomId: r.roomId });
     await this.ctx.storage.put('conn:' + cid, { roomId: r.roomId });
     await this.touch();
+    await this.recomputeState();
     await this.notifyOthers(cid, 'peer_joined', { peerId: cid });
-    log('peer joined', r.roomId.slice(0, 8), cid.slice(0, 8));
-    this.ack(cid, id, true, { roomId: r.roomId, secret: r.secret });
+    log('peer joined', r.roomId.slice(0, 8), cid.slice(0, 8), 'state', r.state);
+    this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret });
   }
 
   private async handleSignal(cid: string, _id: string | undefined, payload?: { to?: unknown; signal?: unknown }) {
@@ -382,7 +461,16 @@ export class Room extends DurableObject<Env> {
     const data = payload?.data;
     if (typeof data !== 'string' || data.length > RELAY_TEXT_MAX) return;
     await this.touch();
+    await this.markTransferring();
     await this.notifyOthers(cid, 'relay_message', { data });
+  }
+
+  private async markTransferring() {
+    const r = this.room;
+    if (r && r.state === 'CONNECTED') {
+      r.state = 'TRANSFERRING';
+      await this.ctx.storage.put('room', r);
+    }
   }
 
   private async handleClose(cid: string) {
@@ -391,14 +479,20 @@ export class Room extends DurableObject<Env> {
     await this.destroyRoom('manual_close');
   }
 
-  private ack(cid: string, id: string | undefined, ok: boolean, result?: Record<string, unknown> | string) {
+  // ---- acks / errors -----------------------------------------------------
+
+  private ackOk(cid: string, id: string | undefined, data: Record<string, unknown>) {
     if (!id) return;
-    const msg =
-      typeof result === 'string'
-        ? { type: 'ack', id, ok: false, error: result }
-        : { type: 'ack', id, ok, ...(ok ? result : { error: result?.error ?? 'Something went wrong' }) };
-    const ws = this.ctx.getWebSockets(cid)[0];
-    if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg));
+    this.sendTo(cid, { type: 'ack', id, ok: true, ...data });
+  }
+
+  private ackErr(cid: string, id: string | undefined, code: string, message: string) {
+    if (!id) return;
+    this.sendTo(cid, { type: 'ack', id, ok: false, code, message });
+  }
+
+  private pushError(ws: WebSocket, code: string, message: string) {
+    if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'error', code, message }));
   }
 }
 
