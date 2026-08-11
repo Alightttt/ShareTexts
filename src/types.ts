@@ -27,4 +27,6 @@ export interface SessionState {
   connectionType: ConnectionType;
   messages: ChatMessage[];
   closedReason?: string | null;
+  deviceName: string;
+  partnerName: string | null;
 }

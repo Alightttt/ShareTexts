@@ -8,8 +8,11 @@ export function getSocket(): Socket {
       transports: ['websocket'],
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
+      // Cover multi-minute network blips so the recovery window can actually
+      // be used.
+      reconnectionAttempts: 60,
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 8000,
     });
   }
   return socketInstance;
