@@ -1,0 +1,16 @@
+# One-click deployment for the ShareText server (Express + socket.io).
+# The signaling/relay server MUST run on a persistent host — Vercel/Netlify
+# static hosting cannot run socket.io (no long-lived connections).
+# Deploy: render.com → New → Blueprint → connect this GitHub repo.
+# The frontend then connects via VITE_SOCKET_URL=https://<this-service>.onrender.com
+# (set that build-time env var on your static host, e.g. Vercel).
+services:
+  - type: web
+    name: sharetext
+    runtime: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
