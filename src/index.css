@@ -73,8 +73,12 @@
     letter-spacing: -0.022em;
   }
   
-  .dark body {
-    @apply bg-black text-white;
+  /* Dark mode follows the system preference (matches Tailwind's `dark:` variant).
+     Without this, the page chrome behind the app stays white in dark mode. */
+  @media (prefers-color-scheme: dark) {
+    body {
+      @apply bg-night-950 text-white;
+    }
   }
   
   h1, h2, h3, h4, h5, h6 {
