@@ -36,6 +36,7 @@ class Client {
     const cid = uuid();
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(`${WS}/ws?room=${roomId}&cid=${cid}`);
+      ws.binaryType = 'arraybuffer';
       const timer = setTimeout(() => reject(new Error('open timeout')), 8000);
       ws.onopen = () => {
         clearTimeout(timer);
@@ -56,7 +57,7 @@ class Client {
       try { msg = JSON.parse(data); } catch { return; }
       if (msg.type === 'ack') {
         const w = this.waiters.find((w) => w.event === `ack:${msg.id}`);
-        if (w) { this.waiters = this.waiters.filter((x) => x !== w); w.resolve(msg.ok ? { success: true, ...msg } : { success: false, error: msg.error }); }
+        if (w) { this.waiters = this.waiters.filter((x) => x !== w); w.resolve(msg.ok ? { success: true, ...msg } : { success: false, error: msg.message || msg.error, code: msg.code }); }
       } else if (msg.type === 'event') {
         const h = this.events.get(msg.event);
         if (h) h(msg.payload);
@@ -70,7 +71,7 @@ class Client {
   }
   send(event, payload) {
     const id = `${Date.now().toString(36)}-${this.seq++}`;
-    this.ws.send(JSON.stringify({ id, event, payload }));
+    this.ws.send(JSON.stringify({ v: 1, id, event, payload }));
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         this.waiters = this.waiters.filter((w) => w.event !== `ack:${id}`);
@@ -137,9 +138,10 @@ async function main() {
   // 5. join with code; creator sees peer_joined
   const joiner = new Client();
   await joiner.open(roomId);
+  const peerJoinedWait = creator.waitFor('peer_joined');
   const joined = await joiner.send('join_with_code', { code });
   check('join_with_code ack', joined.success === true && joined.roomId === roomId);
-  const peerJoined = await creator.waitFor('peer_joined');
+  const peerJoined = await peerJoinedWait;
   check('creator receives peer_joined', !!peerJoined?.peerId, `peer ${String(peerJoined?.peerId).slice(0, 8)}`);
 
   // 6. signal forwarding (offer → answer)
@@ -166,7 +168,7 @@ async function main() {
   const third = new Client();
   await third.open(roomId);
   const thirdRes = await third.send('join_with_code', { code });
-  check('third device rejected', thirdRes.success === false && /two devices/.test(thirdRes.error || ''), thirdRes.error);
+  check('third device rejected', thirdRes.success === false && thirdRes.code === 'ROOM_FULL', thirdRes.error || thirdRes.code);
   third.close();
 
   // 10. disconnect → peer_disconnected; resume → peer_joined again
@@ -176,9 +178,10 @@ async function main() {
   check('creator sees peer_disconnected', pd?.peerId === joinerCid);
   const rejoin = new Client();
   await rejoin.open(roomId);
+  const rejoinedWait = creator.waitFor('peer_joined');
   const resumed = await rejoin.send('resume_room', { roomId, secret });
   check('resume_room ack', resumed.success === true);
-  const rejoined = await creator.waitFor('peer_joined');
+  const rejoined = await rejoinedWait;
   check('creator sees peer_joined after resume', !!rejoined?.peerId && rejoined.peerId !== joinerCid);
 
   // 11. manual close → both devices get room_closed
