@@ -454,6 +454,11 @@ export class Room extends DurableObject<Env> {
       return this.ackErr(cid, id, 'SESSION_EXPIRED', 'This session has expired.');
     }
     if (r.peerA === cid || r.peerB === cid) {
+      // The peer's transport came back but it still holds its seat (same
+      // connection id). Tell the other device to re-offer WebRTC so the
+      // channel — and any interrupted transfer — can resume. Without this
+      // the recovering peer waits for an offer that never comes.
+      await this.notifyOthers(cid, 'peer_recovered', { peerId: cid });
       return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.createdAt });
     }
     // Drop stale seats whose sockets are gone so the returning device can sit.

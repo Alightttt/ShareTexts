@@ -336,7 +336,10 @@ io.on('connection', (socket) => {
     // the WebRTC data channel is unavailable. Bulk transfer always prefers
     // the channel, so generous per-message caps are safe.
     const isString = typeof data === 'string';
-    const isChunk = data instanceof ArrayBuffer;
+    // socket.io delivers binary attachments to Node as Buffer, not
+    // ArrayBuffer — checking only for ArrayBuffer rejected EVERY binary relay
+    // chunk ("Message too large"), silently killing the file-relay fallback.
+    const isChunk = data instanceof ArrayBuffer || (typeof Buffer !== 'undefined' && Buffer.isBuffer(data));
     if ((isString && data.length > 512 * 1024) || (isChunk && data.byteLength > 128 * 1024) || (!isString && !isChunk)) {
       return cb?.({ success: false, error: 'Message too large' });
     }

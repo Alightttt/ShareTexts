@@ -130,6 +130,10 @@ export class CloudflareSocket implements SignalingSocket {
     return new Promise<WebSocket>((resolve, reject) => {
       const cid = uuid();
       const ws = new WebSocket(`${this.wsBase}?room=${roomId}&cid=${cid}`);
+      // Binary frames are encrypted relay chunks — deliver them as ArrayBuffer,
+      // not the default Blob, so the transfer layer can decrypt them. (Browsers
+      // hand binary frames to onmessage as Blob unless binaryType is set.)
+      ws.binaryType = 'arraybuffer';
       let opened = false;
       let failed = false;
 
@@ -261,6 +265,10 @@ export class CloudflareSocket implements SignalingSocket {
       } else if (msg?.type === 'event') {
         this.emitLocal(msg.event, msg.payload);
       }
+    } else if (data instanceof Blob) {
+      // Fallback: if binaryType was somehow not honoured, the frame arrives
+      // as a Blob — convert it so relay chunks still decrypt.
+      void data.arrayBuffer().then(buf => this.emitLocal('relay_message', { data: buf }));
     } else {
       // Binary frame — relay data (an encrypted text/file chunk).
       this.emitLocal('relay_message', { data });
