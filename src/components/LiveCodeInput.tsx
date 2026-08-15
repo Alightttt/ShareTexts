@@ -51,20 +51,24 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
       />
       
       <motion.div 
-        animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}} 
+        animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}}
         transition={{ duration: 0.4 }}
-        className="flex w-full max-w-[300px] gap-1.5 sm:gap-2"
+        className="flex w-full max-w-[340px] sm:max-w-[400px] gap-2 sm:gap-2.5"
         onClick={() => inputRef.current?.focus()}
         aria-hidden="true"
       >
         {Array.from({ length: 6 }).map((_, i) => (
           <React.Fragment key={i}>
             <div className={cn(
-              "flex-1 aspect-[3/4] rounded-[12px] flex items-center justify-center overflow-hidden transition-colors relative shadow-inner",
-              code[i] ? "bg-white dark:bg-apple-tile-3 border border-apple-divider dark:border-apple-tile-3" : "bg-apple-parchment dark:bg-black border border-apple-divider/50 dark:border-apple-tile-3",
-              error && "border-status-danger bg-red-50 dark:bg-red-900/20"
+              "flex-1 aspect-[3/4] rounded-[14px] sm:rounded-[16px] flex items-center justify-center overflow-hidden transition-all relative",
+              "shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]",
+              code[i]
+                ? "bg-white dark:bg-apple-tile-3 border border-apple-divider dark:border-apple-tile-3"
+                : "bg-apple-parchment dark:bg-black border border-apple-divider/60 dark:border-apple-tile-3",
+              error && "border-status-danger bg-red-50 dark:bg-red-900/20",
+              !code[i] && !error && "focus-within:border-apple-blue/50"
             )}>
-              <span className="text-[clamp(26px,7.5vw,40px)] font-semibold text-apple-ink dark:text-white tracking-tighter font-mono">
+              <span className="text-[clamp(32px,9vw,52px)] font-semibold text-apple-ink dark:text-white tracking-tighter font-mono leading-none">
                 {code[i] || ''}
               </span>
               {/* Caret */}
@@ -73,11 +77,11 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
                   initial={{ opacity: 0 }}
                   animate={{ opacity: [1, 0] }}
                   transition={{ repeat: Infinity, duration: 1 }}
-                  className="w-[2px] h-8 sm:h-10 bg-apple-blue absolute"
+                  className="w-[2.5px] h-9 sm:h-11 bg-apple-blue absolute rounded-full"
                 />
               )}
             </div>
-            {i === 2 && <div className="w-2 sm:w-3" />}
+            {i === 2 && <div className="w-2.5 sm:w-5" />}
           </React.Fragment>
         ))}
       </motion.div>

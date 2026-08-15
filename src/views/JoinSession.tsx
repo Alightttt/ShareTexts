@@ -104,11 +104,11 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
             >
               {activeTab === 'code' && (
                 <div className="w-full flex flex-col items-center">
-                  <h1 className="text-[21px] sm:text-[23px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em] mb-2">
-                    Enter the code from your other device.
+                  <h1 className="text-[24px] sm:text-[28px] font-semibold text-apple-ink dark:text-white tracking-[-0.025em] mb-2.5">
+                    Enter the code
                   </h1>
-                  <p className="text-[13px] text-apple-ink-muted dark:text-white/55 font-medium mb-8">
-                    The code on the other device changes every 40 seconds.
+                  <p className="text-[14px] text-apple-ink-muted dark:text-white/55 font-medium mb-10">
+                    It changes every 40 seconds — use the latest one.
                   </p>
                   <LiveCodeInput onComplete={handleCodeComplete} isJoining={isJoining} error={error} />
                 </div>

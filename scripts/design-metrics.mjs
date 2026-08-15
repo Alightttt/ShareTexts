@@ -244,7 +244,7 @@ try {
     ['recv-bubble', 'div.dark\\:bg-surface-dark'],
     ['ts', 'span.text-\\[12px\\]'],
     ['input-bar', 'form textarea'],
-    ['send-btn', { text: 'Send' }],
+    ['send-btn', 'button[aria-label="Send"]'],
   ]);
   await inventory(A, 'chat-text');
   await shot(A, 'chat-text');

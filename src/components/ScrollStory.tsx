@@ -3,6 +3,7 @@ import { motion, useMotionValueEvent, useReducedMotion, useScroll, useTransform 
 import type { MotionValue } from 'motion/react';
 import { Check, Copy } from 'lucide-react';
 import { ShareTextLogo } from './ShareTextLogo';
+import { PhoneFrame, LaptopFrame, DeviceLabel } from './DeviceFrames';
 import { cn } from '../lib/utils';
 
 /**
@@ -38,9 +39,9 @@ function UrlCard({ className }: { className?: string }) {
   );
 }
 
-function DeviceHeader() {
+function DeviceHeader({ notch }: { notch?: boolean }) {
   return (
-    <div className="shrink-0 flex items-center justify-between px-2.5 pt-2 pb-1.5 border-b border-apple-ink/[0.06] dark:border-white/[0.08]">
+    <div className={cn("shrink-0 flex items-center justify-between px-2.5 pb-1.5 border-b border-apple-ink/[0.06] dark:border-white/[0.08]", notch ? "pt-[13px] sm:pt-[15px]" : "pt-2")}>
       <div className="flex items-center gap-1">
         <ShareTextLogo size={12} className="text-apple-ink dark:text-white" />
         <span className="text-[8px] font-semibold tracking-tight text-apple-ink dark:text-white">ShareText</span>
@@ -55,30 +56,22 @@ function DeviceHeader() {
 
 function LaptopScreen({ children }: { children: React.ReactNode }) {
   return (
-    <div className="w-[184px] sm:w-[300px] shrink-0">
-      <div className="rounded-[12px] sm:rounded-[14px] bg-[#1d1d1f] p-[6px] sm:p-[9px] shadow-device border border-white/10 relative">
-        <div className="w-full aspect-[16/10] rounded-[7px] sm:rounded-[9px] bg-apple-canvas dark:bg-black overflow-hidden relative flex flex-col">
-          {children}
-        </div>
-        {/* Laptop base */}
-        <div className="h-[7px] sm:h-[10px] -mb-[10px] sm:-mb-[13px] mx-[-8px] sm:mx-[-12px] mt-[4px] sm:mt-[5px] rounded-b-[10px] sm:rounded-b-[14px] bg-gradient-to-b from-[#3a3a3d] to-[#2a2a2c]" />
-      </div>
-      <p className="mt-3 sm:mt-4 text-center text-[9px] sm:text-[11px] font-medium text-apple-ink-muted">Your laptop</p>
+    <div className="flex flex-col items-center">
+      <LaptopFrame className="w-[184px] sm:w-[300px]">
+        <div className="w-full h-full flex flex-col">{children}</div>
+      </LaptopFrame>
+      <DeviceLabel>Your laptop</DeviceLabel>
     </div>
   );
 }
 
 function PhoneScreen({ children }: { children: React.ReactNode }) {
   return (
-    <div className="w-[88px] sm:w-[130px] shrink-0">
-      <div className="rounded-[22px] sm:rounded-[28px] bg-[#161617] p-[6px] sm:p-[8px] shadow-device border border-white/10 relative">
-        {/* Dynamic island */}
-        <div className="absolute top-[10px] sm:top-[14px] left-1/2 -translate-x-1/2 w-[34px] sm:w-[46px] h-[9px] sm:h-[12px] bg-black rounded-full z-10" />
-        <div className="w-full aspect-[9/18.5] rounded-[16px] sm:rounded-[22px] bg-apple-canvas dark:bg-black overflow-hidden relative flex flex-col">
-          {children}
-        </div>
-      </div>
-      <p className="mt-2 sm:mt-2.5 text-center text-[9px] sm:text-[11px] font-medium text-apple-ink-muted">Your phone</p>
+    <div className="flex flex-col items-center">
+      <PhoneFrame className="w-[88px] sm:w-[130px]">
+        <div className="w-full h-full flex flex-col">{children}</div>
+      </PhoneFrame>
+      <DeviceLabel>Your phone</DeviceLabel>
     </div>
   );
 }
@@ -218,7 +211,7 @@ function ScrubStory() {
 
             <motion.div style={{ opacity: phoneOpacity, y: phoneY }}>
               <PhoneScreen>
-                <DeviceHeader />
+                <DeviceHeader notch />
                 <div className="flex-1 flex items-center justify-center px-2.5">
                   {/* Landed state */}
                   <motion.div style={{ opacity: landedOpacity, scale: landedScale }} className="flex flex-col items-center gap-2">
@@ -273,7 +266,7 @@ function StaticStory() {
             <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-azure-500" />
           </div>
           <PhoneScreen>
-            <DeviceHeader />
+            <DeviceHeader notch />
             <div className="flex-1 flex items-center justify-center px-2.5">
               <div className="flex flex-col items-center gap-2">
                 <UrlCard />

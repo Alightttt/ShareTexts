@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Check, Copy, FileText, Image as ImageIcon } from 'lucide-react';
 import { ShareTextLogo } from './ShareTextLogo';
+import { PhoneFrame, LaptopFrame, DeviceLabel } from './DeviceFrames';
 import { cn } from '../lib/utils';
 
 /**
@@ -92,28 +93,22 @@ const CopiedChip = () => (
 
 function MiniLaptop({ children, label }: { children: React.ReactNode, label: string }) {
   return (
-    <div className="w-[150px] sm:w-[200px] shrink-0">
-      <div className="rounded-[10px] bg-[#1d1d1f] p-[5px] sm:p-[7px] shadow-device border border-white/10 relative">
-        <div className="w-full aspect-[16/10] rounded-[6px] sm:rounded-[8px] bg-apple-canvas dark:bg-black overflow-hidden relative flex flex-col items-center justify-center px-2.5">
-          {children}
-        </div>
-        <div className="h-[6px] sm:h-[8px] -mb-[8px] sm:-mb-[11px] mx-[-6px] sm:mx-[-9px] mt-[4px] rounded-b-[8px] sm:rounded-b-[10px] bg-gradient-to-b from-[#3a3a3d] to-[#2a2a2c]" />
-      </div>
-      <p className="mt-2.5 sm:mt-3 text-center text-[9px] sm:text-[10px] font-medium text-apple-ink-muted">{label}</p>
+    <div className="w-[150px] sm:w-[200px] shrink-0 flex flex-col items-center">
+      <LaptopFrame>
+        <div className="w-full h-full flex flex-col items-center justify-center px-2.5">{children}</div>
+      </LaptopFrame>
+      <DeviceLabel className="mt-2 sm:mt-3">{label}</DeviceLabel>
     </div>
   );
 }
 
 function MiniPhone({ children, label }: { children: React.ReactNode, label: string }) {
   return (
-    <div className="w-[62px] sm:w-[84px] shrink-0">
-      <div className="rounded-[16px] sm:rounded-[20px] bg-[#161617] p-[4px] sm:p-[5px] shadow-device border border-white/10 relative">
-        <div className="absolute top-[7px] sm:top-[9px] left-1/2 -translate-x-1/2 w-[24px] sm:w-[30px] h-[6px] sm:h-[8px] bg-black rounded-full z-10" />
-        <div className="w-full aspect-[9/18] rounded-[12px] sm:rounded-[16px] bg-apple-canvas dark:bg-black overflow-hidden relative flex flex-col items-center justify-center px-1.5">
-          {children}
-        </div>
-      </div>
-      <p className="mt-2 sm:mt-2.5 text-center text-[9px] sm:text-[10px] font-medium text-apple-ink-muted">{label}</p>
+    <div className="w-[62px] sm:w-[84px] shrink-0 flex flex-col items-center">
+      <PhoneFrame>
+        <div className="w-full h-full flex flex-col items-center justify-center px-1.5">{children}</div>
+      </PhoneFrame>
+      <DeviceLabel className="mt-2 sm:mt-2.5">{label}</DeviceLabel>
     </div>
   );
 }

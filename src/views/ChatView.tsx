@@ -3,7 +3,7 @@ import { useSession } from '../lib/SessionContext';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Send, X, Plus, Image as ImageIcon, ClipboardPaste,
-  Copy, Check, File as FileIcon, Play, Download, RefreshCw, AlertCircle, FileText, ChevronDown, ChevronUp, Mic
+  Copy, Check, File as FileIcon, Play, Download, RefreshCw, AlertCircle, FileText, ChevronDown, ChevronUp, Mic, ArrowUp
 } from 'lucide-react';
 import { cn, formatBytes } from '../lib/utils';
 import { ChatMessage, Attachment } from '../types';
@@ -28,6 +28,10 @@ export function ChatView() {
   const [dragOver, setDragOver] = useState(false);
   const dragDepth = useRef(0);
   const firstTransferShown = useRef(false);
+  // "Other device connected" toast — the alert both sides get when the
+  // room opens, so the creator sees the joiner arrive even when the
+  // handshake was too fast to catch on the pairing screen.
+  const [showConnected, setShowConnected] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -94,6 +98,10 @@ export function ChatView() {
   useEffect(() => {
     if (session.partnerConnected && session.connectionType !== 'disconnected') {
       setAnnouncement('Connected');
+      // The visible alert — a short toast when the room opens.
+      setShowConnected(true);
+      const t = setTimeout(() => setShowConnected(false), 2800);
+      return () => clearTimeout(t);
     } else if (session.connectionType === 'disconnected') {
       setAnnouncement('Your other device disconnected');
     }
@@ -290,6 +298,23 @@ export function ChatView() {
           End session
         </button>
       </div>
+
+      {/* Connected toast — the "alert" when the other device arrives. */}
+      <AnimatePresence>
+        {showConnected && (
+          <motion.div
+            initial={{ opacity: 0, y: -10, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.97 }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
+            role="status"
+            className="absolute top-[76px] sm:top-[84px] left-1/2 -translate-x-1/2 z-40 px-4 py-2.5 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 shadow-float flex items-center gap-2 text-[13.5px] font-semibold whitespace-nowrap"
+          >
+            <ShareTextLogo size={16} motion="complete" className="text-white dark:text-night-900" />
+            Connected — you can start sending
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Close confirmation */}
       <AnimatePresence>
@@ -527,49 +552,19 @@ export function ChatView() {
               )}
             </AnimatePresence>
 
-            <div className="flex items-end p-1 relative">
-              <div className="flex items-center">
-                {canPaste && (
-                  <button
-                    type="button"
-                    onPointerDown={() => { void handlePaste(); }}
-                    className="p-3.5 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-motion active:scale-[0.85] rounded-full"
-                    aria-label="Paste from clipboard"
-                    title="Paste from clipboard"
-                  >
-                    <ClipboardPaste className="w-5 h-5" />
-                  </button>
+            <div className="flex items-end gap-1 p-1.5 relative">
+              <button
+                type="button"
+                onPointerDown={() => setShowAttachmentMenu(!showAttachmentMenu)}
+                aria-label="Add attachment"
+                aria-expanded={showAttachmentMenu}
+                className={cn(
+                  "self-end mb-0.5 p-3 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-motion active:scale-[0.9] rounded-full shrink-0",
+                  showAttachmentMenu && "text-apple-blue bg-apple-blue/10 rotate-45"
                 )}
-                <button
-                  type="button"
-                  onPointerDown={() => setShowAttachmentMenu(!showAttachmentMenu)}
-                  aria-label="Add attachment"
-                  aria-expanded={showAttachmentMenu}
-                  className={cn(
-                    "p-3.5 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-motion active:scale-[0.85] rounded-full",
-                    showAttachmentMenu && "text-apple-blue bg-apple-blue/10 rotate-45"
-                  )}
-                >
-                  <Plus className="w-6 h-6 transition-transform" />
-                </button>
-
-                <AnimatePresence>
-                  {showAttachmentMenu && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.9, transformOrigin: 'bottom left' }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                      transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                      className="absolute left-0 bottom-[calc(100%+8px)] bg-white/90 dark:bg-surface-dark-2/90 backdrop-blur-xl border border-apple-divider dark:border-apple-tile-3 rounded-[20px] shadow-2xl p-2 w-[220px] flex flex-col gap-1"
-                    >
-                      <AttachmentOption icon={<ImageIcon className="w-5 h-5 text-apple-ink-muted" />} label="Photo" onClick={() => imageInputRef.current?.click()} />
-                      <AttachmentOption icon={<Play className="w-5 h-5 text-apple-ink-muted" />} label="Video" onClick={() => videoInputRef.current?.click()} />
-                      <AttachmentOption icon={<Mic className="w-5 h-5 text-apple-ink-muted" />} label="Audio" onClick={() => audioInputRef.current?.click()} />
-                      <AttachmentOption icon={<FileIcon className="w-5 h-5 text-apple-ink-muted" />} label="File" onClick={() => fileInputRef.current?.click()} />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              >
+                <Plus className="w-5 h-5 transition-transform" />
+              </button>
 
               <textarea
                 value={inputText}
@@ -585,23 +580,45 @@ export function ChatView() {
                 }}
                 placeholder="Paste or type text…"
                 aria-label="Message"
-                className="flex-1 min-h-[52px] max-h-[30vh] resize-none bg-transparent py-3.5 pr-4 text-apple-ink dark:text-white placeholder:text-apple-ink-muted focus:outline-none text-[16px] leading-relaxed"
+                className="flex-1 min-h-[46px] max-h-[30vh] resize-none bg-transparent py-3 pl-1.5 pr-1 text-apple-ink dark:text-white placeholder:text-apple-ink-muted focus:outline-none text-[16px] leading-relaxed"
               />
+
+              <button
+                type="button"
+                onPointerDown={handleSend}
+                disabled={(!inputText.trim() && !attachment) || !session.partnerConnected}
+                aria-label="Send"
+                className="self-end mb-0.5 w-10 h-10 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 flex items-center justify-center shrink-0 transition-motion active:scale-90 disabled:opacity-30 disabled:bg-apple-divider dark:disabled:bg-apple-tile-2 disabled:text-apple-ink-muted dark:disabled:text-white/40 shadow-sm"
+              >
+                <ArrowUp className="w-5 h-5" strokeWidth={2.4} />
+              </button>
+
+              <AnimatePresence>
+                {showAttachmentMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.9, transformOrigin: 'bottom left' }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                    transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+                    className="absolute left-1 bottom-[calc(100%+8px)] bg-white/90 dark:bg-surface-dark-2/90 backdrop-blur-xl border border-apple-divider dark:border-apple-tile-3 rounded-[20px] shadow-2xl p-2 w-[230px] flex flex-col gap-1 z-30"
+                  >
+                    {canPaste && (
+                      <AttachmentOption icon={<ClipboardPaste className="w-5 h-5 text-apple-ink-muted" />} label="Paste from clipboard" onClick={() => { void handlePaste(); setShowAttachmentMenu(false); }} />
+                    )}
+                    <AttachmentOption icon={<ImageIcon className="w-5 h-5 text-apple-ink-muted" />} label="Photo" onClick={() => imageInputRef.current?.click()} />
+                    <AttachmentOption icon={<Play className="w-5 h-5 text-apple-ink-muted" />} label="Video" onClick={() => videoInputRef.current?.click()} />
+                    <AttachmentOption icon={<Mic className="w-5 h-5 text-apple-ink-muted" />} label="Audio" onClick={() => audioInputRef.current?.click()} />
+                    <AttachmentOption icon={<FileIcon className="w-5 h-5 text-apple-ink-muted" />} label="File" onClick={() => fileInputRef.current?.click()} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
 
-          <div className="flex justify-between items-center mt-1 px-1">
-            <span className="text-[13px] text-apple-ink-muted font-medium">
+          <div className="flex items-center justify-between mt-1.5 px-1.5">
+            <span className="text-[12.5px] text-apple-ink-muted font-medium">
               {isLargeInput ? `Large text · ${formatBytes(inputBytes)}` : <span className="hidden sm:inline">Enter to send · Shift+Enter for a new line</span>}
             </span>
-            <button
-              type="button"
-              onPointerDown={handleSend}
-              disabled={(!inputText.trim() && !attachment) || !session.partnerConnected}
-              className="px-6 py-2.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 disabled:opacity-40 disabled:bg-apple-divider dark:disabled:bg-apple-tile-2 disabled:text-apple-ink-muted dark:disabled:text-white/40 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-95 flex items-center gap-2 shadow-card"
-            >
-              Send <Send className="w-4 h-4" />
-            </button>
           </div>
         </form>
       </div>
