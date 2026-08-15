@@ -22,6 +22,7 @@ export function ChatView() {
   const [copiedAll, setCopiedAll] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [showThatsIt, setShowThatsIt] = useState(false);
+  const [thatsItCopy, setThatsItCopy] = useState("That's it — it's on the other device.");
   const [announcement, setAnnouncement] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const dragDepth = useRef(0);
@@ -77,11 +78,15 @@ export function ChatView() {
     }
   }, [session.partnerConnected, session.connectionType]);
 
-  // Post-transfer moment: after the very first successful transfer, a quiet
-  // "That's it." appears once, then the app gets out of the way.
+  // Post-transfer moment: after the very first transfer, a quiet "That's it."
+  // appears once, then the app gets out of the way. Direction-aware: sending
+  // and receiving tell different truths ("it's on the other device" vs "it
+  // arrived").
   useEffect(() => {
     if (!firstTransferShown.current && session.messages.length >= 1) {
       firstTransferShown.current = true;
+      const last = session.messages[session.messages.length - 1];
+      setThatsItCopy(last?.sender === 'me' ? "That's it — it's on the other device." : "That's it — it arrived.");
       setShowThatsIt(true);
       const t = setTimeout(() => setShowThatsIt(false), 5000);
       return () => clearTimeout(t);
@@ -336,7 +341,7 @@ export function ChatView() {
               className="overflow-hidden"
             >
               <p className="px-4 pt-3 pb-1 text-[13px] font-medium text-apple-ink-muted dark:text-white/60 text-center">
-                That's it — it's on the other device.
+                {thatsItCopy}
               </p>
             </motion.div>
           )}
@@ -357,10 +362,21 @@ export function ChatView() {
               <div className="w-14 h-14 rounded-[20px] bg-apple-parchment dark:bg-apple-tile-2 flex items-center justify-center mb-1">
                 <ShareTextLogo size={26} className="text-apple-ink dark:text-white" />
               </div>
-              <p className="text-[17px] font-semibold text-apple-ink dark:text-white tracking-tight">Your private clipboard</p>
-              <p className="text-[14px] text-apple-ink-muted max-w-[260px] leading-relaxed">
-                Anything you paste here will appear on the other device.
-              </p>
+              {disconnected ? (
+                <>
+                  <p className="text-[17px] font-semibold text-apple-ink dark:text-white tracking-tight">Your other device is offline</p>
+                  <p className="text-[14px] text-apple-ink-muted max-w-[280px] leading-relaxed">
+                    The room is still open — it will reconnect when the other device comes back.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[17px] font-semibold text-apple-ink dark:text-white tracking-tight">Your private clipboard</p>
+                  <p className="text-[14px] text-apple-ink-muted max-w-[260px] leading-relaxed">
+                    Anything you paste here will appear on the other device.
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <>
@@ -508,7 +524,10 @@ export function ChatView() {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  // Enter sends (Shift+Enter for a new line — the platform
+                  // convention for messaging apps). Cmd/Ctrl+Enter kept as an
+                  // alias for people who've trained on it.
+                  if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     handleSend(e);
                   }
@@ -522,7 +541,7 @@ export function ChatView() {
 
           <div className="flex justify-between items-center mt-1 px-1">
             <span className="text-[13px] text-apple-ink-muted font-medium">
-              {isLargeInput ? `Large text · ${formatBytes(inputBytes)}` : <span className="hidden sm:inline">Cmd/Ctrl + Enter to send</span>}
+              {isLargeInput ? `Large text · ${formatBytes(inputBytes)}` : <span className="hidden sm:inline">Enter to send · Shift+Enter for a new line</span>}
             </span>
             <button
               type="button"

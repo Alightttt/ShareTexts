@@ -114,6 +114,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       createdAt: stored?.createdAt,
       isCreator: stored?.isCreator ?? false,
       partnerConnected: false,
+      partnerConnecting: false,
       connectionType: 'connecting',
       messages: stored?.messages ?? [],
       deviceName: stored?.deviceName || guessDeviceName(),
@@ -170,7 +171,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // the partner is "connected" yet: ChatView appears only once the data
       // channel actually opens (onOpen) or the relay fallback confirms a
       // working path, so the UI never shows a green badge on a dead link.
-      setSession(s => ({ ...s, connectionType: s.connectionType === 'disconnected' ? 'connecting' : s.connectionType }));
+      // The creator's pairing screen DOES see the joiner arrive instantly
+      // ("Your other device is connecting…") instead of staying silent.
+      setSession(s => ({
+        ...s,
+        partnerConnecting: true,
+        connectionType: s.connectionType === 'disconnected' ? 'connecting' : s.connectionType
+      }));
       // Whichever device is already in the room initiates the WebRTC
       // handshake. This also covers reconnects after a refresh: the refreshed
       // device rejoins and the remaining peer gets this event and re-offers.
@@ -183,7 +190,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
 
     socket.on('peer_recovered', ({ peerId }) => {
-      setSession(s => ({ ...s, connectionType: s.connectionType === 'disconnected' ? 'connecting' : s.connectionType }));
+      setSession(s => ({
+        ...s,
+        partnerConnecting: true,
+        connectionType: s.connectionType === 'disconnected' ? 'connecting' : s.connectionType
+      }));
       // The peer's transport came back, but the WebRTC connection is gone.
       // Re-establish it from this side.
       if (session.roomId && session.secret && peerId) {
@@ -195,7 +206,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
 
     socket.on('peer_disconnected', () => {
-      setSession(s => ({ ...s, partnerConnected: false, connectionType: 'disconnected' }));
+      setSession(s => ({ ...s, partnerConnected: false, partnerConnecting: false, connectionType: 'disconnected' }));
     });
 
     socket.on('room_closed', ({ reason }) => {
@@ -229,7 +240,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     pm.onOpen = () => {
       // The data channel opened — treat that as the peer being present,
       // including after a rejoin/recovery when no explicit event arrives.
-      setSession(s => ({ ...s, partnerConnected: true }));
+      setSession(s => ({ ...s, partnerConnected: true, partnerConnecting: false }));
     };
 
     pm.onHello = (name) => {
@@ -362,6 +373,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           createdAt: typeof res.createdAt === 'number' ? res.createdAt : stored.createdAt,
           isCreator: stored.isCreator,
           partnerConnected: false,
+          partnerConnecting: false,
           connectionType: 'connecting'
         }));
         if (peerManagerRef.current) peerManagerRef.current.destroy();
@@ -405,6 +417,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             createdAt: res.createdAt,
             isCreator: true,
             partnerConnected: false,
+            partnerConnecting: false,
             connectionType: 'connecting',
             messages: [],
             deviceName: session.deviceName,
@@ -462,6 +475,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // Not connected yet — the app shows "Connecting…" until the data
       // channel opens (or the relay fallback confirms a working path).
       partnerConnected: false,
+      partnerConnecting: false,
       connectionType: 'connecting',
       messages: [],
       deviceName: session.deviceName,
@@ -646,6 +660,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       createdAt: undefined,
       isCreator: false,
       partnerConnected: false,
+      partnerConnecting: false,
       connectionType: 'disconnected',
       messages: [],
       closedReason: reason,

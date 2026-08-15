@@ -119,6 +119,28 @@ export function RoomHub() {
             No app to install. No account. Two browsers, one link.
           </p>
           <LiveCodeDisplay secret={session.secret} createdAt={session.createdAt} />
+
+          {/* The joiner arrived — WebRTC is opening. Usually a one-second flash
+              before the app routes both devices into the chat. */}
+          <AnimatePresence>
+            {session.partnerConnecting && !session.partnerConnected && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="overflow-hidden"
+              >
+                <p role="status" className="mt-4 flex items-center justify-center gap-2 text-[13px] font-medium text-apple-blue dark:text-azure-400">
+                  <span className="relative flex w-2 h-2">
+                    <span className="absolute inline-flex w-full h-full rounded-full bg-azure-500 opacity-60 animate-ping" />
+                    <span className="relative inline-flex w-2 h-2 rounded-full bg-azure-500" />
+                  </span>
+                  Your other device is connecting…
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Device name */}

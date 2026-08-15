@@ -45,7 +45,29 @@ function SessionEndedScreen({ reason, onRestart }: { reason: string, onRestart: 
  * joiner would otherwise wait forever. After a grace period, say what to do
  * and offer the recovery action — never a bare spinner.
  */
-function ConnectingWait({ onRetry }: { onRetry: () => void }) {
+/**
+ * Two device nodes joined by a line, with a pulse traveling between them —
+ * the joiner's "Connecting…" moment, same visual language as the hero beam.
+ * Pure CSS animation, so reduced-motion users get a still frame.
+ */
+function ConnectingVisual() {
+  return (
+    <div className="relative w-44 h-12 mb-8" aria-hidden>
+      <div className="absolute left-4 right-4 top-1/2 h-px bg-apple-ink/15 dark:bg-white/15" />
+      <div className="absolute left-4 right-4 top-1/2 h-px">
+        <div className="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-azure-500 animate-beam" />
+      </div>
+      <div className="absolute top-1/2 -translate-y-1/2 left-0 w-9 h-9 rounded-full bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 shadow-card flex items-center justify-center">
+        <ShareTextLogo size={15} className="text-apple-ink dark:text-white" />
+      </div>
+      <div className="absolute top-1/2 -translate-y-1/2 right-0 w-9 h-9 rounded-full bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 shadow-card flex items-center justify-center">
+        <ShareTextLogo size={15} className="text-apple-ink dark:text-white" />
+      </div>
+    </div>
+  );
+}
+
+function ConnectingWait({ onRetry }: { onRetry: () => void; key?: React.Key }) {
   const [elapsed, setElapsed] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setElapsed(true), 15000);
@@ -72,6 +94,8 @@ function ConnectingWait({ onRetry }: { onRetry: () => void }) {
 
 function AppContent() {
   const { session, leaveView, requestReconnect } = useSession();
+  // Remounts ConnectingWait on "Try again" so its 15s hint timer restarts.
+  const [waitKey, setWaitKey] = useState(0);
   const [view, setView] = useState<'landing' | 'join'>(() => {
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
@@ -136,14 +160,14 @@ function AppContent() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black px-6 text-center">
         <div className="flex flex-col items-center">
-          <ShareTextLogo size={64} animated className="text-apple-ink dark:text-white mb-8" />
+          {!waitingForReconnect && <ConnectingVisual />}
           <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">
             {waitingForReconnect ? "Your other device disconnected." : "Connecting…"}
           </h2>
           {waitingForReconnect ? (
             <p className="text-[17px] text-apple-ink-muted">Your room is still open — you can rejoin anytime.</p>
           ) : (
-            <ConnectingWait onRetry={() => { void requestReconnect(); }} />
+            <ConnectingWait key={waitKey} onRetry={() => { setWaitKey(k => k + 1); void requestReconnect(); }} />
           )}
           {waitingForReconnect && (
             <button

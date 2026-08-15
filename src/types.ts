@@ -28,6 +28,9 @@ export interface SessionState {
   createdAt?: number;
   isCreator: boolean;
   partnerConnected: boolean;
+  /** True from the moment a peer joins until the data channel actually opens —
+   *  lets the creator's pairing screen react the instant the joiner arrives. */
+  partnerConnecting: boolean;
   connectionType: ConnectionType;
   messages: ChatMessage[];
   closedReason?: string | null;
