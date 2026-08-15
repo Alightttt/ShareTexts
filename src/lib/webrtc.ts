@@ -25,6 +25,7 @@ export class PeerManager {
   private cryptoPromise: Promise<CryptoKey>;
   private destroyed = false;
   private retryTimer: ReturnType<typeof setInterval> | null = null;
+  private relayFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
   public onMessage: ((data: string) => void) | null = null;
   public onFileProgress: ((transferId: string, progress: number, total: number) => void) | null = null;
@@ -230,11 +231,14 @@ export class PeerManager {
     });
 
     // Fallback: if WebRTC never opens, switch the connection badge to relay.
-    setTimeout(() => {
+    // Only surface the partner as reachable if a peer has actually joined
+    // (peerId set) — a creator waiting alone must stay on the pairing screen.
+    this.relayFallbackTimer = setTimeout(() => {
       if (this.destroyed) return;
       if (!this.dc || this.dc.readyState !== 'open') {
         this.isRelayFallback = true;
         if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
+        if (this.peerId && this.onOpen) this.onOpen();
       }
     }, 10000);
   }
@@ -467,6 +471,7 @@ export class PeerManager {
   public destroy() {
     this.destroyed = true;
     if (this.retryTimer) clearInterval(this.retryTimer);
+    if (this.relayFallbackTimer) clearTimeout(this.relayFallbackTimer);
     if (this.dc) {
       try { this.dc.close(); } catch { /* noop */ }
     }

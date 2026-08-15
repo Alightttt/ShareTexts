@@ -8,24 +8,21 @@ interface LiveCodeDisplayProps {
 }
 
 export function LiveCodeDisplay({ secret }: LiveCodeDisplayProps) {
-  const [code, setCode] = useState(generateTOTP(secret));
-  const [progress, setProgress] = useState(getTOTPProgress());
-  const [remaining, setRemaining] = useState(getTOTPRemainingSeconds());
+  const [code, setCode] = useState(() => generateTOTP(secret));
+  const [progress, setProgress] = useState(() => getTOTPProgress());
+  const [remaining, setRemaining] = useState(() => getTOTPRemainingSeconds());
 
+  // Tick once per second (not per animation frame): React bails out when the
+  // code string is unchanged, so this re-renders ~1×/s. The ring depletes
+  // smoothly between ticks via the stroke-dashoffset CSS transition below.
   useEffect(() => {
-    let animationFrame: number;
-    
-    const tick = () => {
-      const newCode = generateTOTP(secret);
-      if (newCode !== code) setCode(newCode);
+    const interval = setInterval(() => {
+      setCode(generateTOTP(secret));
       setProgress(getTOTPProgress());
       setRemaining(getTOTPRemainingSeconds());
-      animationFrame = requestAnimationFrame(tick);
-    };
-    
-    animationFrame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animationFrame);
-  }, [secret, code]);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [secret]);
 
   const digits = code.split('');
   const isUrgent = remaining <= 3;
@@ -40,10 +37,16 @@ export function LiveCodeDisplay({ secret }: LiveCodeDisplayProps) {
             fill="transparent"
             stroke="currentColor"
             strokeWidth="3"
-            className={cn("transition-colors duration-300", isUrgent ? "text-status-danger" : "text-azure-500")}
+            className={cn(isUrgent ? "text-status-danger" : "text-azure-500")}
             strokeDasharray={113.097}
             strokeDashoffset={113.097 - (progress * 113.097)}
             strokeLinecap="round"
+            style={{
+              // Depletes continuously between 1s ticks; color follows urgency.
+              transitionProperty: 'stroke-dashoffset, color',
+              transitionDuration: '1s, 300ms',
+              transitionTimingFunction: 'linear, ease',
+            }}
           />
         </svg>
         <span className={cn("absolute text-[12px] font-medium transition-colors duration-300", isUrgent ? "text-status-danger" : "text-apple-ink-muted")}>

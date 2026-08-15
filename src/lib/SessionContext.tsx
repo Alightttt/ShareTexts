@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { SessionState, ChatMessage, ConnectionType } from '../types';
-import { getSocket, devLog } from './socket';
+import { getSocket, devLog, signalingConfigIssue } from './socket';
 import { PeerManager } from './webrtc';
 import { humanizeError } from './errors';
 
@@ -11,6 +11,7 @@ interface SessionContextValue {
   joinWithLink: (roomId: string) => Promise<{ success: boolean; error?: string }>;
   sendMessage: (text: string, attachment?: import('../types').Attachment, file?: File) => void;
   updateMessageAttachment: (messageId: string, updates: Partial<ChatMessage['attachment']>) => void;
+  retryTransfer: (messageId: string) => Promise<void>;
   setDeviceName: (name: string) => void;
   requestReconnect: () => Promise<void>;
   closeSession: () => void;
@@ -80,10 +81,10 @@ function ensureSocketConnected(timeoutMs = 10000): Promise<void> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       cleanup();
-      reject(new Error("Couldn't reach ShareText."));
+      reject(new Error(configIssueMessage() || "Couldn't reach ShareText."));
     }, timeoutMs);
     const onConnect = () => { cleanup(); resolve(); };
-    const onError = () => { cleanup(); reject(new Error("Couldn't reach ShareText.")); };
+    const onError = (err?: { message?: string }) => { cleanup(); reject(new Error(err?.message || configIssueMessage() || "Couldn't reach ShareText.")); };
     const cleanup = () => {
       clearTimeout(timer);
       socket.off('connect', onConnect);
@@ -92,6 +93,11 @@ function ensureSocketConnected(timeoutMs = 10000): Promise<void> {
     socket.once('connect', onConnect);
     socket.once('connect_error', onError);
   });
+}
+
+/** In production with no signaling URL baked into the bundle, say so. */
+function configIssueMessage(): string | null {
+  return signalingConfigIssue();
 }
 
 
@@ -111,6 +117,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   });
 
   const peerManagerRef = useRef<PeerManager | null>(null);
+  // In-memory File references for failed transfers, so "Retry" can resend
+  // the actual bytes. Files aren't serializable (JSON.stringify drops them),
+  // so they can't live on the message; this map is keyed by message id and
+  // cleared when the session resets.
+  const pendingFilesRef = useRef<Map<string, File>>(new Map());
 
   // Persist the room (credentials + recent messages) so it survives refreshes
   // and closed tabs, making the room feel genuinely persistent.
@@ -141,7 +152,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const socket = getSocket();
 
     socket.on('peer_joined', ({ peerId }) => {
-      setSession(s => ({ ...s, partnerConnected: true, connectionType: s.connectionType === 'disconnected' ? 'connecting' : s.connectionType }));
+      // A peer is now in the room — kick off the WebRTC handshake. Don't claim
+      // the partner is "connected" yet: ChatView appears only once the data
+      // channel actually opens (onOpen) or the relay fallback confirms a
+      // working path, so the UI never shows a green badge on a dead link.
+      setSession(s => ({ ...s, connectionType: s.connectionType === 'disconnected' ? 'connecting' : s.connectionType }));
       // Whichever device is already in the room initiates the WebRTC
       // handshake. This also covers reconnects after a refresh: the refreshed
       // device rejoins and the remaining peer gets this event and re-offers.
@@ -154,7 +169,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
 
     socket.on('peer_recovered', ({ peerId }) => {
-      setSession(s => ({ ...s, partnerConnected: true, connectionType: s.connectionType === 'disconnected' ? 'connecting' : s.connectionType }));
+      setSession(s => ({ ...s, connectionType: s.connectionType === 'disconnected' ? 'connecting' : s.connectionType }));
       // The peer's transport came back, but the WebRTC connection is gone.
       // Re-establish it from this side.
       if (session.roomId && session.secret && peerId) {
@@ -206,11 +221,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       try {
         const parsed = JSON.parse(dataStr);
         if (parsed.id && parsed.sender) {
-          // New structured format
-          setSession(s => ({
-            ...s,
-            messages: [...s.messages, parsed]
-          }));
+          // New structured format. Dedupe by message id so a retried transfer
+          // (metadata re-sent after a failure) doesn't create a duplicate
+          // bubble, while still (re)registering the binary expectation.
+          const isDuplicate = session.messages.some(m => m.id === parsed.id);
+          if (!isDuplicate) {
+            setSession(s => ({
+              ...s,
+              messages: [...s.messages, parsed]
+            }));
+          }
           if (parsed.attachment) {
             pm.expectBinaryTransfer(parsed.attachment.id, Math.ceil(parsed.attachment.size / (64 * 1024)));
           }
@@ -294,12 +314,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       });
       if (cancelled) return;
       if (res.success) {
+        // Back in the room, but the WebRTC channel is new — the app shows
+        // "Connecting…" until it opens, instead of a premature green badge.
         setSession(s => ({
           ...s,
           roomId: stored.roomId,
           secret: stored.secret,
           isCreator: stored.isCreator,
-          partnerConnected: true,
+          partnerConnected: false,
           connectionType: 'connecting'
         }));
         if (peerManagerRef.current) peerManagerRef.current.destroy();
@@ -349,7 +371,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           resolve();
         } else {
           devLog('Create request failed:', res.code || res.error);
-          reject(new Error(humanizeError(res.code, res.error || "Couldn't start a session.")));
+          reject(new Error(configIssueMessage() || humanizeError(res.code, res.error || "Couldn't start a session.")));
         }
       });
     });
@@ -393,7 +415,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       roomId,
       secret,
       isCreator: false,
-      partnerConnected: true,
+      // Not connected yet — the app shows "Connecting…" until the data
+      // channel opens (or the relay fallback confirms a working path).
+      partnerConnected: false,
       connectionType: 'connecting',
       messages: [],
       deviceName: session.deviceName,
@@ -413,6 +437,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         timestamp: Date.now(),
         attachment: attachment ? { ...attachment, status: file ? 'sending' : 'complete' } : undefined
       };
+
+      if (file) {
+        pendingFilesRef.current.set(msg.id, file);
+        // Keep the map bounded — only recent transfers can be retried anyway.
+        if (pendingFilesRef.current.size > 20) {
+          const oldest = pendingFilesRef.current.keys().next().value;
+          if (oldest !== undefined) pendingFilesRef.current.delete(oldest);
+        }
+      }
 
       setSession(s => ({
         ...s,
@@ -434,6 +467,34 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           updateMessageAttachment(msg.id, { status: 'failed' });
         }
       }
+    }
+  };
+
+  /**
+   * Re-send a failed file transfer: the metadata packet (so a partner that
+   * reloaded re-registers the binary expectation) followed by the file bytes.
+   * The receiver dedupes by message id, so a partner that already has the
+   * metadata just sees the chunks arrive.
+   */
+  const retryTransfer = async (messageId: string) => {
+    const pm = peerManagerRef.current;
+    const file = pendingFilesRef.current.get(messageId);
+    if (!pm || !file) return;
+    const msg = session.messages.find(m => m.id === messageId);
+    if (!msg?.attachment) return;
+
+    updateMessageAttachment(messageId, { status: 'sending', progress: 0 });
+    try {
+      const partnerMsg: ChatMessage = {
+        ...msg,
+        sender: 'partner',
+        attachment: { ...msg.attachment, status: 'sending', progress: 0 }
+      };
+      await pm.send(JSON.stringify(partnerMsg));
+      await pm.sendFile(file, msg.attachment.id);
+      updateMessageAttachment(messageId, { status: 'complete', progress: 1 });
+    } catch (e) {
+      updateMessageAttachment(messageId, { status: 'failed' });
     }
   };
 
@@ -497,6 +558,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       peerManagerRef.current.destroy();
       peerManagerRef.current = null;
     }
+    pendingFilesRef.current.clear();
     saveStoredSession(null);
     setSession(s => ({
       roomId: null,
@@ -512,7 +574,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, sendMessage, updateMessageAttachment, setDeviceName, requestReconnect, closeSession, leaveView }}>
+    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, sendMessage, updateMessageAttachment, retryTransfer, setDeviceName, requestReconnect, closeSession, leaveView }}>
       {children}
     </SessionContext.Provider>
   );

@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck client
+        run: npm run lint
+
+      - name: Typecheck worker
+        run: npm run worker:typecheck
+
+      - name: Worker protocol suite (emulator)
+        run: npm run worker:test
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Start server
+        run: |
+          PORT=3311 nohup npm run start > /tmp/sharetext-server.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3311/health > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          echo "server failed to start"
+          tail -40 /tmp/sharetext-server.log
+          exit 1
+
+      - name: Browser E2E (create → join → transfer → reconnect → rejoin)
+        run: URL=http://localhost:3311 node scripts/e2e.mjs
+
+      - name: Layout / accessibility audit
+        run: URL=http://localhost:3311 node scripts/audit.mjs
+        continue-on-error: true

@@ -3,7 +3,7 @@ import { useSession } from '../lib/SessionContext';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Send, X, Plus, Image as ImageIcon, ClipboardPaste,
-  Copy, Check, File as FileIcon, Play, Download, RefreshCw, AlertCircle, FileText, ChevronDown, ChevronUp
+  Copy, Check, File as FileIcon, Play, Download, RefreshCw, AlertCircle, FileText, ChevronDown, ChevronUp, Mic
 } from 'lucide-react';
 import { cn, formatBytes } from '../lib/utils';
 import { ChatMessage, Attachment } from '../types';
@@ -413,6 +413,7 @@ export function ChatView() {
                     >
                       <AttachmentOption icon={<ImageIcon className="w-5 h-5 text-blue-500" />} label="Photo" onClick={() => imageInputRef.current?.click()} />
                       <AttachmentOption icon={<Play className="w-5 h-5 text-purple-500" />} label="Video" onClick={() => videoInputRef.current?.click()} />
+                      <AttachmentOption icon={<Mic className="w-5 h-5 text-pink-500" />} label="Audio" onClick={() => audioInputRef.current?.click()} />
                       <AttachmentOption icon={<FileIcon className="w-5 h-5 text-orange-500" />} label="File" onClick={() => fileInputRef.current?.click()} />
                     </motion.div>
                   )}
@@ -470,6 +471,7 @@ function AttachmentOption({ icon, label, onClick }: { icon: React.ReactNode, lab
 }
 
 const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg, partnerName }) => {
+  const { retryTransfer } = useSession();
   const isMe = msg.sender === 'me';
   const a = msg.attachment;
 
@@ -618,6 +620,13 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
                 </div>
               )}
 
+              {/* Audio playback — plays once the transfer completes */}
+              {a.type === 'audio' && a.status === 'complete' && a.url && (
+                <div className={cn("px-4 pb-4", isMe ? "bg-white/10" : "bg-apple-canvas/50 dark:bg-black/20")}>
+                  <audio src={a.url} controls className="w-full" preload="metadata" />
+                </div>
+              )}
+
               {/* Metadata & Actions Bar */}
               <div className={cn(
                 "px-5 py-3 border-t flex items-center justify-between",
@@ -653,7 +662,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
                     </>
                   )}
                   {a.status === 'failed' && (
-                    <ActionButton icon={<RefreshCw />} label="Retry" onClick={() => {}} onBlue={isMe} />
+                    <ActionButton icon={<RefreshCw />} label="Retry" onClick={() => { void retryTransfer(msg.id); }} onBlue={isMe} />
                   )}
                 </div>
               </div>

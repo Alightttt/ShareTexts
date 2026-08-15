@@ -13,3 +13,13 @@ createRoot(document.getElementById('root')!).render(
     </MotionConfig>
   </StrictMode>,
 );
+
+// PWA: register the service worker in production builds only. Skipped in dev
+// so HMR and the local signaling server are never cached away.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      /* offline shell is progressive enhancement — ignore failures */
+    });
+  });
+}
