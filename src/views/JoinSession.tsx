@@ -75,7 +75,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-apple-canvas dark:bg-black p-6 relative selection:bg-apple-blue/20">
+    <div className="flex flex-col min-h-screen bg-apple-canvas dark:bg-black p-6 relative selection:bg-apple-blue/20 sm:justify-center">
       <div className="absolute top-6 left-6 flex items-center">
         <button 
           onPointerDown={onBack}
@@ -90,7 +90,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
         <span className="text-[14px] font-semibold tracking-tight text-apple-ink dark:text-white">ShareText</span>
       </div>
 
-      <div className="w-full max-w-sm mx-auto flex flex-col items-center mt-20 sm:mt-32">
+      <div className="w-full max-w-sm mx-auto flex flex-col items-center mt-24 sm:mt-4">
         
         <div className="w-full mb-12 flex justify-center">
           <AnimatePresence mode="wait">

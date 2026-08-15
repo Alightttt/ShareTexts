@@ -59,7 +59,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
 
       <p className="text-[12px] font-medium text-apple-ink-muted mb-8 tracking-widest uppercase">Live Code</p>
 
-      <div className="flex w-full max-w-[300px] gap-1.5 sm:gap-2">
+      <div className="flex w-full max-w-[320px] sm:max-w-[400px] gap-1.5 sm:gap-2.5">
         {digits.map((digit, i) => (
           <React.Fragment key={i}>
             <div className="flex-1 aspect-[3/4] bg-apple-parchment dark:bg-black border border-apple-divider/50 dark:border-apple-tile-3 rounded-[12px] flex items-center justify-center overflow-hidden relative shadow-inner">
@@ -70,13 +70,13 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -24, opacity: 0 }}
                   transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
-                  className="text-[clamp(26px,7.5vw,40px)] font-semibold text-apple-ink dark:text-white absolute font-mono tnum tracking-tighter"
+                  className="text-[clamp(28px,7.5vw,56px)] font-semibold text-apple-ink dark:text-white absolute font-mono tnum tracking-tighter"
                 >
                   {digit}
                 </motion.span>
               </AnimatePresence>
             </div>
-            {i === 2 && <div className="w-2 sm:w-3" />}
+            {i === 2 && <div className="w-2 sm:w-4" />}
           </React.Fragment>
         ))}
       </div>

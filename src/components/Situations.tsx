@@ -171,7 +171,7 @@ function Transfer({ from, to, index }: { from: TransferSide, to: TransferSide, i
       >
         <div className="h-px w-full bg-apple-ink/15 dark:bg-white/15" />
         <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 shadow-card flex items-center justify-center">
-          <ShareTextLogo size={11} className="text-apple-blue" />
+          <ShareTextLogo size={13} className="text-apple-blue" />
         </span>
       </motion.div>
 

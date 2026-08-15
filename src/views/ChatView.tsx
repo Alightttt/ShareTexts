@@ -8,6 +8,7 @@ import {
 import { cn, formatBytes } from '../lib/utils';
 import { ChatMessage, Attachment } from '../types';
 import { ShareTextLogo } from '../components/ShareTextLogo';
+import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
 
 const LARGE_TEXT_THRESHOLD = 8000; // chars
 const LARGE_TEXT_PREVIEW = 1400;
@@ -44,6 +45,26 @@ export function ChatView() {
   }, [previewUrl]);
 
   const disconnected = !session.partnerConnected && session.connectionType === 'disconnected';
+
+  // Keyboard-safe height: when the on-screen keyboard opens, the visual
+  // viewport shrinks while 100dvh doesn't. Track it so the composer stays
+  // pinned above the keyboard (the primary mobile input surface).
+  const [visualHeight, setVisualHeight] = useState<number | null>(null);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const shrank = vv.height < window.innerHeight - 120; // keyboard open
+      setVisualHeight(shrank ? vv.height : null);
+    };
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, []);
 
   useEffect(() => {
     if (!disconnected) {
@@ -209,7 +230,10 @@ export function ChatView() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-apple-canvas dark:bg-black font-sans">
+    <div
+      className="relative flex flex-col h-dvh bg-apple-canvas dark:bg-black font-sans"
+      style={visualHeight ? { height: `${visualHeight}px` } : undefined}
+    >
       {/* Screen-reader live region — invisible, announced on state changes */}
       <div aria-live="polite" role="status" className="sr-only">{announcement}</div>
 
@@ -413,6 +437,33 @@ export function ChatView() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Contextual room rail — large desktops only. Uses the horizontal
+          space without becoming a dashboard: the live pairing code (useful
+          if the other device drops and needs to rejoin), the connection
+          path, and a one-line privacy note. */}
+      <div className="hidden xl:flex absolute top-24 right-6 bottom-24 w-[228px] flex-col gap-4" aria-hidden>
+        <PairingMini secret={session.secret} createdAt={session.createdAt} />
+        <div className="rounded-[14px] bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 p-4 text-[12.5px] leading-relaxed text-apple-ink-muted">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className={cn(
+              "w-1.5 h-1.5 rounded-full",
+              session.connectionType === 'relay' ? "bg-status-warning" : "bg-status-success"
+            )} />
+            <span className="font-semibold text-apple-ink dark:text-white">
+              {session.connectionType === 'relay' ? 'Relay connection' : 'Direct connection'}
+            </span>
+          </div>
+          <p>
+            {session.connectionType === 'relay'
+              ? 'Connected through an encrypted relay — a direct connection wasn’t available.'
+              : 'Connected directly between your two devices.'}
+          </p>
+          <div className="mt-3 pt-3 border-t border-apple-divider/60 dark:border-apple-tile-3">
+            Encrypted between devices · Rooms are temporary
+          </div>
+        </div>
       </div>
 
       {/* Input Area */}
@@ -859,5 +910,39 @@ function ActionButton({ icon, label, onClick, active, primary, onBlue }: { icon:
       </motion.span>
       {label}
     </button>
+  );
+}
+
+/** Desktop rail: the live pairing code at a glance, so a dropped device can
+ *  rejoin without reopening the Connect screen. Re-ticks every second. */
+function PairingMini({ secret, createdAt }: { secret: string, createdAt?: number }) {
+  const [code, setCode] = useState(() => generateTOTP(secret, createdAt));
+  const [remaining, setRemaining] = useState(() => getTOTPRemainingSeconds(createdAt));
+  useEffect(() => {
+    const t = setInterval(() => {
+      setCode(generateTOTP(secret, createdAt));
+      setRemaining(getTOTPRemainingSeconds(createdAt));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [secret, createdAt]);
+  return (
+    <div className="rounded-[14px] bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 p-4 shadow-sm">
+      <div className="flex items-center justify-between mb-2.5">
+        <span className="text-[11px] font-semibold tracking-widest uppercase text-apple-ink-muted">Pairing code</span>
+        <span className={cn("text-[11px] font-medium tnum", remaining <= 3 ? "text-status-danger" : "text-apple-ink-muted")}>
+          {Math.ceil(remaining)}s
+        </span>
+      </div>
+      <div className="flex justify-between gap-1">
+        {code.split('').map((d, i) => (
+          <React.Fragment key={i}>
+            <span className="flex-1 aspect-[3/4] bg-apple-parchment dark:bg-black rounded-[8px] border border-apple-divider/50 dark:border-apple-tile-3 flex items-center justify-center font-mono tnum text-[17px] font-semibold text-apple-ink dark:text-white">
+              {d}
+            </span>
+            {i === 2 && <span className="w-1.5" />}
+          </React.Fragment>
+        ))}
+      </div>
+    </div>
   );
 }

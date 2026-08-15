@@ -91,7 +91,7 @@ export function RoomHub() {
         </div>
       </div>
 
-      <div className="w-full max-w-sm text-center flex flex-col items-center">
+      <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg text-center flex flex-col items-center">
 
         {waitingForReconnect && (
           <div className="w-full mb-6 px-4 py-3 rounded-[14px] bg-status-warning/10 border border-status-warning/20 text-[14px] font-medium text-status-warning-ink dark:text-status-warning-ink-dark flex flex-col items-center gap-3">
@@ -132,10 +132,7 @@ export function RoomHub() {
                 className="overflow-hidden"
               >
                 <p role="status" className="mt-4 flex items-center justify-center gap-2 text-[13px] font-medium text-apple-blue dark:text-azure-400">
-                  <span className="relative flex w-2 h-2">
-                    <span className="absolute inline-flex w-full h-full rounded-full bg-azure-500 opacity-60 animate-ping" />
-                    <span className="relative inline-flex w-2 h-2 rounded-full bg-azure-500" />
-                  </span>
+                  <ShareTextLogo size={16} motion="connecting" className="text-apple-blue dark:text-azure-400" />
                   Your other device is connecting…
                 </p>
               </motion.div>

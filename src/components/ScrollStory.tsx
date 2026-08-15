@@ -42,7 +42,7 @@ function DeviceHeader() {
   return (
     <div className="shrink-0 flex items-center justify-between px-2.5 pt-2 pb-1.5 border-b border-apple-ink/[0.06] dark:border-white/[0.08]">
       <div className="flex items-center gap-1">
-        <ShareTextLogo size={10} className="text-apple-ink dark:text-white" />
+        <ShareTextLogo size={12} className="text-apple-ink dark:text-white" />
         <span className="text-[8px] font-semibold tracking-tight text-apple-ink dark:text-white">ShareText</span>
       </div>
       <div className="flex items-center gap-1">

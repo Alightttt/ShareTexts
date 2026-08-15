@@ -26,7 +26,11 @@ function SessionEndedScreen({ reason, onRestart }: { reason: string, onRestart: 
       transition={{ duration: 0.3 }}
       className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black p-6 text-center"
     >
-      <ShareTextLogo size={56} className="text-apple-ink dark:text-white mb-6 opacity-80" />
+      <ShareTextLogo
+        size={56}
+        motion={reason === 'expired' ? undefined : 'complete'}
+        className="text-apple-ink dark:text-white mb-6 opacity-80"
+      />
       <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">Session ended.</h2>
       <p className="text-[17px] text-apple-ink-muted mb-10">{copy}</p>
       <button

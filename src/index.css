@@ -75,6 +75,15 @@
 }
 
 @layer base {
+  /* App-shell height model: the room is a fixed-viewport app (header +
+     scrollable messages + pinned composer), not a scrolling document. The
+     dynamic viewport unit keeps the composer above the browser chrome;
+     ChatView additionally tracks visualViewport so the on-screen keyboard
+     never hides it. */
+  html, body, #root {
+    height: 100%;
+  }
+
   body {
     @apply font-sans bg-apple-canvas text-apple-ink antialiased;
     font-size: 17px;
