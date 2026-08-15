@@ -23,6 +23,8 @@ export function ChatView() {
   const [confirmClose, setConfirmClose] = useState(false);
   const [showThatsIt, setShowThatsIt] = useState(false);
   const [announcement, setAnnouncement] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+  const dragDepth = useRef(0);
   const firstTransferShown = useRef(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -98,10 +100,7 @@ export function ChatView() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'file' | 'video' | 'audio') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const stageFile = (file: File, type: 'image' | 'file' | 'video' | 'audio') => {
     if (type === 'image' && file.size > 100 * 1024 * 1024) {
       setErrorMsg("This image is larger than 100 MB. Choose a smaller image to continue.");
       return;
@@ -122,6 +121,43 @@ export function ChatView() {
       status: 'draft'
     });
     setShowAttachmentMenu(false);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'file' | 'video' | 'audio') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    stageFile(file, type);
+  };
+
+  // Drag & drop: classify the first dropped file and stage it like the menu.
+  const handleDragEnter = (e: React.DragEvent) => {
+    if (!e.dataTransfer?.types.includes('Files')) return;
+    e.preventDefault();
+    dragDepth.current++;
+    setDragOver(true);
+  };
+  const handleDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
+  };
+  const handleDragLeave = () => {
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDragOver(false);
+  };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragDepth.current = 0;
+    setDragOver(false);
+    const files = e.dataTransfer?.files;
+    const file = files && files.length > 0 ? files[0] : undefined;
+    if (!file) return;
+    const type = file.type.startsWith('image/')
+      ? 'image'
+      : file.type.startsWith('video/')
+        ? 'video'
+        : file.type.startsWith('audio/')
+          ? 'audio'
+          : 'file';
+    stageFile(file, type);
   };
 
   const handleSend = (e?: React.FormEvent) => {
@@ -308,7 +344,13 @@ export function ChatView() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div
+        className="flex-1 overflow-y-auto p-4 sm:p-6 relative"
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <div className="max-w-3xl mx-auto flex flex-col space-y-4">
           {session.messages.length === 0 ? (
             <div className="h-full min-h-[40vh] flex flex-col items-center justify-center text-center space-y-3 opacity-80">
@@ -347,6 +389,14 @@ export function ChatView() {
           )}
           <div ref={messagesEndRef} />
         </div>
+
+        {dragOver && (
+          <div className="absolute inset-0 z-20 m-2 rounded-[20px] border-2 border-dashed border-apple-blue dark:border-azure-400 bg-apple-blue/10 dark:bg-azure-500/10 pointer-events-none flex items-center justify-center">
+            <div className="px-5 py-3 bg-white dark:bg-surface-dark rounded-full shadow-card text-[15px] font-semibold text-apple-ink dark:text-white">
+              Drop to send
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Input Area */}
@@ -472,7 +522,7 @@ export function ChatView() {
 
           <div className="flex justify-between items-center mt-1 px-1">
             <span className="text-[13px] text-apple-ink-muted font-medium">
-              {isLargeInput ? `Large text · ${formatBytes(inputBytes)}` : 'Cmd/Ctrl + Enter to send'}
+              {isLargeInput ? `Large text · ${formatBytes(inputBytes)}` : <span className="hidden sm:inline">Cmd/Ctrl + Enter to send</span>}
             </span>
             <button
               type="button"
@@ -764,7 +814,15 @@ function ActionButton({ icon, label, onClick, active, primary, onBlue }: { icon:
               : "bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white"
       )}
     >
-      <div className="[&>svg]:w-3.5 [&>svg]:h-3.5">{active ? <Check /> : icon}</div>
+      <motion.span
+        key={active ? 'check' : 'icon'}
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
+        className="[&>svg]:w-3.5 [&>svg]:h-3.5"
+      >
+        {active ? <Check /> : icon}
+      </motion.span>
       {label}
     </button>
   );

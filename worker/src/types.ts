@@ -2,8 +2,11 @@
 export interface Env {
   ROOMS: DurableObjectNamespace;
   REGISTRY: DurableObjectNamespace;
+  METRICS: DurableObjectNamespace;
   /** Comma-separated extra frontend origins allowed to connect. */
   ALLOWED_ORIGINS?: string;
+  /** If set, GET /metrics requires `Authorization: Bearer <token>`. */
+  METRICS_TOKEN?: string;
 }
 
 /** Day key used to shard the Registry — rooms live < 24h so entries never

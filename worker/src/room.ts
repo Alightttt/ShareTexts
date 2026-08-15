@@ -67,6 +67,26 @@ function log(...parts: unknown[]) {
   console.log('[ShareText-cf]', ...parts);
 }
 
+/**
+ * Fire an anonymous aggregate metric (best-effort, no payload — see
+ * metrics.ts). No-ops when the METRICS binding is absent so the emulator
+ * harness and older deploys keep working unchanged.
+ */
+async function count(env: Env, name: string) {
+  try {
+    if (!env.METRICS) return;
+    const stub = env.METRICS.get(env.METRICS.idFromName('metrics'));
+    await stub.fetch(
+      new Request('https://internal/event', {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      })
+    );
+  } catch {
+    /* metrics are best-effort */
+  }
+}
+
 export class Room extends DurableObject<Env> {
   private room: RoomState | null = null;
   /** Lazily-loaded connection records (cid → meta); survives per-wake via storage. */
@@ -213,6 +233,7 @@ export class Room extends DurableObject<Env> {
     if (r) {
       r.state = reason === 'idle_timeout' ? 'EXPIRED' : 'CLOSING';
       log('room terminal', r.roomId.slice(0, 8), r.state);
+      await count(this.env, 'rooms.closed:' + reason);
     }
     // room_closed goes to every live socket, then they all close.
     for (const ws of this.ctx.getWebSockets()) {
@@ -239,6 +260,7 @@ export class Room extends DurableObject<Env> {
       if (!(await this.memberOf(cid))) return;
       await this.touch();
       await this.markTransferring();
+      await count(this.env, 'relay.binary_messages');
       const other = this.otherOf(cid);
       if (other) {
         const ws2 = this.ctx.getWebSockets(other)[0];
@@ -365,6 +387,7 @@ export class Room extends DurableObject<Env> {
     await this.ctx.storage.setAlarm(this.room.expiresAt);
     await this.registerInRegistry(this.room);
     log('room created', roomId.slice(0, 8), 'WAITING');
+    await count(this.env, 'rooms.created');
     this.ackOk(cid, id, { roomId, secret });
   }
 
@@ -375,11 +398,13 @@ export class Room extends DurableObject<Env> {
     }
     const code = payload?.code;
     if (typeof code !== 'string') {
+      await count(this.env, 'joins.failed:invalid_code');
       return this.ackErr(cid, id, 'INVALID_CODE', 'Invalid or expired code');
     }
     // Per-room brute-force limit on the pairing code.
     const now = Date.now();
     if (r.codeFails >= CODE_FAIL_MAX && now < r.codeFailReset) {
+      await count(this.env, 'joins.failed:rate_limited');
       return this.ackErr(cid, id, 'RATE_LIMITED', 'Too many attempts. Try again in a minute.');
     }
     if (!(await validateTOTP(r.secret, code))) {
@@ -389,25 +414,36 @@ export class Room extends DurableObject<Env> {
       }
       r.codeFails++;
       await this.ctx.storage.put('room', r);
+      await count(this.env, 'joins.failed:invalid_code');
       return this.ackErr(cid, id, 'INVALID_CODE', 'Invalid or expired code');
     }
     r.codeFails = 0;
     const slot = await this.assignSlot(cid);
-    if (slot === 'full') return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText session is already full.');
+    if (slot === 'full') {
+      await count(this.env, 'joins.failed:room_full');
+      return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText session is already full.');
+    }
     await this.completeJoin(cid, id);
   }
 
   private async handleJoinWithLink(cid: string, id?: string, payload?: { secret?: unknown }) {
     const r = await this.loadRoom();
-    if (!r) return this.ackErr(cid, id, 'SESSION_EXPIRED', 'This session has expired.');
+    if (!r) {
+      await count(this.env, 'joins.failed:session_expired');
+      return this.ackErr(cid, id, 'SESSION_EXPIRED', 'This session has expired.');
+    }
     if (payload?.secret && payload.secret !== r.secret) {
+      await count(this.env, 'joins.failed:invalid_session');
       return this.ackErr(cid, id, 'INVALID_SESSION', 'This session link isn\u2019t valid anymore.');
     }
     if (r.peerA === cid || r.peerB === cid) {
       return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret });
     }
     const slot = await this.assignSlot(cid);
-    if (slot === 'full') return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText session is already full.');
+    if (slot === 'full') {
+      await count(this.env, 'joins.failed:room_full');
+      return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText session is already full.');
+    }
     await this.completeJoin(cid, id);
   }
 
@@ -438,6 +474,7 @@ export class Room extends DurableObject<Env> {
     await this.recomputeState();
     await this.notifyOthers(cid, 'peer_joined', { peerId: cid });
     log('peer joined', r.roomId.slice(0, 8), cid.slice(0, 8), 'state', r.state);
+    await count(this.env, 'joins.succeeded');
     this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret });
   }
 
@@ -462,6 +499,7 @@ export class Room extends DurableObject<Env> {
     if (typeof data !== 'string' || data.length > RELAY_TEXT_MAX) return;
     await this.touch();
     await this.markTransferring();
+    await count(this.env, 'relay.text_messages');
     await this.notifyOthers(cid, 'relay_message', { data });
   }
 

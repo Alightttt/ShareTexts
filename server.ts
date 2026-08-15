@@ -47,6 +47,23 @@ app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'sharetext-signaling' });
 });
 
+// Anonymous aggregate counters (in-memory, reset on restart). Only event
+// categories are counted — never room ids, codes, contents, or IPs.
+const metrics: Record<string, number> = {};
+function count(name: string) {
+  metrics[name] = (metrics[name] ?? 0) + 1;
+}
+
+app.get('/metrics', (_req, res) => {
+  res.json({
+    service: 'sharetext-signaling',
+    generated_at: new Date().toISOString(),
+    uptime_s: Math.round(process.uptime()),
+    note: 'in-memory aggregate counters, reset on restart',
+    totals: metrics,
+  });
+});
+
 // CORS allowlist. Production must NOT accept `*` — only the intended
 // frontend origins. Defaults: localhost dev origins + the Vercel frontend.
 // Add your own via ALLOWED_ORIGINS (comma-separated) — render.yaml sets this
@@ -175,16 +192,19 @@ io.on('connection', (socket) => {
 
     socket.join(roomId);
     log('room created', roomId.slice(0, 8), 'by', socket.id.slice(0, 8));
+    count('rooms.created');
     cb({ success: true, roomId, secret });
   });
 
   socket.on('join_with_code', ({ code }, cb) => {
     if (limited(ip, codeAttempts, 10, 60 * 1000)) {
+      count('joins.failed:rate_limited');
       return cb({ success: false, error: 'Too many attempts. Try again later.' });
     }
     if (typeof code !== 'string' || !/^\d{6}$/.test(code)) {
       // Keep the response shape identical to a miss so we don't leak whether
       // a code is close to being valid.
+      count('joins.failed:invalid_code');
       return cb({ success: false, error: 'Invalid or expired code' });
     }
 
@@ -219,20 +239,29 @@ io.on('connection', (socket) => {
 
       log('peer joined room', matchedRoom.id.slice(0, 8));
       socket.to(matchedRoom.id).emit('peer_joined', { peerId: socket.id });
+      count('joins.succeeded');
       cb({ success: true, roomId: matchedRoom.id, secret: matchedRoom.secret });
     } else {
+      count('joins.failed:invalid_code');
       cb({ success: false, error: 'Invalid or expired code' });
     }
   });
 
   socket.on('join_with_link', ({ roomId, secret }, cb) => {
     const room = rooms.get(roomId);
-    if (!room) return cb({ success: false, error: 'Room not found' });
+    if (!room) {
+      count('joins.failed:session_expired');
+      return cb({ success: false, error: 'Room not found' });
+    }
     // If a secret is supplied it must match. A fresh link-join has no secret
     // yet (the server hands it out after a successful join).
-    if (secret && room.secret !== secret) return cb({ success: false, error: 'Invalid session' });
+    if (secret && room.secret !== secret) {
+      count('joins.failed:invalid_session');
+      return cb({ success: false, error: 'Invalid session' });
+    }
 
     if (room.activePeers.size >= 2 && !room.activePeers.has(socket.id)) {
+      count('joins.failed:room_full');
       return cb({ success: false, error: 'This session already has two devices.' });
     }
 
@@ -242,6 +271,7 @@ io.on('connection', (socket) => {
     socket.join(roomId);
 
     socket.to(roomId).emit('peer_joined', { peerId: socket.id });
+    count('joins.succeeded');
     cb({ success: true, roomId, secret: room.secret });
   });
 
@@ -295,9 +325,7 @@ io.on('connection', (socket) => {
       socket.to(roomId).emit('signal', { from: socket.id, signal });
     }
     cb?.({ success: true });
-  });
-
-  socket.on('relay_message', ({ roomId, data }, cb) => {
+  });    socket.on('relay_message', ({ roomId, data }, cb) => {
     const room = rooms.get(roomId);
     if (!room) return cb?.({ success: false, error: 'Room not found' });
     if (!room.activePeers.has(socket.id)) return cb?.({ success: false, error: 'Not a member' });
@@ -311,15 +339,15 @@ io.on('connection', (socket) => {
     }
     room.lastActive = Date.now();
 
+    count(isString ? 'relay.text_messages' : 'relay.binary_messages');
     socket.to(roomId).emit('relay_message', { from: socket.id, data });
     cb?.({ success: true });
-  });
-
-  socket.on('close_room', ({ roomId }) => {
+  });    socket.on('close_room', ({ roomId }) => {
     const room = rooms.get(roomId);
     if (room && room.activePeers.has(socket.id)) {
       rooms.delete(roomId);
       io.to(roomId).emit('room_closed', { reason: 'manual_close' });
+      count('rooms.closed:manual_close');
     }
   });
 

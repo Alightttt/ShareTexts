@@ -1,10 +1,12 @@
 import { Room, UUID_RE } from './room';
 import { Registry } from './registry';
+import { Metrics } from './metrics';
 import { json, dayKey, type Env } from './types';
 
 // Durable Object classes must be exported from the entrypoint.
 export { Room };
 export { Registry };
+export { Metrics };
 
 /**
  * ShareText signaling — Cloudflare Workers entry.
@@ -105,6 +107,21 @@ export default {
 
     if (path === '/lookup' && request.method === 'POST') {
       return lookup(request, env, cors);
+    }
+
+    if (path === '/metrics') {
+      // Anonymous aggregate counters (see metrics.ts). Optional bearer gate so
+      // operators can keep volumes private if they want to.
+      const token = env.METRICS_TOKEN;
+      if (token && request.headers.get('authorization') !== 'Bearer ' + token) {
+        return json({ error: 'unauthorized' }, 401, cors);
+      }
+      const stub = env.METRICS.get(env.METRICS.idFromName('metrics'));
+      const res = await stub.fetch(new Request('https://internal/metrics'));
+      return new Response(res.body, {
+        status: res.status,
+        headers: { 'content-type': 'application/json', ...cors },
+      });
     }
 
     return json({
