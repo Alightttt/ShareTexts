@@ -193,7 +193,8 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     log('room created', roomId.slice(0, 8), 'by', socket.id.slice(0, 8));
     count('rooms.created');
-    cb({ success: true, roomId, secret });
+    // createdAt anchors the pairing-code window (40s from room creation).
+    cb({ success: true, roomId, secret, createdAt: rooms.get(roomId)!.createdAt });
   });
 
   socket.on('join_with_code', ({ code }, cb) => {
@@ -216,11 +217,13 @@ io.on('connection', (socket) => {
         label: "Session",
         algorithm: "SHA1",
         digits: 6,
-        period: 30,
+        period: 40,
         secret: room.secret
       });
 
-      const delta = totp.validate({ token: code, window: 1 });
+      // Room-anchored window: counter = (now - createdAt) / 40s, so the
+      // first code is always a full 40s and both devices agree on it.
+      const delta = totp.validate({ token: code, window: 1, timestamp: Date.now() - room.createdAt });
       if (delta !== null) {
         matchedRoom = room;
         break;
@@ -240,7 +243,7 @@ io.on('connection', (socket) => {
       log('peer joined room', matchedRoom.id.slice(0, 8));
       socket.to(matchedRoom.id).emit('peer_joined', { peerId: socket.id });
       count('joins.succeeded');
-      cb({ success: true, roomId: matchedRoom.id, secret: matchedRoom.secret });
+      cb({ success: true, roomId: matchedRoom.id, secret: matchedRoom.secret, createdAt: matchedRoom.createdAt });
     } else {
       count('joins.failed:invalid_code');
       cb({ success: false, error: 'Invalid or expired code' });
@@ -272,7 +275,7 @@ io.on('connection', (socket) => {
 
     socket.to(roomId).emit('peer_joined', { peerId: socket.id });
     count('joins.succeeded');
-    cb({ success: true, roomId, secret: room.secret });
+    cb({ success: true, roomId, secret: room.secret, createdAt: room.createdAt });
   });
 
   // Rejoin after a page refresh. Requires the session secret, which only a
@@ -303,7 +306,7 @@ io.on('connection', (socket) => {
 
     // Tell the other (live) peer to re-establish the connection with us.
     socket.to(roomId).emit('peer_joined', { peerId: socket.id });
-    cb({ success: true, roomId, secret: room.secret });
+    cb({ success: true, roomId, secret: room.secret, createdAt: room.createdAt });
   });
 
   socket.on('signal', ({ roomId, to, signal }, cb) => {

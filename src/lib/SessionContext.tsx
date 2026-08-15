@@ -17,6 +17,7 @@ interface SessionContextValue {
   requestReconnect: () => Promise<void>;
   closeSession: () => void;
   leaveView: () => void;
+  abandonSession: () => void;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -34,6 +35,8 @@ interface StoredSession {
   roomId: string;
   secret: string;
   isCreator: boolean;
+  /** Anchors the 40s pairing-code window across refreshes. */
+  createdAt?: number;
   deviceName?: string;
   partnerName?: string | null;
   messages?: ChatMessage[];
@@ -108,6 +111,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     return {
       roomId: stored?.roomId ?? null,
       secret: stored?.secret ?? null,
+      createdAt: stored?.createdAt,
       isCreator: stored?.isCreator ?? false,
       partnerConnected: false,
       connectionType: 'connecting',
@@ -118,11 +122,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   });
 
   const peerManagerRef = useRef<PeerManager | null>(null);
+  // True while the user deliberately leaves the pairing screen: the room
+  // close we emit comes back as room_closed, which must NOT show the
+  // "Session ended" screen — it was an intentional exit to the landing page.
+  const abandonedRef = useRef(false);
   // In-memory File references for failed transfers, so "Retry" can resend
   // the actual bytes. Files aren't serializable (JSON.stringify drops them),
   // so they can't live on the message; this map is keyed by message id and
   // cleared when the session resets.
   const pendingFilesRef = useRef<Map<string, File>>(new Map());
+  // Live mirror of session.messages so socket callbacks (registered once per
+  // room) dedupe against the CURRENT list, not the one from the first render.
+  const messagesRef = useRef(session.messages);
+  messagesRef.current = session.messages;
 
   // Persist the room (credentials + recent messages) so it survives refreshes
   // and closed tabs, making the room feel genuinely persistent.
@@ -133,6 +145,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         roomId: session.roomId,
         secret: session.secret,
         isCreator: session.isCreator,
+        createdAt: session.createdAt,
         deviceName: session.deviceName,
         partnerName: session.partnerName,
         messages: session.messages.slice(-100)
@@ -186,7 +199,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
 
     socket.on('room_closed', ({ reason }) => {
-      resetSession(reason || 'closed');
+      if (abandonedRef.current) {
+        abandonedRef.current = false;
+        resetSession();
+      } else {
+        resetSession(reason || 'closed');
+      }
     });
 
     socket.on('connect_error', () => {
@@ -225,7 +243,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           // New structured format. Dedupe by message id so a retried transfer
           // (metadata re-sent after a failure) doesn't create a duplicate
           // bubble, while still (re)registering the binary expectation.
-          const isDuplicate = session.messages.some(m => m.id === parsed.id);
+          const isDuplicate = messagesRef.current.some(m => m.id === parsed.id);
           if (!isDuplicate) {
             // A peer's 'sending' is our 'receiving'.
             const incoming = parsed.attachment && parsed.attachment.status === 'sending'
@@ -330,7 +348,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       if (cancelled) return;
-      const res = await new Promise<{ success: boolean; error?: string }>((resolve) => {
+      const res = await new Promise<{ success: boolean; error?: string; createdAt?: number }>((resolve) => {
         socket.emit('resume_room', { roomId: stored.roomId, secret: stored.secret }, resolve);
       });
       if (cancelled) return;
@@ -341,6 +359,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           ...s,
           roomId: stored.roomId,
           secret: stored.secret,
+          createdAt: typeof res.createdAt === 'number' ? res.createdAt : stored.createdAt,
           isCreator: stored.isCreator,
           partnerConnected: false,
           connectionType: 'connecting'
@@ -363,6 +382,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const createSession = async () => {
+    abandonedRef.current = false;
     devLog('Create Session clicked — connecting to socket…');
     await ensureSocketConnected();
     devLog('Socket connected — sending create request');
@@ -374,14 +394,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         reject(new Error("Couldn't reach ShareText."));
       }, 10000);
 
-      socket.emit('create_room', (res: { success: boolean; roomId?: string; secret?: string; error?: string; code?: string }) => {
+      socket.emit('create_room', (res: { success: boolean; roomId?: string; secret?: string; createdAt?: number; error?: string; code?: string }) => {
         clearTimeout(timeout);
         if (res.success && res.roomId && res.secret) {
           devLog('Room created — navigating');
-          saveStoredSession({ roomId: res.roomId, secret: res.secret, isCreator: true });
+          saveStoredSession({ roomId: res.roomId, secret: res.secret, isCreator: true, createdAt: res.createdAt });
           setSession({
             roomId: res.roomId,
             secret: res.secret,
+            createdAt: res.createdAt,
             isCreator: true,
             partnerConnected: false,
             connectionType: 'connecting',
@@ -404,10 +425,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       const timeout = setTimeout(() => {
         resolve({ success: false, error: "Couldn't reach ShareText." });
       }, 10000);
-      getSocket().emit('join_with_code', { code }, (res: { success: boolean; roomId?: string; secret?: string; error?: string; code?: string }) => {
+      getSocket().emit('join_with_code', { code }, (res: { success: boolean; roomId?: string; secret?: string; createdAt?: number; error?: string; code?: string }) => {
         clearTimeout(timeout);
         if (res.success) {
-          setupJoiner(res.roomId!, res.secret!);
+          setupJoiner(res.roomId!, res.secret!, res.createdAt);
         }
         resolve({ ...res, error: humanizeError(res.code, res.error || "Couldn't reach ShareText.") });
       });
@@ -420,21 +441,23 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       const timeout = setTimeout(() => {
         resolve({ success: false, error: "Couldn't reach ShareText." });
       }, 10000);
-      getSocket().emit('join_with_link', { roomId }, (res: { success: boolean; roomId?: string; secret?: string; error?: string; code?: string }) => {
+      getSocket().emit('join_with_link', { roomId }, (res: { success: boolean; roomId?: string; secret?: string; createdAt?: number; error?: string; code?: string }) => {
         clearTimeout(timeout);
         if (res.success) {
-          setupJoiner(res.roomId!, res.secret!);
+          setupJoiner(res.roomId!, res.secret!, res.createdAt);
         }
         resolve({ ...res, error: humanizeError(res.code, res.error || "Couldn't reach ShareText.") });
       });
     });
   };
 
-  const setupJoiner = (roomId: string, secret: string) => {
-    saveStoredSession({ roomId, secret, isCreator: false });
+  const setupJoiner = (roomId: string, secret: string, createdAt?: number) => {
+    abandonedRef.current = false;
+    saveStoredSession({ roomId, secret, isCreator: false, createdAt });
     setSession({
       roomId,
       secret,
+      createdAt,
       isCreator: false,
       // Not connected yet — the app shows "Connecting…" until the data
       // channel opens (or the relay fallback confirms a working path).
@@ -593,7 +616,24 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     resetSession();
   };
 
+  /**
+   * Leave the pairing screen for the landing page: close the room on the
+   * server (so a waiting joiner isn't stranded) and drop the local session
+   * WITHOUT the "Session ended" screen — a plain, silent exit.
+   */
+  const abandonSession = () => {
+    if (session.roomId) {
+      getSocket().emit('close_room', { roomId: session.roomId });
+    }
+    resetSession();
+    // Set AFTER reset (which clears it): the server echoes room_closed back
+    // to this socket; suppress it so the user lands on the landing page, not
+    // the "Session ended" screen.
+    abandonedRef.current = true;
+  };
+
   const resetSession = (reason?: string) => {
+    abandonedRef.current = false;
     if (peerManagerRef.current) {
       peerManagerRef.current.destroy();
       peerManagerRef.current = null;
@@ -603,6 +643,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setSession(s => ({
       roomId: null,
       secret: null,
+      createdAt: undefined,
       isCreator: false,
       partnerConnected: false,
       connectionType: 'disconnected',
@@ -614,7 +655,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, sendMessage, updateMessageAttachment, retryTransfer, cancelTransfer, setDeviceName, requestReconnect, closeSession, leaveView }}>
+    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, sendMessage, updateMessageAttachment, retryTransfer, cancelTransfer, setDeviceName, requestReconnect, closeSession, leaveView, abandonSession }}>
       {children}
     </SessionContext.Provider>
   );

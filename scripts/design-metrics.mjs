@@ -171,8 +171,8 @@ try {
   await measure(A, 'LANDING (dark, desktop)', [
     ['h1', 'h1'],
     ['subtitle', 'header + section p'],
-    ['cta-primary', { text: 'Create Session' }],
-    ['cta-secondary', { text: 'Join Session' }],
+    ['cta-primary', { text: 'Send text' }],
+    ['cta-secondary', { text: 'Receive text' }],
     ['kicker', { text: 'No account required', tag: 'p' }],
     ['header', 'header'],
   ]);
@@ -187,14 +187,14 @@ try {
   await ctxL.close();
 
   // ---- room hub ----
-  await A.getByRole('button', { name: 'Create Session' }).first().click();
+  await A.getByRole('button', { name: 'Send text' }).first().click();
   await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   const digits = await A.locator('span').filter({ hasText: /^\d$/ }).allTextContents();
   const code = digits.slice(-6).join('');
   await measure(A, 'ROOM HUB (creator waiting)', [
     ['heading', 'h1'],
     ['sub', { text: 'Open ShareText on the other device', tag: 'p' }],
-    ['code-card', { text: 'LIVE CODE', tag: 'div' }],
+    ['code-card', { text: 'Live Code', tag: 'p' }],
     ['digit', 'span.font-mono'],
     ['copy-code', { text: 'Copy Code' }],
     ['show-qr', { text: 'Show QR Code' }],
@@ -213,7 +213,7 @@ try {
 
   // ---- join screen ----
   await B.goto(URL, { waitUntil: 'networkidle' });
-  await B.getByRole('button', { name: 'Join Session' }).first().click();
+  await B.getByRole('button', { name: 'Receive text' }).first().click();
   await sleep(600);
   await measure(B, 'JOIN (mobile)', [
     ['heading', 'h1'],

@@ -37,7 +37,7 @@ Share links encode the internal `roomId` (a random 128-bit UUID). It is a capabi
 token, not a guessable sequence — room discovery by guessing is infeasible, and the
 room caps at two seats so a leaked link admits at most one extra device. The brief's
 `sharetext.app/join/ABC123` idea would require a short-code *mapping* server; the
-tradeoff is that a code-based link dies when the TOTP rotates (every 30s), while the
+tradeoff is that a code-based link dies when the TOTP rotates (every 40s, anchored to room creation), while the
 UUID link survives the session. Kept as-is, documented in the security audit.
 
 ## Gaps / follow-ups

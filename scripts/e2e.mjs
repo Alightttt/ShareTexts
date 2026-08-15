@@ -29,7 +29,7 @@ async function main() {
 
   // --- Device A: create session ---
   await A.goto(URL, { waitUntil: 'networkidle' });
-  await A.getByRole('button', { name: 'Create Session' }).first().click();
+  await A.getByRole('button', { name: 'Send text' }).first().click();
   await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   console.log('STEP 1 OK: A created session, Live Code visible');
   const code = await readLiveCode(A);
@@ -37,7 +37,7 @@ async function main() {
 
   // --- Device B: join ---
   await B.goto(URL, { waitUntil: 'networkidle' });
-  await B.getByRole('button', { name: 'Join Session' }).first().click();
+  await B.getByRole('button', { name: 'Receive text' }).first().click();
   await B.locator('input[inputmode="numeric"]').fill(code);
   await waitForChat(B, 'B');
   await waitForChat(A, 'A');
@@ -138,13 +138,14 @@ async function main() {
   // A is in the chat view now (no code shown), so derive a fresh TOTP from
   // the session secret stored in A's localStorage.
   const stored = await A.evaluate(() => localStorage.getItem('sharetext.session.v1'));
-  const { secret } = JSON.parse(stored);
+  const { secret, createdAt } = JSON.parse(stored);
   const { TOTP } = await import('otpauth');
-  const totp = new TOTP({ issuer: 'ShareText', label: 'Session', algorithm: 'SHA1', digits: 6, period: 30, secret });
-  const freshCode = totp.generate();
+  // 40s window anchored at room creation (matches the app's live code).
+  const totp = new TOTP({ issuer: 'ShareText', label: 'Session', algorithm: 'SHA1', digits: 6, period: 40, secret });
+  const freshCode = totp.generate({ timestamp: Date.now() - (createdAt || 0) });
   console.log('Fresh code for third device test:', freshCode);
   await C.goto(URL, { waitUntil: 'networkidle' });
-  await C.getByRole('button', { name: 'Join Session' }).first().click();
+  await C.getByRole('button', { name: 'Receive text' }).first().click();
   await C.locator('input[inputmode="numeric"]').fill(freshCode);
   await sleep(2500);
   const cBody = await C.locator('body').innerText();

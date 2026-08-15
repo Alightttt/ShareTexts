@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SessionProvider, useSession } from './lib/SessionContext';
 import { Landing } from './views/Landing';
 import { RoomHub } from './views/RoomHub';
@@ -36,6 +36,37 @@ function SessionEndedScreen({ reason, onRestart }: { reason: string, onRestart: 
         Start New Session
       </button>
     </motion.div>
+  );
+}
+
+/**
+ * Joiner's "Connecting…" wait. WebRTC handshakes normally open in under a
+ * second; if the other device's offer was lost (or its tab closed) the
+ * joiner would otherwise wait forever. After a grace period, say what to do
+ * and offer the recovery action — never a bare spinner.
+ */
+function ConnectingWait({ onRetry }: { onRetry: () => void }) {
+  const [elapsed, setElapsed] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setElapsed(true), 15000);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <>
+      <p className="text-[17px] text-apple-ink-muted">
+        {elapsed
+          ? "Still connecting. Make sure the other device is on its Connect screen with the code visible."
+          : "This usually takes a moment."}
+      </p>
+      {elapsed && (
+        <button
+          onPointerDown={onRetry}
+          className="mt-6 px-6 py-2.5 rounded-[10px] border border-apple-divider dark:border-white/15 text-[14px] font-semibold text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:border-apple-ink/30 dark:hover:border-white/30 transition-motion active:scale-95 min-h-[44px]"
+        >
+          Try again
+        </button>
+      )}
+    </>
   );
 }
 
@@ -109,9 +140,11 @@ function AppContent() {
           <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">
             {waitingForReconnect ? "Your other device disconnected." : "Connecting…"}
           </h2>
-          <p className="text-[17px] text-apple-ink-muted">
-            {waitingForReconnect ? "Your room is still open — you can rejoin anytime." : "This usually takes a moment."}
-          </p>
+          {waitingForReconnect ? (
+            <p className="text-[17px] text-apple-ink-muted">Your room is still open — you can rejoin anytime.</p>
+          ) : (
+            <ConnectingWait onRetry={() => { void requestReconnect(); }} />
+          )}
           {waitingForReconnect && (
             <button
               onPointerDown={() => { void requestReconnect(); }}

@@ -113,7 +113,7 @@ async function connect(room, roomId) {
   return { client, server, inbox, binary, send, waitFor, cid, close };
 }
 
-const codeFor = (secret) => new OTPAuth.TOTP({ issuer: 'ShareText', label: 'Session', algorithm: 'SHA1', digits: 6, period: 30, secret }).generate();
+const codeFor = (secret, createdAt = 0) => new OTPAuth.TOTP({ issuer: 'ShareText', label: 'Session', algorithm: 'SHA1', digits: 6, period: 40, secret }).generate({ timestamp: Date.now() - createdAt });
 const roomState = (ctx) => ctx.storage.map.get('room')?.state ?? null;
 const assertState = (ctx, expected) => check(`state = ${expected}`, roomState(ctx) === expected, `got ${roomState(ctx)}`);
 
@@ -134,7 +134,7 @@ async function runRoomProtocol() {
   assertState(ctx, 'WAITING');
 
   // join → CONNECTED + peer_joined
-  const code = codeFor(secret);
+  const code = codeFor(secret, created.createdAt);
   const joiner = await connect(room, roomId);
   const joined = await joiner.send('join_with_code', { code });
   check('join_with_code ack', joined.success === true && joined.roomId === roomId);
@@ -226,7 +226,7 @@ async function runLiveIdleExpiry() {
   const room = new Room(ctx, makeEnv());
   const creator = await connect(room, roomId);
   const created = await creator.send('create_room');
-  const code = codeFor(created.secret);
+  const code = codeFor(created.secret, created.createdAt);
   const joiner = await connect(room, roomId);
   const joined = await joiner.send('join_with_code', { code });
   if (!joined.success) { check('expiry: join', false, joined.error); return; }
@@ -250,7 +250,7 @@ async function runDisconnectedState() {
   const a = await connect(room, roomId);
   const created = await a.send('create_room');
   const joiner = await connect(room, roomId);
-  await joiner.send('join_with_code', { code: codeFor(created.secret) });
+  await joiner.send('join_with_code', { code: codeFor(created.secret, created.createdAt) });
   assertState(ctx, 'CONNECTED');
 
   a.client.close(1000, 'test');
@@ -271,8 +271,9 @@ async function runRegistry() {
   const reg = new Registry(ctx, {});
   const roomId = uuid();
   const secret = 'AABBCCDDEEFFGGHHJJKKLLMMNNOOPPQQ';
-  await reg.fetch(new Request('http://x/register', { method: 'POST', body: JSON.stringify({ roomId, secret, expiresAt: Date.now() + 3600e3 }) }));
-  const code = codeFor(secret);
+  const createdAt = Date.now();
+  await reg.fetch(new Request('http://x/register', { method: 'POST', body: JSON.stringify({ roomId, secret, createdAt, expiresAt: Date.now() + 3600e3 }) }));
+  const code = codeFor(secret, createdAt);
   const ok = await reg.fetch(new Request('http://x/lookup', { method: 'POST', body: JSON.stringify({ code }) }));
   const found = await ok.json();
   check('registry lookup finds room by code', ok.status === 200 && found.roomId === roomId);

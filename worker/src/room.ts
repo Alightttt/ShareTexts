@@ -220,7 +220,7 @@ export class Room extends DurableObject<Env> {
       await stub.fetch(
         new Request('https://internal/register', {
           method: 'POST',
-          body: JSON.stringify({ roomId: r.roomId, secret: r.secret, expiresAt: r.expiresAt }),
+          body: JSON.stringify({ roomId: r.roomId, secret: r.secret, createdAt: r.createdAt, expiresAt: r.expiresAt }),
         })
       );
     } catch {
@@ -388,7 +388,8 @@ export class Room extends DurableObject<Env> {
     await this.registerInRegistry(this.room);
     log('room created', roomId.slice(0, 8), 'WAITING');
     await count(this.env, 'rooms.created');
-    this.ackOk(cid, id, { roomId, secret });
+    // createdAt anchors the pairing-code window (40s from room creation).
+    this.ackOk(cid, id, { roomId, secret, createdAt: now });
   }
 
   private async handleJoinWithCode(cid: string, id?: string, payload?: { code?: unknown }) {
@@ -407,7 +408,7 @@ export class Room extends DurableObject<Env> {
       await count(this.env, 'joins.failed:rate_limited');
       return this.ackErr(cid, id, 'RATE_LIMITED', 'Too many attempts. Try again in a minute.');
     }
-    if (!(await validateTOTP(r.secret, code))) {
+    if (!(await validateTOTP(r.secret, code, r.createdAt))) {
       if (now >= r.codeFailReset) {
         r.codeFails = 0;
         r.codeFailReset = now + CODE_FAIL_WINDOW;
@@ -437,7 +438,7 @@ export class Room extends DurableObject<Env> {
       return this.ackErr(cid, id, 'INVALID_SESSION', 'This session link isn\u2019t valid anymore.');
     }
     if (r.peerA === cid || r.peerB === cid) {
-      return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret });
+      return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.createdAt });
     }
     const slot = await this.assignSlot(cid);
     if (slot === 'full') {
@@ -453,7 +454,7 @@ export class Room extends DurableObject<Env> {
       return this.ackErr(cid, id, 'SESSION_EXPIRED', 'This session has expired.');
     }
     if (r.peerA === cid || r.peerB === cid) {
-      return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret });
+      return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.createdAt });
     }
     // Drop stale seats whose sockets are gone so the returning device can sit.
     const live = await this.livePeers();
@@ -475,7 +476,7 @@ export class Room extends DurableObject<Env> {
     await this.notifyOthers(cid, 'peer_joined', { peerId: cid });
     log('peer joined', r.roomId.slice(0, 8), cid.slice(0, 8), 'state', r.state);
     await count(this.env, 'joins.succeeded');
-    this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret });
+    this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.createdAt });
   }
 
   private async handleSignal(cid: string, _id: string | undefined, payload?: { to?: unknown; signal?: unknown }) {

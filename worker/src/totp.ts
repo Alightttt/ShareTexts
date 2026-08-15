@@ -1,8 +1,16 @@
 /**
  * RFC 6238 TOTP implemented on Web Crypto — no dependencies, so it runs on
  * Cloudflare Workers. Must match the client's `otpauth` settings exactly:
- * HMAC-SHA1, 6 digits, 30s period, validation window ±1 step.
+ * HMAC-SHA1, 6 digits, 40s period, validation window ±1 step.
+ *
+ * The counter is anchored to the room's creation time (epoch), so a code
+ * window is [createdAt + N·40s, createdAt + (N+1)·40s) instead of a wall-
+ * clock boundary — the creator always sees a full 40s on first visit and
+ * both devices always agree on the current code.
  */
+
+/** Seconds per code window. Must equal TOTP_PERIOD in src/lib/totp.ts. */
+export const TOTP_PERIOD = 40;
 
 const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 
@@ -75,14 +83,14 @@ export async function totpAt(secret: string, counter: number): Promise<string> {
   return String(bin % 1_000_000).padStart(6, '0');
 }
 
-export async function generateTOTP(secret: string): Promise<string> {
-  return totpAt(secret, Math.floor(Date.now() / 1000 / 30));
+export async function generateTOTP(secret: string, epoch = 0): Promise<string> {
+  return totpAt(secret, Math.floor((Date.now() - epoch) / 1000 / TOTP_PERIOD));
 }
 
 /** Validate a code within ±`window` steps of the current counter. */
-export async function validateTOTP(secret: string, code: string, window = 1): Promise<boolean> {
+export async function validateTOTP(secret: string, code: string, epoch = 0, window = 1): Promise<boolean> {
   if (typeof code !== 'string' || !/^\d{6}$/.test(code)) return false;
-  const cur = Math.floor(Date.now() / 1000 / 30);
+  const cur = Math.floor((Date.now() - epoch) / 1000 / TOTP_PERIOD);
   for (let d = -window; d <= window; d++) {
     if ((await totpAt(secret, cur + d)) === code) return true;
   }

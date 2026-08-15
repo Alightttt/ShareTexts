@@ -4,8 +4,9 @@ import fs from 'fs';
 export const URL = process.env.URL || 'http://localhost:3311';
 
 const KNOWN_PATHS = [
-  'C:/Users/DELL-PC/AppData/Local/ms-playwright/chromium-1208/chrome-win64/chrome.exe',
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
+  'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+  'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
   '/usr/bin/google-chrome',
   '/usr/bin/chromium',
 ];
@@ -38,10 +39,10 @@ export async function waitForChat(page, label) {
 }
 
 export async function pairDevices(A, B) {
-  await A.getByRole('button', { name: 'Create Session' }).first().click();
+  await A.getByRole('button', { name: 'Send text' }).first().click();
   await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   const code = await readLiveCode(A);
-  await B.getByRole('button', { name: 'Join Session' }).first().click();
+  await B.getByRole('button', { name: 'Receive text' }).first().click();
   await B.locator('input[inputmode="numeric"]').fill(code);
   await waitForChat(B, 'B');
   await waitForChat(A, 'A');

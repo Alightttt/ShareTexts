@@ -107,8 +107,8 @@ class Client {
   }
 }
 
-function codeFor(secret) {
-  return new OTPAuth.TOTP({ issuer: 'ShareText', label: 'Session', algorithm: 'SHA1', digits: 6, period: 30, secret }).generate();
+function codeFor(secret, createdAt = 0) {
+  return new OTPAuth.TOTP({ issuer: 'ShareText', label: 'Session', algorithm: 'SHA1', digits: 6, period: 40, secret }).generate({ timestamp: Date.now() - createdAt });
 }
 
 async function main() {
@@ -131,7 +131,7 @@ async function main() {
   const secret = created.secret;
 
   // 4. lookup finds the room via its TOTP code
-  const code = codeFor(secret);
+  const code = codeFor(secret, created.createdAt);
   const lookup = await (await fetch(`${BASE}/lookup`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code }) })).json();
   check('POST /lookup resolves code → roomId', lookup.roomId === roomId);
 

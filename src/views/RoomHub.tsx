@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { LiveCodeDisplay } from '../components/LiveCodeDisplay';
 import { QRCodeSVG } from 'qrcode.react';
-import { Copy, QrCode, Check, Share2, ChevronDown, Pencil, Check as CheckIcon, Link2, RefreshCw } from 'lucide-react';
+import { Copy, QrCode, Check, Share2, ChevronDown, ChevronLeft, Pencil, Check as CheckIcon, Link2, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { generateTOTP } from '../lib/totp';
 
 export function RoomHub() {
-  const { session, setDeviceName, requestReconnect } = useSession();
+  const { session, setDeviceName, requestReconnect, abandonSession } = useSession();
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showQR, setShowQR] = useState(false);
@@ -50,7 +50,7 @@ export function RoomHub() {
   };
 
   const copyCode = async () => {
-    const code = generateTOTP(session.secret!);
+    const code = generateTOTP(session.secret!, session.createdAt);
     try {
       await navigator.clipboard.writeText(code);
     } catch {
@@ -78,8 +78,17 @@ export function RoomHub() {
       {/* Brand warmth — a soft azure glow behind the pairing card */}
       <div className="absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(70%_90%_at_50%_-10%,rgba(46,139,255,0.10),transparent_65%)] pointer-events-none" aria-hidden />
       <div className="absolute top-6 left-6 flex items-center gap-2">
-        <ShareTextLogo size={24} className="text-apple-ink dark:text-white" />
-        <span className="text-[14px] font-semibold tracking-tight text-apple-ink dark:text-white">ShareText</span>
+        <button
+          onPointerDown={abandonSession}
+          aria-label="Back to home"
+          className="flex items-center justify-center w-10 h-10 -ml-2 rounded-full text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-parchment dark:hover:bg-apple-tile-1 active:scale-95 transition-motion"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <div className="flex items-center gap-2">
+          <ShareTextLogo size={24} className="text-apple-ink dark:text-white" />
+          <span className="text-[14px] font-semibold tracking-tight text-apple-ink dark:text-white">ShareText</span>
+        </div>
       </div>
 
       <div className="w-full max-w-sm text-center flex flex-col items-center">
@@ -103,10 +112,13 @@ export function RoomHub() {
           <h1 className="text-[24px] sm:text-[26px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em] mb-1.5">
             Connect your other device.
           </h1>
-          <p className="text-[14px] text-apple-ink-muted dark:text-white/55 font-medium mb-6">
+          <p className="text-[14px] text-apple-ink-muted dark:text-white/55 font-medium mb-1">
             Open ShareText on the other device and enter this code.
           </p>
-          <LiveCodeDisplay secret={session.secret} />
+          <p className="text-[12.5px] text-apple-ink-muted/80 dark:text-white/40 font-medium mb-6">
+            No app to install. No account. Two browsers, one link.
+          </p>
+          <LiveCodeDisplay secret={session.secret} createdAt={session.createdAt} />
         </div>
 
         {/* Device name */}

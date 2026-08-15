@@ -6,7 +6,7 @@ screen-reader and keyboard gaps.
 
 ## Keyboard (all primary flows, no mouse)
 
-Create Session → button ✓ · Join Session → button ✓ · enter code → real `<input>` with
+Send text → button ✓ · Receive text → button ✓ · enter code → real `<input>` with
 6-cell mask, autofocus, numeric keyboard ✓ · send text → textarea + Send (⌘/Ctrl+Enter
 also works) ✓ · copy → button ✓ · attachment menu → button with arrow keys over a
 `flex flex-col` menu ✓ · select file → real file inputs ✓ · close room → button ✓.

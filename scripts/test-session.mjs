@@ -46,9 +46,10 @@ if (!createRes.success) throw new Error('Room creation failed: ' + JSON.stringif
 // Wait for TOTP code
 const { TOTP, Secret } = await import('otpauth');
 const totp = new TOTP({
-  issuer: 'ShareText', label: 'Session', algorithm: 'SHA1', digits: 6, period: 30, secret: createRes.secret
+  issuer: 'ShareText', label: 'Session', algorithm: 'SHA1', digits: 6, period: 40, secret: createRes.secret
 });
-const code = totp.generate();
+// 40s window anchored at room creation (matches the app's live code).
+const code = totp.generate({ timestamp: Date.now() - createRes.createdAt });
 console.log('Generated TOTP code:', code);
 
 const { socket: joiner, res: joinRes } = await joinWithCode(creator, code);

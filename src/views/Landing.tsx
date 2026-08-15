@@ -5,7 +5,7 @@ import { ShareTextLogo } from '../components/ShareTextLogo';
 import { HeroDemo } from '../components/HeroDemo';
 import { ScrollStory } from '../components/ScrollStory';
 import { Situations } from '../components/Situations';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Send, Inbox } from 'lucide-react';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -57,7 +57,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               Move something between your devices.
             </h1>
             <p className="mt-5 text-[15px] sm:text-[16px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[46ch]">
-              Text, photos and files. No app. No account.
+              Text, photos and videos between two devices — no WhatsApp, no USB cable, no app, no account.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <motion.button
@@ -67,15 +67,15 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 className="group px-7 py-3.5 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[10px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float"
               >
                 {isCreating ? 'Creating…' : createError ? 'Try Again' : (
-                  <>Create Session <ArrowRight className="w-4 h-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" /></>
+                  <><Send className="w-4 h-4" /> Send text <ArrowRight className="w-4 h-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" /></>
                 )}
               </motion.button>
               <motion.button
                 onPointerDown={onJoinClick}
                 whileTap={{ scale: 0.97 }}
-                className="px-6 py-3 rounded-[10px] text-[14px] font-medium text-apple-ink-muted dark:text-white/55 border border-apple-divider dark:border-white/15 hover:text-apple-ink dark:hover:text-white hover:border-apple-ink/30 dark:hover:border-white/30 transition-motion flex items-center justify-center"
+                className="px-6 py-3 rounded-[10px] text-[14px] font-medium text-apple-ink-muted dark:text-white/55 border border-apple-divider dark:border-white/15 hover:text-apple-ink dark:hover:text-white hover:border-apple-ink/30 dark:hover:border-white/30 transition-motion flex items-center justify-center gap-1.5"
               >
-                Join Session
+                <Inbox className="w-4 h-4" /> Receive text
               </motion.button>
             </div>
             <p className="mt-6 text-[13px] font-medium text-apple-ink-muted dark:text-white/60">
@@ -124,7 +124,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             className="group mt-9 px-9 py-4 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[10px] text-[16px] font-semibold flex items-center gap-2 mx-auto transition-motion disabled:opacity-60 shadow-card hover:shadow-float"
           >
             {isCreating ? 'Creating…' : createError ? 'Try Again' : (
-              <>Create Session <ArrowRight className="w-4.5 h-4.5 transition-transform duration-200 ease-out group-hover:translate-x-0.5" /></>
+              <><Send className="w-4.5 h-4.5" /> Send text <ArrowRight className="w-4.5 h-4.5 transition-transform duration-200 ease-out group-hover:translate-x-0.5" /></>
             )}
           </motion.button>
           <p className="mt-6 text-[15px] text-apple-ink-muted dark:text-white/55 font-medium">

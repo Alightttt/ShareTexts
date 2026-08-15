@@ -32,7 +32,7 @@ for (const [w, h, label] of viewports) {
   let r = await sample();
   console.log(`[${label}] landing overflow=${r.overflow} bodyBg=${r.bodyBg} bodyText=${r.bodyText} h1=${r.h1Color}`);
 
-  await A.getByRole('button', { name: 'Create Session' }).first().click();
+  await A.getByRole('button', { name: 'Send text' }).first().click();
   await A.waitForSelector('text=Live Code', { timeout: 8000 });
   await sleep(400);
   r = await sample();
@@ -43,7 +43,7 @@ for (const [w, h, label] of viewports) {
   const B = await ctxB.newPage();
   await B.goto(URL, { waitUntil: 'networkidle' });
   await sleep(500);
-  await B.getByRole('button', { name: 'Join Session' }).first().click();
+  await B.getByRole('button', { name: 'Receive text' }).first().click();
   await B.waitForSelector('text=Scan QR instead', { timeout: 8000 });
   const code = await A.evaluate(() =>
     [...document.querySelectorAll('[class*=font-mono]')].map(el => el.textContent).join('') || '');

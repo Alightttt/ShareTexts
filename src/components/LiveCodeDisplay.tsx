@@ -5,24 +5,27 @@ import { cn } from '../lib/utils';
 
 interface LiveCodeDisplayProps {
   secret: string;
+  /** Room creation time — anchors the 40s window so the countdown starts
+   *  fresh at 40 when the creator lands on this screen. */
+  createdAt?: number;
 }
 
-export function LiveCodeDisplay({ secret }: LiveCodeDisplayProps) {
-  const [code, setCode] = useState(() => generateTOTP(secret));
-  const [progress, setProgress] = useState(() => getTOTPProgress());
-  const [remaining, setRemaining] = useState(() => getTOTPRemainingSeconds());
+export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
+  const [code, setCode] = useState(() => generateTOTP(secret, createdAt));
+  const [progress, setProgress] = useState(() => getTOTPProgress(createdAt));
+  const [remaining, setRemaining] = useState(() => getTOTPRemainingSeconds(createdAt));
 
   // Tick once per second (not per animation frame): React bails out when the
   // code string is unchanged, so this re-renders ~1×/s. The ring depletes
   // smoothly between ticks via the stroke-dashoffset CSS transition below.
   useEffect(() => {
     const interval = setInterval(() => {
-      setCode(generateTOTP(secret));
-      setProgress(getTOTPProgress());
-      setRemaining(getTOTPRemainingSeconds());
+      setCode(generateTOTP(secret, createdAt));
+      setProgress(getTOTPProgress(createdAt));
+      setRemaining(getTOTPRemainingSeconds(createdAt));
     }, 1000);
     return () => clearInterval(interval);
-  }, [secret]);
+  }, [secret, createdAt]);
 
   const digits = code.split('');
   const isUrgent = remaining <= 3;
@@ -79,7 +82,7 @@ export function LiveCodeDisplay({ secret }: LiveCodeDisplayProps) {
       </div>
       
       <p className="text-[13px] text-apple-ink-muted dark:text-white/60 mt-8 text-center font-medium">
-        It refreshes every 30 seconds.
+        A new code appears every 40 seconds.
       </p>
     </div>
   );

@@ -4,6 +4,8 @@ import { json, type Env } from './types';
 
 interface RegistryEntry {
   secret: string;
+  /** Anchors the pairing-code window (40s from room creation). */
+  createdAt: number;
   expiresAt: number;
 }
 
@@ -30,7 +32,7 @@ export class Registry extends DurableObject<Env> {
   }
 
   private async register(request: Request): Promise<Response> {
-    let body: { roomId?: string; secret?: string; expiresAt?: number };
+    let body: { roomId?: string; secret?: string; createdAt?: number; expiresAt?: number };
     try {
       body = (await request.json()) as typeof body;
     } catch {
@@ -41,6 +43,7 @@ export class Registry extends DurableObject<Env> {
     }
     await this.ctx.storage.put('room:' + body.roomId, {
       secret: body.secret,
+      createdAt: typeof body.createdAt === 'number' ? body.createdAt : Date.now(),
       expiresAt: body.expiresAt,
     } satisfies RegistryEntry);
     return json({ ok: true });
@@ -63,7 +66,7 @@ export class Registry extends DurableObject<Env> {
         await this.ctx.storage.delete(key); // sweep stale entries
         continue;
       }
-      if (await validateTOTP(entry.secret, body.code)) {
+      if (await validateTOTP(entry.secret, body.code, entry.createdAt)) {
         return json({ roomId: key.slice('room:'.length) });
       }
     }

@@ -24,6 +24,8 @@ export interface ChatMessage {
 export interface SessionState {
   roomId: string | null;
   secret: string | null; // For creator to generate TOTP
+  /** Room creation time — anchors the 40s pairing-code window. */
+  createdAt?: number;
   isCreator: boolean;
   partnerConnected: boolean;
   connectionType: ConnectionType;
