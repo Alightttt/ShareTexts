@@ -1,12 +1,14 @@
 import { Room, UUID_RE } from './room';
 import { Registry } from './registry';
 import { Metrics } from './metrics';
+import { Stats } from './stats';
 import { json, dayKey, type Env } from './types';
 
 // Durable Object classes must be exported from the entrypoint.
 export { Room };
 export { Registry };
 export { Metrics };
+export { Stats };
 
 /**
  * ShareText signaling — Cloudflare Workers entry.
@@ -118,6 +120,17 @@ export default {
       }
       const stub = env.METRICS.get(env.METRICS.idFromName('metrics'));
       const res = await stub.fetch(new Request('https://internal/metrics'));
+      return new Response(res.body, {
+        status: res.status,
+        headers: { 'content-type': 'application/json', ...cors },
+      });
+    }
+
+    if (path === '/stats') {
+      // Live seated-device count for the landing-page social-proof widget
+      // (see stats.ts). Public by design — it reveals one aggregate number.
+      const stub = env.STATS.get(env.STATS.idFromName('stats'));
+      const res = await stub.fetch(new Request('https://internal/stats'));
       return new Response(res.body, {
         status: res.status,
         headers: { 'content-type': 'application/json', ...cors },

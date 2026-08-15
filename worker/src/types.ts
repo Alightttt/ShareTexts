@@ -3,6 +3,7 @@ export interface Env {
   ROOMS: DurableObjectNamespace;
   REGISTRY: DurableObjectNamespace;
   METRICS: DurableObjectNamespace;
+  STATS: DurableObjectNamespace;
   /** Comma-separated extra frontend origins allowed to connect. */
   ALLOWED_ORIGINS?: string;
   /** If set, GET /metrics requires `Authorization: Bearer <token>`. */

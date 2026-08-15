@@ -7,7 +7,8 @@ compatibility_date = "2025-07-01"
 bindings = [
   { name = "ROOMS", class_name = "Room" },
   { name = "REGISTRY", class_name = "Registry" },
-  { name = "METRICS", class_name = "Metrics" }
+  { name = "METRICS", class_name = "Metrics" },
+  { name = "STATS", class_name = "Stats" }
 ]
 
 [[migrations]]
@@ -17,6 +18,10 @@ new_sqlite_classes = ["Room", "Registry"]
 [[migrations]]
 tag = "v2-metrics"
 new_sqlite_classes = ["Metrics"]
+
+[[migrations]]
+tag = "v3-stats"
+new_sqlite_classes = ["Stats"]
 
 # Extra frontend origins can be added via the ALLOWED_ORIGINS var/secret.
 # Defaults (dev origins + share-texts.vercel.app) are built in.

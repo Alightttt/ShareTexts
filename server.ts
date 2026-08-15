@@ -64,6 +64,21 @@ app.get('/metrics', (_req, res) => {
   });
 });
 
+// Live seated-device count for the landing-page social-proof widget. Only a
+// single aggregate number is exposed — never room ids, codes, or IPs.
+app.get('/stats', (_req, res) => {
+  const seated = new Set<string>();
+  for (const room of rooms.values()) {
+    for (const pid of room.activePeers) seated.add(pid);
+  }
+  res.json({
+    service: 'sharetext-signaling',
+    generated_at: new Date().toISOString(),
+    users: seated.size,
+    note: 'approximate live count of seated devices',
+  });
+});
+
 // CORS allowlist. Production must NOT accept `*` — only the intended
 // frontend origins. Defaults: localhost dev origins + the Vercel frontend.
 // Add your own via ALLOWED_ORIGINS (comma-separated) — render.yaml sets this

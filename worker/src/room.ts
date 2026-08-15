@@ -87,6 +87,26 @@ async function count(env: Env, name: string) {
   }
 }
 
+/**
+ * Report this room's current seated-peer count to the Stats DO (best-effort,
+ * absolute value keyed by room — self-healing, see stats.ts). No-ops when the
+ * STATS binding is absent so the emulator harness keeps working unchanged.
+ */
+async function reportPresence(env: Env, roomId: string, count: number) {
+  try {
+    if (!env.STATS) return;
+    const stub = env.STATS.get(env.STATS.idFromName('stats'));
+    await stub.fetch(
+      new Request('https://internal/event', {
+        method: 'POST',
+        body: JSON.stringify({ roomId, count }),
+      })
+    );
+  } catch {
+    /* live count is best-effort */
+  }
+}
+
 export class Room extends DurableObject<Env> {
   private room: RoomState | null = null;
   /** Lazily-loaded connection records (cid → meta); survives per-wake via storage. */
@@ -234,6 +254,9 @@ export class Room extends DurableObject<Env> {
       r.state = reason === 'idle_timeout' ? 'EXPIRED' : 'CLOSING';
       log('room terminal', r.roomId.slice(0, 8), r.state);
       await count(this.env, 'rooms.closed:' + reason);
+      // The room is gone — zero its presence so the live counter can't hold
+      // a stale positive for a destroyed room (webSocketClose may race this).
+      await reportPresence(this.env, r.roomId, 0);
     }
     // room_closed goes to every live socket, then they all close.
     for (const ws of this.ctx.getWebSockets()) {
@@ -330,6 +353,9 @@ export class Room extends DurableObject<Env> {
         remaining: (await this.livePeers()).length,
       });
     }
+    if (wasMember) {
+      await reportPresence(this.env, r.roomId, (await this.livePeers()).length);
+    }
 
     const live = await this.livePeers();
     if (live.length === 0) {
@@ -388,6 +414,7 @@ export class Room extends DurableObject<Env> {
     await this.registerInRegistry(this.room);
     log('room created', roomId.slice(0, 8), 'WAITING');
     await count(this.env, 'rooms.created');
+    await reportPresence(this.env, roomId, (await this.livePeers()).length);
     // createdAt anchors the pairing-code window (40s from room creation).
     this.ackOk(cid, id, { roomId, secret, createdAt: now });
   }
@@ -481,6 +508,7 @@ export class Room extends DurableObject<Env> {
     await this.notifyOthers(cid, 'peer_joined', { peerId: cid });
     log('peer joined', r.roomId.slice(0, 8), cid.slice(0, 8), 'state', r.state);
     await count(this.env, 'joins.succeeded');
+    await reportPresence(this.env, r.roomId, (await this.livePeers()).length);
     this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.createdAt });
   }
 

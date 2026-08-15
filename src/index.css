@@ -198,6 +198,20 @@
 .animate-beam {
   animation: beam-travel 1.6s linear infinite;
 }
+
+/* Live-users pill: a green dot fading in and out. Opacity only — no layout.
+   The global prefers-reduced-motion block below already freezes it. */
+@keyframes live-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+.live-users-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--color-status-success);
+  animation: live-dot-pulse 2.4s ease-in-out infinite;
+}
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
     animation-duration: 0.01ms !important;

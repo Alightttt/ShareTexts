@@ -6,6 +6,7 @@ import { HeroDemo } from '../components/HeroDemo';
 import { ScrollStory } from '../components/ScrollStory';
 import { Situations } from '../components/Situations';
 import { ArrowRight, Send, Inbox } from 'lucide-react';
+import { LiveUsers } from '../components/LiveUsers';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -42,6 +43,8 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             <ShareTextLogo size={21} className="text-apple-ink dark:text-white" />
             <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>
           </a>
+          {/* Live count in the header — desktop only; mobile gets it in the hero below. */}
+          <LiveUsers className="ml-auto hidden lg:inline-flex" />
         </div>
       </header>
 
@@ -59,6 +62,8 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             <p className="mt-5 text-[15px] sm:text-[16px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[46ch]">
               Text, photos and videos between two devices — no WhatsApp, no USB cable, no app, no account.
             </p>
+            {/* Live count near the top on smaller devices (header pill is desktop-only). */}
+            <LiveUsers className="mt-5 lg:hidden" />
             <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <motion.button
                 onPointerDown={handleCreate}
