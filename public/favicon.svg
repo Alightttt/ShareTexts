@@ -1,10 +1,7 @@
 <svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <mask id="hole">
-      <rect x="0" y="0" width="256" height="256" fill="white"/>
-      <rect x="84" y="112" width="64" height="32" fill="black"/>
-      <path d="M148 94l48 34-48 34z" fill="black"/>
-    </mask>
-  </defs>
-  <rect x="36" y="36" width="184" height="184" rx="44" fill="#0a66f0" mask="url(#hole)"/>
+  <!-- ShareText mark: two device screens joined by a connection beam.
+       Must match src/components/ShareTextLogo.tsx and scripts/render-brand.mjs. -->
+  <rect x="40" y="36" width="84" height="84" rx="24" fill="#0a66f0"/>
+  <rect x="132" y="136" width="84" height="84" rx="24" fill="#0a66f0"/>
+  <path d="M110 106 L146 142" stroke="#0a66f0" stroke-width="28" stroke-linecap="round"/>
 </svg>

@@ -24,6 +24,7 @@ const SHELL = [
   '/icon-maskable-512.png',
   '/apple-touch-icon.png',
   '/og.png',
+  '/social-avatar.png',
 ];
 
 self.addEventListener('install', (event) => {

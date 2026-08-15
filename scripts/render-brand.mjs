@@ -1,6 +1,8 @@
 // Render ShareText brand assets with the system Chromium (Playwright):
-//   - public/og.png        1200×630 social preview (dark, minimal, brand mark)
+//   - public/og.png                1200×630 social preview (dark, minimal, brand mark)
+//   - public/social-avatar.png     1024×1024 mark + wordmark (social profiles)
 //   - public/icon-192.png, icon-512.png, icon-maskable-*.png, apple-touch-icon.png
+//   - public/favicon-16/32/48.png  raster favicons
 // Run: node scripts/render-brand.mjs
 import { chromium } from 'playwright';
 import fs from 'fs';
@@ -18,17 +20,18 @@ const KNOWN_PATHS = [
 const chrome = KNOWN_PATHS.find((p) => { try { return fs.existsSync(p); } catch { return false; } });
 
 /**
- * The ShareText mark: a rounded device screen with the transfer arrow
- * knocked straight through it (mask knockout, so the arrow shows whatever
- * background it sits on — light, dark, or accent). Must match
- * src/components/ShareTextLogo.tsx and public/favicon.svg.
+ * The ShareText mark: two device screens on the diagonal joined by a
+ * connection beam — the whole transfer story in one silhouette. One color
+ * throughout so it reads on any background and holds shape down to 16px.
+ * Must match src/components/ShareTextLogo.tsx and public/favicon.svg.
  */
-const MARK =
-  `<defs><mask id="hole"><rect x="0" y="0" width="256" height="256" fill="white"/><rect x="84" y="112" width="64" height="32" fill="black"/><path d="M148 94l48 34-48 34z" fill="black"/></mask></defs>` +
-  `<rect x="36" y="36" width="184" height="184" rx="44" fill="__FILL__" mask="url(#hole)"/>`;
+const MARK_SHAPES = (fill) => `
+  <rect x="40" y="36" width="84" height="84" rx="24" fill="${fill}"/>
+  <rect x="132" y="136" width="84" height="84" rx="24" fill="${fill}"/>
+  <path d="M110 106 L146 142" stroke="${fill}" stroke-width="28" stroke-linecap="round"/>`;
 
 const brandSvg = (size, fill) =>
-  `<svg width="${size}" height="${size}" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">${MARK.replace('__FILL__', fill)}</svg>`;
+  `<svg width="${size}" height="${size}" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">${MARK_SHAPES(fill)}</svg>`;
 
 // ---- OG image (1200×630) --------------------------------------------------
 const ogHtml = `<!doctype html><html><head><meta charset="utf-8"><style>
@@ -65,8 +68,30 @@ const ogHtml = `<!doctype html><html><head><meta charset="utf-8"><style>
   </div>
 </body></html>`;
 
+// ---- Social avatar (1024×1024, mark + wordmark on brand background) -------
+const avatarHtml = `<!doctype html><html><head><meta charset="utf-8"><style>
+  * { margin: 0; box-sizing: border-box; }
+  html, body { width: 1024px; height: 1024px; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(120% 90% at 50% 0%, #101C33 0%, #0B1220 55%, #060A13 100%);
+    color: #FAFAFA;
+    -webkit-font-smoothing: antialiased;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .inner { display: flex; flex-direction: column; align-items: center; gap: 34px; }
+  .wordmark { font-size: 74px; font-weight: 600; letter-spacing: -0.03em; color: #F5F5F5; }
+  .url { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 22px; letter-spacing: 0.02em; color: rgba(255,255,255,0.4); }
+</style></head><body>
+  <div class="inner">
+    ${brandSvg(320, '#4D9DFF')}
+    <div class="wordmark">ShareText</div>
+    <div class="url">share-texts.vercel.app</div>
+  </div>
+</body></html>`;
+
 // ---- PWA icons -------------------------------------------------------------
-const blueSvg = (size) => brandSvg(size, '#0a66f0');
+const blueSvg = (size) => brandSvg(size, '#4D9DFF');
 const ICON_BG = '#0A0F1A';
 const iconHtml = (size, markSize) =>
   `<!doctype html><html><head><meta charset="utf-8"><style>*{margin:0}</style></head><body>
@@ -88,13 +113,20 @@ async function shot(browser, html, size, out) {
 const browser = await chromium.launch(chrome ? { headless: true, executablePath: chrome } : { headless: true });
 try {
   await shot(browser, ogHtml, [1200, 630], 'public/og.png');
-  // The new mark is denser (fills ~72% of its viewBox), so scale it a touch
-  // smaller than the old page-mark to keep optical weight.
-  await shot(browser, iconHtml(192, 116), [192, 192], 'public/icon-192.png');
-  await shot(browser, iconHtml(512, 300), [512, 512], 'public/icon-512.png');
-  await shot(browser, maskableHtml(192, 106), [192, 192], 'public/icon-maskable-192.png');
-  await shot(browser, maskableHtml(512, 280), [512, 512], 'public/icon-maskable-512.png');
-  await shot(browser, iconHtml(180, 112), [180, 180], 'public/apple-touch-icon.png');
+  await shot(browser, avatarHtml, [1024, 1024], 'public/social-avatar.png');
+  // The mark spans ~70% of its viewBox — keep it inside the maskable safe
+  // zone (80% centre) at these scales.
+  await shot(browser, iconHtml(192, 128), [192, 192], 'public/icon-192.png');
+  await shot(browser, iconHtml(512, 340), [512, 512], 'public/icon-512.png');
+  await shot(browser, maskableHtml(192, 116), [192, 192], 'public/icon-maskable-192.png');
+  await shot(browser, maskableHtml(512, 310), [512, 512], 'public/icon-maskable-512.png');
+  await shot(browser, iconHtml(180, 120), [180, 180], 'public/apple-touch-icon.png');
+  // Raster favicons at exact target sizes (zero-margin page so the mark is
+  // flush, exactly 16/32/48px of painted mark).
+  const plain = (size, fill) => `<!doctype html><html><head><meta charset="utf-8"><style>*{margin:0}</style></head><body>${brandSvg(size, fill)}</body></html>`;
+  await shot(browser, plain(16, '#0a66f0'), [16, 16], 'public/favicon-16.png');
+  await shot(browser, plain(32, '#0a66f0'), [32, 32], 'public/favicon-32.png');
+  await shot(browser, plain(48, '#0a66f0'), [48, 48], 'public/favicon-48.png');
 } finally {
   await browser.close();
 }
