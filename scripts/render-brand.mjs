@@ -9,24 +9,26 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const KNOWN_PATHS = [
-  'C:/Users/DELL-PC/AppData/Local/ms-playwright/chromium-1208/chrome-win64/chrome.exe',
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
+  'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+  'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
   '/usr/bin/google-chrome',
   '/usr/bin/chromium',
 ];
 const chrome = KNOWN_PATHS.find((p) => { try { return fs.existsSync(p); } catch { return false; } });
 
 /**
- * The ShareText mark. The filled page uses an evenodd path so the transfer
- * arrow is a HOLE — it shows the background in any theme (monochrome, no
- * fixed-white stroke that disappears on dark surfaces).
+ * The ShareText mark: a rounded device screen with the transfer arrow
+ * knocked straight through it (mask knockout, so the arrow shows whatever
+ * background it sits on — light, dark, or accent). Must match
+ * src/components/ShareTextLogo.tsx and public/favicon.svg.
  */
-const MARK_OUTLINE = `<rect x="40" y="40" width="136" height="176" rx="22" stroke="__STROKE__" stroke-width="18" stroke-linejoin="round"/>`;
-const MARK_FILLED =
-  `<path fill="__FILL__" fill-rule="evenodd" d="M98 82h118v154H98zM129 153h49a7 7 0 0 1 0 14h-49a7 7 0 0 1 0-14zM151.05 142.95L160.95 133.05L182.95 155.05L173.05 164.95zM151.05 177.05L160.95 186.95L182.95 164.95L173.05 155.05z"/>`;
+const MARK =
+  `<defs><mask id="hole"><rect x="0" y="0" width="256" height="256" fill="white"/><rect x="84" y="112" width="64" height="32" fill="black"/><path d="M148 94l48 34-48 34z" fill="black"/></mask></defs>` +
+  `<rect x="36" y="36" width="184" height="184" rx="44" fill="__FILL__" mask="url(#hole)"/>`;
 
-const brandSvg = (size, stroke, fill) =>
-  `<svg width="${size}" height="${size}" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">${MARK_OUTLINE.replace('__STROKE__', stroke)}${MARK_FILLED.replace('__FILL__', fill)}</svg>`;
+const brandSvg = (size, fill) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">${MARK.replace('__FILL__', fill)}</svg>`;
 
 // ---- OG image (1200×630) --------------------------------------------------
 const ogHtml = `<!doctype html><html><head><meta charset="utf-8"><style>
@@ -53,7 +55,7 @@ const ogHtml = `<!doctype html><html><head><meta charset="utf-8"><style>
 </style></head><body>
   <div class="glow"></div>
   <div class="wrap">
-    <div class="brand">${brandSvg(48, '#F5F5F5', '#F5F5F5')}<span class="wordmark">ShareText</span></div>
+    <div class="brand">${brandSvg(48, '#F5F5F5')}<span class="wordmark">ShareText</span></div>
     <h1>Move something<br/>between your devices.</h1>
     <p class="sub">Text, photos and files. No app. No account.</p>
   </div>
@@ -64,7 +66,7 @@ const ogHtml = `<!doctype html><html><head><meta charset="utf-8"><style>
 </body></html>`;
 
 // ---- PWA icons -------------------------------------------------------------
-const blueSvg = (size) => brandSvg(size, '#0066CC', '#0066CC');
+const blueSvg = (size) => brandSvg(size, '#0a66f0');
 const ICON_BG = '#0A0F1A';
 const iconHtml = (size, markSize) =>
   `<!doctype html><html><head><meta charset="utf-8"><style>*{margin:0}</style></head><body>
@@ -86,11 +88,13 @@ async function shot(browser, html, size, out) {
 const browser = await chromium.launch(chrome ? { headless: true, executablePath: chrome } : { headless: true });
 try {
   await shot(browser, ogHtml, [1200, 630], 'public/og.png');
-  await shot(browser, iconHtml(192, 132), [192, 192], 'public/icon-192.png');
-  await shot(browser, iconHtml(512, 350), [512, 512], 'public/icon-512.png');
-  await shot(browser, maskableHtml(192, 120), [192, 192], 'public/icon-maskable-192.png');
-  await shot(browser, maskableHtml(512, 320), [512, 512], 'public/icon-maskable-512.png');
-  await shot(browser, iconHtml(180, 124), [180, 180], 'public/apple-touch-icon.png');
+  // The new mark is denser (fills ~72% of its viewBox), so scale it a touch
+  // smaller than the old page-mark to keep optical weight.
+  await shot(browser, iconHtml(192, 116), [192, 192], 'public/icon-192.png');
+  await shot(browser, iconHtml(512, 300), [512, 512], 'public/icon-512.png');
+  await shot(browser, maskableHtml(192, 106), [192, 192], 'public/icon-maskable-192.png');
+  await shot(browser, maskableHtml(512, 280), [512, 512], 'public/icon-maskable-512.png');
+  await shot(browser, iconHtml(180, 112), [180, 180], 'public/apple-touch-icon.png');
 } finally {
   await browser.close();
 }

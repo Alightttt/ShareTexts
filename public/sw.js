@@ -9,7 +9,7 @@
  *     cache on first fetch. Cross-origin requests (the signaling Worker's
  *     /health, /lookup, /ws) are never intercepted.
  */
-const CACHE = 'sharetext-v2';
+const CACHE = 'sharetext-v3';
 const SHELL = [
   '/',
   '/index.html',

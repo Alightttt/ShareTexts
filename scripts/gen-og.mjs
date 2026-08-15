@@ -20,10 +20,11 @@ function resolveChrome() {
   return undefined;
 }
 
+// New mark: rounded device screen with the transfer arrow knocked through it
+// (matches src/components/ShareTextLogo.tsx and public/favicon.svg).
 const svgLogo = `<svg width="44" height="44" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="40" y="40" width="136" height="176" rx="22" stroke="#2E8BFF" stroke-width="18" stroke-linejoin="round"/>
-  <rect x="98" y="82" width="118" height="154" rx="22" fill="#2E8BFF"/>
-  <path d="M136 160H178L156 138M178 160L156 182" stroke="white" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <defs><mask id="hole"><rect x="0" y="0" width="256" height="256" fill="white"/><rect x="84" y="112" width="64" height="32" fill="black"/><path d="M148 94l48 34-48 34z" fill="black"/></mask></defs>
+  <rect x="36" y="36" width="184" height="184" rx="44" fill="#2E8BFF" mask="url(#hole)"/>
 </svg>`;
 
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>
