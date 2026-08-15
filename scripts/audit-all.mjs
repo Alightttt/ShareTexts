@@ -78,7 +78,7 @@ for (const [w, h, label] of viewports) {
     return {
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       blueBubbles: cards.length,
-      partnerName: document.body.innerText.includes('Partner Device'),
+      partnerName: document.body.innerText.includes('Other device'),
     };
   });
   console.log(`[${label}] chat overflow=${r.overflow} blueBubbles=${r.blueBubbles} partnerName=${r.partnerName}`);

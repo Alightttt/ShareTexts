@@ -77,7 +77,7 @@ function ConnectingWait({ onRetry }: { onRetry: () => void; key?: React.Key }) {
     <>
       <p className="text-[17px] text-apple-ink-muted">
         {elapsed
-          ? "Still connecting. Make sure the other device is on its Connect screen with the code visible."
+          ? "Still connecting. Make sure the other device is on its Connect screen with the code visible — we\u2019re trying a direct connection and a secure relay."
           : "This usually takes a moment."}
       </p>
       {elapsed && (

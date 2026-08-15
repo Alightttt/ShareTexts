@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { CloudflareSocket } from './cloudflareSocket';
 import { devLog } from './devlog';
+import { diag } from './diag';
 
 export { devLog };
 
@@ -63,6 +64,7 @@ function resolveEndpoints(): { mode: 'cloudflare' | 'socketio'; url?: string } {
 
 const { mode, url } = resolveEndpoints();
 devLog('Signaling transport:', mode, url || '(same origin)');
+diag('transport.choose', true, `${mode}${url ? ' ' + url : ' (same origin)'}`);
 
 /**
  * Human-readable reason when a deployed build has no signaling backend to

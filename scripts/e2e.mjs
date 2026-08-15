@@ -90,7 +90,7 @@ async function main() {
   console.log('STEP 7: A refreshed — waiting for reconnect…');
   await sleep(6000);
   const aBody2 = await A.locator('body').innerText();
-  if (aBody2.includes('Close Room') || aBody2.includes('Your private clipboard') || aBody2.includes('Paste or type')) {
+  if (aBody2.includes('End session') || aBody2.includes('Your private clipboard') || aBody2.includes('Paste or type')) {
     console.log('STEP 7 OK: A reconnected to the room after refresh');
   } else {
     console.log('STEP 7 WARN: A after refresh shows:', aBody2.slice(0, 300).replace(/\n/g, ' | '));
@@ -118,7 +118,7 @@ async function main() {
   await B2.goto(URL, { waitUntil: 'networkidle' });
   await sleep(6000);
   const b2Body = await B2.locator('body').innerText();
-  if (b2Body.includes('Close Room') || b2Body.includes('Your private clipboard') || b2Body.includes('Hello from Device A')) {
+  if (b2Body.includes('End session') || b2Body.includes('Your private clipboard') || b2Body.includes('Hello from Device A')) {
     console.log('STEP 8c OK: B rejoined the room after closing the tab');
   } else {
     console.log('STEP 8c WARN: B after tab reopen shows:', b2Body.slice(0, 300).replace(/\n/g, ' | '));

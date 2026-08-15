@@ -13,7 +13,7 @@ const LARGE_TEXT_THRESHOLD = 8000; // chars
 const LARGE_TEXT_PREVIEW = 1400;
 
 export function ChatView() {
-  const { session, sendMessage, closeSession, cancelTransfer } = useSession();
+  const { session, sendMessage, closeSession, cancelTransfer, retryText } = useSession();
   const [inputText, setInputText] = useState('');
   const [attachment, setAttachment] = useState<Attachment & { file: File } | null>(null);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
@@ -219,7 +219,7 @@ export function ChatView() {
           <ShareTextLogo size={24} className="text-apple-ink dark:text-white shrink-0" />
           <div className="flex flex-col">
             <h2 className="text-[17px] font-semibold text-apple-ink dark:text-white leading-tight">
-              {session.partnerName || 'Partner Device'}
+              {session.partnerName || 'Other device'}
             </h2>
             <button
               onPointerDown={() => setShowConnectionDetails(!showConnectionDetails)}
@@ -263,7 +263,7 @@ export function ChatView() {
           onPointerDown={() => setConfirmClose(true)}
           className="px-4 py-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-apple-tile-3/50 rounded-[10px] transition-colors active:scale-95 min-h-[44px] flex items-center"
         >
-          Close Room
+          End session
         </button>
       </div>
 
@@ -288,9 +288,9 @@ export function ChatView() {
               aria-modal="true"
               aria-label="Close this session?"
             >
-              <h3 className="text-[19px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">Close this session?</h3>
+              <h3 className="text-[19px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">End this session?</h3>
               <p className="text-[15px] text-apple-ink-muted leading-relaxed mb-6">
-                Both devices will be disconnected and this temporary room will be destroyed.
+                Both devices will disconnect and this temporary room will be deleted.
               </p>
               <div className="flex flex-col gap-2">
                 <button
@@ -303,7 +303,7 @@ export function ChatView() {
                   onPointerDown={closeSession}
                   className="w-full py-3.5 bg-status-danger hover:bg-[#e0352b] text-white rounded-[14px] text-[15px] font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
                 >
-                  Close Room
+                  End session
                 </button>
               </div>
             </motion.div>
@@ -575,7 +575,7 @@ function AttachmentOption({ icon, label, onClick }: { icon: React.ReactNode, lab
 }
 
 const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg, partnerName }) => {
-  const { retryTransfer, cancelTransfer } = useSession();
+  const { retryTransfer, retryText, cancelTransfer } = useSession();
   const isMe = msg.sender === 'me';
   const a = msg.attachment;
 
@@ -641,7 +641,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
       )}>
         {/* Sender */}
         <span className="text-[12px] font-medium text-apple-ink-muted px-1">
-          {isMe ? 'You' : (partnerName || 'Partner')} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {isMe ? 'You' : (partnerName || 'Other device')} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </span>
 
         {/* Unified Card Container — sent messages carry the brand, received stay quiet */}
@@ -740,12 +740,14 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
               )}>
                 <div className="flex flex-col">
                   <span className={cn("text-[12px] font-medium flex items-center gap-1", isMe ? "text-white/75" : "text-apple-ink-muted")}>
-                    {a.status === 'complete' && (isMe ? <><Check className="w-3 h-3 text-white/90" /> Sent •</> : 'Received •')} {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {a.status === 'complete' && (isMe ? <><Check className="w-3 h-3 text-white/90" /> Sent •</> : 'Received •')} {a.status === 'complete' ? `${formatBytes(a.size)} • ` : ''}{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                   {a.status !== 'complete' && a.status !== 'draft' && (
-                    <span className={cn("text-[13px] font-semibold mt-0.5", a.status === 'failed' ? (isMe ? "text-white" : "text-status-danger") : a.status === 'cancelled' ? (isMe ? "text-white/80" : "text-apple-ink-muted") : isMe ? "text-white" : "text-apple-blue")}>
+                    <span className={cn("text-[13px] font-semibold mt-0.5", a.status === 'failed' ? (isMe ? "text-white" : "text-status-danger") : a.status === 'cancelled' || a.status === 'interrupted' ? (isMe ? "text-white/80" : "text-apple-ink-muted") : a.status === 'resuming' ? (isMe ? "text-white" : "text-apple-blue") : isMe ? "text-white" : "text-apple-blue")}>
                       {a.status === 'failed' ? 'Couldn\u2019t send this file.' :
                         a.status === 'cancelled' ? 'Cancelled' :
+                        a.status === 'interrupted' ? 'Connection interrupted — waiting to reconnect…' :
+                        a.status === 'resuming' ? `Resuming… ${Math.round((a.progress || 0) * 100)}%` :
                         a.status === 'sending' ? `Sending… ${Math.round((a.progress || 0) * 100)}%` :
                           `Receiving… ${Math.round((a.progress || 0) * 100)}%`}
                     </span>
@@ -766,10 +768,10 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
                       <ActionButton icon={<Download />} label="Save" onClick={() => handleDownload(a.url!, a.name)} primary onBlue={isMe} />
                     </>
                   )}
-                  {(a.status === 'sending' || a.status === 'receiving') && (
+                  {(a.status === 'sending' || a.status === 'receiving' || a.status === 'interrupted' || a.status === 'resuming') && (
                     <ActionButton icon={<X />} label="Cancel" onClick={() => { void cancelTransfer(msg.id); }} onBlue={isMe} />
                   )}
-                  {(a.status === 'failed' || (a.status === 'cancelled' && isMe)) && (
+                  {(a.status === 'failed' || (a.status === 'cancelled' && isMe) || (a.status === 'interrupted' && isMe)) && (
                     <ActionButton icon={<RefreshCw />} label="Retry" onClick={() => { void retryTransfer(msg.id); }} onBlue={isMe} />
                   )}
                 </div>
@@ -792,10 +794,21 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
                 ? "border-white/15 bg-white/10"
                 : "border-apple-divider/50 dark:border-apple-tile-3 bg-apple-canvas/30 dark:bg-black/10"
             )}>
-              <span className={cn("text-[12px] font-medium flex items-center gap-1", isMe ? "text-white/75" : "text-apple-ink-muted")}>
-                {isMe ? <><Check className="w-3 h-3 text-white/90" /> Sent •</> : 'Received •'} {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
-              <ActionButton icon={<Copy />} label={copied ? "Copied" : "Copy"} active={copied} onClick={() => handleCopy(msg.text)} onBlue={isMe} />
+              {msg.delivery === 'failed' ? (
+                <span className={cn("text-[13px] font-semibold flex items-center gap-1", isMe ? "text-white" : "text-status-danger")}>
+                  <AlertCircle className="w-3.5 h-3.5" /> Couldn't send
+                </span>
+              ) : (
+                <span className={cn("text-[12px] font-medium flex items-center gap-1", isMe ? "text-white/75" : "text-apple-ink-muted")}>
+                  {isMe ? <><Check className="w-3 h-3 text-white/90" /> Sent •</> : 'Received •'} {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+              <div className="flex gap-2">
+                {msg.delivery === 'failed' && (
+                  <ActionButton icon={<RefreshCw />} label="Retry" onClick={() => { void retryText(msg.id); }} onBlue={isMe} />
+                )}
+                <ActionButton icon={<Copy />} label={copied ? "Copied" : "Copy"} active={copied} onClick={() => handleCopy(msg.text)} onBlue={isMe} />
+              </div>
             </div>
           )}
 
@@ -809,6 +822,8 @@ function ProgressState({ attachment: a, isMe, onBlue }: { attachment: Attachment
   if (a.status === 'failed') return <span className={cn("font-medium", onBlue ? "text-white" : "text-status-danger")}>Couldn't send this file.</span>;
   if (a.status === 'cancelled') return <span className={cn("font-medium", onBlue ? "text-white/80" : "text-apple-ink-muted")}>Cancelled</span>;
   if (a.status === 'complete') return null;
+  if (a.status === 'interrupted') return <span className={cn("font-medium", onBlue ? "text-white" : "text-apple-ink-muted")}>Connection interrupted</span>;
+  if (a.status === 'resuming') return <span className={cn("font-medium", onBlue ? "text-white" : "text-apple-blue")}>Resuming… {Math.round((a.progress || 0) * 100)}%</span>;
   return (
     <span className={cn("font-medium animate-pulse", onBlue ? "text-white" : "text-apple-ink-muted")}>
       {isMe ? 'Sending…' : 'Receiving…'} {Math.round((a.progress || 0) * 100)}%

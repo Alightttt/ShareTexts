@@ -1,6 +1,7 @@
 import { getSocket } from './socket';
 import { encryptText, decryptText, generateKey, encryptBinaryChunk, decryptBinaryChunk } from './crypto';
 import { uuidToBytes, bytesToUuid } from './binaryUtils';
+import { diag } from './diag';
 import type { ChunkEnvelope } from './protocol';
 
 type SignalData = { type: 'offer' | 'answer'; sdp: string } | { type: 'candidate'; candidate: RTCIceCandidateInit };
@@ -14,6 +15,82 @@ const MAX_TRANSFER_SIZE = 200 * 1024 * 1024; // 200 MB max total
 const MAX_CHUNKS = Math.ceil(MAX_TRANSFER_SIZE / CHUNK_SIZE);
 const OFFER_RETRY_DELAY = 4000;
 const OFFER_RETRY_MAX = 3;
+
+/**
+ * The contiguous received prefix (first missing index). `received` is a
+ * COUNT — with out-of-order arrival (dc + relay interleave) it is NOT a safe
+ * resume position. Only everything below the first hole is guaranteed present,
+ * so acks must report the prefix, never the raw count.
+ */
+function firstMissing(chunks: ArrayBuffer[]): number {
+  let i = 0;
+  while (i < chunks.length && chunks[i]) i++;
+  return i;
+}
+
+/**
+ * Transfer state lives OUTSIDE PeerManager instances. WebRTC teardown on a
+ * reconnect (peer re-offer) destroys the old PeerManager — if the partially
+ * received chunks lived on the instance they would be lost and a reconnect
+ * could never resume, only restart from zero.
+ */
+interface PartialReceive {
+  chunks: ArrayBuffer[];
+  received: number;
+  total: number;
+  updatedAt: number;
+}
+const partialReceives = new Map<string, PartialReceive>();
+const MAX_PARTIALS = 4;
+
+interface SendProgress {
+  sentUpTo: number;   // chunks the local loop has pushed this connection
+  total: number;
+  acked: number;      // last position the peer confirmed (via ack packets)
+  updatedAt: number;
+}
+const sendProgress = new Map<string, SendProgress>();
+const ackWaiters = new Map<string, (received: number) => void>();
+
+/** Whether a binary transfer is mid-flight on the sending side. */
+export function hasSendProgress(transferId: string): boolean {
+  const p = sendProgress.get(transferId);
+  return !!p && p.sentUpTo > 0;
+}
+
+/** The last position the peer confirmed, for retry/resume decisions. */
+export function getAckedPosition(transferId: string): number {
+  return sendProgress.get(transferId)?.acked ?? 0;
+}
+
+/**
+ * Drop a stale partial receive (room closed, peer gone). Called by the app
+ * when a session resets so memory isn't held forever.
+ */
+export function clearTransferState(transferId: string) {
+  partialReceives.delete(transferId);
+  sendProgress.delete(transferId);
+  ackWaiters.delete(transferId);
+}
+
+/** Forget all transfer state — used on full session reset. */
+export function clearAllTransferState() {
+  diag('transfer.state_cleared', true, `${partialReceives.size} partials, ${sendProgress.size} sends`);
+  partialReceives.clear();
+  sendProgress.clear();
+  ackWaiters.clear();
+}
+
+/** Dev/diagnostic view of a partial receive — which sequences are missing. */
+export function getPartialInfo(transferId: string): { received: number; total: number; missing: number[] } | null {
+  const p = partialReceives.get(transferId);
+  if (!p) return null;
+  const missing: number[] = [];
+  for (let i = 0; i < p.total; i++) {
+    if (!p.chunks[i]) missing.push(i);
+  }
+  return { received: p.received, total: p.total, missing: missing.slice(0, 20) };
+}
 
 /** Thrown by a send loop that was cancelled (distinct from a network failure). */
 export class TransferCancelledError extends Error {
@@ -48,7 +125,6 @@ export class PeerManager {
   private iceCandidatesQueue: RTCIceCandidateInit[] = [];
 
   private incomingTextTransfers: Map<string, { chunks: string[]; received: number; total: number }> = new Map();
-  private incomingBinaryTransfers: Map<string, { chunks: ArrayBuffer[]; received: number; total: number }> = new Map();
   /** Abort handles for in-flight file sends, keyed by transfer id. */
   private transferControllers = new Map<string, AbortController>();
 
@@ -76,6 +152,7 @@ export class PeerManager {
   public initiateConnection(peerId: string) {
     if (this.destroyed) return;
     this.peerId = peerId;
+    diag('webrtc.initiate', true, `to ${(peerId || '').slice(0, 8)}`);
     this.createPeerConnection();
     this.dc = this.pc!.createDataChannel('chat', { negotiated: false });
     this.setupDataChannel(this.dc);
@@ -129,6 +206,7 @@ export class PeerManager {
           to: this.peerId,
           signal: { type: 'offer', sdp: this.pc.localDescription.sdp }
         });
+        diag('webrtc.offer_sent', true, `to ${(this.peerId || '').slice(0, 8)}`);
       })
       .catch(() => { /* connection may have been torn down */ });
   }
@@ -157,6 +235,7 @@ export class PeerManager {
       if (this.pc.connectionState === 'connected') {
         this.determineConnectionType();
       } else if (this.pc.connectionState === 'disconnected' || this.pc.connectionState === 'failed' || this.pc.connectionState === 'closed') {
+        if (this.pc.connectionState === 'failed') diag('webrtc.ice_failed', false);
         if (this.onDisconnect && this.pc.connectionState !== 'closed') this.onDisconnect();
       }
     };
@@ -171,6 +250,7 @@ export class PeerManager {
     channel.binaryType = 'arraybuffer';
     channel.onopen = () => {
       this.isRelayFallback = false;
+      diag('webrtc.channel_open', true);
       this.determineConnectionType();
       void this.sendHello();
       if (this.onOpen) this.onOpen();
@@ -179,6 +259,7 @@ export class PeerManager {
       void this.handleIncomingData(event.data);
     };
     channel.onclose = () => {
+      diag('webrtc.channel_closed', true);
       if (this.onDisconnect) this.onDisconnect();
     };
   }
@@ -201,6 +282,7 @@ export class PeerManager {
 
       try {
         if (signal.type === 'offer') {
+          diag('webrtc.offer_received', true, `from ${(from || '').slice(0, 8)}`);
           // Handle SDP glare defensively (both sides offered) by rolling back
           // our local offer before accepting theirs.
           if (this.pc!.signalingState !== 'stable') {
@@ -222,7 +304,9 @@ export class PeerManager {
             to: from,
             signal: { type: 'answer', sdp: this.pc!.localDescription!.sdp }
           });
+          diag('webrtc.answer_sent', true, `to ${(from || '').slice(0, 8)}`);
         } else if (signal.type === 'answer') {
+          diag('webrtc.answer_received', true, `from ${(from || '').slice(0, 8)}`);
           await this.pc!.setRemoteDescription(new RTCSessionDescription(signal as RTCSessionDescriptionInit));
         } else if (signal.type === 'candidate') {
           if (this.pc!.remoteDescription) {
@@ -248,6 +332,7 @@ export class PeerManager {
       if (this.destroyed) return;
       if (!this.dc || this.dc.readyState !== 'open') {
         this.isRelayFallback = true;
+        diag('webrtc.relay_fallback', true);
         if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
         if (this.peerId && this.onOpen) this.onOpen();
       }
@@ -255,7 +340,23 @@ export class PeerManager {
   }
 
   public expectBinaryTransfer(transferId: string, totalChunks: number) {
-    this.incomingBinaryTransfers.set(transferId, { chunks: new Array(totalChunks), received: 0, total: totalChunks });
+    const existing = partialReceives.get(transferId);
+    if (!existing || existing.total !== totalChunks) {
+      partialReceives.set(transferId, {
+        chunks: new Array(totalChunks),
+        received: 0,
+        total: totalChunks,
+        updatedAt: Date.now()
+      });
+    } else {
+      existing.updatedAt = Date.now();
+    }
+    // Bound memory: keep only the newest few partials (LRU by touch time).
+    if (partialReceives.size > MAX_PARTIALS) {
+      const oldest = [...partialReceives.entries()]
+        .sort((a, b) => a[1].updatedAt - b[1].updatedAt)[0];
+      if (oldest) partialReceives.delete(oldest[0]);
+    }
   }
 
   private async handleIncomingData(data: string | ArrayBuffer) {
@@ -295,9 +396,35 @@ export class PeerManager {
                 if (inner && inner.type === 'cancel' && typeof inner.transferId === 'string') {
                   // The peer stopped a transfer. Drop our partial receive, stop
                   // our own send loop if it's mid-flight, and tell the UI.
-                  this.incomingBinaryTransfers.delete(inner.transferId);
+                  diag('transfer.cancelled', true, inner.transferId.slice(0, 8));
+                  partialReceives.delete(inner.transferId);
+                  sendProgress.delete(inner.transferId);
                   this.transferControllers.get(inner.transferId)?.abort();
                   if (this.onCancel) this.onCancel(inner.transferId);
+                  return;
+                }
+                if (inner && inner.type === 'ack' && typeof inner.transferId === 'string' && typeof inner.received === 'number') {
+                  // The peer confirmed receiving up to `received` chunks — the
+                  // resume floor. Also wakes a waiting resumeTransfer.
+                  const p = sendProgress.get(inner.transferId);
+                  if (p) p.acked = Math.max(p.acked, inner.received);
+                  const waiter = ackWaiters.get(inner.transferId);
+                  if (waiter) {
+                    ackWaiters.delete(inner.transferId);
+                    waiter(inner.received);
+                  }
+                  return;
+                }
+                if (inner && inner.type === 'resume_query' && typeof inner.transferId === 'string') {
+                  // The peer is re-sending a transfer after a reconnect and
+                  // wants to know where to start. Answer with our contiguous
+                  // prefix — the first missing index is the safe resume point.
+                  const partial = partialReceives.get(inner.transferId);
+                  void this.sendControl({
+                    type: 'ack',
+                    transferId: inner.transferId,
+                    received: partial ? firstMissing(partial.chunks) : 0
+                  });
                   return;
                 }
                 if (this.onMessage) this.onMessage(decrypted);
@@ -322,7 +449,7 @@ export class PeerManager {
       const sequence = view.getUint32(16, true);
       const payload = data.slice(20);
 
-      let transfer = this.incomingBinaryTransfers.get(transferId);
+      let transfer = partialReceives.get(transferId);
       if (!transfer) {
         // Expected to be pre-registered via metadata message
         return;
@@ -334,14 +461,27 @@ export class PeerManager {
           const decrypted = await decryptBinaryChunk(payload, this.cryptoKey);
           transfer.chunks[sequence] = decrypted;
           transfer.received++;
+          transfer.updatedAt = Date.now();
 
           if (this.onFileProgress) {
             this.onFileProgress(transferId, transfer.received, transfer.total);
           }
 
+          // Confirm progress to the sender every 32 chunks (~2 MB) so a
+          // reconnect resumes from where the peer actually has data. The ack
+          // is the contiguous prefix (first missing index) — a count can
+          // overstate the safe resume position when chunks arrived out of
+          // order, leaving a permanent hole.
+          if (transfer.received % 32 === 0) {
+            void this.sendControl({ type: 'ack', transferId, received: firstMissing(transfer.chunks) });
+          }
+
+          if (transfer.received % 64 === 0) diag('transfer.received', true, `${transfer.received}/${transfer.total}`);
+
           if (transfer.received === transfer.total) {
+            diag('transfer.received_complete', true, transferId.slice(0, 8));
             const blob = new Blob(transfer.chunks);
-            this.incomingBinaryTransfers.delete(transferId);
+            partialReceives.delete(transferId);
             if (this.onFileComplete) {
               this.onFileComplete(transferId, blob);
             }
@@ -428,16 +568,14 @@ export class PeerManager {
 
       if (this.dc && this.dc.readyState === 'open') {
         if (this.dc.bufferedAmount > 1024 * 1024) {
-          await new Promise(resolve => {
-            const check = () => {
-              if (this.destroyed || !this.dc) { resolve(true); return; }
-              if (this.dc.bufferedAmount < 512 * 1024) resolve(true);
-              else setTimeout(check, 50);
-            };
-            check();
-          });
+          const drained = await this.waitForDrain(1024 * 1024, 512 * 1024, 6000);
+          if (!drained) this.isRelayFallback = true;
         }
-        this.dc.send(serialized);
+        if (this.dc.readyState === 'open') {
+          this.dc.send(serialized);
+        } else {
+          getSocket().emit('relay_message', { roomId: this.roomId, data: serialized });
+        }
       } else {
         this.isRelayFallback = true;
         if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
@@ -453,7 +591,8 @@ export class PeerManager {
    */
   public cancelTransfer(transferId: string) {
     this.transferControllers.get(transferId)?.abort();
-    this.incomingBinaryTransfers.delete(transferId);
+    partialReceives.delete(transferId);
+    sendProgress.delete(transferId);
     this.incomingTextTransfers.delete(transferId);
     void this.sendControl({ type: 'cancel', transferId });
   }
@@ -480,53 +619,122 @@ export class PeerManager {
     } catch { /* cancel is best-effort */ }
   }
 
-  public async sendFile(file: File, transferId: string) {
+  /**
+   * Send a file, optionally resuming from a chunk index. The receiver stores
+   * chunks by sequence and dedupes, so re-sending from a confirmed position
+   * (rather than zero) is safe even if the peer already holds earlier chunks.
+   */
+  public async sendFile(file: File, transferId: string, startIndex = 0) {
     const key = await this.waitForCrypto();
     if (!key) return;
     const numChunks = Math.ceil(file.size / CHUNK_SIZE);
+    const start = Math.max(0, Math.min(startIndex, numChunks - 1));
     const transferIdBytes = uuidToBytes(transferId);
     const controller = new AbortController();
     this.transferControllers.set(transferId, controller);
     const signal = controller.signal;
+    const prog: SendProgress = sendProgress.get(transferId) ?? { sentUpTo: 0, total: numChunks, acked: 0, updatedAt: Date.now() };
+    prog.total = numChunks;
+    prog.updatedAt = Date.now();
+    sendProgress.set(transferId, prog);
+    diag('transfer.start', true, `${file.name} (${file.size}b) from chunk ${start}/${numChunks}`);
+    // If the channel's flow control wedges (bufferedAmount stuck), fall back
+    // to the relay for the rest of this transfer instead of hanging forever.
+    let wedged = false;
 
     try {
-    for (let i = 0; i < numChunks; i++) {
-      if (signal.aborted) throw new TransferCancelledError();
-      const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-      const arrayBuffer = await chunk.arrayBuffer();
-      const encrypted = await encryptBinaryChunk(arrayBuffer, key);
+      for (let i = start; i < numChunks; i++) {
+        if (signal.aborted) throw new TransferCancelledError();
+        const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+        const arrayBuffer = await chunk.arrayBuffer();
+        const encrypted = await encryptBinaryChunk(arrayBuffer, key);
 
-      const packet = new Uint8Array(20 + encrypted.byteLength);
-      packet.set(transferIdBytes, 0);
-      const view = new DataView(packet.buffer);
-      view.setUint32(16, i, true);
-      packet.set(new Uint8Array(encrypted), 20);
+        const packet = new Uint8Array(20 + encrypted.byteLength);
+        packet.set(transferIdBytes, 0);
+        const view = new DataView(packet.buffer);
+        view.setUint32(16, i, true);
+        packet.set(new Uint8Array(encrypted), 20);
 
-      if (this.dc && this.dc.readyState === 'open') {
-        if (this.dc.bufferedAmount > 2 * 1024 * 1024) {
-          await new Promise(resolve => {
-            const check = () => {
-              if (this.destroyed || !this.dc) { resolve(true); return; }
-              if (this.dc.bufferedAmount < 1 * 1024 * 1024) resolve(true);
-              else setTimeout(check, 50);
-            };
-            check();
-          });
+        if (!wedged && this.dc && this.dc.readyState === 'open') {
+          if (this.dc.bufferedAmount > 2 * 1024 * 1024) {
+            // Bounded wait: a channel that dropped (or whose flow control
+            // wedged) mid-wait must not hang the loop forever. Give it a few
+            // seconds, then finish this transfer over the relay.
+            const drained = await this.waitForDrain(2 * 1024 * 1024, 1 * 1024 * 1024, 6000);
+            if (!drained) {
+              wedged = true;
+              diag('transfer.dc_wedged', true, `chunk ${i} — finishing via relay`);
+            }
+          }
         }
-        this.dc.send(packet.buffer);
-      } else {
-        this.isRelayFallback = true;
-        if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
-        getSocket().emit('relay_message', { roomId: this.roomId, data: packet.buffer });
-      }
+        if (!wedged && this.dc && this.dc.readyState === 'open') {
+          this.dc.send(packet.buffer);
+        } else {
+          this.isRelayFallback = true;
+          if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
+          getSocket().emit('relay_message', { roomId: this.roomId, data: packet.buffer });
+        }
 
-      if (this.onFileProgress) {
-        this.onFileProgress(transferId, i + 1, numChunks);
+        prog.sentUpTo = i + 1;
+        prog.updatedAt = Date.now();
+        if (i % 64 === 0) diag('transfer.sent', true, `${i}/${numChunks}`);
+        if (this.onFileProgress) {
+          this.onFileProgress(transferId, i + 1, numChunks);
+        }
       }
-    }
+      diag('transfer.complete', true, file.name);
     } finally {
       this.transferControllers.delete(transferId);
+      if (!signal.aborted) sendProgress.delete(transferId);
     }
+  }
+
+  /**
+   * Wait for the data channel's send buffer to drain below `min` bytes.
+   * Resolves false after `maxMs` or when the channel is no longer open, so
+   * the caller can fall back to the relay instead of hanging.
+   */
+  private waitForDrain(above: number, min: number, maxMs: number): Promise<boolean> {
+    return new Promise(resolve => {
+      const started = Date.now();
+      const check = () => {
+        if (this.destroyed || !this.dc || this.dc.readyState !== 'open') { resolve(false); return; }
+        if (this.dc.bufferedAmount <= min) { resolve(true); return; }
+        if (Date.now() - started > maxMs) { resolve(false); return; }
+        setTimeout(check, 50);
+      };
+      check();
+    });
+  }
+
+  /**
+   * Resume an interrupted binary transfer after a reconnect: re-send the
+   * metadata packet (so the peer re-registers the expectation, preserving
+   * whatever it already received), ask the peer where it is, then send from
+   * that confirmed position.
+   */
+  public async resumeTransfer(metadataJson: string, file: File, transferId: string) {
+    await this.send(metadataJson);
+    const known = sendProgress.get(transferId)?.acked ?? 0;
+    const start = await new Promise<number>((resolve) => {
+      let settled = false;
+      const finish = (n: number) => { if (!settled) { settled = true; ackWaiters.delete(transferId); resolve(n); } };
+      const timer = setTimeout(() => finish(known), 2500);
+      ackWaiters.set(transferId, (n) => { clearTimeout(timer); finish(n); });
+      void this.sendControl({ type: 'resume_query', transferId });
+    });
+    diag('transfer.resuming', true, `from chunk ${start}`);
+    await this.sendFile(file, transferId, start);
+  }
+
+  /** Test/debug hook — the underlying RTCPeerConnection (never the secret). */
+  public getPc(): RTCPeerConnection | null {
+    return this.pc;
+  }
+
+  /** Test/debug hook — the live data channel, for simulating a drop. */
+  public getDataChannel(): RTCDataChannel | null {
+    return this.dc;
   }
 
   public destroy() {

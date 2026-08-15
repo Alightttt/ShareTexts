@@ -2,7 +2,12 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import { MotionConfig } from 'motion/react';
 import App from './App.tsx';
+import { installDiagGlobal } from './lib/diag';
 import './index.css';
+
+// Lifecycle diagnostics for the signaling/transfer journey — read them via
+// window.__sharetextDiag.snapshot() when a connect or transfer fails.
+installDiagGlobal();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

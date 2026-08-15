@@ -104,9 +104,12 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
             >
               {activeTab === 'code' && (
                 <div className="w-full flex flex-col items-center">
-                  <h1 className="text-[21px] sm:text-[23px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em] mb-8">
+                  <h1 className="text-[21px] sm:text-[23px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em] mb-2">
                     Enter the code from your other device.
                   </h1>
+                  <p className="text-[13px] text-apple-ink-muted dark:text-white/55 font-medium mb-8">
+                    The code on the other device changes every 40 seconds.
+                  </p>
                   <LiveCodeInput onComplete={handleCodeComplete} isJoining={isJoining} error={error} />
                 </div>
               )}
@@ -134,7 +137,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
                     disabled={isJoining}
                     className="w-full py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.98] flex items-center justify-center gap-2 shadow-card hover:shadow-float disabled:opacity-60"
                   >
-                    {isJoining ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Join Room'}
+                    {isJoining ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Connect'}
                   </button>
                 </div>
               )}

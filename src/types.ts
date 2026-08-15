@@ -9,7 +9,7 @@ export interface Attachment {
   encoding?: string; // 'utf-8' | 'binary' — protocol metadata (optional today)
   checksum?: string; // optional digest — protocol metadata (future)
   url?: string; // object URL for preview/download
-  status?: 'draft' | 'sending' | 'receiving' | 'complete' | 'failed' | 'cancelled';
+  status?: 'draft' | 'sending' | 'receiving' | 'interrupted' | 'resuming' | 'complete' | 'failed' | 'cancelled';
   progress?: number;
 }
 
@@ -19,6 +19,10 @@ export interface ChatMessage {
   text: string;
   timestamp: number;
   attachment?: Attachment;
+  /** Set when a text message fails to leave this device, so the bubble can
+   *  say "Couldn't send" honestly and offer Retry (attachments use
+   *  attachment.status instead). */
+  delivery?: 'failed';
 }
 
 export interface SessionState {
