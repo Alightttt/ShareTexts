@@ -44,6 +44,8 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
         onChange={handleChange}
         disabled={isJoining}
         autoFocus
+        aria-label="Six-digit pairing code"
+        aria-describedby={error ? 'live-code-error' : undefined}
         className="absolute inset-0 opacity-0 cursor-default"
         style={{ fontSize: '16px' }} // prevent iOS zoom
       />
@@ -53,6 +55,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
         transition={{ duration: 0.4 }}
         className="flex w-full max-w-[300px] gap-1.5 sm:gap-2"
         onClick={() => inputRef.current?.focus()}
+        aria-hidden="true"
       >
         {Array.from({ length: 6 }).map((_, i) => (
           <React.Fragment key={i}>
@@ -80,13 +83,13 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
       </motion.div>
 
       {error && (
-        <div className="mt-6 text-[14px] text-status-danger font-medium">
+        <div id="live-code-error" role="alert" className="mt-6 text-[14px] text-status-danger font-medium">
           {error}
         </div>
       )}
 
       {isJoining && (
-        <div className="flex flex-col items-center justify-center mt-8">
+        <div role="status" className="flex flex-col items-center justify-center mt-8">
           <Loader2 className="w-6 h-6 animate-spin text-apple-ink-muted mb-4" />
           <p className="text-[15px] font-medium text-apple-ink-muted">Verifying code…</p>
         </div>

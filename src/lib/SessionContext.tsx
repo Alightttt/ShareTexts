@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { SessionState, ChatMessage, ConnectionType } from '../types';
 import { getSocket, devLog, signalingConfigIssue } from './socket';
-import { PeerManager } from './webrtc';
+import { PeerManager, TransferCancelledError } from './webrtc';
 import { humanizeError } from './errors';
 
 interface SessionContextValue {
@@ -12,6 +12,7 @@ interface SessionContextValue {
   sendMessage: (text: string, attachment?: import('../types').Attachment, file?: File) => void;
   updateMessageAttachment: (messageId: string, updates: Partial<ChatMessage['attachment']>) => void;
   retryTransfer: (messageId: string) => Promise<void>;
+  cancelTransfer: (messageId: string) => void;
   setDeviceName: (name: string) => void;
   requestReconnect: () => Promise<void>;
   closeSession: () => void;
@@ -226,9 +227,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           // bubble, while still (re)registering the binary expectation.
           const isDuplicate = session.messages.some(m => m.id === parsed.id);
           if (!isDuplicate) {
+            // A peer's 'sending' is our 'receiving'.
+            const incoming = parsed.attachment && parsed.attachment.status === 'sending'
+              ? { ...parsed, attachment: { ...parsed.attachment, status: 'receiving' } }
+              : parsed;
             setSession(s => ({
               ...s,
-              messages: [...s.messages, parsed]
+              messages: [...s.messages, incoming]
             }));
           }
           if (parsed.attachment) {
@@ -254,7 +259,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
               ...m,
               attachment: {
                 ...m.attachment,
-                status: 'receiving',
+                // Progress never changes the state label: the sender stays
+                // 'sending', the receiver 'receiving', and a cancelled/failed
+                // transfer must not be resurrected by late progress events.
                 progress: progress / total
               }
             };
@@ -279,6 +286,20 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
                 progress: 1
               }
             };
+          }
+          return m;
+        })
+      }));
+    };
+
+    // The peer cancelled a transfer (or cancelled ours mid-send). Mark the
+    // matching bubble cancelled on this side too.
+    pm.onCancel = (transferId) => {
+      setSession(s => ({
+        ...s,
+        messages: s.messages.map(m => {
+          if (m.attachment?.id === transferId) {
+            return { ...m, attachment: { ...m.attachment, status: 'cancelled' } };
           }
           return m;
         })
@@ -464,7 +485,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           await peerManagerRef.current.sendFile(file, attachment.id);
           updateMessageAttachment(msg.id, { status: 'complete', progress: 1 });
         } catch (e) {
-          updateMessageAttachment(msg.id, { status: 'failed' });
+          // A user cancel stops the loop cleanly — don't overwrite 'cancelled'.
+          if (!(e instanceof TransferCancelledError)) {
+            updateMessageAttachment(msg.id, { status: 'failed' });
+          }
         }
       }
     }
@@ -494,8 +518,24 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       await pm.sendFile(file, msg.attachment.id);
       updateMessageAttachment(messageId, { status: 'complete', progress: 1 });
     } catch (e) {
-      updateMessageAttachment(messageId, { status: 'failed' });
+      if (!(e instanceof TransferCancelledError)) {
+        updateMessageAttachment(messageId, { status: 'failed' });
+      }
     }
+  };
+
+  /**
+   * Cancel an in-flight file transfer. Works from either side: the local
+   * bubble flips to 'cancelled' immediately, the send loop (if ours) stops,
+   * and the peer is told via an encrypted control packet.
+   */
+  const cancelTransfer = (messageId: string) => {
+    const pm = peerManagerRef.current;
+    const msg = session.messages.find(m => m.id === messageId);
+    if (!pm || !msg?.attachment) return;
+    if (msg.attachment.status !== 'sending' && msg.attachment.status !== 'receiving') return;
+    updateMessageAttachment(messageId, { status: 'cancelled' });
+    pm.cancelTransfer(msg.attachment.id);
   };
 
   const updateMessageAttachment = (messageId: string, updates: Partial<ChatMessage['attachment']>) => {
@@ -574,7 +614,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, sendMessage, updateMessageAttachment, retryTransfer, setDeviceName, requestReconnect, closeSession, leaveView }}>
+    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, sendMessage, updateMessageAttachment, retryTransfer, cancelTransfer, setDeviceName, requestReconnect, closeSession, leaveView }}>
       {children}
     </SessionContext.Provider>
   );

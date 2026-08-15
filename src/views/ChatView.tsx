@@ -13,7 +13,7 @@ const LARGE_TEXT_THRESHOLD = 8000; // chars
 const LARGE_TEXT_PREVIEW = 1400;
 
 export function ChatView() {
-  const { session, sendMessage, closeSession } = useSession();
+  const { session, sendMessage, closeSession, cancelTransfer } = useSession();
   const [inputText, setInputText] = useState('');
   const [attachment, setAttachment] = useState<Attachment & { file: File } | null>(null);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
@@ -22,6 +22,7 @@ export function ChatView() {
   const [copiedAll, setCopiedAll] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [showThatsIt, setShowThatsIt] = useState(false);
+  const [announcement, setAnnouncement] = useState('');
   const firstTransferShown = useRef(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -46,6 +47,33 @@ export function ChatView() {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [session.messages, disconnected]);
+
+  // Screen-reader live region: connection state + inbound transfers are
+  // announced in plain words ("Connected", "Photo received", "Couldn't send
+  // the file.") without any visual change.
+  const lastMessage = session.messages[session.messages.length - 1];
+  useEffect(() => {
+    if (!lastMessage || lastMessage.sender === 'me') return;
+    const st = lastMessage.attachment?.status;
+    if (st === 'complete') {
+      const t = lastMessage.attachment?.type;
+      setAnnouncement(t === 'image' ? 'Photo received' : t === 'video' ? 'Video received' : t === 'audio' ? 'Audio received' : `File received: ${lastMessage.attachment!.name}`);
+    } else if (st === 'failed') {
+      setAnnouncement("Couldn't send the file.");
+    } else if (st === 'cancelled') {
+      setAnnouncement('Transfer cancelled');
+    } else if (!lastMessage.attachment) {
+      setAnnouncement('Message received');
+    }
+  }, [session.messages]);
+
+  useEffect(() => {
+    if (session.partnerConnected && session.connectionType !== 'disconnected') {
+      setAnnouncement('Connected');
+    } else if (session.connectionType === 'disconnected') {
+      setAnnouncement('Your other device disconnected');
+    }
+  }, [session.partnerConnected, session.connectionType]);
 
   // Post-transfer moment: after the very first successful transfer, a quiet
   // "That's it." appears once, then the app gets out of the way.
@@ -141,6 +169,9 @@ export function ChatView() {
 
   return (
     <div className="flex flex-col h-full bg-apple-canvas dark:bg-black font-sans">
+      {/* Screen-reader live region — invisible, announced on state changes */}
+      <div aria-live="polite" role="status" className="sr-only">{announcement}</div>
+
       {/* Header */}
       <div className="flex items-center justify-between p-4 sm:p-6 shrink-0 border-b border-apple-divider/50 dark:border-apple-tile-3/50 backdrop-blur-xl bg-apple-canvas/80 dark:bg-black/80 z-20 sticky top-0">
         <div className="flex items-center gap-3 relative">
@@ -151,6 +182,7 @@ export function ChatView() {
             </h2>
             <button
               onPointerDown={() => setShowConnectionDetails(!showConnectionDetails)}
+              aria-expanded={showConnectionDetails}
               className="flex items-center gap-2 mt-0.5 py-1.5 -my-1.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue rounded-[6px] min-h-[40px]"
             >
               <div className={cn(
@@ -158,7 +190,7 @@ export function ChatView() {
                 session.connectionType === 'relay' ? "bg-status-warning shadow-[0_0_8px_rgba(251,191,36,0.4)]" : "bg-status-success shadow-[0_0_8px_rgba(52,199,89,0.4)]"
               )} />
               <span className="text-[13px] text-apple-ink-muted font-medium hover:text-apple-ink dark:hover:text-white transition-colors">
-                Connected with ShareText
+                Connected
               </span>
             </button>
 
@@ -245,6 +277,7 @@ export function ChatView() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
+            role="status"
             className="overflow-hidden bg-status-warning/10 border-b border-status-warning/20"
           >
             <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-2 text-[14px] font-medium text-status-warning-ink dark:text-status-warning-ink-dark">
@@ -266,7 +299,7 @@ export function ChatView() {
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
               className="overflow-hidden"
             >
-              <p className="px-4 pt-3 pb-1 text-[13px] font-medium text-apple-ink-muted dark:text-white/45 text-center">
+              <p className="px-4 pt-3 pb-1 text-[13px] font-medium text-apple-ink-muted dark:text-white/60 text-center">
                 That's it — it's on the other device.
               </p>
             </motion.div>
@@ -322,7 +355,7 @@ export function ChatView() {
 
           <AnimatePresence>
             {errorMsg && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+              <motion.div role="alert" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                 <div className="px-4 py-3 bg-status-danger/10 text-status-danger text-[14px] font-medium rounded-xl flex items-center gap-2">
                   <AlertCircle className="w-4 h-4" /> {errorMsg}
                 </div>
@@ -393,11 +426,12 @@ export function ChatView() {
                 <button
                   type="button"
                   onPointerDown={() => setShowAttachmentMenu(!showAttachmentMenu)}
+                  aria-label="Add attachment"
+                  aria-expanded={showAttachmentMenu}
                   className={cn(
                     "p-3.5 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-motion active:scale-[0.85] rounded-full",
                     showAttachmentMenu && "text-apple-blue bg-apple-blue/10 rotate-45"
                   )}
-                  aria-label="Add attachment"
                 >
                   <Plus className="w-6 h-6 transition-transform" />
                 </button>
@@ -411,10 +445,10 @@ export function ChatView() {
                       transition={{ type: "spring", bounce: 0, duration: 0.3 }}
                       className="absolute left-0 bottom-[calc(100%+8px)] bg-white/90 dark:bg-surface-dark-2/90 backdrop-blur-xl border border-apple-divider dark:border-apple-tile-3 rounded-[20px] shadow-2xl p-2 w-[220px] flex flex-col gap-1"
                     >
-                      <AttachmentOption icon={<ImageIcon className="w-5 h-5 text-blue-500" />} label="Photo" onClick={() => imageInputRef.current?.click()} />
-                      <AttachmentOption icon={<Play className="w-5 h-5 text-purple-500" />} label="Video" onClick={() => videoInputRef.current?.click()} />
-                      <AttachmentOption icon={<Mic className="w-5 h-5 text-pink-500" />} label="Audio" onClick={() => audioInputRef.current?.click()} />
-                      <AttachmentOption icon={<FileIcon className="w-5 h-5 text-orange-500" />} label="File" onClick={() => fileInputRef.current?.click()} />
+                      <AttachmentOption icon={<ImageIcon className="w-5 h-5 text-apple-ink-muted" />} label="Photo" onClick={() => imageInputRef.current?.click()} />
+                      <AttachmentOption icon={<Play className="w-5 h-5 text-apple-ink-muted" />} label="Video" onClick={() => videoInputRef.current?.click()} />
+                      <AttachmentOption icon={<Mic className="w-5 h-5 text-apple-ink-muted" />} label="Audio" onClick={() => audioInputRef.current?.click()} />
+                      <AttachmentOption icon={<FileIcon className="w-5 h-5 text-apple-ink-muted" />} label="File" onClick={() => fileInputRef.current?.click()} />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -430,6 +464,7 @@ export function ChatView() {
                   }
                 }}
                 placeholder="Paste or type text…"
+                aria-label="Message"
                 className="flex-1 min-h-[52px] max-h-[30vh] resize-none bg-transparent py-3.5 pr-4 text-apple-ink dark:text-white placeholder:text-apple-ink-muted focus:outline-none text-[16px] leading-relaxed"
               />
             </div>
@@ -471,7 +506,7 @@ function AttachmentOption({ icon, label, onClick }: { icon: React.ReactNode, lab
 }
 
 const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg, partnerName }) => {
-  const { retryTransfer } = useSession();
+  const { retryTransfer, cancelTransfer } = useSession();
   const isMe = msg.sender === 'me';
   const a = msg.attachment;
 
@@ -544,7 +579,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
         <div className={cn(
           "flex flex-col rounded-[24px] overflow-hidden shadow-sm",
           isMe
-            ? "bg-linear-to-br from-azure-500 to-azure-700 text-white rounded-tr-[8px] border border-transparent"
+            ? "bg-azure-600 text-white rounded-tr-[8px] border border-transparent"
             : "bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3 rounded-tl-[8px]"
         )}>
 
@@ -639,13 +674,14 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
                     {a.status === 'complete' && (isMe ? <><Check className="w-3 h-3 text-white/90" /> Sent •</> : 'Received •')} {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
                   {a.status !== 'complete' && a.status !== 'draft' && (
-                    <span className={cn("text-[13px] font-semibold mt-0.5", a.status === 'failed' ? (isMe ? "text-white" : "text-status-danger") : isMe ? "text-white" : "text-apple-blue")}>
+                    <span className={cn("text-[13px] font-semibold mt-0.5", a.status === 'failed' ? (isMe ? "text-white" : "text-status-danger") : a.status === 'cancelled' ? (isMe ? "text-white/80" : "text-apple-ink-muted") : isMe ? "text-white" : "text-apple-blue")}>
                       {a.status === 'failed' ? 'Couldn\u2019t send this file.' :
+                        a.status === 'cancelled' ? 'Cancelled' :
                         a.status === 'sending' ? `Sending… ${Math.round((a.progress || 0) * 100)}%` :
                           `Receiving… ${Math.round((a.progress || 0) * 100)}%`}
                     </span>
                   )}
-                  {a.status !== 'complete' && a.status !== 'draft' && a.status !== 'failed' && (
+                  {a.status !== 'complete' && a.status !== 'draft' && a.status !== 'failed' && a.status !== 'cancelled' && (
                     <span className={cn("text-[11px]", isMe ? "text-white/60" : "text-apple-ink-muted/80")}>
                       {formatBytes((a.progress || 0) * a.size)} / {formatBytes(a.size)}
                     </span>
@@ -661,14 +697,17 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
                       <ActionButton icon={<Download />} label="Save" onClick={() => handleDownload(a.url!, a.name)} primary onBlue={isMe} />
                     </>
                   )}
-                  {a.status === 'failed' && (
+                  {(a.status === 'sending' || a.status === 'receiving') && (
+                    <ActionButton icon={<X />} label="Cancel" onClick={() => { void cancelTransfer(msg.id); }} onBlue={isMe} />
+                  )}
+                  {(a.status === 'failed' || (a.status === 'cancelled' && isMe)) && (
                     <ActionButton icon={<RefreshCw />} label="Retry" onClick={() => { void retryTransfer(msg.id); }} onBlue={isMe} />
                   )}
                 </div>
               </div>
 
               {/* Progress Bar */}
-              {a.status !== 'complete' && a.status !== 'draft' && a.status !== 'failed' && (
+              {a.status !== 'complete' && a.status !== 'draft' && a.status !== 'failed' && a.status !== 'cancelled' && (
                 <div className={cn("w-full h-1 overflow-hidden", isMe ? "bg-white/20" : "bg-apple-divider dark:bg-apple-tile-3")}>
                   <div className={cn("h-full origin-left transition-transform duration-300 ease-out", isMe ? "bg-white" : "bg-apple-blue")} style={{ transform: `scaleX(${a.progress || 0})` }} />
                 </div>
@@ -699,6 +738,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
 
 function ProgressState({ attachment: a, isMe, onBlue }: { attachment: Attachment, isMe: boolean, onBlue?: boolean }) {
   if (a.status === 'failed') return <span className={cn("font-medium", onBlue ? "text-white" : "text-status-danger")}>Couldn't send this file.</span>;
+  if (a.status === 'cancelled') return <span className={cn("font-medium", onBlue ? "text-white/80" : "text-apple-ink-muted")}>Cancelled</span>;
   if (a.status === 'complete') return null;
   return (
     <span className={cn("font-medium animate-pulse", onBlue ? "text-white" : "text-apple-ink-muted")}>

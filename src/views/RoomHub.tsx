@@ -139,7 +139,15 @@ export function RoomHub() {
           )}
         </div>
 
-        <div className="w-full space-y-3">
+        <button
+          onPointerDown={copyCode}
+          className="mt-2 w-full flex items-center justify-center gap-2 px-5 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[14px] text-[15px] font-semibold transition-motion active:scale-[0.97] min-h-[48px] shadow-card hover:shadow-float"
+        >
+          {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+          {copiedCode ? 'Code copied' : 'Copy Code'}
+        </button>
+
+        <div className="w-full space-y-3 mt-3">
           <AnimatePresence mode="popLayout">
             {showQR ? (
               <motion.div
@@ -169,6 +177,7 @@ export function RoomHub() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onPointerDown={() => setShowQR(true)}
+                aria-expanded={showQR}
                 className="w-full flex items-center justify-between p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-surface-dark-2 rounded-[14px] transition-colors active:scale-[0.98] shadow-sm"
               >
                 <div className="flex items-center gap-3 text-[15px] font-medium text-apple-ink dark:text-white">
@@ -190,20 +199,13 @@ export function RoomHub() {
           </button>
         </div>
 
-        <button
-          onPointerDown={copyCode}
-          className="mt-6 flex items-center gap-2 px-5 py-2.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[14px] font-semibold transition-motion active:scale-[0.97] min-h-[44px] shadow-card hover:shadow-float"
-        >
-          {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-          {copiedCode ? 'Code copied' : 'Copy Code'}
-        </button>
-
         <p className="text-[13px] text-apple-ink-muted mt-6">
           This room stays open for hours — you can rejoin anytime.
         </p>
 
         <button
           onPointerDown={() => setShowHow(!showHow)}
+          aria-expanded={showHow}
           className="flex items-center gap-1 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors mt-2 active:scale-95 px-3 py-2 min-h-[44px]"
         >
           How this works
@@ -219,7 +221,7 @@ export function RoomHub() {
             >
               <div className="mt-3 p-4 bg-apple-parchment dark:bg-apple-tile-1 rounded-[14px] text-left text-[13px] text-apple-ink-muted leading-relaxed space-y-2">
                 <p>This room disappears automatically after a period of inactivity. Once it ends, the code stops working and the room can't be reopened.</p>
-                <p>Text is encrypted between devices. When a direct connection isn't possible, an encrypted relay is used — your text is not readable by the relay.</p>
+                <p>Text is encrypted between devices. When a direct connection isn't possible, an encrypted relay forwards your data — the relay never stores or logs your content.</p>
               </div>
             </motion.div>
           )}

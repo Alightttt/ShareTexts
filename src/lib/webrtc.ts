@@ -15,6 +15,14 @@ const MAX_CHUNKS = Math.ceil(MAX_TRANSFER_SIZE / CHUNK_SIZE);
 const OFFER_RETRY_DELAY = 4000;
 const OFFER_RETRY_MAX = 3;
 
+/** Thrown by a send loop that was cancelled (distinct from a network failure). */
+export class TransferCancelledError extends Error {
+  constructor() {
+    super('Transfer cancelled');
+    this.name = 'TransferCancelledError';
+  }
+}
+
 export class PeerManager {
   private pc: RTCPeerConnection | null = null;
   private dc: RTCDataChannel | null = null;
@@ -30,6 +38,7 @@ export class PeerManager {
   public onMessage: ((data: string) => void) | null = null;
   public onFileProgress: ((transferId: string, progress: number, total: number) => void) | null = null;
   public onFileComplete: ((transferId: string, blob: Blob) => void) | null = null;
+  public onCancel: ((transferId: string) => void) | null = null;
   public onConnectionTypeChange: ((type: 'local' | 'direct' | 'relay') => void) | null = null;
   public onDisconnect: (() => void) | null = null;
   public onHello: ((name: string) => void) | null = null;
@@ -40,6 +49,8 @@ export class PeerManager {
 
   private incomingTextTransfers: Map<string, { chunks: string[]; received: number; total: number }> = new Map();
   private incomingBinaryTransfers: Map<string, { chunks: ArrayBuffer[]; received: number; total: number }> = new Map();
+  /** Abort handles for in-flight file sends, keyed by transfer id. */
+  private transferControllers = new Map<string, AbortController>();
 
   constructor(roomId: string, secret: string, isInitiator: boolean) {
     this.roomId = roomId;
@@ -281,6 +292,14 @@ export class PeerManager {
                   if (this.onHello && typeof inner.name === 'string') this.onHello(inner.name);
                   return;
                 }
+                if (inner && inner.type === 'cancel' && typeof inner.transferId === 'string') {
+                  // The peer stopped a transfer. Drop our partial receive, stop
+                  // our own send loop if it's mid-flight, and tell the UI.
+                  this.incomingBinaryTransfers.delete(inner.transferId);
+                  this.transferControllers.get(inner.transferId)?.abort();
+                  if (this.onCancel) this.onCancel(inner.transferId);
+                  return;
+                }
                 if (this.onMessage) this.onMessage(decrypted);
               } catch (e) {
                 console.error("Failed to decrypt text");
@@ -427,13 +446,52 @@ export class PeerManager {
     }
   }
 
+  /**
+   * Stop an in-flight transfer (local loop + peer side). Safe to call from
+   * either side: aborts the local send loop, drops a partial receive, and
+   * tells the peer via an encrypted control packet.
+   */
+  public cancelTransfer(transferId: string) {
+    this.transferControllers.get(transferId)?.abort();
+    this.incomingBinaryTransfers.delete(transferId);
+    this.incomingTextTransfers.delete(transferId);
+    void this.sendControl({ type: 'cancel', transferId });
+  }
+
+  /** Send a tiny encrypted control packet (hello/cancel) via channel or relay. */
+  private async sendControl(payload: { type: string; [k: string]: unknown }) {
+    try {
+      const key = await this.waitForCrypto();
+      const encrypted = await encryptText(JSON.stringify(payload), key);
+      const packet: TransferPayload = {
+        version: 1,
+        type: 'chunk',
+        transferId: crypto.randomUUID(),
+        sequence: 0,
+        total: 1,
+        payload: encrypted
+      };
+      const serialized = JSON.stringify(packet);
+      if (this.dc && this.dc.readyState === 'open') {
+        this.dc.send(serialized);
+      } else {
+        getSocket().emit('relay_message', { roomId: this.roomId, data: serialized });
+      }
+    } catch { /* cancel is best-effort */ }
+  }
+
   public async sendFile(file: File, transferId: string) {
     const key = await this.waitForCrypto();
     if (!key) return;
     const numChunks = Math.ceil(file.size / CHUNK_SIZE);
     const transferIdBytes = uuidToBytes(transferId);
+    const controller = new AbortController();
+    this.transferControllers.set(transferId, controller);
+    const signal = controller.signal;
 
+    try {
     for (let i = 0; i < numChunks; i++) {
+      if (signal.aborted) throw new TransferCancelledError();
       const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
       const arrayBuffer = await chunk.arrayBuffer();
       const encrypted = await encryptBinaryChunk(arrayBuffer, key);
@@ -466,10 +524,15 @@ export class PeerManager {
         this.onFileProgress(transferId, i + 1, numChunks);
       }
     }
+    } finally {
+      this.transferControllers.delete(transferId);
+    }
   }
 
   public destroy() {
     this.destroyed = true;
+    this.transferControllers.forEach(c => c.abort());
+    this.transferControllers.clear();
     if (this.retryTimer) clearInterval(this.retryTimer);
     if (this.relayFallbackTimer) clearTimeout(this.relayFallbackTimer);
     if (this.dc) {

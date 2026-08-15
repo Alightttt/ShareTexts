@@ -78,11 +78,11 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 Join Session
               </motion.button>
             </div>
-            <p className="mt-6 text-[13px] font-medium text-apple-ink-muted dark:text-white/45">
+            <p className="mt-6 text-[13px] font-medium text-apple-ink-muted dark:text-white/60">
               No account required · Temporary by default
             </p>
             {createError && (
-              <p className="mt-5 text-[14px] font-medium text-status-danger flex items-center gap-2">
+              <p role="alert" className="mt-5 text-[14px] font-medium text-status-danger flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-status-danger" /> {createError}
               </p>
             )}
@@ -131,7 +131,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             Open it on the other device and connect.
           </p>
           {createError && (
-            <p className="mt-4 text-[14px] font-medium text-status-danger inline-flex items-center gap-2">
+            <p role="alert" className="mt-4 text-[14px] font-medium text-status-danger inline-flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-status-danger" /> {createError}
             </p>
           )}
@@ -143,11 +143,11 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <ShareTextLogo size={16} className="text-apple-ink dark:text-white/70" />
-            <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/50">
+            <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60">
               The temporary bridge between your devices.
             </span>
           </div>
-          <div className="flex items-center gap-2 text-[13px] font-medium text-apple-ink-muted dark:text-white/45">
+          <div className="flex items-center gap-2 text-[13px] font-medium text-apple-ink-muted dark:text-white/60">
             <span>No app</span>
             <span className="w-1 h-1 rounded-full bg-apple-hairline dark:bg-white/20" />
             <span>No account</span>

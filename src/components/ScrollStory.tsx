@@ -122,7 +122,7 @@ const StepCounter: React.FC<{ progress: MotionValue<number> }> = ({ progress }) 
     const next = String(Math.min(5, Math.max(1, Math.floor(v * 5) + 1))).padStart(2, '0');
     setLabel((prev) => (prev === next ? prev : next));
   });
-  return <span className="font-mono text-[12px] text-apple-ink-muted dark:text-white/45 tabular-nums">{label} / 05</span>;
+  return <span className="font-mono text-[12px] text-apple-ink-muted dark:text-white/60 tabular-nums">{label} / 05</span>;
 };
 
 const BeatDot: React.FC<{ progress: MotionValue<number>; i: number }> = ({ progress, i }) => {

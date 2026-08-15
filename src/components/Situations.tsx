@@ -233,7 +233,7 @@ export function Situations() {
               viewport={{ once: true, margin: '-80px' }}
               transition={{ duration: 0.7, ease: EASE }}
             >
-              <p className="font-mono text-[12px] text-apple-ink-muted dark:text-white/45 tabular-nums mb-3">{s.id}</p>
+              <p className="font-mono text-[12px] text-apple-ink-muted dark:text-white/60 tabular-nums mb-3">{s.id}</p>
               <h3 className="text-[24px] sm:text-[28px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em] leading-[1.12] max-w-[18ch]">
                 {s.line}
               </h3>

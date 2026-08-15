@@ -9,7 +9,7 @@ export interface Attachment {
   encoding?: string; // 'utf-8' | 'binary' — protocol metadata (optional today)
   checksum?: string; // optional digest — protocol metadata (future)
   url?: string; // object URL for preview/download
-  status?: 'draft' | 'sending' | 'receiving' | 'complete' | 'failed';
+  status?: 'draft' | 'sending' | 'receiving' | 'complete' | 'failed' | 'cancelled';
   progress?: number;
 }
 
