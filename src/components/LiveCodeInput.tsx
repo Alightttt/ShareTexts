@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Loader2 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { ShareTextLogo } from './ShareTextLogo';
 
 export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (code: string) => void, isJoining: boolean, error?: string | null }) {
   const [code, setCode] = useState('');
@@ -90,7 +90,9 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
 
       {isJoining && (
         <div role="status" className="flex flex-col items-center justify-center mt-8">
-          <Loader2 className="w-6 h-6 animate-spin text-apple-ink-muted mb-4" />
+          {/* The brand mark connecting — a packet traveling the beam, not a
+              generic spinner. Reduced-motion users get the still mark. */}
+          <ShareTextLogo size={22} motion="connecting" className="text-apple-blue dark:text-azure-400 mb-4" />
           <p className="text-[15px] font-medium text-apple-ink-muted">Verifying code…</p>
         </div>
       )}

@@ -117,7 +117,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
                 <div className="w-full max-w-sm">
                   <Suspense fallback={
                     <div className="flex flex-col items-center justify-center p-8 bg-apple-parchment dark:bg-apple-tile-1 rounded-[18px] text-center min-h-[300px]">
-                      <Loader2 className="w-8 h-8 animate-spin text-apple-ink-muted mb-4" />
+                      <ShareTextLogo size={30} motion="connecting" className="text-apple-blue mb-4" />
                       <p className="text-[15px] font-medium text-apple-ink-muted">Starting camera…</p>
                     </div>
                   }>

@@ -134,6 +134,21 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     };
   });
 
+  // One-time: persist the platform-guessed device name so every surface
+  // agrees. The WebRTC hello reads the name from localStorage directly, and
+  // the RoomHub name row reads it from session state — if we never write the
+  // guess, the partner sees "Guest Device" while this device shows
+  // "Guest Windows PC", and two devices on the same platform are
+  // indistinguishable. Writing the guess once keeps them identical until
+  // the user edits the name.
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem(DEVICE_NAME_KEY)) {
+        localStorage.setItem(DEVICE_NAME_KEY, guessDeviceName());
+      }
+    } catch { /* private mode */ }
+  }, []);
+
   const peerManagerRef = useRef<PeerManager | null>(null);
   // Last-published progress per transfer, for throttling onFileProgress.
   const progressRef = useRef<Map<string, number>>(new Map());
