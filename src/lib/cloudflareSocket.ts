@@ -54,8 +54,15 @@ export class CloudflareSocket implements SignalingSocket {
     this.httpBase = normalized.replace(/^ws/, 'http');
     this.cid = uuid();
     devLog('Cloudflare signaling transport ready at', this.httpBase);
-    // The transport is command-ready immediately; the room socket opens per
-    // command. Failures surface via connect_error / ack timeouts.
+    // Command-ready from the start: this transport has no long-lived
+    // connection — the room WebSocket opens lazily on the first command
+    // (create/join/resume). Report `connected` immediately and still emit
+    // 'connect' so any listener attached synchronously sees it. Without
+    // this, SessionContext's ensureSocketConnected would wait for a
+    // 'connect' event that already fired and hang until its 10s timeout,
+    // showing "Couldn't reach ShareText." before the room socket is even
+    // opened. Failures surface via connect_error / ack timeouts.
+    this.connected = true;
     queueMicrotask(() => this.emitLocal('connect'));
   }
 
@@ -123,13 +130,26 @@ export class CloudflareSocket implements SignalingSocket {
     return new Promise<WebSocket>((resolve, reject) => {
       const cid = uuid();
       const ws = new WebSocket(`${this.wsBase}?room=${roomId}&cid=${cid}`);
+      let opened = false;
+      let failed = false;
+
+      const fail = () => {
+        if (failed) return;
+        failed = true;
+        void this.classifyFailure().then((msg) => {
+          this.emitLocal('connect_error', { message: msg });
+          reject(new Error(msg));
+        });
+      };
+
       const timer = setTimeout(() => {
         try { ws.close(); } catch { /* noop */ }
-        reject(new Error('WebSocket open timed out'));
+        fail();
       }, WS_OPEN_TIMEOUT);
 
       ws.onopen = () => {
         clearTimeout(timer);
+        opened = true;
         this.ws = ws;
         this.connected = true;
         this.reconnectAttempts = 0;
@@ -145,12 +165,41 @@ export class CloudflareSocket implements SignalingSocket {
         if (this.ws === ws) this.ws = null;
         this.connected = false;
         this.emitLocal('disconnect', 'transport close');
-        if (!this.stopped) this.scheduleReconnect();
+        if (opened) {
+          if (!this.stopped) this.scheduleReconnect();
+        } else {
+          // Handshake rejected (e.g. origin not allowlisted, worker down).
+          fail();
+        }
       };
-      ws.onerror = () => {
-        this.emitLocal('connect_error', { message: 'Signaling connection failed' });
-      };
+      ws.onerror = () => { /* fail() runs on the close that follows */ };
     });
+  }
+
+  /**
+   * Figure out WHY the room WebSocket failed to open so the UI can say
+   * something specific. Probes GET /health (CORS-enabled):
+   *   200 → worker is reachable and this origin is allowlisted; the WS
+   *         failure is something else → generic unreachable message.
+   *   403 → the worker answered but rejected this origin → tell the user to
+   *         add their site to ALLOWED_ORIGINS.
+   *   throws / non-OK → unreachable (wrong URL, worker down, blocked by the
+   *         browser, DNS) → generic unreachable message.
+   */
+  private async classifyFailure(): Promise<string> {
+    const generic = "Couldn't reach ShareText.";
+    try {
+      const res = await fetch(`${this.httpBase}/health`, {
+        method: 'GET',
+        credentials: 'omit',
+      });
+      if (res.status === 403) {
+        return "This browser isn't allowed to connect to the ShareText signaling server. Add this site's origin to ALLOWED_ORIGINS on the Cloudflare Worker, then redeploy the Worker.";
+      }
+      return generic;
+    } catch {
+      return generic;
+    }
   }
 
   private scheduleReconnect() {

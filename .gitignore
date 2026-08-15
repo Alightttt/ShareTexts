@@ -7,6 +7,10 @@ coverage/
 .env*
 !.env.example
 
+# AI agent skill tooling (installed per-dev via `npx skills add`)
+.agents/
+skills-lock.json
+
 shots/
 
 # Cloudflare Worker local state

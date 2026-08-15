@@ -8,16 +8,34 @@ import helmet from 'helmet';
 
 const app = express();
 
+// Production builds have zero inline scripts (Vite emits module scripts only),
+// so the shipped CSP is strict — no unsafe-inline/unsafe-eval. The dev server
+// (Vite middleware) needs them for HMR, so they're dev-only.
+const isProd = process.env.NODE_ENV === 'production';
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+      scriptSrc: isProd ? ["'self'"] : ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      // Received images/videos render from blob: object URLs.
+      imgSrc: ["'self'", "data:", "blob:"],
+      mediaSrc: ["'self'", "blob:"],
+      workerSrc: ["'self'"],
       // NOTE: `stun:` schemes are not valid connect-src sources; WebRTC is not
       // subject to connect-src anyway, so they were removed.
-      connectSrc: ["'self'", "ws:", "wss:"]
+      // `https:` is required so the Cloudflare transport can POST to the
+      // Worker's /lookup endpoint from a browser served by this server; the
+      // dev-only localhost entries cover `wrangler dev` on a local port.
+      connectSrc: [
+        "'self'",
+        "ws:",
+        "wss:",
+        "https:",
+        ...(isProd ? [] : ["http://localhost:*", "ws://localhost:*"]),
+      ],
+      frameAncestors: ["'none'"],
     }
   },
   crossOriginEmbedderPolicy: false

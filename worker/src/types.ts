@@ -12,9 +12,9 @@ export function dayKey(now: number = Date.now()): string {
   return new Date(now).toISOString().slice(0, 10);
 }
 
-export function json(data: unknown, status = 200): Response {
+export function json(data: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...extraHeaders },
   });
 }

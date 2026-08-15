@@ -64,6 +64,19 @@ function resolveEndpoints(): { mode: 'cloudflare' | 'socketio'; url?: string } {
 const { mode, url } = resolveEndpoints();
 devLog('Signaling transport:', mode, url || '(same origin)');
 
+/**
+ * Human-readable reason when a deployed build has no signaling backend to
+ * talk to. In production the transport is chosen at BUILD time — Vite inlines
+ * VITE_SIGNALING_URL / VITE_SOCKET_URL into the bundle, so adding the env var
+ * to Vercel after the last build does nothing until a rebuild.
+ */
+export function signalingConfigIssue(): string | null {
+  if (import.meta.env.DEV) return null;
+  if (mode === 'cloudflare' && url) return null;
+  if (mode === 'socketio' && url) return null;
+  return "This build has no signaling server configured. Add VITE_SIGNALING_URL (Cloudflare Worker) or VITE_SOCKET_URL (Node server) to the deployment's build-time environment, then redeploy.";
+}
+
 let instance: SignalingSocket | null = null;
 
 export function getSocket(): SignalingSocket {

@@ -33,12 +33,17 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
     setError(null);
     const res = await joinWithCode(code);
     if (!res.success) {
-      // Connectivity problems must not read as a wrong code.
-      const friendly = res.error === "Couldn't reach ShareText."
-        ? "Couldn't reach ShareText. Check your connection and try again."
-        : (res.error === 'This session already has two devices.'
+      // Connectivity problems must not read as a wrong code. Prefer the
+      // machine-readable code (Cloudflare transport) and fall back to the
+      // Node server's plain-string errors.
+      const friendly =
+        res.code === 'ROOM_FULL' || res.error === 'This session already has two devices.'
           ? 'This session already has two devices.'
-          : (res.error === 'Too many attempts. Try again later.' ? res.error : "That code isn't active. Check the other device and try the latest code."));
+          : res.code === 'RATE_LIMITED' || res.error === 'Too many attempts. Try again later.'
+            ? res.error
+            : res.error === "Couldn't reach ShareText."
+              ? "Couldn't reach ShareText. Check your connection and try again."
+              : "That code isn't active. Check the other device and try the latest code.";
       setError(friendly);
       setIsJoining(false);
     }
@@ -53,9 +58,12 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
     }
     const res = await joinWithLink(id);
     if (!res.success) {
-      const friendly = res.error === 'This session already has two devices.'
-        ? 'This session already has two devices.'
-        : (res.error === 'Too many attempts. Try again later.' ? res.error : "This link isn't active anymore. Ask for a fresh code.");
+      const friendly =
+        res.code === 'ROOM_FULL' || res.error === 'This session already has two devices.'
+          ? 'This session already has two devices.'
+          : res.code === 'RATE_LIMITED' || res.error === 'Too many attempts. Try again later.'
+            ? res.error
+            : "This link isn't active anymore. Ask for a fresh code.";
       setError(friendly);
       setIsJoining(false);
       setActiveTab('code'); // fallback

@@ -33,6 +33,22 @@ function allowedOrigins(env: Env): Set<string> {
   ]);
 }
 
+/**
+ * CORS for the browser frontend. WebSockets are not subject to CORS, but the
+ * code-join flow needs a cross-origin POST to /lookup, which the browser gates
+ * behind a preflight. The worker's origin policy stays strict: we only reflect
+ * an Origin that is on the allowlist — never `*`. Non-browser clients (no
+ * Origin header) get no CORS headers and are allowed through as before.
+ */
+function corsHeaders(origin: string | null, allowlist: Set<string>): Record<string, string> {
+  if (!origin) return {};
+  if (!allowlist.has(origin)) return {};
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Vary': 'Origin',
+  };
+}
+
 function originAllowed(request: Request, env: Env): boolean {
   const origin = request.headers.get('Origin');
   if (!origin) return true; // non-browser clients (curl, agents, Node tests)
@@ -43,45 +59,71 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
+    const origin = request.headers.get('Origin');
+    const allowlist = allowedOrigins(env);
+    const cors = corsHeaders(origin, allowlist);
+
+    // CORS preflight (browser sends this before POST /lookup).
+    if (request.method === 'OPTIONS') {
+      if (origin && !allowlist.has(origin)) {
+        return json({ error: 'Origin not allowed' }, 403);
+      }
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': origin || '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'content-type',
+          'Access-Control-Max-Age': '86400',
+          'Vary': 'Origin',
+        },
+      });
+    }
 
     if (path === '/health') {
-      return json({ ok: true, service: 'sharetext-signaling-cf' });
+      return json({ ok: true, service: 'sharetext-signaling-cf' }, 200, cors);
     }
 
     if (!originAllowed(request, env)) {
-      return json({ error: 'Origin not allowed' }, 403);
+      // Reflect the requesting origin here (even though it's not allowlisted)
+      // so the browser can read the status and the client can tell the user
+      // "your site's origin isn't allowlisted" instead of a generic timeout.
+      return json({ error: 'Origin not allowed' }, 403, origin ? {
+        'Access-Control-Allow-Origin': origin,
+        'Vary': 'Origin',
+      } : {});
     }
 
     if (path === '/ws') {
       const roomId = url.searchParams.get('room');
       const cid = url.searchParams.get('cid');
-      if (!roomId || !UUID_RE.test(roomId)) return json({ error: 'invalid room' }, 400);
-      if (!cid || !UUID_RE.test(cid)) return json({ error: 'invalid connection id' }, 400);
+      if (!roomId || !UUID_RE.test(roomId)) return json({ error: 'invalid room' }, 400, cors);
+      if (!cid || !UUID_RE.test(cid)) return json({ error: 'invalid connection id' }, 400, cors);
       const id = env.ROOMS.idFromName(roomId);
       return env.ROOMS.get(id).fetch(request);
     }
 
     if (path === '/lookup' && request.method === 'POST') {
-      return lookup(request, env);
+      return lookup(request, env, cors);
     }
 
     return json({
       name: 'sharetext-signaling',
       endpoints: ['/health', '/ws', '/lookup'],
-    });
+    }, 200, cors);
   },
 } satisfies ExportedHandler<Env>;
 
 /** Resolve a 6-digit code → roomId via the day-sharded Registry. */
-async function lookup(request: Request, env: Env): Promise<Response> {
+async function lookup(request: Request, env: Env, cors: Record<string, string>): Promise<Response> {
   let body: { code?: unknown };
   try {
     body = (await request.json()) as typeof body;
   } catch {
-    return json({ error: 'Invalid or expired code' }, 404);
+    return json({ error: 'Invalid or expired code' }, 404, cors);
   }
   if (typeof body.code !== 'string' || !/^\d{6}$/.test(body.code)) {
-    return json({ error: 'Invalid or expired code' }, 404);
+    return json({ error: 'Invalid or expired code' }, 404, cors);
   }
   const days = new Set([dayKey(), dayKey(Date.now() - 24 * 60 * 60 * 1000)]);
   for (const day of days) {
@@ -94,8 +136,8 @@ async function lookup(request: Request, env: Env): Promise<Response> {
     );
     if (res.status === 200) {
       const found = (await res.json()) as { roomId?: string };
-      if (found.roomId) return json({ roomId: found.roomId });
+      if (found.roomId) return json({ roomId: found.roomId }, 200, cors);
     }
   }
-  return json({ error: 'Invalid or expired code' }, 404);
+  return json({ error: 'Invalid or expired code' }, 404, cors);
 }
