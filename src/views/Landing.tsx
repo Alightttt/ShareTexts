@@ -5,6 +5,10 @@ import { ShareTextLogo } from '../components/ShareTextLogo';
 import { HeroDemo } from '../components/HeroDemo';
 import { ScrollStory } from '../components/ScrollStory';
 import { Situations } from '../components/Situations';
+import { HowItWorks } from '../components/HowItWorks';
+import { InsteadOf } from '../components/InsteadOf';
+import { PrivacyPromise } from '../components/PrivacyPromise';
+import { Faq } from '../components/Faq';
 import { ArrowRight, Send, Inbox, ShieldCheck } from 'lucide-react';
 import { LiveUsers } from '../components/LiveUsers';
 import { InstallPrompt } from '../components/InstallPrompt';
@@ -148,7 +152,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               Move something between your devices.
             </h1>
             <p className="mt-5 text-[15px] sm:text-[16px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[46ch]">
-              Text, photos and videos between two devices — no WhatsApp, no USB cable, no app, no account.
+              Text, photos, and videos — straight from one screen to the other. No app to install, no account to make, nothing kept in between.
             </p>
             {/* Live count near the top on smaller devices (header pill is desktop-only). */}
             <LiveUsers className="mt-5 lg:hidden" />
@@ -203,11 +207,23 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
       {/* ============ THE STORY — the page becomes a demonstration ============ */}
       <ScrollStory />
 
+      {/* ============ HOW IT WORKS — three plain steps, everyone understands ============ */}
+      <HowItWorks />
+
       {/* ============ WHY SHARETEXT — told through situations, not features ============ */}
       <Situations />
 
+      {/* ============ THE USUAL WAYS — contrast, honestly told ============ */}
+      <InsteadOf />
+
+      {/* ============ PRIVATE BY DESIGN — the trust wedge + the 2-6-0-0-0 strip ============ */}
+      <PrivacyPromise />
+
+      {/* ============ QUESTIONS PEOPLE ACTUALLY ASK ============ */}
+      <Faq />
+
       {/* ============ ENDING ============ */}
-      <section className="px-6 pb-28 sm:pb-36 pt-4">
+      <section className="px-6 pb-28 sm:pb-36 pt-24 sm:pt-28 bg-apple-parchment dark:bg-night-950">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}

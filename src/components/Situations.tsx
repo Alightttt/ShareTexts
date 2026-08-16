@@ -206,7 +206,7 @@ const SITUATIONS: { id: string; line: string; note: string; from: TransferSide; 
 
 export function Situations() {
   return (
-    <section className="px-6 py-24 sm:py-32 bg-apple-canvas dark:bg-night-900">
+    <section className="px-6 py-24 sm:py-32 bg-apple-parchment dark:bg-night-950">
       <div className="max-w-3xl mx-auto">
         {SITUATIONS.map((s, i) => (
           <div
