@@ -30,6 +30,7 @@ app.use(helmet({
       // dev-only localhost entries cover `wrangler dev` on a local port.
       connectSrc: [
         "'self'",
+        "blob:",
         "ws:",
         "wss:",
         "https:",

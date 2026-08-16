@@ -47,7 +47,7 @@ async function main() {
         A.evaluate(() => {
           const t = document.body.innerText;
           return {
-            peerConnecting: t.includes('connecting'),
+            peerConnecting: /connecting/i.test(t),
             inRoom: !!document.querySelector('textarea[placeholder]'),
           };
         }).catch(() => ({})),
@@ -57,10 +57,17 @@ async function main() {
       if (tCreatorSeesPeer === null && aState.peerConnecting) tCreatorSeesPeer = Date.now() - t0;
       if (tCreatorInRoom === null && aState.inRoom) tCreatorInRoom = Date.now() - t0;
       if (tJoinerInRoom && tCreatorInRoom) break;
-      await sleep(100);
+      await sleep(25);
     }
   };
   await poll();
+
+  // The creator's "Connecting to your other device…" flash can be <100ms on
+  // a fast local pair — rAF-poll waitForFunction catches it precisely.
+  if (tCreatorSeesPeer === null) {
+    const caught = await A.waitForFunction(() => /Connecting to your other device/i.test(document.body.innerText), undefined, { timeout: 5000, polling: 'raf' }).then(() => true).catch(() => false);
+    if (caught) tCreatorSeesPeer = Date.now() - t0;
+  }
 
   console.log(JSON.stringify({
     codeEntry: tEntry + 'ms',
