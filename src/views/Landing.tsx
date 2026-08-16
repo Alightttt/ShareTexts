@@ -130,8 +130,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
 
       {/* ============ HEADER — logo only; nothing competes with the product ============ */}
       <header className="sticky top-0 z-40 bg-apple-canvas/85 dark:bg-night-900/85 backdrop-blur-md border-b border-apple-divider dark:border-white/[0.06]">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">
-          <a href="/" className="flex items-center gap-2" aria-label="ShareText — the temporary bridge between your devices">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">            <a href="/" className="flex items-center gap-2" aria-label="ShareText — share anything between two devices">
             <ShareTextLogo size={21} className="text-apple-ink dark:text-white" />
             <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>
           </a>
@@ -276,7 +275,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           <div className="flex items-center gap-2.5">
             <ShareTextLogo size={16} className="text-apple-ink dark:text-white/70" />
             <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60">
-              The temporary bridge between your devices.
+              Move anything between two devices.
             </span>
           </div>
           <div className="flex items-center gap-2 text-[13px] font-medium text-apple-ink-muted dark:text-white/60">
