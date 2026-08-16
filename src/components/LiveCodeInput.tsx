@@ -33,7 +33,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
   };
 
   return (
-    <div className="flex flex-col items-center relative">
+    <div className="flex flex-col items-center relative w-full">
       <input
         ref={inputRef}
         type="text"
