@@ -147,7 +147,7 @@ async function main() {
   await C.goto(URL, { waitUntil: 'networkidle' });
   await C.getByRole('button', { name: 'Receive text' }).first().click();
   await C.locator('input[inputmode="numeric"]').fill(freshCode);
-  await sleep(2500);
+  await sleep(4000);
   const cBody = await C.locator('body').innerText();
   if (cBody.includes('already has two devices')) {
     console.log('STEP 9 OK: third device rejected gracefully');

@@ -615,15 +615,15 @@ export function ChatView() {
               )}
             </AnimatePresence>
 
-            <div className="flex items-end gap-1 p-1.5 relative">
+            <div className="flex items-end gap-0.5 p-1.5 relative">
               <button
                 type="button"
                 onPointerDown={() => setShowAttachmentMenu(!showAttachmentMenu)}
                 aria-label="Add attachment"
                 aria-expanded={showAttachmentMenu}
                 className={cn(
-                  "self-end mb-0.5 p-3 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-motion active:scale-[0.9] rounded-full shrink-0",
-                  showAttachmentMenu && "text-apple-blue bg-apple-blue/10 rotate-45"
+                  "w-11 h-11 rounded-full flex items-center justify-center shrink-0 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/60 dark:hover:bg-apple-tile-3 transition-motion active:scale-[0.92]",
+                  showAttachmentMenu && "text-azure-600 dark:text-azure-400 bg-azure-600/10 rotate-45"
                 )}
               >
                 <Plus className="w-5 h-5 transition-transform" />
@@ -640,7 +640,7 @@ export function ChatView() {
                 }}
                 placeholder="Paste or type text…"
                 aria-label="Message"
-                className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-2.5 pl-1 pr-1 text-apple-ink dark:text-white placeholder:text-apple-ink-muted focus:outline-none text-[16px] leading-relaxed"
+                className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[10px] pl-1 pr-1 text-apple-ink dark:text-white placeholder:text-apple-ink-muted focus:outline-none text-[16px] leading-[24px]"
               />
 
               <button
@@ -648,7 +648,7 @@ export function ChatView() {
                 onPointerDown={handleSend}
                 disabled={(!inputText.trim() && !attachment) || !session.partnerConnected}
                 aria-label="Send"
-                className="self-end mb-0.5 w-10 h-10 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 flex items-center justify-center shrink-0 transition-motion active:scale-90 disabled:opacity-30 disabled:bg-apple-divider dark:disabled:bg-apple-tile-2 disabled:text-apple-ink-muted dark:disabled:text-white/40 shadow-sm"
+                className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-[0.92] bg-azure-600 hover:bg-azure-500 text-white shadow-[0_4px_12px_-2px_rgba(10,102,240,0.4)] disabled:opacity-25 disabled:bg-apple-divider dark:disabled:bg-apple-tile-2 disabled:text-apple-ink-muted dark:disabled:text-white/40 disabled:shadow-none"
               >
                 <ArrowUp className="w-5 h-5" strokeWidth={2.4} />
               </button>

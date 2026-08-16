@@ -341,6 +341,19 @@ export class CloudflareSocket implements SignalingSocket {
     }
   }
 
+  /**
+   * Re-anchor the pairing-code window so the countdown starts fresh at 40s.
+   * Returns the new anchor (createdAt) on success.
+   */
+  async refreshCode(roomId: string, secret: string): Promise<{ success: boolean; createdAt?: number }> {
+    try {
+      const res = await this.request(roomId, 'refresh_code', { roomId, secret });
+      return { success: !!res?.success, createdAt: res?.createdAt };
+    } catch {
+      return { success: false };
+    }
+  }
+
   private async sendSignal(payload: { roomId?: string; to?: string; signal?: unknown } | undefined) {
     if (!payload?.roomId || !this.currentRoom) return;
     try {

@@ -160,12 +160,13 @@ export function HeroDemo() {
   return (
     <div
       ref={containerRef}
-      className="relative w-full max-w-[900px] mx-auto select-none min-h-[680px] sm:min-h-[440px]"
+      className="relative w-full max-w-[900px] mx-auto select-none min-h-[560px] sm:min-h-[440px]"
       aria-hidden
     >
-      {/* Connection beam — horizontal on desktop, vertical when stacked */}
+      {/* Connection beam — horizontal on desktop, vertical when stacked.
+          Visible at every size: the line between the devices IS the story. */}
       <div
-        className="absolute hidden sm:block"
+        className="absolute"
         style={beam.vertical ? { left: beam.left, top: beam.top, height: to.y - from.y, width: 0, transform: 'translateX(-50%)' } : { left: beam.left, width: beam.width, top: beam.top, transform: 'translateY(-50%)' }}
       >
         <div className={beam.vertical ? "w-px h-full bg-apple-ink/10 dark:bg-white/10" : "h-px w-full bg-apple-ink/10 dark:bg-white/10"} />
@@ -177,7 +178,7 @@ export function HeroDemo() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center sm:items-center sm:justify-between gap-20 sm:gap-0 px-2 sm:px-6 relative">
+      <div className="flex flex-col sm:flex-row items-center sm:items-center sm:justify-between gap-12 sm:gap-0 px-2 sm:px-6 relative">
         {/* Phone — the sender. A slow idle float keeps the scene alive without
             competing with the transfer; reduced-motion users get a still device. */}
         <motion.div

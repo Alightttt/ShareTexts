@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { LiveCodeDisplay } from '../components/LiveCodeDisplay';
 import { QRCodeSVG } from 'qrcode.react';
@@ -10,13 +10,26 @@ import { ConnectingVisual } from '../components/ConnectingVisual';
 import { generateTOTP } from '../lib/totp';
 
 export function RoomHub() {
-  const { session, setDeviceName, requestReconnect, abandonSession } = useSession();
+  const { session, setDeviceName, requestReconnect, abandonSession, refreshCode } = useSession();
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showHow, setShowHow] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(session.deviceName);
+
+  // Fresh-code rule: the timer always starts when the creator arrives at this
+  // screen. A fresh create already anchors at ~40s; a refresh mid-window or a
+  // resume of a stale room re-anchors now, so the countdown restarts at ~40s
+  // with a newly-made code instead of rotating seconds later. Safe: the
+  // previous code stays valid for one more window (±1 TOTP validation), so a
+  // joiner who already typed it still connects. Runs once per arrival.
+  useEffect(() => {
+    if (session.isCreator && session.roomId && session.secret) {
+      void refreshCode();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!session.roomId || !session.secret) return null;
 
@@ -82,10 +95,14 @@ export function RoomHub() {
   const waitingForReconnect = session.connectionType === 'disconnected' && !session.partnerConnecting;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black p-6 relative overflow-hidden">
+    <div className="min-h-screen flex flex-col bg-apple-canvas dark:bg-black relative overflow-hidden">
       {/* Brand warmth — a soft azure glow behind the pairing card */}
       <div className="absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(70%_90%_at_50%_-10%,rgba(46,139,255,0.10),transparent_65%)] pointer-events-none" aria-hidden />
-      <div className="absolute top-6 left-6 flex items-center gap-2">
+
+      {/* Header in normal flow — never overlaps the centered content, even on
+          short screens (the old absolute header collided with the heading on
+          small phones). */}
+      <header className="relative z-10 flex items-center gap-2 px-4 sm:px-6 pt-4 sm:pt-6">
         <button
           onPointerDown={abandonSession}
           aria-label="Back to home"
@@ -97,8 +114,9 @@ export function RoomHub() {
           <ShareTextLogo size={24} className="text-apple-ink dark:text-white" />
           <span className="text-[14px] font-semibold tracking-tight text-apple-ink dark:text-white">ShareText</span>
         </div>
-      </div>
+      </header>
 
+      <main className="flex-1 flex flex-col items-center justify-center px-6 py-8 sm:py-10 w-full">
       <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg text-center flex flex-col items-center">
 
         {waitingForReconnect && (
@@ -267,6 +285,7 @@ export function RoomHub() {
           )}
         </AnimatePresence>
       </div>
+      </main>
     </div>
   );
 }

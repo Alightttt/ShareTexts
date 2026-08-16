@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { SessionState, ChatMessage, ConnectionType } from '../types';
-import { getSocket, devLog, signalingConfigIssue, resolveShortCode } from './socket';
+import { getSocket, devLog, signalingConfigIssue, resolveShortCode, refreshCode as refreshCodeRPC } from './socket';
 import { PeerManager, TransferCancelledError, hasSendProgress, clearAllTransferState, getPartialInfo } from './webrtc';
 import { humanizeError } from './errors';
 import { diag } from './diag';
@@ -18,6 +18,7 @@ interface SessionContextValue {
   cancelTransfer: (messageId: string) => void;
   setDeviceName: (name: string) => void;
   requestReconnect: () => Promise<void>;
+  refreshCode: () => Promise<void>;
   closeSession: () => void;
   leaveView: () => void;
   abandonSession: () => void;
@@ -804,6 +805,27 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   };
   requestReconnectRef.current = requestReconnect;
 
+  /**
+   * Re-anchor the pairing-code window to now, so the countdown restarts at
+   * 40s with a freshly-made code. Only meaningful for the creator on the
+   * connect screen; the previous code stays valid for one more window, so a
+   * joiner mid-typing still connects. Failures are silent (best-effort).
+   */
+  const refreshCode = async () => {
+    const { roomId, secret } = session;
+    if (!roomId || !secret) return;
+    try {
+      await ensureSocketConnected(8000);
+    } catch {
+      return;
+    }
+    const res = await refreshCodeRPC(roomId, secret);
+    diag('room.code_refresh', !!res.success, res.success ? 'ok' : 'no-op');
+    if (res.success && typeof res.createdAt === 'number') {
+      setSession(s => ({ ...s, createdAt: res.createdAt }));
+    }
+  };
+
   const closeSession = () => {
     if (session.roomId) {
       getSocket().emit('close_room', { roomId: session.roomId });
@@ -859,7 +881,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, joinWithShortCode, sendMessage, updateMessageAttachment, retryTransfer, retryText, cancelTransfer, setDeviceName, requestReconnect, closeSession, leaveView, abandonSession }}>
+    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, joinWithShortCode, sendMessage, updateMessageAttachment, retryTransfer, retryText, cancelTransfer, setDeviceName, requestReconnect, refreshCode, closeSession, leaveView, abandonSession }}>
       {children}
     </SessionContext.Provider>
   );

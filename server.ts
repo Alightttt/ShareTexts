@@ -142,7 +142,12 @@ interface Room {
   secret: string;
   creatorId: string;
   joinerId?: string;
+  /** Room creation time — also the pairing-code anchor until refreshed. */
   createdAt: number;
+  /** The TOTP anchor. Re-anchored on refresh_code so the creator always sees
+   *  a fresh 40s code window on the connect screen; the previous code stays
+   *  valid for one more window (±1 validation) so a typing joiner isn't cut off. */
+  codeAnchor: number;
   lastActive: number;
   activePeers: Set<string>;
 }
@@ -202,6 +207,7 @@ io.on('connection', (socket) => {
       secret,
       creatorId: socket.id,
       createdAt: Date.now(),
+      codeAnchor: Date.now(),
       lastActive: Date.now(),
       activePeers: new Set([socket.id])
     });
@@ -209,8 +215,9 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     log('room created', roomId.slice(0, 8), 'by', socket.id.slice(0, 8));
     count('rooms.created');
-    // createdAt anchors the pairing-code window (40s from room creation).
-    cb({ success: true, roomId, secret, createdAt: rooms.get(roomId)!.createdAt });
+    // codeAnchor anchors the pairing-code window (40s from room creation,
+    // re-anchored on refresh_code when the creator lands on the connect screen).
+    cb({ success: true, roomId, secret, createdAt: rooms.get(roomId)!.codeAnchor });
   });
 
   socket.on('join_with_code', ({ code }, cb) => {
@@ -239,7 +246,7 @@ io.on('connection', (socket) => {
 
       // Room-anchored window: counter = (now - createdAt) / 40s, so the
       // first code is always a full 40s and both devices agree on it.
-      const delta = totp.validate({ token: code, window: 1, timestamp: Date.now() - room.createdAt });
+      const delta = totp.validate({ token: code, window: 1, timestamp: Date.now() - room.codeAnchor });
       if (delta !== null) {
         matchedRoom = room;
         break;
@@ -259,7 +266,7 @@ io.on('connection', (socket) => {
       log('peer joined room', matchedRoom.id.slice(0, 8));
       socket.to(matchedRoom.id).emit('peer_joined', { peerId: socket.id });
       count('joins.succeeded');
-      cb({ success: true, roomId: matchedRoom.id, secret: matchedRoom.secret, createdAt: matchedRoom.createdAt });
+      cb({ success: true, roomId: matchedRoom.id, secret: matchedRoom.secret, createdAt: matchedRoom.codeAnchor });
     } else {
       count('joins.failed:invalid_code');
       cb({ success: false, error: 'Invalid or expired code' });
@@ -291,7 +298,7 @@ io.on('connection', (socket) => {
 
     socket.to(roomId).emit('peer_joined', { peerId: socket.id });
     count('joins.succeeded');
-    cb({ success: true, roomId, secret: room.secret, createdAt: room.createdAt });
+    cb({ success: true, roomId, secret: room.secret, createdAt: room.codeAnchor });
   });
 
   // Resolve a stable /s/<code> share link to the room it points at. The
@@ -305,7 +312,7 @@ io.on('connection', (socket) => {
     for (const room of rooms.values()) {
       if (room.id.replace(/-/g, '').slice(0, 8) === key) {
         count('links.resolved');
-        return cb({ success: true, roomId: room.id, secret: room.secret, createdAt: room.createdAt });
+        return cb({ success: true, roomId: room.id, secret: room.secret, createdAt: room.codeAnchor });
       }
     }
     cb({ success: false, error: 'Invalid link' });
@@ -339,7 +346,26 @@ io.on('connection', (socket) => {
 
     // Tell the other (live) peer to re-establish the connection with us.
     socket.to(roomId).emit('peer_joined', { peerId: socket.id });
-    cb({ success: true, roomId, secret: room.secret, createdAt: room.createdAt });
+    cb({ success: true, roomId, secret: room.secret, createdAt: room.codeAnchor });
+  });
+
+  // The creator reached the connect screen — re-anchor the code window so the
+  // countdown always starts fresh at 40s. Safe: the ±1 validation window keeps
+  // the previous code valid for one more period, so a joiner mid-typing still
+  // connects. Only a seated peer holding the room secret can refresh.
+  socket.on('refresh_code', ({ roomId, secret }, cb) => {
+    // The secret is the room credential (128-bit random) — possession of it
+    // means the device already joined this room. We deliberately do NOT check
+    // activePeers here: right after a page reload this socket re-joins via
+    // resume_room asynchronously, and the creator's code screen must be able
+    // to re-anchor before that completes.
+    const room = rooms.get(roomId);
+    if (!room || room.secret !== secret) {
+      return cb?.({ success: false, error: 'Invalid session' });
+    }
+    room.codeAnchor = Date.now();
+    room.lastActive = Date.now();
+    cb?.({ success: true, createdAt: room.codeAnchor });
   });
 
   socket.on('signal', ({ roomId, to, signal }, cb) => {

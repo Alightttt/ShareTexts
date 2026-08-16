@@ -44,6 +44,10 @@ interface RoomState {
   secret: string;
   state: RoomPhase;
   createdAt: number;
+  /** The TOTP anchor. Re-anchored on refresh_code so the creator always sees
+   *  a fresh 40s code window on the connect screen; the previous code stays
+   *  valid for one more window (±1 validation) so a typing joiner isn't cut off. */
+  codeAnchor: number;
   lastActive: number;
   expiresAt: number;
   peerA: string | null; // connection ids (cid)
@@ -240,7 +244,7 @@ export class Room extends DurableObject<Env> {
       await stub.fetch(
         new Request('https://internal/register', {
           method: 'POST',
-          body: JSON.stringify({ roomId: r.roomId, secret: r.secret, createdAt: r.createdAt, expiresAt: r.expiresAt }),
+          body: JSON.stringify({ roomId: r.roomId, secret: r.secret, createdAt: r.codeAnchor, expiresAt: r.expiresAt }),
         })
       );
     } catch {
@@ -317,6 +321,8 @@ export class Room extends DurableObject<Env> {
         return this.handleJoinWithLink(cid, msg.id, msg.payload);
       case 'resume_room':
         return this.handleResume(cid, msg.id, msg.payload);
+      case 'refresh_code':
+        return this.handleRefreshCode(cid, msg.id, msg.payload);
       case 'signal':
         return this.handleSignal(cid, msg.id, msg.payload);
       case 'relay_message':
@@ -399,6 +405,7 @@ export class Room extends DurableObject<Env> {
       secret,
       state: 'WAITING',
       createdAt: now,
+      codeAnchor: now,
       lastActive: now,
       expiresAt: now + ROOM_TTL,
       peerA: cid,
@@ -435,7 +442,7 @@ export class Room extends DurableObject<Env> {
       await count(this.env, 'joins.failed:rate_limited');
       return this.ackErr(cid, id, 'RATE_LIMITED', 'Too many attempts. Try again in a minute.');
     }
-    if (!(await validateTOTP(r.secret, code, r.createdAt))) {
+    if (!(await validateTOTP(r.secret, code, r.codeAnchor))) {
       if (now >= r.codeFailReset) {
         r.codeFails = 0;
         r.codeFailReset = now + CODE_FAIL_WINDOW;
@@ -465,7 +472,7 @@ export class Room extends DurableObject<Env> {
       return this.ackErr(cid, id, 'INVALID_SESSION', 'This session link isn\u2019t valid anymore.');
     }
     if (r.peerA === cid || r.peerB === cid) {
-      return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.createdAt });
+      return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.codeAnchor });
     }
     const slot = await this.assignSlot(cid);
     if (slot === 'full') {
@@ -486,7 +493,7 @@ export class Room extends DurableObject<Env> {
       // channel — and any interrupted transfer — can resume. Without this
       // the recovering peer waits for an offer that never comes.
       await this.notifyOthers(cid, 'peer_recovered', { peerId: cid });
-      return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.createdAt });
+      return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.codeAnchor });
     }
     // Drop stale seats whose sockets are gone so the returning device can sit.
     const live = await this.livePeers();
@@ -509,7 +516,29 @@ export class Room extends DurableObject<Env> {
     log('peer joined', r.roomId.slice(0, 8), cid.slice(0, 8), 'state', r.state);
     await count(this.env, 'joins.succeeded');
     await reportPresence(this.env, r.roomId, (await this.livePeers()).length);
-    this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.createdAt });
+    this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.codeAnchor });
+  }
+
+  /**
+   * Re-anchor the pairing-code window to now (creator landed on the connect
+   * screen). The previous code stays valid for one more 40s window via the
+   * ±1 validation window, so a joiner mid-typing still connects. Requires the
+   * room secret — only a device that already joined the room can refresh.
+   */
+  private async handleRefreshCode(cid: string, id?: string, payload?: { secret?: unknown }) {
+    const r = await this.loadRoom();
+    // The secret is the room credential (128-bit random) — possession of it
+    // means the device already joined this room. No seat check on purpose:
+    // right after a reload this socket re-joins via resume_room
+    // asynchronously, and the creator's code screen must re-anchor first.
+    if (!r || r.secret !== payload?.secret) {
+      return this.ackErr(cid, id, 'INVALID_SESSION', 'This session isn\u2019t valid anymore.');
+    }
+    r.codeAnchor = Date.now();
+    await this.ctx.storage.put('room', r);
+    await this.registerInRegistry(r); // keep the registry's lookup anchor in sync
+    await count(this.env, 'rooms.code_refreshed');
+    this.ackOk(cid, id, { createdAt: r.codeAnchor });
   }
 
   private async handleSignal(cid: string, _id: string | undefined, payload?: { to?: unknown; signal?: unknown }) {

@@ -15,10 +15,15 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
   const [progress, setProgress] = useState(() => getTOTPProgress(createdAt));
   const [remaining, setRemaining] = useState(() => getTOTPRemainingSeconds(createdAt));
 
-  // Tick once per second (not per animation frame): React bails out when the
-  // code string is unchanged, so this re-renders ~1×/s. The ring depletes
-  // smoothly between ticks via the stroke-dashoffset CSS transition below.
+  // Recompute immediately when the anchor changes (a code re-anchor from
+  // refresh_code must show the fresh code at once — no stale 1s flash), then
+  // tick once per second. React bails out when the code string is unchanged,
+  // so this re-renders ~1×/s. The ring depletes smoothly between ticks via
+  // the stroke-dashoffset CSS transition below.
   useEffect(() => {
+    setCode(generateTOTP(secret, createdAt));
+    setProgress(getTOTPProgress(createdAt));
+    setRemaining(getTOTPRemainingSeconds(createdAt));
     const interval = setInterval(() => {
       setCode(generateTOTP(secret, createdAt));
       setProgress(getTOTPProgress(createdAt));

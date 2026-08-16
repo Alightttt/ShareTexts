@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { ShieldCheck, EyeOff, RotateCcw } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 /**
  * The trust wedge. "What happens to your text?" is the question every
@@ -83,24 +84,33 @@ export function PrivacyPromise() {
           ))}
         </div>
 
-        {/* The strip — tiny setup, zero cost. The zeros are the story. */}
+        {/* The strip — tiny setup, zero cost. The zeros are the story.
+            One contained card, equal cells, hairline dividers on desktop; a
+            clean two-column wrap on mobile. */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-60px' }}
           transition={{ duration: 0.7, ease: EASE }}
-          className="mt-14 border-t border-apple-divider dark:border-white/[0.08] pt-10 grid grid-cols-2 sm:grid-cols-5 gap-x-4 gap-y-8"
+          className="mt-14 bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-white/[0.06] rounded-[20px] shadow-card overflow-hidden"
         >
-          {STATS.map((s) => (
-            <div key={s.label} className="text-center">
-              <p className="text-[38px] sm:text-[48px] font-semibold text-apple-ink dark:text-white tracking-[-0.04em] leading-none tabular-nums">
-                {s.n}
-              </p>
-              <p className="mt-2 text-[12px] sm:text-[13px] text-apple-ink-muted dark:text-white/55 font-medium">
-                {s.label}
-              </p>
-            </div>
-          ))}
+          <div className="grid grid-cols-2 sm:grid-cols-5 divide-x divide-y sm:divide-y-0 divide-apple-divider dark:divide-white/[0.06]">
+            {STATS.map((s) => (
+              <div key={s.label} className="px-4 py-7 sm:py-8 text-center">
+                <p className={cn(
+                  'text-[40px] sm:text-[52px] font-semibold tracking-[-0.05em] leading-none tabular-nums',
+                  s.n === '0'
+                    ? 'bg-[linear-gradient(180deg,#34c759,#1f9d44)] bg-clip-text text-transparent'
+                    : 'text-apple-ink dark:text-white'
+                )}>
+                  {s.n}
+                </p>
+                <p className="mt-2.5 text-[12px] sm:text-[13px] text-apple-ink-muted dark:text-white/55 font-medium">
+                  {s.label}
+                </p>
+              </div>
+            ))}
+          </div>
         </motion.div>
       </div>
     </section>

@@ -220,6 +220,37 @@ async function runRoomProtocol() {
   late.close();
 }
 
+async function runRefreshCode() {
+  const roomId = uuid();
+  const ctx = new FakeCtx();
+  const room = new Room(ctx, makeEnv());
+  const creator = await connect(room, roomId);
+  const created = await creator.send('create_room');
+  const beforeAnchor = created.createdAt;
+
+  const refreshed = await creator.send('refresh_code', { roomId, secret: created.secret });
+  check('refresh_code ack', refreshed.success === true && typeof refreshed.createdAt === 'number');
+  check('refresh_code re-anchors to a later time', refreshed.createdAt >= beforeAnchor);
+
+  // The new anchor produces a fresh window; the OLD code is still accepted
+  // within the ±1 validation grace, so a joiner mid-typing isn't cut off.
+  const newCode = codeFor(created.secret, refreshed.createdAt);
+  const joiner = await connect(room, roomId);
+  const joined = await joiner.send('join_with_code', { code: newCode });
+  check('fresh code joins after refresh_code', joined.success === true, joined.error);
+  const oldCode = codeFor(created.secret, beforeAnchor);
+  if (oldCode !== newCode) {
+    const graceJoiner = await connect(room, roomId);
+    const joinedOld = await graceJoiner.send('join_with_code', { code: oldCode });
+    check('old code still joins within the ±1 grace window', joinedOld.success === true, joinedOld.error);
+    graceJoiner.close();
+  } else {
+    check('old code still joins within the ±1 grace window', true, 'same TOTP window — value identical');
+  }
+  joiner.close();
+  creator.close();
+}
+
 async function runLiveIdleExpiry() {
   const roomId = uuid();
   const ctx = new FakeCtx();
@@ -292,6 +323,7 @@ async function runRegistry() {
 }
 
 await runRoomProtocol();
+await runRefreshCode();
 await runLiveIdleExpiry();
 await runDisconnectedState();
 await runRegistry();

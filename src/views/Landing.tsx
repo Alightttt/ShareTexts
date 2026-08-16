@@ -234,16 +234,28 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           <h2 className="text-[34px] sm:text-[46px] font-semibold text-apple-ink dark:text-white tracking-[-0.03em] leading-[1.08]">
             Sometimes you just need to move something.
           </h2>
-          <motion.button
-            onPointerDown={handleCreate}
-            disabled={isCreating}
-            whileTap={{ scale: 0.97 }}
-            className="group mt-9 px-9 py-4 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[10px] text-[16px] font-semibold flex items-center gap-2 mx-auto transition-motion disabled:opacity-60 shadow-card hover:shadow-float"
-          >
-            {isCreating ? 'Creating…' : createError ? 'Try Again' : (
-              <><Send className="w-4.5 h-4.5" /> Send text <ArrowRight className="w-4.5 h-4.5 transition-transform duration-200 ease-out group-hover:translate-x-0.5" /></>
-            )}
-          </motion.button>
+          <p className="mt-4 text-[16px] sm:text-[17px] text-apple-ink-muted dark:text-white/60 font-medium">
+            One page, two screens. No app, no account, nothing kept in between.
+          </p>
+          <div className="mt-9 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
+            <motion.button
+              onPointerDown={handleCreate}
+              disabled={isCreating}
+              whileTap={{ scale: 0.97 }}
+              className="group px-9 py-4 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[12px] text-[16px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float min-h-[52px]"
+            >
+              {isCreating ? 'Creating…' : createError ? 'Try Again' : (
+                <><Send className="w-4 h-4" /> Send text <ArrowRight className="w-4 h-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" /></>
+              )}
+            </motion.button>
+            <motion.button
+              onPointerDown={onJoinClick}
+              whileTap={{ scale: 0.97 }}
+              className="px-8 py-4 rounded-[12px] text-[15px] font-medium text-apple-ink-muted dark:text-white/60 border border-apple-divider dark:border-white/15 hover:text-apple-ink dark:hover:text-white hover:border-apple-ink/30 dark:hover:border-white/30 transition-motion flex items-center justify-center gap-1.5 min-h-[52px]"
+            >
+              <Inbox className="w-4 h-4" /> Receive text
+            </motion.button>
+          </div>
           <p className="mt-6 text-[15px] text-apple-ink-muted dark:text-white/55 font-medium">
             Open it on the other device and connect.
           </p>

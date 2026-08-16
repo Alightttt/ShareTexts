@@ -141,3 +141,34 @@ export async function resolveShortCode(
     });
   });
 }
+
+/**
+ * Re-anchor the pairing-code window to now (the creator landed on the connect
+ * screen), on whichever transport is active. Returns the new anchor so the
+ * client can restart the 40s countdown. Only a seated peer holding the room
+ * secret can refresh; failures resolve { success: false } and are ignored.
+ */
+export async function refreshCode(
+  roomId: string,
+  secret: string
+): Promise<{ success: boolean; createdAt?: number }> {
+  if (mode === 'cloudflare') {
+    const cf = getSocket() as unknown as import('./cloudflareSocket').CloudflareSocket;
+    if (typeof (cf as any).refreshCode === 'function') {
+      return (cf as any).refreshCode(roomId, secret);
+    }
+    return { success: false };
+  }
+  return new Promise((resolve) => {
+    const socket = getSocket();
+    const timer = setTimeout(() => resolve({ success: false }), 8000);
+    socket.emit('refresh_code', { roomId, secret }, (res: any) => {
+      clearTimeout(timer);
+      if (res?.success && typeof res.createdAt === 'number') {
+        resolve({ success: true, createdAt: res.createdAt });
+      } else {
+        resolve({ success: false });
+      }
+    });
+  });
+}

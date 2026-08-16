@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import fs from 'fs';
 
-export const URL = process.env.URL || 'http://localhost:3311';
+export const URL = process.env.URL || 'http://localhost:3000';
 
 const KNOWN_PATHS = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
