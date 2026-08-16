@@ -10,13 +10,19 @@ import { RoomHub } from './views/RoomHub';
 import { JoinSession } from './views/JoinSession';
 import { ChatView } from './views/ChatView';
 import { AnimatePresence, motion } from 'motion/react';
-import { WifiOff } from 'lucide-react';
+import { WifiOff, Send, Home } from 'lucide-react';
 import { ShareTextLogo } from './components/ShareTextLogo';
 
-function SessionEndedScreen({ reason, onRestart }: { reason: string, onRestart: () => void }) {
+function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, onNewSession: () => void, onHome: () => void }) {
+  // One honest line about what happened, then one clear action.
   const copy = reason === 'expired'
-    ? "This temporary room has expired and can no longer be reopened."
-    : "Your temporary room has been closed.";
+    ? "This room expired. Make a new one when you're ready."
+    : reason === 'manual_close'
+      ? "You ended this session."
+      : "This room was closed.";
+  const sub = reason === 'expired'
+    ? "Nothing you sent is stored anywhere — it only lived on your devices."
+    : "Everything you sent is already on your device. Nothing was stored.";
 
   return (
     <motion.div
@@ -29,16 +35,26 @@ function SessionEndedScreen({ reason, onRestart }: { reason: string, onRestart: 
       <ShareTextLogo
         size={56}
         motion={reason === 'expired' ? undefined : 'complete'}
-        className="text-apple-ink dark:text-white mb-6 opacity-80"
+        className="text-apple-ink dark:text-white mb-7 opacity-80"
       />
       <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">Session ended.</h2>
-      <p className="text-[17px] text-apple-ink-muted mb-10">{copy}</p>
-      <button
-        onPointerDown={onRestart}
-        className="px-8 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[16px] font-semibold transition-motion active:scale-[0.97] shadow-card hover:shadow-float min-h-[48px]"
-      >
-        Start New Session
-      </button>
+      <p className="text-[16px] text-apple-ink-muted dark:text-white/60 font-medium max-w-sm mb-1.5">{copy}</p>
+      <p className="text-[13.5px] text-apple-ink-muted/80 dark:text-white/40 font-medium max-w-xs mb-9">{sub}</p>
+
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full max-w-sm sm:max-w-none sm:w-auto">
+        <button
+          onPointerDown={onNewSession}
+          className="px-7 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] shadow-card hover:shadow-float min-h-[48px] flex items-center justify-center gap-2"
+        >
+          <Send className="w-4 h-4" /> Start New Session
+        </button>
+        <button
+          onPointerDown={onHome}
+          className="px-6 py-3 rounded-[12px] text-[14px] font-medium text-apple-ink-muted dark:text-white/60 border border-apple-divider dark:border-white/15 hover:text-apple-ink dark:hover:text-white hover:border-apple-ink/30 dark:hover:border-white/30 transition-motion active:scale-[0.97] min-h-[48px] flex items-center justify-center gap-1.5"
+        >
+          <Home className="w-4 h-4" /> Back to Home
+        </button>
+      </div>
     </motion.div>
   );
 }
@@ -97,7 +113,7 @@ function ConnectingWait({ onRetry }: { onRetry: () => void; key?: React.Key }) {
 }
 
 function AppContent() {
-  const { session, leaveView, requestReconnect } = useSession();
+  const { session, leaveView, requestReconnect, createSession } = useSession();
   // Remounts ConnectingWait on "Try again" so its 15s hint timer restarts.
   const [waitKey, setWaitKey] = useState(0);
   const [view, setView] = useState<'landing' | 'join'>(() => {
@@ -139,14 +155,16 @@ function AppContent() {
   }
 
   // Session ended — show a calm closing state instead of dumping the user on
-  // the landing page with no explanation.
+  // the landing page with no explanation. Two exits: start a fresh session
+  // (the useful next step) or return home.
   if (!session.roomId && session.closedReason) {
     return (
       <AnimatePresence mode="wait">
-        <SessionEndedScreen reason={session.closedReason} onRestart={() => {
-          leaveView();
-          setView('landing');
-        }} />
+        <SessionEndedScreen
+          reason={session.closedReason}
+          onNewSession={() => { leaveView(); void createSession(); }}
+          onHome={() => { leaveView(); setView('landing'); }}
+        />
       </AnimatePresence>
     );
   }

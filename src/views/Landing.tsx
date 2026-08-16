@@ -50,7 +50,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
 
       {/* ============ HERO — copy and product demonstration share the frame ============ */}
       <section className="px-6 pt-16 sm:pt-24 pb-20 sm:pb-28">
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-16 lg:gap-12 items-center">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] gap-16 lg:gap-12 items-center">
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}

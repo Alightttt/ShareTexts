@@ -160,7 +160,7 @@ export function HeroDemo() {
   return (
     <div
       ref={containerRef}
-      className="relative w-full max-w-[880px] mx-auto select-none min-h-[620px] sm:min-h-[380px]"
+      className="relative w-full max-w-[900px] mx-auto select-none min-h-[680px] sm:min-h-[440px]"
       aria-hidden
     >
       {/* Connection beam — horizontal on desktop, vertical when stacked */}
@@ -177,10 +177,10 @@ export function HeroDemo() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center sm:items-center sm:justify-between gap-16 sm:gap-0 px-2 sm:px-16 relative">
+      <div className="flex flex-col sm:flex-row items-center sm:items-center sm:justify-between gap-20 sm:gap-0 px-2 sm:px-6 relative">
         {/* Phone — the sender */}
         <div className="flex flex-col items-center">
-          <PhoneFrame className="w-[132px] sm:w-[172px]">
+          <PhoneFrame className="w-[124px] sm:w-[148px]">
             <div ref={phoneScreenRef} className="w-full h-full flex flex-col">
               <RoomHeader status={phoneStatus} label="Your phone" />
               {/* Messages */}
@@ -275,7 +275,7 @@ export function HeroDemo() {
 
         {/* Laptop — the receiver */}
         <div className="flex flex-col items-center">
-          <LaptopFrame className="w-[260px] sm:w-[400px]">
+          <LaptopFrame className="w-[248px] sm:w-[300px] xl:w-[330px]">
             <div ref={laptopScreenRef} className="w-full h-full flex flex-col">
               <RoomHeader status={laptopStatus} label="Your laptop" />
               {/* Received object / empty */}

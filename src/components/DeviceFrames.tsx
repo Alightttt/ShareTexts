@@ -81,8 +81,6 @@ function PhoneStatusBar() {
   );
 }
 
-const KEY_SHARED = 'bg-[linear-gradient(180deg,#3a3a3f_0%,#2a2a2e_55%,#232327_100%)] ring-1 ring-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_1.5px_0_rgba(0,0,0,0.45),0_2px_3px_rgba(0,0,0,0.35)]';
-
 export function PhoneFrame({
   children,
   className,
@@ -137,13 +135,15 @@ export function LaptopFrame({
 }) {
   return (
     <div className={cn('relative shrink-0', className)}>
-      {/* Lid — aluminium with a bright machined edge */}
-      <div className="relative rounded-[clamp(7px,2.2%,16px)] p-[1.6%] bg-[linear-gradient(168deg,#8a8a92_0%,#4a4a50_16%,#303034_45%,#1c1c1f_100%)] shadow-device">
+      {/* Lid — aluminium, seen from the front at ~95° open: the screen faces
+          the viewer almost straight on and the base is just a slim lip below.
+          No keyboard is visible — it recedes behind the screen. */}
+      <div className="relative rounded-[clamp(7px,2.2%,16px)] p-[1.5%] bg-[linear-gradient(168deg,#8a8a92_0%,#4a4a50_16%,#303034_45%,#1c1c1f_100%)] shadow-device">
         {/* Camera pinhole */}
         <div className="absolute top-[3.5%] left-1/2 -translate-x-1/2 w-[2.6%] aspect-square rounded-full bg-[#0a0a0c] ring-1 ring-white/15 z-30 shadow-[inset_0_0_2px_rgba(0,0,0,0.9)]">
           <div className="absolute inset-[24%] rounded-full bg-[#2b6cb0]/80 shadow-[0_0_2px_rgba(80,150,255,0.6)]" />
         </div>
-        <div className="relative rounded-[clamp(5px,1.6%,13px)] bg-[#121214] p-[2.2%]">
+        <div className="relative rounded-[clamp(5px,1.6%,13px)] bg-[#121214] p-[2%]">
           <div
             className={cn(
               'relative w-full aspect-[16/10] rounded-[clamp(3px,0.9%,8px)] overflow-hidden bg-apple-canvas dark:bg-black',
@@ -157,64 +157,17 @@ export function LaptopFrame({
         </div>
       </div>
 
-      {/* Hinge */}
-      <div className="h-[0.9%] w-[88%] mx-auto rounded-b-[3px] bg-[linear-gradient(180deg,#4a4a4e_0%,#222226_55%,#17171a_100%)] shadow-[0_1px_1px_rgba(0,0,0,0.5)]" />
-
-      {/* Keyboard deck — realistic key layout, keycap depth, palm rest.
-          The deck must read as smaller than the screen (real laptops are
-          ~45% lid height), so keys are short and the trackpad is flat. */}
-      <div className="rounded-b-[clamp(7px,2.2%,16px)] bg-[linear-gradient(180deg,#414146_0%,#2d2d31_14%,#242428_50%,#19191d_100%)] p-[2.6%] pt-[1.8%] shadow-[0_20px_40px_-16px_rgba(0,0,0,0.55)]">
-        {/* Function row — slightly shorter, distinct from the main keys */}
-        <div className="flex justify-between gap-[1.4%] mb-[2.4%]">
-          {Array.from({ length: 14 }).map((_, k) => (
-            <span
-              key={k}
-              className="flex-1 aspect-[2.6/1] rounded-[1.5px] bg-[linear-gradient(180deg,#333338_0%,#26262a_55%,#1e1e22_100%)] ring-1 ring-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_1px_1px_rgba(0,0,0,0.4)]"
-            />
-          ))}
-        </div>
-        {/* Letter rows — realistic widths: modifiers, spacebar, enter, shift */}
-        <div className="flex flex-col gap-[2.4%]">
-          {/* Row 1: digits */}
-          <div className="flex justify-between gap-[1.4%]">
-            {Array.from({ length: 13 }).map((_, k) => (
-              <span key={k} className={cn('flex-1 aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED, k === 12 && 'flex-[1.35]')} />
-            ))}
-          </div>
-          {/* Row 2: QWERTY */}
-          <div className="flex justify-between gap-[1.4%]">
-            <span className={cn('flex-[1.25] aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED)} />
-            {Array.from({ length: 11 }).map((_, k) => (
-              <span key={k} className="flex-1 aspect-[2.2/1] rounded-[1.5px] bg-[linear-gradient(180deg,#3a3a3f_0%,#2a2a2e_55%,#232327_100%)] ring-1 ring-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_1.5px_0_rgba(0,0,0,0.45),0_2px_3px_rgba(0,0,0,0.35)]" />
-            ))}
-            <span className={cn('flex-[1.35] aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED)} />
-          </div>
-          {/* Row 3: home row */}
-          <div className="flex justify-between gap-[1.4%]">
-            <span className={cn('flex-[1.5] aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED)} />
-            {Array.from({ length: 10 }).map((_, k) => (
-              <span key={k} className="flex-1 aspect-[2.2/1] rounded-[1.5px] bg-[linear-gradient(180deg,#3a3a3f_0%,#2a2a2e_55%,#232327_100%)] ring-1 ring-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_1.5px_0_rgba(0,0,0,0.45),0_2px_3px_rgba(0,0,0,0.35)]" />
-            ))}
-            <span className={cn('flex-[1.5] aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED)} />
-          </div>
-          {/* Row 4: spacebar */}
-          <div className="flex justify-between gap-[1.4%]">
-            <span className={cn('flex-[1.35] aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED)} />
-            <span className={cn('flex-[1.5] aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED)} />
-            <span className="flex-[4.6] aspect-[2.2/1] rounded-[1.5px] bg-[linear-gradient(180deg,#3a3a3f_0%,#2a2a2e_55%,#232327_100%)] ring-1 ring-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_1.5px_0_rgba(0,0,0,0.45),0_2px_3px_rgba(0,0,0,0.35)]" />
-            <span className={cn('flex-[1.5] aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED)} />
-            <span className={cn('flex-[1.35] aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED)} />
-          </div>
-        </div>
-        {/* Palm rest + trackpad */}
-        <div className="mt-[3%] pt-[1.6%] border-t border-white/[0.04]">
-          <div className="relative mx-auto w-[30%] aspect-[3/1] rounded-[3px] bg-[linear-gradient(180deg,#26262a_0%,#1d1d21_100%)] ring-1 ring-white/[0.07] shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]">
-            <span className="absolute left-1/2 top-[14%] bottom-[14%] w-px -translate-x-1/2 bg-black/50" />
-          </div>
-        </div>
+      {/* Base — the front lip of the laptop body, slightly wider than the lid,
+          with the hinge seam where it meets the screen. This is all you see
+          from the front; the deck recedes away. */}
+      <div className="relative -mt-[1.2%] mx-auto w-[103%] h-[7.5%] min-h-[10px] rounded-b-[clamp(7px,2.2%,16px)] bg-[linear-gradient(180deg,#2c2c30_0%,#242428_35%,#17171a_100%)] shadow-[0_14px_28px_-12px_rgba(0,0,0,0.5)]">
+        {/* Hinge seam — the dark gap where the lid meets the base */}
+        <div className="absolute -top-[1px] left-[3%] right-[3%] h-[1.5px] rounded-full bg-black/70" />
+        {/* Front edge highlight — a machined lip catching the light */}
+        <div className="absolute bottom-[12%] left-[6%] right-[6%] h-[1px] rounded-full bg-white/[0.12]" />
       </div>
 
-      <GroundShadow className="w-[80%] h-[7%] -bottom-[6.5%] opacity-55" />
+      <GroundShadow className="w-[80%] h-[6%] -bottom-[5.5%] opacity-55" />
     </div>
   );
 }
