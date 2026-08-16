@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { SessionState, ChatMessage, ConnectionType } from '../types';
-import { getSocket, devLog, signalingConfigIssue } from './socket';
+import { getSocket, devLog, signalingConfigIssue, resolveShortCode } from './socket';
 import { PeerManager, TransferCancelledError, hasSendProgress, clearAllTransferState, getPartialInfo } from './webrtc';
 import { humanizeError } from './errors';
 import { diag } from './diag';
@@ -10,6 +10,7 @@ interface SessionContextValue {
   createSession: () => Promise<void>;
   joinWithCode: (code: string) => Promise<{ success: boolean; error?: string }>;
   joinWithLink: (roomId: string) => Promise<{ success: boolean; error?: string }>;
+  joinWithShortCode: (code: string) => Promise<{ success: boolean; error?: string }>;
   sendMessage: (text: string, attachment?: import('../types').Attachment, file?: File) => void;
   updateMessageAttachment: (messageId: string, updates: Partial<ChatMessage['attachment']>) => void;
   retryTransfer: (messageId: string) => Promise<void>;
@@ -589,6 +590,21 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  /**
+   * Join via a stable /s/<code> share link. The code is resolved to a roomId
+   * on the active transport, then the normal link-join path seats this device
+   * and tells the other peer to connect — same flow as any other join.
+   */
+  const joinWithShortCode = async (code: string) => {
+    await ensureSocketConnected();
+    const res = await resolveShortCode(code);
+    diag('room.join_short', !!res.success, res.success ? 'ok' : 'not found');
+    if (!res.success || !res.roomId) {
+      return { success: false, error: "This link isn't active anymore. Ask for a fresh code." };
+    }
+    return joinWithLink(res.roomId);
+  };
+
   const setupJoiner = (roomId: string, secret: string, createdAt?: number) => {
     abandonedRef.current = false;
     saveStoredSession({ roomId, secret, isCreator: false, createdAt });
@@ -843,7 +859,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, sendMessage, updateMessageAttachment, retryTransfer, retryText, cancelTransfer, setDeviceName, requestReconnect, closeSession, leaveView, abandonSession }}>
+    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, joinWithShortCode, sendMessage, updateMessageAttachment, retryTransfer, retryText, cancelTransfer, setDeviceName, requestReconnect, closeSession, leaveView, abandonSession }}>
       {children}
     </SessionContext.Provider>
   );

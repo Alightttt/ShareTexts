@@ -45,7 +45,7 @@ async function main() {
 
   // --- A -> B small text ---
   await A.locator('textarea').first().fill('Hello from Device A 👋');
-  await A.getByRole('button', { name: 'Send' }).click();
+  await A.getByRole('button', { name: 'Send', exact: true }).click();
   await sleep(2000);
   const bBody1 = await B.locator('body').innerText();
   if (!bBody1.includes('Hello from Device A 👋')) {
@@ -56,7 +56,7 @@ async function main() {
 
   // --- B -> A reply ---
   await B.locator('textarea').first().fill('Reply from Device B');
-  await B.getByRole('button', { name: 'Send' }).click();
+  await B.getByRole('button', { name: 'Send', exact: true }).click();
   await sleep(2000);
   const aBody1 = await A.locator('body').innerText();
   if (!aBody1.includes('Reply from Device B')) {
@@ -74,7 +74,7 @@ async function main() {
   // --- Large unicode text A -> B ---
   const big = makeUnicodeText(120); // ~120 KB
   await A.locator('textarea').first().fill(big);
-  await A.getByRole('button', { name: 'Send' }).click();
+  await A.getByRole('button', { name: 'Send', exact: true }).click();
   console.log('STEP 6: sent ~120KB unicode text, waiting for B to receive…');
   let receivedBig = false;
   for (let i = 0; i < 30; i++) {
@@ -100,7 +100,7 @@ async function main() {
   const taA = A.locator('textarea').first();
   if (await taA.count()) {
     await taA.fill('Back after refresh');
-    await A.getByRole('button', { name: 'Send' }).click();
+    await A.getByRole('button', { name: 'Send', exact: true }).click();
     await sleep(2500);
     const bBody2 = await B.locator('body').innerText();
     console.log(bBody2.includes('Back after refresh') ? 'STEP 8 OK: message sent after reconnect reached B' : 'STEP 8 FAIL: post-reconnect message lost');
@@ -128,7 +128,7 @@ async function main() {
   const b2Ta = B2.locator('textarea').first();
   if (await b2Ta.count()) {
     await b2Ta.fill('Back after tab close');
-    await B2.getByRole('button', { name: 'Send' }).click();
+    await B2.getByRole('button', { name: 'Send', exact: true }).click();
     await sleep(2500);
     const aBody3 = await A.locator('body').innerText();
     console.log(aBody3.includes('Back after tab close') ? 'STEP 8e OK: message sent after rejoin reached A' : 'STEP 8e FAIL: post-rejoin message lost');

@@ -111,6 +111,10 @@ export default {
       return lookup(request, env, cors);
     }
 
+    if (path === '/resolve-short' && request.method === 'POST') {
+      return resolveShort(request, env, cors);
+    }
+
     if (path === '/metrics') {
       // Anonymous aggregate counters (see metrics.ts). Optional bearer gate so
       // operators can keep volumes private if they want to.
@@ -139,7 +143,7 @@ export default {
 
     return json({
       name: 'sharetext-signaling',
-      endpoints: ['/health', '/ws', '/lookup'],
+      endpoints: ['/health', '/ws', '/lookup', '/resolve-short'],
     }, 200, cors);
   },
 } satisfies ExportedHandler<Env>;
@@ -170,4 +174,32 @@ async function lookup(request: Request, env: Env, cors: Record<string, string>):
     }
   }
   return json({ error: 'Invalid or expired code' }, 404, cors);
+}
+
+/** Resolve a stable /s/<code> share link → room credentials via the Registry. */
+async function resolveShort(request: Request, env: Env, cors: Record<string, string>): Promise<Response> {
+  let body: { code?: unknown };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return json({ error: 'Invalid link' }, 404, cors);
+  }
+  if (typeof body.code !== 'string' || !/^[0-9a-f]{8}$/i.test(body.code)) {
+    return json({ error: 'Invalid link' }, 404, cors);
+  }
+  const days = new Set([dayKey(), dayKey(Date.now() - 24 * 60 * 60 * 1000)]);
+  for (const day of days) {
+    const stub = env.REGISTRY.get(env.REGISTRY.idFromName('registry-' + day));
+    const res = await stub.fetch(
+      new Request('https://internal/resolve-short', {
+        method: 'POST',
+        body: JSON.stringify({ code: body.code }),
+      })
+    );
+    if (res.status === 200) {
+      const found = (await res.json()) as { roomId?: string; secret?: string; createdAt?: number };
+      if (found.roomId && found.secret) return json({ roomId: found.roomId, secret: found.secret, createdAt: found.createdAt }, 200, cors);
+    }
+  }
+  return json({ error: 'Invalid link' }, 404, cors);
 }

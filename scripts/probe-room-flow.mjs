@@ -81,7 +81,7 @@ async function main() {
 
   // --- Delivery receipt ---
   await A.getByPlaceholder('Paste or type text…').fill('hello receipt test');
-  await A.getByRole('button', { name: 'Send' }).click();
+  await A.getByRole('button', { name: 'Send', exact: true }).click();
   await sleep(1500);
 
   // The bubble = the rounded-[18px] wrapper containing the message text.
@@ -136,7 +136,7 @@ async function main() {
     // --- Image transfer + viewer on both sides ---
     await A.locator('input[type="file"][accept="image/*"]').setInputFiles(imgPath);
     await sleep(300);
-    await A.getByRole('button', { name: 'Send' }).click();
+    await A.getByRole('button', { name: 'Send', exact: true }).click();
     await sleep(2500);
 
     for (const [label, page] of [['sender', A], ['receiver', B]]) {

@@ -5,8 +5,9 @@ import { ShareTextLogo } from '../components/ShareTextLogo';
 import { HeroDemo } from '../components/HeroDemo';
 import { ScrollStory } from '../components/ScrollStory';
 import { Situations } from '../components/Situations';
-import { ArrowRight, Send, Inbox } from 'lucide-react';
+import { ArrowRight, Send, Inbox, ShieldCheck } from 'lucide-react';
 import { LiveUsers } from '../components/LiveUsers';
+import { InstallPrompt } from '../components/InstallPrompt';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -170,9 +171,17 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 <Inbox className="w-4 h-4" /> Receive text
               </motion.button>
             </div>
-            <p className="mt-6 text-[13px] font-medium text-apple-ink-muted dark:text-white/60">
-              No account required · Temporary by default
-            </p>
+            {/* The trust strip — the three promises that make ShareText
+                shareable. Each is true and each answers a first-objection. */}
+            <div className="mt-6 flex flex-wrap items-center gap-x-3.5 gap-y-2 text-[13px] font-medium text-apple-ink-muted dark:text-white/60">
+              <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-status-success" /> End-to-end encrypted</span>
+              <span className="w-1 h-1 rounded-full bg-apple-ink-muted/40" aria-hidden />
+              <span>No account</span>
+              <span className="w-1 h-1 rounded-full bg-apple-ink-muted/40" aria-hidden />
+              <span>Nothing stored</span>
+              <span className="w-1 h-1 rounded-full bg-apple-ink-muted/40" aria-hidden />
+              <span>Open source</span>
+            </div>
             {createError && (
               <p role="alert" className="mt-5 text-[14px] font-medium text-status-danger flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-status-danger" /> {createError}
@@ -229,6 +238,9 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           )}
         </motion.div>
       </section>
+
+      {/* PWA install — a quiet pill on capable browsers, once per device. */}
+      <InstallPrompt />
 
       {/* ============ FOOTER ============ */}
       <footer className="px-6 py-10 border-t border-apple-divider dark:border-white/[0.06]">

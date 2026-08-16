@@ -13,3 +13,13 @@ export function formatBytes(bytes: number, decimals = 1) {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
+
+/**
+ * Stable short code for share links: the room's UUID with dashes removed,
+ * first 8 chars. Stable for the room's whole life, unlike the rotating
+ * 6-digit pairing code — so /s/<code> links survive being opened later.
+ * Must match shortCodeOf in worker/src/registry.ts and the Node server.
+ */
+export function shortCodeOf(roomId: string): string {
+  return roomId.replace(/-/g, '').slice(0, 8).toLowerCase();
+}

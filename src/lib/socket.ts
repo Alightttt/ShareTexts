@@ -99,3 +99,45 @@ export function getSocket(): SignalingSocket {
   }
   return instance;
 }
+
+/**
+ * Resolve a stable /s/<code> share link to room credentials, on whichever
+ * transport is active: the Cloudflare Worker's POST /resolve-short endpoint,
+ * or a socket.io `resolve_short_code` event on the Node server.
+ */
+export async function resolveShortCode(
+  code: string
+): Promise<{ success: boolean; roomId?: string; secret?: string; createdAt?: number }> {
+  const normalized = code.toLowerCase().trim();
+  if (mode === 'cloudflare' && url) {
+    const httpBase = url.replace(/\/+$/, '').replace(/\/ws$/i, '').replace(/^ws/, 'http');
+    try {
+      const res = await fetch(httpBase + '/resolve-short', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ code: normalized }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { roomId?: string; secret?: string; createdAt?: number };
+        if (data.roomId && data.secret) {
+          return { success: true, roomId: data.roomId, secret: data.secret, createdAt: data.createdAt };
+        }
+      }
+      return { success: false };
+    } catch {
+      return { success: false };
+    }
+  }
+  return new Promise((resolve) => {
+    const socket = getSocket();
+    const timer = setTimeout(() => resolve({ success: false }), 10000);
+    socket.emit('resolve_short_code', { code: normalized }, (res: any) => {
+      clearTimeout(timer);
+      if (res?.success && res.roomId && res.secret) {
+        resolve({ success: true, roomId: res.roomId, secret: res.secret, createdAt: res.createdAt });
+      } else {
+        resolve({ success: false });
+      }
+    });
+  });
+}

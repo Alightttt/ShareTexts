@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
     <!-- Primary -->
-    <title>ShareText — Move something between your devices</title>
-    <meta name="description" content="Move text, photos and files from your phone to your computer (or any two devices) in seconds — iPhone to Windows included. No app, no account, nothing to install. Open ShareText on two devices, connect, transfer, done." />
+    <title>ShareText — AirDrop for every device. No app. No account.</title>
+    <meta name="description" content="Share anything between two devices — text, photos, videos, files up to 200 MB. No app, no account, nothing stored. Open ShareText on both devices, connect with a code or link, done. iPhone to Windows included." />
     <meta name="robots" content="index, follow" />
     <meta name="author" content="ShareText" />
     <meta name="application-name" content="ShareText" />
@@ -20,21 +20,23 @@
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="ShareText" />
-    <meta property="og:title" content="ShareText — Move something between your devices" />
-    <meta property="og:description" content="Copy text and files between your devices — iPhone to Windows, phone to computer. No app. No account. Open ShareText, connect, transfer, done." />
+    <meta property="og:title" content="ShareText — share anything between two devices" />
+    <meta property="og:description" content="No app. No account. Nothing stored. Text, photos and files up to 200 MB — iPhone to Windows, phone to laptop, any two browsers." />
     <meta property="og:url" content="https://share-texts.vercel.app/" />
-    <meta property="og:image" content="https://share-texts.vercel.app/og.png" />
+    <!-- ?v=2 busts the aggressive social-crawler caches (WhatsApp/DM/Twitter)
+         so the new card actually appears after a deploy. -->
+    <meta property="og:image" content="https://share-texts.vercel.app/og.png?v=2" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:type" content="image/png" />
-    <meta property="og:image:alt" content="ShareText — move text, photos and files between your devices." />
+    <meta property="og:image:alt" content="ShareText — share anything between two devices, no app and no account." />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="ShareText — Move something between your devices" />
-    <meta name="twitter:description" content="Copy text and files between your devices — iPhone to Windows, phone to computer. No app. No account." />
-    <meta name="twitter:image" content="https://share-texts.vercel.app/og.png" />
-    <meta name="twitter:image:alt" content="ShareText — move text, photos and files between your devices." />
+    <meta name="twitter:title" content="ShareText — share anything between two devices" />
+    <meta name="twitter:description" content="No app. No account. Nothing stored. iPhone to Windows, phone to laptop — in seconds." />
+    <meta name="twitter:image" content="https://share-texts.vercel.app/og.png?v=2" />
+    <meta name="twitter:image:alt" content="ShareText — share anything between two devices, no app and no account." />
 
     <link rel="canonical" href="https://share-texts.vercel.app/" />
 
@@ -54,7 +56,7 @@
       "@type": "WebApplication",
       "name": "ShareText",
       "url": "https://share-texts.vercel.app/",
-      "description": "Move text, photos and files between your devices — no app, no account, nothing to install.",
+      "description": "Share anything between two devices — no app, no account, nothing stored.",
       "applicationCategory": "UtilityApplication",
       "operatingSystem": "Any (browser with WebRTC)",
       "browserRequirements": "Requires WebRTC",

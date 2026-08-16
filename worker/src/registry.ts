@@ -10,6 +10,18 @@ interface RegistryEntry {
 }
 
 /**
+ * A stable short code for share links: the room's UUID with dashes removed,
+ * truncated to 8 chars. Stable for the room's whole life (vs the 6-digit
+ * TOTP pairing code, which rotates every 40s), so /s/<code> links keep
+ * working long enough to be opened from a chat message.
+ */
+export function shortCodeOf(roomId: string): string {
+  return roomId.replace(/-/g, '').slice(0, 8).toLowerCase();
+}
+
+export const SHORT_CODE_RE = /^[0-9a-f]{8}$/;
+
+/**
  * Maps roomId → {secret, expiresAt} so a 6-digit TOTP code can locate the
  * room's Durable Object without scanning every room. One instance per UTC day:
  * rooms never outlive a day (12h TTL < 24h), so entries self-expire with the
@@ -27,6 +39,9 @@ export class Registry extends DurableObject<Env> {
     }
     if (url.pathname === '/lookup' && request.method === 'POST') {
       return this.lookup(request);
+    }
+    if (url.pathname === '/resolve-short' && request.method === 'POST') {
+      return this.resolveShort(request);
     }
     return json({ error: 'not found' }, 404);
   }
@@ -46,6 +61,11 @@ export class Registry extends DurableObject<Env> {
       createdAt: typeof body.createdAt === 'number' ? body.createdAt : Date.now(),
       expiresAt: body.expiresAt,
     } satisfies RegistryEntry);
+    // A stable short-code alias so /s/<code> share links resolve to the room.
+    await this.ctx.storage.put('short:' + shortCodeOf(body.roomId), {
+      roomId: body.roomId,
+      expiresAt: body.expiresAt,
+    });
     return json({ ok: true });
   }
 
@@ -71,5 +91,30 @@ export class Registry extends DurableObject<Env> {
       }
     }
     return json({ error: 'Invalid or expired code' }, 404);
+  }
+
+  private async resolveShort(request: Request): Promise<Response> {
+    let body: { code?: string };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return json({ error: 'Invalid link' }, 404);
+    }
+    if (!body.code || !SHORT_CODE_RE.test(body.code)) {
+      return json({ error: 'Invalid link' }, 404);
+    }
+    const entry = await this.ctx.storage.get<{ roomId: string; expiresAt: number }>('short:' + body.code.toLowerCase());
+    if (!entry || entry.expiresAt < Date.now()) {
+      return json({ error: 'Invalid link' }, 404);
+    }
+    // Hand back the full credentials so the joiner can go straight to the
+    // room's WebSocket — same trust model as a valid 6-digit code.
+    const roomEntry = await this.ctx.storage.get<RegistryEntry>('room:' + entry.roomId);
+    if (!roomEntry) return json({ error: 'Invalid link' }, 404);
+    return json({
+      roomId: entry.roomId,
+      secret: roomEntry.secret,
+      createdAt: roomEntry.createdAt,
+    });
   }
 }

@@ -279,6 +279,16 @@ async function runRegistry() {
   check('registry lookup finds room by code', ok.status === 200 && found.roomId === roomId);
   const miss = await reg.fetch(new Request('http://x/lookup', { method: 'POST', body: JSON.stringify({ code: '000000' }) }));
   check('registry rejects a wrong code', miss.status === 404);
+
+  // Stable short-code share links: /s/<8 chars> resolves to full credentials.
+  const shortCode = roomId.replace(/-/g, '').slice(0, 8);
+  const short = await reg.fetch(new Request('http://x/resolve-short', { method: 'POST', body: JSON.stringify({ code: shortCode }) }));
+  const shortFound = await short.json();
+  check('registry resolves a short share code to the room', short.status === 200 && shortFound.roomId === roomId && shortFound.secret === secret && shortFound.createdAt === createdAt);
+  const shortMiss = await reg.fetch(new Request('http://x/resolve-short', { method: 'POST', body: JSON.stringify({ code: 'deadbeef' }) }));
+  check('registry rejects an unknown short code', shortMiss.status === 404);
+  const shortBad = await reg.fetch(new Request('http://x/resolve-short', { method: 'POST', body: JSON.stringify({ code: 'not-a-code' }) }));
+  check('registry rejects a malformed short code', shortBad.status === 404);
 }
 
 await runRoomProtocol();

@@ -34,6 +34,13 @@ export function ChatView() {
   const [showConnected, setShowConnected] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Messages scroll container — tracks whether the reader is at the bottom so
+  // an incoming message can offer a "jump to newest" pill instead of yanking
+  // the scroll position (the small thing chat apps get right).
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const atBottomRef = useRef(true);
+  const [showJump, setShowJump] = useState(false);
+  const prevCountRef = useRef(session.messages.length);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -70,8 +77,38 @@ export function ChatView() {
     };
   }, []);
 
+  const onMessagesScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    atBottomRef.current = nearBottom;
+    if (nearBottom) setShowJump(false);
+  };
+
+  // Haptic feedback — a light tap when a message leaves this device, a
+  // short double-tap when one arrives. Mobile-only, silently ignored
+  // anywhere the API doesn't exist.
+  const haptic = (pattern: number | number[]) => {
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(pattern);
+    } catch { /* unsupported */ }
+  };
+
   useEffect(() => {
-    if (!disconnected) {
+    const prev = prevCountRef.current;
+    const count = session.messages.length;
+    prevCountRef.current = count;
+    if (count <= prev) return;
+    const last = session.messages[count - 1];
+    if (last?.sender === 'partner') {
+      haptic([10, 40, 12]);
+      if (!atBottomRef.current && !disconnected) setShowJump(true);
+    } else if (last?.sender === 'me') {
+      haptic(8);
+    }
+    // Autoscroll only when the reader is already at the bottom — never yank
+    // the scroll position out from under them.
+    if (!disconnected && atBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [session.messages, disconnected]);
@@ -412,6 +449,8 @@ export function ChatView() {
 
       {/* Messages */}
       <div
+        ref={scrollRef}
+        onScroll={onMessagesScroll}
         className="flex-1 overflow-y-auto p-4 sm:p-6 relative"
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
@@ -465,6 +504,20 @@ export function ChatView() {
               </AnimatePresence>
             </>
           )}
+          <AnimatePresence>
+            {showJump && (
+              <motion.button
+                initial={{ opacity: 0, y: 8, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.9 }}
+                transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+                onPointerDown={() => { setShowJump(false); atBottomRef.current = true; messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
+                className="self-center flex items-center gap-1.5 px-4 py-2 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 shadow-float text-[13px] font-semibold active:scale-95 transition-motion"
+              >
+                <ChevronDown className="w-3.5 h-3.5" /> New message
+              </motion.button>
+            )}
+          </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>
 
@@ -525,7 +578,7 @@ export function ChatView() {
             <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => handleFileSelect(e, 'file')} />
           </div>
 
-          <motion.div layout className="relative border border-apple-divider dark:border-apple-tile-3 rounded-[22px] bg-white dark:bg-surface-dark overflow-visible shadow-sm transition-motion focus-within:ring-2 focus-within:ring-apple-blue-focus/50 focus-within:border-apple-blue-focus z-20">
+          <motion.div layout className="relative border border-apple-divider dark:border-apple-tile-3 rounded-[22px] bg-white dark:bg-surface-dark overflow-visible shadow-sm transition-motion focus-within:ring-2 focus-within:ring-apple-blue-focus/50 focus-within:border-apple-blue-focus focus-within:shadow-[0_6px_24px_-8px_rgba(46,139,255,0.25)] z-20">
             {/* Attachment preview with a remove button that is ALWAYS visible
                 (touch users never hover), circular, and animated on removal. */}
             <AnimatePresence>
@@ -663,27 +716,67 @@ function DeliveryTick({ delivered, onBlue }: { delivered?: boolean; onBlue: bool
   if (delivered) {
     return (
       <span className={cn("flex items-center gap-1", onBlue ? "text-white/80" : "text-status-success")}>
-        <CheckCheck className="w-3.5 h-3.5" />
+        {/* The check pops in when the peer's receipt arrives — a tiny
+            confirmation that lands, not just a static icon. */}
+        <motion.span
+          initial={{ scale: 0.4, opacity: 0, rotate: -12 }}
+          animate={{ scale: 1, opacity: 1, rotate: 0 }}
+          transition={{ type: 'spring', bounce: 0.55, duration: 0.45 }}
+          className="flex"
+        >
+          <CheckCheck className="w-3.5 h-3.5" />
+        </motion.span>
         <span className="font-semibold">Delivered</span>
       </span>
     );
   }
   return (
     <span className={cn("flex items-center gap-1", onBlue ? "text-white/70" : "text-apple-ink-muted")}>
-      <Check className="w-3.5 h-3.5" />
+      <motion.span
+        initial={{ scale: 0.4, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', bounce: 0.5, duration: 0.4 }}
+        className="flex"
+      >
+        <Check className="w-3.5 h-3.5" />
+      </motion.span>
       <span className="font-semibold">Sent</span>
     </span>
   );
 }
 
 const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg, partnerName }) => {
-  const { retryTransfer, retryText, cancelTransfer } = useSession();
+  const { retryTransfer, retryText, cancelTransfer, sendMessage } = useSession();
   const isMe = msg.sender === 'me';
   const a = msg.attachment;
 
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
+
+  // "Send back" — hand the same thing right back to the other device. Text
+  // re-sends the text; an attachment re-sends the exact bytes it received.
+  const sendBack = async () => {
+    if (a && a.url) {
+      try {
+        const res = await fetch(a.url);
+        const blob = await res.blob();
+        const file = new File([blob], a.name, { type: a.mimeType || blob.type || 'application/octet-stream' });
+        sendMessage('', {
+          id: crypto.randomUUID(),
+          type: a.type,
+          name: a.name,
+          size: a.size,
+          mimeType: a.mimeType,
+          status: 'draft'
+        }, file);
+      } catch {
+        // Bytes unavailable (e.g. the object URL was revoked) — nothing to send.
+      }
+    } else {
+      sendMessage(msg.text);
+    }
+  };
 
   const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
   const preview = isLargeText && !expanded ? msg.text.slice(0, LARGE_TEXT_PREVIEW) : msg.text;
@@ -719,6 +812,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
       <motion.div
         initial={{ opacity: 0, y: 15, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: 'spring', bounce: 0.3, duration: 0.5 }}
         className={cn("flex w-full", isMe ? "justify-end" : "justify-start")}
       >
         <div className={cn(
@@ -769,6 +863,16 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
                   )}
                   {' • '}{timeOf(msg.timestamp)}
                 </span>
+                {!isMe && (
+                  <button
+                    onPointerDown={() => { void sendBack(); }}
+                    aria-label="Send back"
+                    title="Send back to the other device"
+                    className="flex items-center justify-center w-7 h-7 rounded-full transition-motion active:scale-90 text-apple-ink-muted hover:text-apple-blue dark:hover:text-azure-400 hover:bg-apple-divider/60 dark:hover:bg-apple-tile-3"
+                  >
+                    <ArrowUp className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <button
                   onPointerDown={() => handleCopy(msg.text)}
                   aria-label="Copy message"
@@ -799,6 +903,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
     <motion.div
       initial={{ opacity: 0, y: 15, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: 'spring', bounce: 0.3, duration: 0.5 }}
       className={cn("flex w-full", isMe ? "justify-end" : "justify-start")}
     >
       <div className={cn(
@@ -902,6 +1007,9 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
             <div className="flex gap-1.5 shrink-0">
               {complete && (
                 <>
+                  {!isMe && (
+                    <ActionButton icon={<ArrowUp />} label="Send back" onClick={() => { void sendBack(); }} onBlue={isMe} />
+                  )}
                   {a.type === 'image' && (
                     <ActionButton icon={copied ? <Check /> : <Copy />} label={copied ? "Copied" : "Copy"} active={copied} onClick={() => handleCopy(a.url!)} onBlue={isMe} />
                   )}

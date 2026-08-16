@@ -4,7 +4,7 @@ import { LiveCodeDisplay } from '../components/LiveCodeDisplay';
 import { QRCodeSVG } from 'qrcode.react';
 import { Copy, QrCode, Check, Share2, ChevronDown, ChevronLeft, Pencil, Check as CheckIcon, Link2, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, shortCodeOf } from '../lib/utils';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { ConnectingVisual } from '../components/ConnectingVisual';
 import { generateTOTP } from '../lib/totp';
@@ -20,7 +20,10 @@ export function RoomHub() {
 
   if (!session.roomId || !session.secret) return null;
 
-  const shareUrl = `${window.location.origin}?join=${session.roomId}`;
+  // A short, stable share link — /s/<code> instead of a long ?join=<uuid>.
+  // Same room, easy to send in any chat, and it survives longer than the
+  // rotating 6-digit pairing code.
+  const shareUrl = `${window.location.origin}/s/${shortCodeOf(session.roomId)}`;
 
   const copyLink = async () => {
     try {

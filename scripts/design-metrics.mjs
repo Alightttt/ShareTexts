@@ -235,7 +235,7 @@ try {
 
   // ---- text ----
   await A.locator('textarea').first().fill('Here\'s that PDF — check page 4');
-  await A.getByRole('button', { name: 'Send' }).click();
+  await A.getByRole('button', { name: 'Send', exact: true }).click();
   await sleep(2500);
   await measure(A, 'CHAT (text)', [
     ['header-title', 'h2'],
@@ -255,7 +255,7 @@ try {
   await B.getByText('Photo', { exact: true }).click();
   await B.locator('input[type="file"][accept="image/*"]').setInputFiles(photoPath);
   await sleep(400);
-  await B.getByRole('button', { name: 'Send' }).click();
+  await B.getByRole('button', { name: 'Send', exact: true }).click();
   await sleep(3500);
   await shot(A, 'chat-image');
   await sleep(2000);
@@ -265,7 +265,7 @@ try {
   await B.getByText('File', { exact: true }).click();
   await B.locator('input[type="file"]:not([accept])').setInputFiles(binPath);
   await sleep(400);
-  await B.getByRole('button', { name: 'Send' }).click();
+  await B.getByRole('button', { name: 'Send', exact: true }).click();
   await sleep(3500);
   await shot(A, 'chat-file');
   await sleep(2000);
@@ -275,7 +275,7 @@ try {
   await B.getByText('File', { exact: true }).click();
   await B.locator('input[type="file"]:not([accept])').setInputFiles(wavPath);
   await sleep(400);
-  await B.getByRole('button', { name: 'Send' }).click();
+  await B.getByRole('button', { name: 'Send', exact: true }).click();
   await sleep(3500);
   await shot(A, 'chat-audio');
   await shot(A, 'chat-full');

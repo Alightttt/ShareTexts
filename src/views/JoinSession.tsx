@@ -10,21 +10,29 @@ import { ShareTextLogo } from '../components/ShareTextLogo';
 const QRScanner = lazy(() => import('../components/QRScanner').then(m => ({ default: m.QRScanner })));
 
 export function JoinSession({ onBack }: { onBack: () => void }) {
-  const { joinWithCode, joinWithLink } = useSession();
+  const { joinWithCode, joinWithLink, joinWithShortCode } = useSession();
   const [activeTab, setActiveTab] = useState<'code' | 'qr' | 'linkConfirm'>('code');
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingLink, setPendingLink] = useState<string | null>(null);
+  // A stable /s/<code> share link (vs a full ?join= UUID).
+  const [pendingShortCode, setPendingShortCode] = useState<string | null>(null);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const joinId = searchParams.get('join');
+    // /s/<code> — the short share-link form.
+    const pathMatch = window.location.pathname.match(/^\/s\/([0-9a-f]{8})$/i);
+    const shortCode = pathMatch ? pathMatch[1].toLowerCase() : null;
     if (joinId) {
       setPendingLink(joinId);
       setActiveTab('linkConfirm');
-      
       // Clean up URL visually
       window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (shortCode) {
+      setPendingShortCode(shortCode);
+      setActiveTab('linkConfirm');
+      window.history.replaceState({}, document.title, '/');
     }
   }, []);
 
@@ -70,8 +78,29 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
     }
   };
 
+  // Join via a short /s/<code> link (from the path or a scanned QR).
+  const handleShortJoin = async (code: string) => {
+    setIsJoining(true);
+    setError(null);
+    const res = await joinWithShortCode(code);
+    if (!res.success) {
+      setError(res.error || "This link isn't active anymore. Ask for a fresh code.");
+      setIsJoining(false);
+      setActiveTab('code'); // fallback
+    }
+  };
+
   const handleQRScan = (text: string) => {
+    // Accept any link form a QR might hold: a /s/<code> share link, a
+    // ?join=<uuid> link, or a bare room id.
+    const short = text.match(/\/s\/([0-9a-f]{8})/i);
+    if (short) { void handleShortJoin(short[1]); return; }
     handleLinkJoin(text);
+  };
+
+  const handleConfirm = () => {
+    if (pendingShortCode) { void handleShortJoin(pendingShortCode); }
+    else if (pendingLink) { void handleLinkJoin(pendingLink); }
   };
 
   return (
@@ -133,8 +162,8 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
                   </div>
                   
                   <button 
-                    onPointerDown={() => pendingLink && handleLinkJoin(pendingLink)}
-                    disabled={isJoining}
+                    onPointerDown={handleConfirm}
+                    disabled={isJoining || (!pendingLink && !pendingShortCode)}
                     className="w-full py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.98] flex items-center justify-center gap-2 shadow-card hover:shadow-float disabled:opacity-60"
                   >
                     {isJoining ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Connect'}

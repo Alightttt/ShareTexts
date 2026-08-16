@@ -165,13 +165,19 @@ export function LaptopFrame({
           so the deck reads correctly from a 62px situation card to a 400px
           hero. Key rows grow TALLER toward the front edge — true perspective
           foreshortening — with realistic staggered widths (Tab / Caps /
-          Enter / Shift / a wide spacebar) instead of a uniform grid. */}
+          Enter / Shift / a wide spacebar) instead of a uniform grid.
+          Centering: the deck is WIDER than its container (perspective), so
+          auto margins would collapse to zero — a negative left margin of
+          (112% - 100%) / 2 keeps it perfectly centered under the lid. The
+          clip-path top edge equals the lid width (5.36% inset each side on
+          a 112%-wide deck), so the base meets the lid flush at the hinge. */}
       <div
-        className="relative mx-auto -mt-[0.6%] w-[112%] [container-type:inline-size] rounded-b-[clamp(7px,2.2%,16px)] bg-[linear-gradient(180deg,#2e2e33_0%,#26262a_35%,#1d1d21_100%)] shadow-[0_18px_36px_-14px_rgba(0,0,0,0.6)]"
-        style={{ clipPath: 'polygon(4% 0%, 96% 0%, 100% 100%, 0% 100%)' }}
+        className="relative -mt-[0.6%] -ml-[6%] w-[112%] [container-type:inline-size] rounded-b-[clamp(7px,2.2%,16px)] bg-[linear-gradient(180deg,#2e2e33_0%,#26262a_35%,#1d1d21_100%)] shadow-[0_18px_36px_-14px_rgba(0,0,0,0.6)]"
+        style={{ clipPath: 'polygon(5.36% 0%, 94.64% 0%, 100% 100%, 0% 100%)' }}
       >
-        {/* Hinge seam — the dark gap where the lid meets the deck */}
-        <div className="absolute top-0 left-[4%] right-[4%] h-[0.6cqw] rounded-full bg-black/80" />
+        {/* Hinge seam — the dark gap where the lid meets the deck (aligned to
+            the clipped top edge so it reads as one hinge line) */}
+        <div className="absolute top-0 left-[5.36%] right-[5.36%] h-[0.6cqw] rounded-full bg-black/80" />
 
         {/* Keyboard — rows inset slightly more toward the hinge so the outer
             keys follow the trapezoid and never get clipped by its edge. */}

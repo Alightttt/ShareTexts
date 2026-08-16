@@ -10,7 +10,7 @@ import { RoomHub } from './views/RoomHub';
 import { JoinSession } from './views/JoinSession';
 import { ChatView } from './views/ChatView';
 import { AnimatePresence, motion } from 'motion/react';
-import { WifiOff, Send, Home } from 'lucide-react';
+import { WifiOff, Send, Home, Share2, Check } from 'lucide-react';
 import { ShareTextLogo } from './components/ShareTextLogo';
 import { ConnectingVisual } from './components/ConnectingVisual';
 
@@ -24,6 +24,17 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
   const sub = reason === 'expired'
     ? "Nothing you sent is stored anywhere — it only lived on your devices."
     : "Everything you sent is already on your device. Nothing was stored.";
+
+  const [shared, setShared] = useState(false);
+  const shareApp = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.origin);
+    } catch {
+      /* fall back to the buttons */
+    }
+    setShared(true);
+    setTimeout(() => setShared(false), 2000);
+  };
 
   return (
     <motion.div
@@ -56,6 +67,16 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
           <Home className="w-4 h-4" /> Back to Home
         </button>
       </div>
+
+      {/* The quiet referral moment — ShareText is free, and every session
+          needs a second device, so sharing IS the product loop. */}
+      <button
+        onPointerDown={shareApp}
+        className="mt-8 flex items-center gap-2 px-4 py-2 rounded-full text-[13.5px] font-medium text-apple-ink-muted dark:text-white/55 hover:text-apple-ink dark:hover:text-white border border-transparent hover:border-apple-divider dark:hover:border-white/15 transition-motion active:scale-95 min-h-[44px]"
+      >
+        {shared ? <Check className="w-4 h-4 text-status-success" /> : <Share2 className="w-4 h-4" />}
+        {shared ? 'Link copied — share ShareText free' : 'Share ShareText — it\u2019s free, forever'}
+      </button>
     </motion.div>
   );
 }
@@ -95,10 +116,17 @@ function AppContent() {
   const { session, leaveView, requestReconnect, createSession } = useSession();
   // Remounts ConnectingWait on "Try again" so its 15s hint timer restarts.
   const [waitKey, setWaitKey] = useState(0);
+  // A /s/<code> path is a share link (same idea as ?join=, shorter) — it
+  // routes to the join flow, which resolves the code and confirms the join.
+  const shortCodeFromPath = () => {
+    if (typeof window === 'undefined') return null;
+    const m = window.location.pathname.match(/^\/s\/([0-9a-f]{8})$/i);
+    return m ? m[1].toLowerCase() : null;
+  };
   const [view, setView] = useState<'landing' | 'join'>(() => {
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
-      return searchParams.has('join') ? 'join' : 'landing';
+      if (searchParams.has('join') || shortCodeFromPath()) return 'join';
     }
     return 'landing';
   });
@@ -115,7 +143,7 @@ function AppContent() {
     );
   }
 
-  if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+  if (typeof window !== 'undefined' && !/^(\/|\/s\/[0-9a-f]{8})$/i.test(window.location.pathname)) {
     return (
       <motion.div
         initial={{ opacity: 0 }}
@@ -218,7 +246,7 @@ function AppContent() {
         {view === 'landing' ? (
           <Landing onJoinClick={() => setView('join')} />
         ) : (
-          <JoinSession onBack={() => setView('landing')} />
+          <JoinSession onBack={() => { window.history.replaceState({}, document.title, '/'); setView('landing'); }} />
         )}
       </motion.div>
     </AnimatePresence>

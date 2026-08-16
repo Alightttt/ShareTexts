@@ -293,6 +293,23 @@ io.on('connection', (socket) => {
     cb({ success: true, roomId, secret: room.secret, createdAt: room.createdAt });
   });
 
+  // Resolve a stable /s/<code> share link to the room it points at. The
+  // short code is the room's UUID (dashes removed, first 8 chars) — stable
+  // for the room's life, unlike the rotating 6-digit pairing code.
+  socket.on('resolve_short_code', ({ code }, cb) => {
+    if (typeof code !== 'string' || !/^[0-9a-f]{8}$/i.test(code)) {
+      return cb({ success: false, error: 'Invalid link' });
+    }
+    const key = code.toLowerCase();
+    for (const room of rooms.values()) {
+      if (room.id.replace(/-/g, '').slice(0, 8) === key) {
+        count('links.resolved');
+        return cb({ success: true, roomId: room.id, secret: room.secret, createdAt: room.createdAt });
+      }
+    }
+    cb({ success: false, error: 'Invalid link' });
+  });
+
   // Rejoin after a page refresh. Requires the session secret, which only a
   // device that previously joined the room can hold.
   socket.on('resume_room', ({ roomId, secret }, cb) => {
