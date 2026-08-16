@@ -317,6 +317,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           }
           if (parsed.attachment) {
             pm.expectBinaryTransfer(parsed.attachment.id, Math.ceil(parsed.attachment.size / (64 * 1024)));
+          } else {
+            // Text arrived — confirm receipt immediately so the sender can
+            // show a true "Delivered" (not a guessed one).
+            pm.sendReceipt(parsed.id);
           }
           return;
         }
@@ -374,6 +378,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           }
           return m;
         })
+      }));
+      // The whole file arrived — only now confirm receipt (metadata alone
+      // would be a lie if the transfer later failed).
+      const msg = messagesRef.current.find(m => m.attachment?.id === transferId);
+      if (msg && msg.sender === 'partner') pm.sendReceipt(msg.id);
+    };
+
+    // The peer confirmed one of our messages arrived.
+    pm.onReceipt = (messageId) => {
+      setSession(s => ({
+        ...s,
+        messages: s.messages.map(m => m.id === messageId ? { ...m, delivered: true } : m)
       }));
     };
 

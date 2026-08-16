@@ -34,42 +34,63 @@ const brandSvg = (size, fill) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">${MARK_SHAPES(fill)}</svg>`;
 
 // ---- OG image (1200×630) --------------------------------------------------
-// The mark IS the product story — two devices joined by a beam — so it leads
-// the card: large, centered, with a soft glow, wordmark, and one line.
+// Converting card: the product story (two devices, a beam, a delivered check)
+// + the promise that answers the first objection. After Snapdrop got bought
+// and paywalled, "no app / no account / nothing stored" is the trust wedge.
+const ogMark = (size) => `
+  <svg width="${size}" height="${size}" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+    ${MARK_SHAPES('#4D9DFF')}
+    <circle cx="140" cy="136" r="7" fill="#A7C8FF"/>
+    <path d="M153 177 l12 12 l24 -26" stroke="#34D399" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </svg>`;
+
 const ogHtml = `<!doctype html><html><head><meta charset="utf-8"><style>
   * { margin: 0; box-sizing: border-box; }
   html, body { width: 1200px; height: 630px; overflow: hidden; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background: linear-gradient(180deg, #0D1526 0%, #060A13 100%);
+    background: linear-gradient(180deg, #0E1728 0%, #070B14 100%);
     color: #FAFAFA;
     -webkit-font-smoothing: antialiased;
     position: relative;
     display: flex; align-items: center; justify-content: center;
   }
-  .glow { position: absolute; inset: 0; background: radial-gradient(52% 46% at 50% 18%, rgba(46,139,255,0.18), transparent 72%); }
-  .halo { position: absolute; width: 640px; height: 640px; left: 50%; top: 50%; transform: translate(-50%,-50%);
-          background: radial-gradient(circle, rgba(46,139,255,0.10) 0%, transparent 58%); }
+  /* texture: faint dot grid */
+  .dots { position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 34px 34px;
+    mask-image: radial-gradient(70% 62% at 50% 40%, black 20%, transparent 78%);
+    -webkit-mask-image: radial-gradient(70% 62% at 50% 40%, black 20%, transparent 78%);
+  }
+  .glow { position: absolute; inset: 0; background: radial-gradient(56% 46% at 50% 12%, rgba(46,139,255,0.22), transparent 70%); }
+  .glow2 { position: absolute; inset: 0; background: radial-gradient(44% 38% at 82% 96%, rgba(52,211,153,0.10), transparent 70%); }
+  .halo { position: absolute; width: 720px; height: 720px; left: 50%; top: 44%; transform: translate(-50%,-50%);
+          background: radial-gradient(circle, rgba(46,139,255,0.12) 0%, transparent 60%); }
   .wrap { position: relative; display: flex; flex-direction: column; align-items: center; }
-  .wordmark { font-size: 40px; font-weight: 600; letter-spacing: -0.02em; color: #F5F5F5; margin-bottom: 40px; }
-  .mark { filter: drop-shadow(0 18px 44px rgba(46,139,255,0.35)); }
-  .tagline { margin-top: 40px; font-size: 21px; letter-spacing: -0.005em; color: rgba(250,250,250,0.55); }
-  .foot { position: absolute; left: 96px; right: 96px; bottom: 52px; display: flex; align-items: center; justify-content: space-between; }
-  .url { font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace; font-size: 16px; letter-spacing: 0.02em; color: rgba(255,255,255,0.34); }
-  .beam { display: flex; align-items: center; gap: 10px; }
-  .beam .line { width: 56px; height: 1px; background: rgba(255,255,255,0.16); }
-  .beam .dot { width: 7px; height: 7px; border-radius: 50%; background: #2E8BFF; box-shadow: 0 0 14px rgba(46,139,255,0.8); }
+  .mark { filter: drop-shadow(0 20px 50px rgba(46,139,255,0.38)); }
+  .headline { margin-top: 34px; font-size: 44px; font-weight: 700; letter-spacing: -0.03em; color: #FFFFFF; }
+  .headline em { font-style: normal; color: #6FB4FF; }
+  .sub { margin-top: 14px; font-size: 21px; font-weight: 500; letter-spacing: -0.005em; color: rgba(250,250,250,0.62); }
+  .foot { position: absolute; left: 96px; right: 96px; bottom: 46px; display: flex; align-items: center; justify-content: space-between; }
+  .url { font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace; font-size: 15px; letter-spacing: 0.02em; color: rgba(255,255,255,0.4); }
+  .lock { display: flex; align-items: center; gap: 8px; font-size: 15px; letter-spacing: 0.01em; color: rgba(255,255,255,0.55); }
+  .lock svg { width: 14px; height: 14px; }
 </style></head><body>
+  <div class="dots"></div>
   <div class="glow"></div>
+  <div class="glow2"></div>
   <div class="halo"></div>
   <div class="wrap">
-    <div class="wordmark">ShareText</div>
-    <div class="mark">${brandSvg(208, '#4D9DFF')}</div>
-    <p class="tagline">Move something between your devices.</p>
+    <div class="mark">${ogMark(216)}</div>
+    <div class="headline">Share anything between <em>two devices</em>.</div>
+    <p class="sub">No app to install · No account · Nothing is stored</p>
   </div>
   <div class="foot">
     <span class="url">share-texts.vercel.app</span>
-    <span class="beam"><span class="line"></span><span class="dot"></span><span class="line"></span></span>
+    <span class="lock">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      End-to-end encrypted in your browser
+    </span>
   </div>
 </body></html>`;
 

@@ -23,6 +23,9 @@ export interface ChatMessage {
    *  say "Couldn't send" honestly and offer Retry (attachments use
    *  attachment.status instead). */
   delivery?: 'failed';
+  /** True only after the OTHER device confirms (via encrypted receipt) that
+   *  this message actually arrived. Set by the sender; never guessed. */
+  delivered?: boolean;
 }
 
 export interface SessionState {

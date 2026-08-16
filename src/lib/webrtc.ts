@@ -120,6 +120,8 @@ export class PeerManager {
   public onDisconnect: (() => void) | null = null;
   public onHello: ((name: string) => void) | null = null;
   public onOpen: (() => void) | null = null;
+  /** A chat message we sent was confirmed received by the peer (true ack). */
+  public onReceipt: ((messageId: string) => void) | null = null;
 
   private isRelayFallback = false;
   private iceCandidatesQueue: RTCIceCandidateInit[] = [];
@@ -427,6 +429,11 @@ export class PeerManager {
                   });
                   return;
                 }
+                if (inner && inner.type === 'receipt' && typeof inner.messageId === 'string') {
+                  // A peer confirmed it received one of our chat messages.
+                  if (this.onReceipt) this.onReceipt(inner.messageId);
+                  return;
+                }
                 if (this.onMessage) this.onMessage(decrypted);
               } catch (e) {
                 console.error("Failed to decrypt text");
@@ -617,6 +624,14 @@ export class PeerManager {
         getSocket().emit('relay_message', { roomId: this.roomId, data: serialized });
       }
     } catch { /* cancel is best-effort */ }
+  }
+
+  /**
+   * Tell the peer that one of their chat messages arrived on this device.
+   * Encrypted end-to-end like every other packet, over the channel or relay.
+   */
+  public sendReceipt(messageId: string) {
+    void this.sendControl({ type: 'receipt', messageId });
   }
 
   /**

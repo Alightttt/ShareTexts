@@ -160,38 +160,71 @@ export function LaptopFrame({
         </div>
       </div>
 
-      {/* Deck — a trapezoid that recedes: narrow at the hinge, widening toward
-          the front edge. Keys are foreshortened slivers; a thin palm-rest lip
-          with the trackpad hint closes the base. */}
-      <div className="relative mx-auto -mt-[1%] w-[108%] rounded-b-[clamp(7px,2.2%,16px)] bg-[linear-gradient(180deg,#2e2e33_0%,#26262a_30%,#1e1e22_100%)] shadow-[0_16px_32px_-14px_rgba(0,0,0,0.55)]"
-        style={{ clipPath: 'polygon(3.5% 0%, 96.5% 0%, 100% 100%, 0% 100%)' }}>
+      {/* Deck — a receding keyboard plane. Container-query units (cqw, % of
+          the deck's own width) scale every dimension with the laptop's size,
+          so the deck reads correctly from a 62px situation card to a 400px
+          hero. Key rows grow TALLER toward the front edge — true perspective
+          foreshortening — with realistic staggered widths (Tab / Caps /
+          Enter / Shift / a wide spacebar) instead of a uniform grid. */}
+      <div
+        className="relative mx-auto -mt-[0.6%] w-[112%] [container-type:inline-size] rounded-b-[clamp(7px,2.2%,16px)] bg-[linear-gradient(180deg,#2e2e33_0%,#26262a_35%,#1d1d21_100%)] shadow-[0_18px_36px_-14px_rgba(0,0,0,0.6)]"
+        style={{ clipPath: 'polygon(4% 0%, 96% 0%, 100% 100%, 0% 100%)' }}
+      >
         {/* Hinge seam — the dark gap where the lid meets the deck */}
-        <div className="absolute top-0 left-[3%] right-[3%] h-[2px] rounded-full bg-black/80" />
+        <div className="absolute top-0 left-[4%] right-[4%] h-[0.6cqw] rounded-full bg-black/80" />
 
-        {/* Foreshortened keys — three rows, tighter toward the hinge */}
-        <div className="flex flex-col gap-[4%] px-[4.5%] pt-[4%]">
-          {[1, 0.78, 0.6].map((h, row) => (
-            <div key={row} className="flex justify-between gap-[1.6%]">
-              {Array.from({ length: 12 }).map((_, k) => (
-                <span
-                  key={k}
-                  className="flex-1 rounded-[1.5px] bg-[linear-gradient(180deg,#3b3b41_0%,#2b2b30_60%,#242428_100%)] ring-1 ring-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_1px_1px_rgba(0,0,0,0.4)]"
-                  style={{ height: `${h * 1}em`, maxHeight: `${h * 8}px` }}
-                />
-              ))}
-            </div>
-          ))}
-        </div>
-
-        {/* Palm rest + trackpad hint, closing the base */}
-        <div className="px-[8%] pb-[4%] pt-[5%]">
-          <div className="relative mx-auto w-[30%] rounded-[3px] bg-[linear-gradient(180deg,#26262a_0%,#1d1d21_100%)] ring-1 ring-white/[0.06] shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]"
-            style={{ height: '0.9em', maxHeight: '7px' }}>
-            <span className="absolute left-1/2 top-[10%] bottom-[10%] w-px -translate-x-1/2 bg-black/50" />
+        {/* Keyboard — rows inset slightly more toward the hinge so the outer
+            keys follow the trapezoid and never get clipped by its edge. */}
+        <div className="flex flex-col gap-[0.8cqw] pt-[1.8cqw]">
+          {/* Function row — thinnest, farthest from the viewer */}
+          <div className="flex gap-[0.8cqw] px-[6cqw]">
+            {Array.from({ length: 12 }).map((_, k) => (
+              <span key={k} className="keycap-deck h-[1.1cqw] flex-1 rounded-[0.4cqw]" />
+            ))}
+          </div>
+          {/* Letter row 1 — Tab + letters */}
+          <div className="flex gap-[0.8cqw] px-[5.4cqw]">
+            <span className="keycap-deck h-[1.5cqw] w-[7.5cqw] rounded-[0.5cqw]" />
+            {Array.from({ length: 11 }).map((_, k) => (
+              <span key={k} className="keycap-deck h-[1.5cqw] flex-1 rounded-[0.5cqw]" />
+            ))}
+          </div>
+          {/* Letter row 2 — Caps + letters + Enter */}
+          <div className="flex gap-[0.8cqw] px-[4.8cqw]">
+            <span className="keycap-deck h-[1.9cqw] w-[8.5cqw] rounded-[0.6cqw]" />
+            {Array.from({ length: 10 }).map((_, k) => (
+              <span key={k} className="keycap-deck h-[1.9cqw] flex-1 rounded-[0.6cqw]" />
+            ))}
+            <span className="keycap-deck h-[1.9cqw] w-[10cqw] rounded-[0.6cqw]" />
+          </div>
+          {/* Letter row 3 — Shift + letters + Shift */}
+          <div className="flex gap-[0.8cqw] px-[4.2cqw]">
+            <span className="keycap-deck h-[2.3cqw] w-[12cqw] rounded-[0.7cqw]" />
+            {Array.from({ length: 9 }).map((_, k) => (
+              <span key={k} className="keycap-deck h-[2.3cqw] flex-1 rounded-[0.7cqw]" />
+            ))}
+            <span className="keycap-deck h-[2.3cqw] w-[12cqw] rounded-[0.7cqw]" />
+          </div>
+          {/* Spacebar row — widest, nearest the viewer */}
+          <div className="flex gap-[0.8cqw] px-[3.8cqw]">
+            <span className="keycap-deck h-[2.7cqw] w-[5.5cqw] rounded-[0.8cqw]" />
+            <span className="keycap-deck h-[2.7cqw] w-[5.5cqw] rounded-[0.8cqw]" />
+            <span className="keycap-deck h-[2.7cqw] w-[5.5cqw] rounded-[0.8cqw]" />
+            <span className="keycap-deck h-[2.7cqw] flex-1 rounded-[0.8cqw]" />
+            <span className="keycap-deck h-[2.7cqw] w-[5.5cqw] rounded-[0.8cqw]" />
+            <span className="keycap-deck h-[2.7cqw] w-[5.5cqw] rounded-[0.8cqw]" />
           </div>
         </div>
-        {/* Front edge highlight — the machined lip nearest the viewer */}
-        <div className="absolute bottom-[3%] left-[6%] right-[6%] h-[1px] rounded-full bg-white/[0.14]" />
+
+        {/* Palm rest with the trackpad, closing the base */}
+        <div className="flex flex-col items-center pt-[2cqw] pb-[2.4cqw] px-[9cqw]">
+          <div className="relative h-[2.8cqw] w-[26cqw] rounded-[1cqw] bg-[linear-gradient(180deg,#26262a_0%,#1d1d21_100%)] ring-1 ring-white/[0.06] shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]">
+            <span className="absolute left-1/2 top-[12%] bottom-[12%] w-[0.3cqw] -translate-x-1/2 rounded-full bg-black/50" />
+          </div>
+        </div>
+
+        {/* Front edge lip — the machined metal nearest the viewer */}
+        <div className="absolute bottom-[1.2cqw] left-[5%] right-[5%] h-[0.5cqw] rounded-full bg-white/[0.13]" />
       </div>
 
       <GroundShadow className="w-[80%] h-[6%] -bottom-[5.5%] opacity-55" />

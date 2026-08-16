@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Send, X, Plus, Image as ImageIcon, ClipboardPaste,
-  Copy, Check, File as FileIcon, Play, Download, RefreshCw, AlertCircle, FileText, ChevronDown, ChevronUp, Mic, ArrowUp
+  X, Plus, Image as ImageIcon, Copy, Check, CheckCheck,
+  File as FileIcon, Play, Download, RefreshCw, AlertCircle, FileText, ChevronDown, ChevronUp, ArrowUp, Lock, ZoomIn, ShieldCheck
 } from 'lucide-react';
 import { cn, formatBytes } from '../lib/utils';
 import { ChatMessage, Attachment } from '../types';
@@ -14,7 +14,7 @@ const LARGE_TEXT_THRESHOLD = 8000; // chars
 const LARGE_TEXT_PREVIEW = 1400;
 
 export function ChatView() {
-  const { session, sendMessage, closeSession, cancelTransfer, retryText } = useSession();
+  const { session, sendMessage, closeSession, cancelTransfer } = useSession();
   const [inputText, setInputText] = useState('');
   const [attachment, setAttachment] = useState<Attachment & { file: File } | null>(null);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
@@ -160,7 +160,12 @@ export function ChatView() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'file' | 'video' | 'audio') => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // A video/audio picked through the generic File picker still plays inline
+    // instead of arriving as a dead file card.
+    if (type === 'file' && file.type.startsWith('video/')) type = 'video';
+    else if (type === 'file' && file.type.startsWith('audio/')) type = 'audio';
     stageFile(file, type);
+    e.target.value = ''; // allow picking the same file again after removing
   };
 
   // Drag & drop: classify the first dropped file and stage it like the menu.
@@ -210,18 +215,6 @@ export function ChatView() {
     setAttachment(null);
   };
 
-  const canPaste = typeof navigator !== 'undefined' && !!navigator.clipboard?.readText;
-
-  const handlePaste = async () => {
-    if (!canPaste) return;
-    try {
-      const text = await navigator.clipboard.readText();
-      if (text) setInputText(t => (t ? t + '\n' : '') + text);
-    } catch {
-      setErrorMsg("Couldn't read your clipboard. Paste manually instead.");
-    }
-  };
-
   const inputBytes = useMemo(() => new TextEncoder().encode(inputText).length, [inputText]);
   const isLargeInput = inputBytes > 50000;
 
@@ -246,57 +239,77 @@ export function ChatView() {
       <div aria-live="polite" role="status" className="sr-only">{announcement}</div>
 
       {/* Header */}
-      <div className="flex items-center justify-between p-4 sm:p-6 shrink-0 border-b border-apple-divider/50 dark:border-apple-tile-3/50 backdrop-blur-xl bg-apple-canvas/80 dark:bg-black/80 z-20 sticky top-0">
-        <div className="flex items-center gap-3 relative">
-          <ShareTextLogo size={24} className="text-apple-ink dark:text-white shrink-0" />
-          <div className="flex flex-col">
-            <h2 className="text-[17px] font-semibold text-apple-ink dark:text-white leading-tight">
-              {session.partnerName || 'Other device'}
-            </h2>
-            <button
-              onPointerDown={() => setShowConnectionDetails(!showConnectionDetails)}
-              aria-expanded={showConnectionDetails}
-              className="flex items-center gap-2 mt-0.5 py-1.5 -my-1.5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue rounded-[6px] min-h-[40px]"
-            >
-              <div className={cn(
-                "w-2 h-2 rounded-full",
-                session.connectionType === 'relay' ? "bg-status-warning shadow-[0_0_8px_rgba(251,191,36,0.4)]" : "bg-status-success shadow-[0_0_8px_rgba(52,199,89,0.4)]"
-              )} />
-              <span className="text-[13px] text-apple-ink-muted font-medium hover:text-apple-ink dark:hover:text-white transition-colors">
-                Connected
-              </span>
-            </button>
-
-            <AnimatePresence>
-              {showConnectionDetails && (
-                <motion.div
-                  initial={{ opacity: 0, y: -5, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -5, scale: 0.95 }}
-                  transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                  className="absolute top-[100%] left-0 mt-2 p-3 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[12px] shadow-lg min-w-[220px] z-30"
-                >
-                  <div className="text-[13px] font-medium text-apple-ink dark:text-white mb-1">Connection</div>
-                  <div className="text-[13px] text-apple-ink-muted">
-                    {session.connectionType === 'relay' ? 'Connected securely through an encrypted relay — a direct connection wasn\u2019t available.' :
-                     session.connectionType === 'local' ? 'Connected directly between devices on the same network.' :
-                     session.connectionType === 'direct' ? 'Connected directly between devices.' :
-                     'Connecting…'}
-                  </div>
-                  <div className="text-[13px] text-apple-ink-muted mt-2 pt-2 border-t border-apple-divider/50 dark:border-apple-tile-3">
-                    Encryption: Enabled
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
+      <div className="flex items-center justify-between gap-3 p-4 sm:p-5 shrink-0 border-b border-apple-divider/50 dark:border-apple-tile-3/50 backdrop-blur-xl bg-apple-canvas/80 dark:bg-black/80 z-20 sticky top-0">
         <button
-          onPointerDown={() => setConfirmClose(true)}
-          className="px-4 py-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-apple-tile-3/50 rounded-[10px] transition-colors active:scale-95 min-h-[44px] flex items-center"
+          onPointerDown={() => setShowConnectionDetails(!showConnectionDetails)}
+          aria-expanded={showConnectionDetails}
+          className="flex items-center gap-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue rounded-[10px] min-h-[40px] max-w-[62vw] sm:max-w-none"
         >
-          End session
+          <ShareTextLogo size={24} className="text-apple-ink dark:text-white shrink-0" />
+          <span className="flex items-center gap-2 min-w-0">
+            <span className="text-[16px] font-semibold text-apple-ink dark:text-white leading-tight truncate">
+              {session.partnerName || 'Other device'}
+            </span>
+            {/* One line: name + live status chip together. */}
+            <span className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold whitespace-nowrap",
+              session.connectionType === 'relay'
+                ? "bg-status-warning/10 text-status-warning-ink dark:text-status-warning-ink-dark"
+                : "bg-status-success/10 text-status-success"
+            )}>
+              <span className={cn(
+                "w-1.5 h-1.5 rounded-full",
+                session.connectionType === 'relay' ? "bg-status-warning" : "bg-status-success",
+                !disconnected && "animate-pulse"
+              )} />
+              {disconnected ? 'Offline' : 'Connected'}
+            </span>
+            <Lock className="w-3.5 h-3.5 text-apple-ink-muted/70 shrink-0" aria-label="End-to-end encrypted" />
+          </span>
         </button>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onPointerDown={() => setShowConnectionDetails(!showConnectionDetails)}
+            title="Connection & encryption details"
+            aria-label="Connection details"
+            className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-apple-tile-3/50 transition-colors active:scale-95"
+          >
+            <ShieldCheck className="w-[18px] h-[18px]" />
+          </button>
+          <button
+            onPointerDown={() => setConfirmClose(true)}
+            className="px-4 py-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-apple-tile-3/50 rounded-[10px] transition-colors active:scale-95 min-h-[44px] flex items-center"
+          >
+            End session
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {showConnectionDetails && (
+            <motion.div
+              initial={{ opacity: 0, y: -5, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -5, scale: 0.95 }}
+              transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+              className="absolute top-[calc(100%+8px)] left-4 sm:left-6 p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[14px] shadow-lg min-w-[240px] max-w-[320px] z-30"
+            >
+              <div className="flex items-center gap-2 text-[13.5px] font-semibold text-apple-ink dark:text-white mb-1.5">
+                <ShieldCheck className="w-4 h-4 text-status-success" />
+                End-to-end encrypted
+              </div>
+              <div className="text-[13px] text-apple-ink-muted leading-relaxed">
+                {session.connectionType === 'relay' ? 'Connected securely through an encrypted relay — a direct connection wasn\u2019t available.' :
+                  session.connectionType === 'local' ? 'Connected directly between devices on the same network.' :
+                    session.connectionType === 'direct' ? 'Connected directly between devices.' :
+                      'Connecting…'}
+              </div>
+              <div className="text-[13px] text-apple-ink-muted mt-2 pt-2 border-t border-apple-divider/50 dark:border-apple-tile-3">
+                Only your two devices can read what\u2019s sent here. Nothing is stored.
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Connected toast — the "alert" when the other device arrives. */}
@@ -308,7 +321,7 @@ export function ChatView() {
             exit={{ opacity: 0, y: -8, scale: 0.97 }}
             transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
             role="status"
-            className="absolute top-[76px] sm:top-[84px] left-1/2 -translate-x-1/2 z-40 px-4 py-2.5 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 shadow-float flex items-center gap-2 text-[13.5px] font-semibold whitespace-nowrap"
+            className="absolute top-[76px] sm:top-[80px] left-1/2 -translate-x-1/2 z-40 px-4 py-2.5 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 shadow-float flex items-center gap-2 text-[13.5px] font-semibold whitespace-nowrap"
           >
             <ShareTextLogo size={16} motion="complete" className="text-white dark:text-night-900" />
             Connected — you can start sending
@@ -405,7 +418,7 @@ export function ChatView() {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <div className="max-w-3xl mx-auto flex flex-col space-y-4">
+        <div className="max-w-3xl mx-auto flex flex-col space-y-3">
           {session.messages.length === 0 ? (
             <div className="h-full min-h-[40vh] flex flex-col items-center justify-center text-center space-y-3 opacity-80">
               <div className="w-14 h-14 rounded-[20px] bg-apple-parchment dark:bg-apple-tile-2 flex items-center justify-center mb-1">
@@ -492,14 +505,14 @@ export function ChatView() {
       </div>
 
       {/* Input Area */}
-      <div className="p-4 sm:p-6 bg-apple-canvas/90 dark:bg-black/90 backdrop-blur-xl border-t border-apple-divider/50 dark:border-apple-tile-3/50 z-10 pb-[env(safe-area-inset-bottom)] relative">
-        <form onSubmit={handleSend} className="max-w-3xl mx-auto flex flex-col gap-3">
+      <div className="p-3 sm:p-5 bg-apple-canvas/90 dark:bg-black/90 backdrop-blur-xl border-t border-apple-divider/50 dark:border-apple-tile-3/50 z-10 pb-[env(safe-area-inset-bottom)] relative">
+        <form onSubmit={handleSend} className="max-w-3xl mx-auto flex flex-col gap-2.5">
 
           <AnimatePresence>
             {errorMsg && (
               <motion.div role="alert" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                 <div className="px-4 py-3 bg-status-danger/10 text-status-danger text-[14px] font-medium rounded-xl flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4" /> {errorMsg}
+                  <AlertCircle className="w-4 h-4 shrink-0" /> {errorMsg}
                 </div>
               </motion.div>
             )}
@@ -512,40 +525,37 @@ export function ChatView() {
             <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => handleFileSelect(e, 'file')} />
           </div>
 
-          <motion.div layout className="relative border border-apple-divider dark:border-apple-tile-3 rounded-[24px] bg-white dark:bg-surface-dark overflow-visible shadow-sm transition-motion focus-within:ring-2 focus-within:ring-apple-blue-focus/50 focus-within:border-apple-blue-focus z-20">
-
+          <motion.div layout className="relative border border-apple-divider dark:border-apple-tile-3 rounded-[22px] bg-white dark:bg-surface-dark overflow-visible shadow-sm transition-motion focus-within:ring-2 focus-within:ring-apple-blue-focus/50 focus-within:border-apple-blue-focus z-20">
+            {/* Attachment preview with a remove button that is ALWAYS visible
+                (touch users never hover), circular, and animated on removal. */}
             <AnimatePresence>
               {attachment && (
                 <motion.div
-                  initial={{ height: 0, opacity: 0, scale: 0.95 }}
+                  initial={{ height: 0, opacity: 0, scale: 0.96 }}
                   animate={{ height: 'auto', opacity: 1, scale: 1 }}
-                  exit={{ height: 0, opacity: 0, scale: 0.95 }}
-                  transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+                  exit={{ height: 0, opacity: 0, scale: 0.96, filter: 'blur(4px)' }}
+                  transition={{ type: "spring", bounce: 0, duration: 0.35 }}
                   className="px-3 pt-3 flex flex-col origin-bottom overflow-hidden"
                 >
                   {attachment.type === 'image' && attachment.file ? (
-                    <div className="relative group self-start">
-                      <div className="w-[120px] h-[120px] sm:w-[160px] sm:h-[160px] rounded-[16px] overflow-hidden bg-apple-canvas dark:bg-black relative border border-apple-divider dark:border-apple-tile-3 shadow-sm">
+                    <div className="relative self-start">
+                      <div className="w-[110px] h-[110px] sm:w-[150px] sm:h-[150px] rounded-[16px] overflow-hidden bg-apple-canvas dark:bg-black relative border border-apple-divider dark:border-apple-tile-3 shadow-sm">
                         {previewUrl && <img src={previewUrl} alt="preview" className="w-full h-full object-cover" />}
                       </div>
-                      <button type="button" onPointerDown={() => setAttachment(null)} className="absolute -top-2 -right-2 w-7 h-7 bg-status-danger text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm active:scale-90 z-10">
-                        <X className="w-4 h-4" />
-                      </button>
+                      <RemoveAttachmentButton onClick={() => setAttachment(null)} />
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between bg-apple-parchment dark:bg-surface-dark-2 p-3 rounded-[16px]">
-                      <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="relative flex items-center justify-between bg-apple-parchment dark:bg-surface-dark-2 p-3 rounded-[16px] pr-12">
+                      <div className="flex items-center gap-3 overflow-hidden min-w-0">
                         <div className="w-10 h-10 bg-white dark:bg-black rounded-[10px] flex items-center justify-center shrink-0 shadow-sm">
                           {attachment.type === 'video' ? <Play className="w-5 h-5 text-apple-ink dark:text-white" /> : <FileIcon className="w-5 h-5 text-apple-ink dark:text-white" />}
                         </div>
-                        <div className="flex flex-col truncate">
+                        <div className="flex flex-col truncate min-w-0">
                           <span className="text-[14px] font-medium text-apple-ink dark:text-white truncate">{attachment.name}</span>
                           <span className="text-[12px] text-apple-ink-muted">{formatBytes(attachment.size)}</span>
                         </div>
                       </div>
-                      <button type="button" onPointerDown={() => setAttachment(null)} className="p-2 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors rounded-full hover:bg-apple-divider dark:hover:bg-apple-tile-3 shrink-0 active:scale-90">
-                        <X className="w-5 h-5" />
-                      </button>
+                      <RemoveAttachmentButton onClick={() => setAttachment(null)} />
                     </div>
                   )}
                 </motion.div>
@@ -570,9 +580,6 @@ export function ChatView() {
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => {
-                  // Enter sends (Shift+Enter for a new line — the platform
-                  // convention for messaging apps). Cmd/Ctrl+Enter kept as an
-                  // alias for people who've trained on it.
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     handleSend(e);
@@ -580,7 +587,7 @@ export function ChatView() {
                 }}
                 placeholder="Paste or type text…"
                 aria-label="Message"
-                className="flex-1 min-h-[46px] max-h-[30vh] resize-none bg-transparent py-3 pl-1.5 pr-1 text-apple-ink dark:text-white placeholder:text-apple-ink-muted focus:outline-none text-[16px] leading-relaxed"
+                className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-2.5 pl-1 pr-1 text-apple-ink dark:text-white placeholder:text-apple-ink-muted focus:outline-none text-[16px] leading-relaxed"
               />
 
               <button
@@ -600,26 +607,15 @@ export function ChatView() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.9 }}
                     transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                    className="absolute left-1 bottom-[calc(100%+8px)] bg-white/90 dark:bg-surface-dark-2/90 backdrop-blur-xl border border-apple-divider dark:border-apple-tile-3 rounded-[20px] shadow-2xl p-2 w-[230px] flex flex-col gap-1 z-30"
+                    className="absolute left-1 bottom-[calc(100%+8px)] bg-white/90 dark:bg-surface-dark-2/90 backdrop-blur-xl border border-apple-divider dark:border-apple-tile-3 rounded-[20px] shadow-2xl p-2 w-[210px] flex flex-col gap-1 z-30"
                   >
-                    {canPaste && (
-                      <AttachmentOption icon={<ClipboardPaste className="w-5 h-5 text-apple-ink-muted" />} label="Paste from clipboard" onClick={() => { void handlePaste(); setShowAttachmentMenu(false); }} />
-                    )}
                     <AttachmentOption icon={<ImageIcon className="w-5 h-5 text-apple-ink-muted" />} label="Photo" onClick={() => imageInputRef.current?.click()} />
-                    <AttachmentOption icon={<Play className="w-5 h-5 text-apple-ink-muted" />} label="Video" onClick={() => videoInputRef.current?.click()} />
-                    <AttachmentOption icon={<Mic className="w-5 h-5 text-apple-ink-muted" />} label="Audio" onClick={() => audioInputRef.current?.click()} />
                     <AttachmentOption icon={<FileIcon className="w-5 h-5 text-apple-ink-muted" />} label="File" onClick={() => fileInputRef.current?.click()} />
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
           </motion.div>
-
-          <div className="flex items-center justify-between mt-1.5 px-1.5">
-            <span className="text-[12.5px] text-apple-ink-muted font-medium">
-              {isLargeInput ? `Large text · ${formatBytes(inputBytes)}` : <span className="hidden sm:inline">Enter to send · Shift+Enter for a new line</span>}
-            </span>
-          </div>
         </form>
       </div>
 
@@ -627,6 +623,20 @@ export function ChatView() {
         <div className="fixed inset-0 z-[5]" onPointerDown={() => setShowAttachmentMenu(false)} />
       )}
     </div>
+  );
+}
+
+/** The circular ✕ that removes a staged attachment — always visible, tappable. */
+function RemoveAttachmentButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onPointerDown={onClick}
+      aria-label="Remove attachment"
+      className="absolute -top-2.5 -right-2.5 w-7 h-7 rounded-full bg-black/75 dark:bg-black/75 text-white border border-white/25 shadow-md backdrop-blur flex items-center justify-center z-10 transition-transform active:scale-90 hover:bg-black/90"
+    >
+      <X className="w-4 h-4" />
+    </button>
   );
 }
 
@@ -642,6 +652,30 @@ function AttachmentOption({ icon, label, onClick }: { icon: React.ReactNode, lab
   );
 }
 
+const timeOf = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+/**
+ * Delivery state for MY messages — a true receipt, never guessed:
+ *   Sent      — the packet left this device
+ *   Delivered — the OTHER device confirmed arrival (encrypted ack)
+ */
+function DeliveryTick({ delivered, onBlue }: { delivered?: boolean; onBlue: boolean }) {
+  if (delivered) {
+    return (
+      <span className={cn("flex items-center gap-1", onBlue ? "text-white/80" : "text-status-success")}>
+        <CheckCheck className="w-3.5 h-3.5" />
+        <span className="font-semibold">Delivered</span>
+      </span>
+    );
+  }
+  return (
+    <span className={cn("flex items-center gap-1", onBlue ? "text-white/70" : "text-apple-ink-muted")}>
+      <Check className="w-3.5 h-3.5" />
+      <span className="font-semibold">Sent</span>
+    </span>
+  );
+}
+
 const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg, partnerName }) => {
   const { retryTransfer, retryText, cancelTransfer } = useSession();
   const isMe = msg.sender === 'me';
@@ -649,6 +683,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
 
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
   const preview = isLargeText && !expanded ? msg.text.slice(0, LARGE_TEXT_PREVIEW) : msg.text;
@@ -656,33 +691,16 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
   const handleCopy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback copy for older browsers
       const ta = document.createElement('textarea');
       ta.value = text;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
-  };
-
-  const handleCopyImage = async (url: string) => {
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const item = new ClipboardItem({ [blob.type]: blob });
-      await navigator.clipboard.write([item]);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (e) {
-      // Fallback
-      handleDownload(url, a!.name);
-    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDownload = (url: string, filename: string) => {
@@ -694,197 +712,226 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
     document.body.removeChild(link);
   };
 
+  // Text-only message — a clean bubble with an in-bubble footer (no outer
+  // sender label, no second action bar; that was the misaligned look).
+  if (!a) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 15, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className={cn("flex w-full", isMe ? "justify-end" : "justify-start")}
+      >
+        <div className={cn(
+          "max-w-[88%] sm:max-w-[70%] px-4 py-2.5 rounded-[18px] shadow-sm border",
+          isMe
+            ? "bg-azure-600 text-white rounded-br-[6px] border-transparent"
+            : "bg-white dark:bg-surface-dark text-apple-ink dark:text-white rounded-bl-[6px] border-apple-divider/50 dark:border-apple-tile-3"
+        )}>
+          <div className="text-[15.5px] whitespace-pre-wrap leading-relaxed break-words">
+            {preview}
+            {isLargeText && !expanded && (
+              <button
+                onPointerDown={() => setExpanded(true)}
+                className={cn("mt-1.5 flex items-center gap-1 text-[14px] font-semibold active:opacity-70", isMe ? "text-white/90" : "text-apple-blue")}
+              >
+                <ChevronDown className="w-4 h-4" /> Show full text
+              </button>
+            )}
+            {isLargeText && expanded && (
+              <button
+                onPointerDown={() => setExpanded(false)}
+                className={cn("mt-1.5 flex items-center gap-1 text-[14px] font-semibold active:opacity-70", isMe ? "text-white/90" : "text-apple-blue")}
+              >
+                <ChevronUp className="w-4 h-4" /> Collapse
+              </button>
+            )}
+          </div>
+          <div className="mt-1 flex items-center justify-end gap-1.5">
+            {msg.delivery === 'failed' ? (
+              <>
+                <span className={cn("text-[12.5px] font-semibold flex items-center gap-1", isMe ? "text-white" : "text-status-danger")}>
+                  <AlertCircle className="w-3.5 h-3.5" /> Couldn't send
+                </span>
+                <button
+                  onPointerDown={() => { void retryText(msg.id); }}
+                  className={cn("flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold transition-motion active:scale-95", isMe ? "bg-white/20 text-white" : "bg-apple-parchment dark:bg-apple-tile-2 text-apple-ink dark:text-white")}
+                >
+                  <RefreshCw className="w-3 h-3" /> Retry
+                </button>
+              </>
+            ) : (
+              <>
+                <span className={cn("text-[11.5px] font-medium flex items-center gap-1", isMe ? "text-white/75" : "text-apple-ink-muted")}>
+                  {isMe ? (
+                    <DeliveryTick delivered={msg.delivered} onBlue />
+                  ) : (
+                    <span className="font-semibold">Received</span>
+                  )}
+                  {' • '}{timeOf(msg.timestamp)}
+                </span>
+                <button
+                  onPointerDown={() => handleCopy(msg.text)}
+                  aria-label="Copy message"
+                  title="Copy"
+                  className={cn(
+                    "flex items-center justify-center w-7 h-7 rounded-full transition-motion active:scale-90",
+                    copied
+                      ? (isMe ? "text-white" : "text-status-success")
+                      : isMe ? "text-white/60 hover:text-white hover:bg-white/15" : "text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/60 dark:hover:bg-apple-tile-3"
+                  )}
+                >
+                  {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Attachment message — image/video/file card.
+  const isImage = a.type === 'image';
+  const isVideo = a.type === 'video';
+  const complete = a.status === 'complete' && a.url;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 15, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      className={cn(
-        "flex w-full",
-        isMe ? "justify-end" : "justify-start"
-      )}
+      className={cn("flex w-full", isMe ? "justify-end" : "justify-start")}
     >
       <div className={cn(
-        "flex flex-col gap-2 max-w-[85%] sm:max-w-[70%]",
+        "flex flex-col gap-2 max-w-[88%] sm:max-w-[70%] w-full",
         isMe ? "items-end" : "items-start"
       )}>
-        {/* Sender */}
-        <span className="text-[12px] font-medium text-apple-ink-muted px-1">
-          {isMe ? 'You' : (partnerName || 'Other device')} • {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </span>
-
-        {/* Unified Card Container — sent messages carry the brand, received stay quiet */}
         <div className={cn(
-          "flex flex-col rounded-[24px] overflow-hidden shadow-sm",
+          "flex flex-col w-full overflow-hidden rounded-[20px] shadow-sm border",
           isMe
-            ? "bg-azure-600 text-white rounded-tr-[8px] border border-transparent"
-            : "bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3 rounded-tl-[8px]"
+            ? "bg-azure-600 text-white rounded-br-[6px] border-transparent"
+            : "bg-white dark:bg-surface-dark border-apple-divider/50 dark:border-apple-tile-3 rounded-bl-[6px]"
         )}>
-
-          {/* Text Content */}
+          {/* Text caption (if any) */}
           {msg.text && (
-            <div className={cn("px-5 py-4 text-[16px] whitespace-pre-wrap leading-relaxed break-words", isMe ? "text-white" : "text-apple-ink dark:text-white")}>
-              {preview}
-              {isLargeText && !expanded && (
-                <button
-                  onPointerDown={() => setExpanded(true)}
-                  className={cn("mt-2 flex items-center gap-1 text-[14px] font-semibold active:opacity-70", isMe ? "text-white/90" : "text-apple-blue")}
-                >
-                  <ChevronDown className="w-4 h-4" /> Show full text
-                </button>
-              )}
-              {isLargeText && expanded && (
-                <button
-                  onPointerDown={() => setExpanded(false)}
-                  className={cn("mt-2 flex items-center gap-1 text-[14px] font-semibold active:opacity-70", isMe ? "text-white/90" : "text-apple-blue")}
-                >
-                  <ChevronUp className="w-4 h-4" /> Collapse
-                </button>
-              )}
+            <div className={cn("px-4 py-3 text-[15.5px] whitespace-pre-wrap leading-relaxed break-words", isMe ? "text-white" : "text-apple-ink dark:text-white")}>
+              {msg.text}
             </div>
           )}
 
-          {/* Attachment Renderers */}
-          {a && (
-            <div className={cn("flex flex-col w-full min-w-[280px]", isMe && "bg-white/10")}>
-
-              {/* Image Type */}
-              {a.type === 'image' && (
-                <div className="relative w-full overflow-hidden bg-black/5 dark:bg-white/5">
-                  {(a.status === 'complete' && a.url) ? (
-                    <img src={a.url} alt={a.name} className="w-full h-auto object-contain max-h-[60vh] block" />
-                  ) : (
-                    <div className={cn("w-full aspect-video flex flex-col items-center justify-center", isMe ? "text-white/80" : "text-apple-ink-muted")}>
-                      <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
-                      <ProgressState attachment={a} isMe={isMe} onBlue={isMe} />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Video Type */}
-              {a.type === 'video' && (
-                <div className="relative w-full aspect-video bg-black/90 flex items-center justify-center group overflow-hidden">
-                  {(a.status === 'complete' && a.url) ? (
-                    <video src={a.url} controls className="w-full h-full object-contain" />
-                  ) : (
-                    <div className="text-white/70 flex flex-col items-center">
-                      <Play className="w-10 h-10 mb-3 opacity-50" />
-                      <ProgressState attachment={a} isMe={isMe} onBlue />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* File / Audio Type */}
-              {(a.type === 'file' || a.type === 'audio') && (
-                <div className={cn("p-5 flex items-center gap-4", isMe ? "bg-white/10" : "bg-apple-canvas/50 dark:bg-black/20")}>
-                  <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 relative", isMe ? "bg-white/20" : "bg-apple-blue/10")}>
-                    {a.type === 'audio' ? <Play className={cn("w-6 h-6 ml-1", isMe ? "text-white" : "text-apple-blue")} /> : <FileText className={cn("w-6 h-6", isMe ? "text-white" : "text-apple-blue")} />}
-                  </div>
-                  <div className="flex flex-col flex-1 truncate">
-                    <span className={cn("text-[15px] font-semibold truncate", isMe ? "text-white" : "text-apple-ink dark:text-white")}>{a.name}</span>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className={cn("text-[13px] font-medium", isMe ? "text-white/75" : "text-apple-ink-muted")}>{formatBytes(a.size)}</span>
-                      <span className={cn("w-1 h-1 rounded-full", isMe ? "bg-white/40" : "bg-apple-ink-muted/50")} />
-                      <span className={cn("text-[13px] font-medium uppercase tracking-wider", isMe ? "text-white/75" : "text-apple-ink-muted")}>{a.name.split('.').pop() || 'FILE'}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Audio playback — plays once the transfer completes */}
-              {a.type === 'audio' && a.status === 'complete' && a.url && (
-                <div className={cn("px-4 pb-4", isMe ? "bg-white/10" : "bg-apple-canvas/50 dark:bg-black/20")}>
-                  <audio src={a.url} controls className="w-full" preload="metadata" />
-                </div>
-              )}
-
-              {/* Metadata & Actions Bar */}
-              <div className={cn(
-                "px-5 py-3 border-t flex items-center justify-between",
-                isMe
-                  ? "border-white/15 bg-white/10"
-                  : "border-apple-divider/50 dark:border-apple-tile-3 bg-apple-canvas/30 dark:bg-black/10"
-              )}>
-                <div className="flex flex-col">
-                  <span className={cn("text-[12px] font-medium flex items-center gap-1", isMe ? "text-white/75" : "text-apple-ink-muted")}>
-                    {a.status === 'complete' && (isMe ? <><Check className="w-3 h-3 text-white/90" /> Sent •</> : 'Received •')} {a.status === 'complete' ? `${formatBytes(a.size)} • ` : ''}{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {/* Image — tap to view full quality */}
+          {isImage && (
+            <div className={cn("relative w-full overflow-hidden bg-black/5 dark:bg-white/5", msg.text && "border-t border-white/10 dark:border-apple-tile-3/50")}>
+              {complete ? (
+                <button
+                  type="button"
+                  onPointerDown={() => setViewerOpen(true)}
+                  className="block w-full cursor-zoom-in group relative"
+                  aria-label={`View ${a.name}`}
+                >
+                  <img src={a.url} alt={a.name} className="w-full h-auto object-contain max-h-[60vh] block" />
+                  <span className="absolute bottom-2.5 right-2.5 flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-black/55 text-white text-[12px] font-semibold backdrop-blur opacity-90 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <ZoomIn className="w-3.5 h-3.5" /> View
                   </span>
-                  {a.status !== 'complete' && a.status !== 'draft' && (
-                    <span className={cn("text-[13px] font-semibold mt-0.5", a.status === 'failed' ? (isMe ? "text-white" : "text-status-danger") : a.status === 'cancelled' || a.status === 'interrupted' ? (isMe ? "text-white/80" : "text-apple-ink-muted") : a.status === 'resuming' ? (isMe ? "text-white" : "text-apple-blue") : isMe ? "text-white" : "text-apple-blue")}>
-                      {a.status === 'failed' ? 'Couldn\u2019t send this file.' :
-                        a.status === 'cancelled' ? 'Cancelled' :
-                        a.status === 'interrupted' ? 'Connection interrupted — waiting to reconnect…' :
-                        a.status === 'resuming' ? `Resuming… ${Math.round((a.progress || 0) * 100)}%` :
-                        a.status === 'sending' ? `Sending… ${Math.round((a.progress || 0) * 100)}%` :
-                          `Receiving… ${Math.round((a.progress || 0) * 100)}%`}
-                    </span>
-                  )}
-                  {a.status !== 'complete' && a.status !== 'draft' && a.status !== 'failed' && a.status !== 'cancelled' && (
-                    <span className={cn("text-[11px]", isMe ? "text-white/60" : "text-apple-ink-muted/80")}>
-                      {formatBytes((a.progress || 0) * a.size)} / {formatBytes(a.size)}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex gap-2">
-                  {a.status === 'complete' && a.url && (
-                    <>
-                      {a.type === 'image' && (
-                        <ActionButton icon={<Copy />} label={copied ? "Copied" : "Copy Image"} active={copied} onClick={() => handleCopyImage(a.url!)} onBlue={isMe} />
-                      )}
-                      <ActionButton icon={<Download />} label="Save" onClick={() => handleDownload(a.url!, a.name)} primary onBlue={isMe} />
-                    </>
-                  )}
-                  {(a.status === 'sending' || a.status === 'receiving' || a.status === 'interrupted' || a.status === 'resuming') && (
-                    <ActionButton icon={<X />} label="Cancel" onClick={() => { void cancelTransfer(msg.id); }} onBlue={isMe} />
-                  )}
-                  {(a.status === 'failed' || (a.status === 'cancelled' && isMe) || (a.status === 'interrupted' && isMe)) && (
-                    <ActionButton icon={<RefreshCw />} label="Retry" onClick={() => { void retryTransfer(msg.id); }} onBlue={isMe} />
-                  )}
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              {a.status !== 'complete' && a.status !== 'draft' && a.status !== 'failed' && a.status !== 'cancelled' && (
-                <div className={cn("w-full h-1 overflow-hidden", isMe ? "bg-white/20" : "bg-apple-divider dark:bg-apple-tile-3")}>
-                  <div className={cn("h-full origin-left transition-transform duration-300 ease-out", isMe ? "bg-white" : "bg-apple-blue")} style={{ transform: `scaleX(${a.progress || 0})` }} />
+                </button>
+              ) : (
+                <div className={cn("w-full aspect-video flex flex-col items-center justify-center", isMe ? "text-white/80" : "text-apple-ink-muted")}>
+                  <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
+                  <ProgressState attachment={a} isMe={isMe} onBlue={isMe} />
                 </div>
               )}
             </div>
           )}
 
-          {/* Action bar for pure text messages */}
-          {!a && msg.text && (
-            <div className={cn(
-              "px-5 py-2.5 border-t flex items-center justify-between",
-              isMe
-                ? "border-white/15 bg-white/10"
-                : "border-apple-divider/50 dark:border-apple-tile-3 bg-apple-canvas/30 dark:bg-black/10"
-            )}>
-              {msg.delivery === 'failed' ? (
-                <span className={cn("text-[13px] font-semibold flex items-center gap-1", isMe ? "text-white" : "text-status-danger")}>
-                  <AlertCircle className="w-3.5 h-3.5" /> Couldn't send
+          {/* Video — plays inline */}
+          {isVideo && (
+            <div className="relative w-full aspect-video bg-black/90 flex items-center justify-center overflow-hidden">
+              {complete ? (
+                <video src={a.url} controls className="w-full h-full object-contain" />
+              ) : (
+                <div className="text-white/70 flex flex-col items-center">
+                  <Play className="w-10 h-10 mb-3 opacity-50" />
+                  <ProgressState attachment={a} isMe={isMe} onBlue />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* File / Audio */}
+          {(a.type === 'file' || a.type === 'audio') && (
+            <div className={cn("p-4 flex items-center gap-3.5", isMe ? "bg-white/10" : "bg-apple-canvas/50 dark:bg-black/20")}>
+              <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 relative", isMe ? "bg-white/20" : "bg-apple-blue/10")}>
+                {a.type === 'audio' ? <Play className={cn("w-5 h-5 ml-1", isMe ? "text-white" : "text-apple-blue")} /> : <FileText className={cn("w-5 h-5", isMe ? "text-white" : "text-apple-blue")} />}
+              </div>
+              <div className="flex flex-col flex-1 truncate min-w-0">
+                <span className={cn("text-[14.5px] font-semibold truncate", isMe ? "text-white" : "text-apple-ink dark:text-white")}>{a.name}</span>
+                <span className={cn("text-[12.5px] font-medium", isMe ? "text-white/70" : "text-apple-ink-muted")}>{formatBytes(a.size)}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Audio playback — plays once the transfer completes */}
+          {a.type === 'audio' && complete && (
+            <div className={cn("px-4 pb-4", isMe ? "bg-white/10" : "bg-apple-canvas/50 dark:bg-black/20")}>
+              <audio src={a.url} controls className="w-full" preload="metadata" />
+            </div>
+          )}
+
+          {/* Footer: status + time + actions */}
+          <div className={cn(
+            "px-4 py-2.5 border-t flex items-center justify-between gap-2",
+            isMe ? "border-white/15 bg-white/10" : "border-apple-divider/50 dark:border-apple-tile-3 bg-apple-canvas/30 dark:bg-black/10"
+          )}>
+            <div className="flex flex-col min-w-0">
+              {a.status === 'complete' ? (
+                <span className={cn("text-[11.5px] font-medium flex items-center gap-1", isMe ? "text-white/75" : "text-apple-ink-muted")}>
+                  {isMe ? <DeliveryTick delivered={msg.delivered} onBlue /> : <span className="font-semibold">Received</span>}
+                  {' • '}{formatBytes(a.size)}{' • '}{timeOf(msg.timestamp)}
                 </span>
               ) : (
-                <span className={cn("text-[12px] font-medium flex items-center gap-1", isMe ? "text-white/75" : "text-apple-ink-muted")}>
-                  {isMe ? <><Check className="w-3 h-3 text-white/90" /> Sent •</> : 'Received •'} {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <span className={cn("text-[12.5px] font-semibold", a.status === 'failed' ? (isMe ? "text-white" : "text-status-danger") : a.status === 'cancelled' || a.status === 'interrupted' ? (isMe ? "text-white/80" : "text-apple-ink-muted") : isMe ? "text-white" : "text-apple-blue")}>
+                  {a.status === 'failed' ? 'Couldn\u2019t send this file.' :
+                    a.status === 'cancelled' ? 'Cancelled' :
+                      a.status === 'interrupted' ? 'Connection interrupted — waiting to reconnect…' :
+                        a.status === 'resuming' ? `Resuming… ${Math.round((a.progress || 0) * 100)}%` :
+                          a.status === 'sending' ? `Sending… ${Math.round((a.progress || 0) * 100)}%` :
+                            `Receiving… ${Math.round((a.progress || 0) * 100)}%`}
                 </span>
               )}
-              <div className="flex gap-2">
-                {msg.delivery === 'failed' && (
-                  <ActionButton icon={<RefreshCw />} label="Retry" onClick={() => { void retryText(msg.id); }} onBlue={isMe} />
-                )}
-                <ActionButton icon={<Copy />} label={copied ? "Copied" : "Copy"} active={copied} onClick={() => handleCopy(msg.text)} onBlue={isMe} />
-              </div>
+            </div>
+
+            <div className="flex gap-1.5 shrink-0">
+              {complete && (
+                <>
+                  {a.type === 'image' && (
+                    <ActionButton icon={copied ? <Check /> : <Copy />} label={copied ? "Copied" : "Copy"} active={copied} onClick={() => handleCopy(a.url!)} onBlue={isMe} />
+                  )}
+                  <ActionButton icon={<Download />} label="Save" onClick={() => handleDownload(a.url!, a.name)} primary onBlue={isMe} />
+                </>
+              )}
+              {(a.status === 'sending' || a.status === 'receiving' || a.status === 'interrupted' || a.status === 'resuming') && (
+                <ActionButton icon={<X />} label="Cancel" onClick={() => { void cancelTransfer(msg.id); }} onBlue={isMe} />
+              )}
+              {(a.status === 'failed' || (a.status === 'cancelled' && isMe) || (a.status === 'interrupted' && isMe)) && (
+                <ActionButton icon={<RefreshCw />} label="Retry" onClick={() => { void retryTransfer(msg.id); }} onBlue={isMe} />
+              )}
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          {a.status !== 'complete' && a.status !== 'draft' && a.status !== 'failed' && a.status !== 'cancelled' && (
+            <div className={cn("w-full h-1 overflow-hidden", isMe ? "bg-white/20" : "bg-apple-divider dark:bg-apple-tile-3")}>
+              <div className={cn("h-full origin-left transition-transform duration-300 ease-out", isMe ? "bg-white" : "bg-apple-blue")} style={{ transform: `scaleX(${a.progress || 0})` }} />
             </div>
           )}
-
         </div>
+
+        {viewerOpen && complete && (
+          <ImageViewer src={a.url!} name={a.name} onClose={() => setViewerOpen(false)} />
+        )}
       </div>
     </motion.div>
   );
-}
+};
 
 function ProgressState({ attachment: a, isMe, onBlue }: { attachment: Attachment, isMe: boolean, onBlue?: boolean }) {
   if (a.status === 'failed') return <span className={cn("font-medium", onBlue ? "text-white" : "text-status-danger")}>Couldn't send this file.</span>;
@@ -904,7 +951,7 @@ function ActionButton({ icon, label, onClick, active, primary, onBlue }: { icon:
     <button
       onPointerDown={onClick}
       className={cn(
-        "flex items-center gap-1.5 px-3.5 py-2.5 rounded-full text-[13px] font-semibold transition-motion active:scale-95 min-h-[44px]",
+        "flex items-center gap-1.5 px-3 py-2 rounded-full text-[12.5px] font-semibold transition-motion active:scale-95 min-h-[40px]",
         active
           ? onBlue ? "bg-white/25 text-white" : "bg-status-success/15 text-status-success"
           : primary
@@ -927,6 +974,123 @@ function ActionButton({ icon, label, onClick, active, primary, onBlue }: { icon:
       </motion.span>
       {label}
     </button>
+  );
+}
+
+/**
+ * Full-screen image viewer — same original quality, zoomable.
+ * Wheel / pinch to zoom, drag to pan, double-tap or double-click to toggle,
+ * Esc or backdrop to close. Touch-friendly and keyboard-friendly.
+ */
+function ImageViewer({ src, name, onClose }: { src: string; name: string; onClose: () => void }) {
+  const [scale, setScale] = useState(1);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const pinchDist = useRef<number | null>(null);
+  const lastTap = useRef(0);
+
+  const clampScale = (s: number) => Math.min(6, Math.max(1, s));
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'r' || e.key === 'R') { setScale(1); setPos({ x: 0, y: 0 }); }
+    };
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [onClose]);
+
+  const onWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.18 : 1 / 1.18;
+    setScale(s => clampScale(s * factor));
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const now = Date.now();
+    if (now - lastTap.current < 300) {
+      // Double tap — toggle zoom
+      setScale(s => (s > 1 ? 1 : 2.5));
+      setPos({ x: 0, y: 0 });
+      pointers.current.clear();
+      pinchDist.current = null;
+    }
+    lastTap.current = now;
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    const p = pointers.current.get(e.pointerId);
+    if (!p) return;
+    const dx = e.clientX - p.x;
+    const dy = e.clientY - p.y;
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (pointers.current.size === 1 && scale > 1) {
+      setPos(pp => ({ x: pp.x + dx, y: pp.y + dy }));
+    } else if (pointers.current.size === 2) {
+      const [a, b] = [...pointers.current.values()];
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      const prev = pinchDist.current ?? dist;
+      pinchDist.current = dist;
+      if (prev > 0) setScale(s => clampScale(s * (dist / prev)));
+    }
+  };
+
+  const onPointerUp = (e: React.PointerEvent) => {
+    pointers.current.delete(e.pointerId);
+    if (pointers.current.size < 2) pinchDist.current = null;
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/92 backdrop-blur-md flex items-center justify-center"
+      onPointerDown={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Viewing ${name}`}
+    >
+      <div
+        className="max-w-full max-h-full overflow-hidden select-none touch-none cursor-grab active:cursor-grabbing"
+        onPointerDown={(e) => { e.stopPropagation(); onPointerDown(e); }}
+        onPointerMove={onPointerMove}
+        onPointerUp={(e) => { e.stopPropagation(); onPointerUp(e); }}
+        onPointerCancel={(e) => { e.stopPropagation(); onPointerUp(e); }}
+        onWheel={onWheel}
+      >
+        <img
+          src={src}
+          alt={name}
+          draggable={false}
+          className="max-h-[92vh] max-w-[95vw] object-contain select-none"
+          style={{ transform: `translate(${pos.x}px, ${pos.y}px) scale(${scale})`, transition: scale === 1 ? 'transform 0.25s ease' : 'none' }}
+        />
+      </div>
+
+      <button
+        onPointerDown={(e) => { e.stopPropagation(); onClose(); }}
+        aria-label="Close image"
+        className="absolute top-4 right-4 w-11 h-11 rounded-full bg-black/55 border border-white/20 text-white flex items-center justify-center backdrop-blur hover:bg-black/75 transition-colors active:scale-95"
+      >
+        <X className="w-5 h-5" />
+      </button>
+
+      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-black/55 border border-white/15 text-white/90 text-[13px] font-medium backdrop-blur max-w-[90vw]">
+        <span className="truncate max-w-[220px]">{name}</span>
+        <span className="w-px h-3.5 bg-white/25" />
+        <span className="flex items-center gap-1 whitespace-nowrap">
+          <ZoomIn className="w-3.5 h-3.5" /> {Math.round(scale * 100)}% · scroll or pinch to zoom
+        </span>
+      </div>
+    </motion.div>
   );
 }
 

@@ -6,6 +6,7 @@ import { Copy, QrCode, Check, Share2, ChevronDown, ChevronLeft, Pencil, Check as
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { ShareTextLogo } from '../components/ShareTextLogo';
+import { ConnectingVisual } from '../components/ConnectingVisual';
 import { generateTOTP } from '../lib/totp';
 
 export function RoomHub() {
@@ -71,7 +72,11 @@ export function RoomHub() {
     setEditingName(false);
   };
 
-  const waitingForReconnect = session.connectionType === 'disconnected';
+  // "Peer was connected and dropped" — NOT the fresh-connect flow. During the
+  // initial handshake the transport can briefly read 'disconnected' while the
+  // WebRTC/relay path is still coming up; showing the orange rejoin banner then
+  // is noise. Hide it whenever the joiner is actively connecting.
+  const waitingForReconnect = session.connectionType === 'disconnected' && !session.partnerConnecting;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black p-6 relative overflow-hidden">
@@ -120,8 +125,9 @@ export function RoomHub() {
           </p>
           <LiveCodeDisplay secret={session.secret} createdAt={session.createdAt} />
 
-          {/* The joiner arrived — WebRTC is opening. Usually a one-second flash
-              before the app routes both devices into the chat. */}
+          {/* The joiner arrived — the same connecting animation the joiner's
+              own screen shows, so both devices tell the same story while the
+              handshake runs. */}
           <AnimatePresence>
             {session.partnerConnecting && !session.partnerConnected && (
               <motion.div
@@ -129,11 +135,11 @@ export function RoomHub() {
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                className="overflow-hidden"
+                className="overflow-hidden flex flex-col items-center"
               >
-                <p role="status" className="mt-4 flex items-center justify-center gap-2 text-[13px] font-medium text-apple-blue dark:text-azure-400">
-                  <ShareTextLogo size={16} motion="connecting" className="text-apple-blue dark:text-azure-400" />
-                  Your other device is connecting…
+                <ConnectingVisual className="mt-5" />
+                <p role="status" className="mt-3 text-[14px] font-medium text-apple-ink-muted dark:text-white/60">
+                  Connecting to your other device…
                 </p>
               </motion.div>
             )}

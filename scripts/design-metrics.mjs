@@ -270,10 +270,10 @@ try {
   await shot(A, 'chat-file');
   await sleep(2000);
 
-  // ---- audio ----
+  // ---- audio (staged via the generic File picker; menu is Photo/File only) ----
   await B.getByRole('button', { name: 'Add attachment' }).click();
-  await B.getByText('Audio', { exact: true }).click();
-  await B.locator('input[type="file"][accept="audio/*"]').setInputFiles(wavPath);
+  await B.getByText('File', { exact: true }).click();
+  await B.locator('input[type="file"]:not([accept])').setInputFiles(wavPath);
   await sleep(400);
   await B.getByRole('button', { name: 'Send' }).click();
   await sleep(3500);
