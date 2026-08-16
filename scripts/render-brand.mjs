@@ -34,33 +34,38 @@ const brandSvg = (size, fill) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">${MARK_SHAPES(fill)}</svg>`;
 
 // ---- OG image (1200×630) --------------------------------------------------
+// The mark IS the product story — two devices joined by a beam — so it leads
+// the card: large, centered, with a soft glow, wordmark, and one line.
 const ogHtml = `<!doctype html><html><head><meta charset="utf-8"><style>
   * { margin: 0; box-sizing: border-box; }
   html, body { width: 1200px; height: 630px; overflow: hidden; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background: linear-gradient(180deg, #0B1220 0%, #060A13 100%);
+    background: linear-gradient(180deg, #0D1526 0%, #060A13 100%);
     color: #FAFAFA;
     -webkit-font-smoothing: antialiased;
     position: relative;
+    display: flex; align-items: center; justify-content: center;
   }
-  .glow { position: absolute; inset: 0; background: radial-gradient(58% 44% at 50% 0%, rgba(46,139,255,0.13), transparent 70%); }
-  .wrap { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; padding: 74px 96px 0; }
-  .brand { display: flex; align-items: center; gap: 16px; }
-  .wordmark { font-size: 34px; font-weight: 600; letter-spacing: -0.02em; color: #F5F5F5; }
-  h1 { margin-top: 46px; text-align: center; font-size: 64px; font-weight: 600; line-height: 1.06; letter-spacing: -0.035em; color: #FAFAFA; }
-  .sub { margin-top: 28px; font-size: 26px; letter-spacing: -0.01em; color: rgba(250,250,250,0.58); }
-  .foot { position: absolute; left: 96px; right: 96px; bottom: 58px; display: flex; align-items: center; justify-content: space-between; }
-  .url { font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace; font-size: 17px; letter-spacing: 0.02em; color: rgba(255,255,255,0.38); }
+  .glow { position: absolute; inset: 0; background: radial-gradient(52% 46% at 50% 18%, rgba(46,139,255,0.18), transparent 72%); }
+  .halo { position: absolute; width: 640px; height: 640px; left: 50%; top: 50%; transform: translate(-50%,-50%);
+          background: radial-gradient(circle, rgba(46,139,255,0.10) 0%, transparent 58%); }
+  .wrap { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .wordmark { font-size: 40px; font-weight: 600; letter-spacing: -0.02em; color: #F5F5F5; margin-bottom: 40px; }
+  .mark { filter: drop-shadow(0 18px 44px rgba(46,139,255,0.35)); }
+  .tagline { margin-top: 40px; font-size: 21px; letter-spacing: -0.005em; color: rgba(250,250,250,0.55); }
+  .foot { position: absolute; left: 96px; right: 96px; bottom: 52px; display: flex; align-items: center; justify-content: space-between; }
+  .url { font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace; font-size: 16px; letter-spacing: 0.02em; color: rgba(255,255,255,0.34); }
   .beam { display: flex; align-items: center; gap: 10px; }
   .beam .line { width: 56px; height: 1px; background: rgba(255,255,255,0.16); }
   .beam .dot { width: 7px; height: 7px; border-radius: 50%; background: #2E8BFF; box-shadow: 0 0 14px rgba(46,139,255,0.8); }
 </style></head><body>
   <div class="glow"></div>
+  <div class="halo"></div>
   <div class="wrap">
-    <div class="brand">${brandSvg(48, '#F5F5F5')}<span class="wordmark">ShareText</span></div>
-    <h1>Move something<br/>between your devices.</h1>
-    <p class="sub">Text, photos and files. No app. No account.</p>
+    <div class="wordmark">ShareText</div>
+    <div class="mark">${brandSvg(208, '#4D9DFF')}</div>
+    <p class="tagline">Move something between your devices.</p>
   </div>
   <div class="foot">
     <span class="url">share-texts.vercel.app</span>

@@ -135,9 +135,12 @@ export function LaptopFrame({
 }) {
   return (
     <div className={cn('relative shrink-0', className)}>
-      {/* Lid — aluminium, seen from the front at ~95° open: the screen faces
-          the viewer almost straight on and the base is just a slim lip below.
-          No keyboard is visible — it recedes behind the screen. */}
+      {/* Seen from the front, slightly above the horizon: the screen faces the
+          viewer almost head-on, and below it you glimpse the deck receding —
+          a trapezoid base, wider at the front edge, with foreshortened keys.
+          This is the honest open-laptop view: screen, then a hint of keys. */}
+
+      {/* Lid — aluminium, nearly straight on */}
       <div className="relative rounded-[clamp(7px,2.2%,16px)] p-[1.5%] bg-[linear-gradient(168deg,#8a8a92_0%,#4a4a50_16%,#303034_45%,#1c1c1f_100%)] shadow-device">
         {/* Camera pinhole */}
         <div className="absolute top-[3.5%] left-1/2 -translate-x-1/2 w-[2.6%] aspect-square rounded-full bg-[#0a0a0c] ring-1 ring-white/15 z-30 shadow-[inset_0_0_2px_rgba(0,0,0,0.9)]">
@@ -157,14 +160,38 @@ export function LaptopFrame({
         </div>
       </div>
 
-      {/* Base — the front lip of the laptop body, slightly wider than the lid,
-          with the hinge seam where it meets the screen. This is all you see
-          from the front; the deck recedes away. */}
-      <div className="relative -mt-[1.2%] mx-auto w-[103%] h-[7.5%] min-h-[10px] rounded-b-[clamp(7px,2.2%,16px)] bg-[linear-gradient(180deg,#2c2c30_0%,#242428_35%,#17171a_100%)] shadow-[0_14px_28px_-12px_rgba(0,0,0,0.5)]">
-        {/* Hinge seam — the dark gap where the lid meets the base */}
-        <div className="absolute -top-[1px] left-[3%] right-[3%] h-[1.5px] rounded-full bg-black/70" />
-        {/* Front edge highlight — a machined lip catching the light */}
-        <div className="absolute bottom-[12%] left-[6%] right-[6%] h-[1px] rounded-full bg-white/[0.12]" />
+      {/* Deck — a trapezoid that recedes: narrow at the hinge, widening toward
+          the front edge. Keys are foreshortened slivers; a thin palm-rest lip
+          with the trackpad hint closes the base. */}
+      <div className="relative mx-auto -mt-[1%] w-[108%] rounded-b-[clamp(7px,2.2%,16px)] bg-[linear-gradient(180deg,#2e2e33_0%,#26262a_30%,#1e1e22_100%)] shadow-[0_16px_32px_-14px_rgba(0,0,0,0.55)]"
+        style={{ clipPath: 'polygon(3.5% 0%, 96.5% 0%, 100% 100%, 0% 100%)' }}>
+        {/* Hinge seam — the dark gap where the lid meets the deck */}
+        <div className="absolute top-0 left-[3%] right-[3%] h-[2px] rounded-full bg-black/80" />
+
+        {/* Foreshortened keys — three rows, tighter toward the hinge */}
+        <div className="flex flex-col gap-[4%] px-[4.5%] pt-[4%]">
+          {[1, 0.78, 0.6].map((h, row) => (
+            <div key={row} className="flex justify-between gap-[1.6%]">
+              {Array.from({ length: 12 }).map((_, k) => (
+                <span
+                  key={k}
+                  className="flex-1 rounded-[1.5px] bg-[linear-gradient(180deg,#3b3b41_0%,#2b2b30_60%,#242428_100%)] ring-1 ring-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_1px_1px_rgba(0,0,0,0.4)]"
+                  style={{ height: `${h * 1}em`, maxHeight: `${h * 8}px` }}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+
+        {/* Palm rest + trackpad hint, closing the base */}
+        <div className="px-[8%] pb-[4%] pt-[5%]">
+          <div className="relative mx-auto w-[30%] rounded-[3px] bg-[linear-gradient(180deg,#26262a_0%,#1d1d21_100%)] ring-1 ring-white/[0.06] shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]"
+            style={{ height: '0.9em', maxHeight: '7px' }}>
+            <span className="absolute left-1/2 top-[10%] bottom-[10%] w-px -translate-x-1/2 bg-black/50" />
+          </div>
+        </div>
+        {/* Front edge highlight — the machined lip nearest the viewer */}
+        <div className="absolute bottom-[3%] left-[6%] right-[6%] h-[1px] rounded-full bg-white/[0.14]" />
       </div>
 
       <GroundShadow className="w-[80%] h-[6%] -bottom-[5.5%] opacity-55" />

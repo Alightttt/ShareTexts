@@ -138,19 +138,36 @@ function AppContent() {
 
   if (typeof window !== 'undefined' && window.location.pathname !== '/') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black p-6 text-center">
-        <div className="w-16 h-16 bg-apple-parchment dark:bg-apple-tile-1 rounded-[20px] flex items-center justify-center mb-6">
-          <span className="text-[22px] font-semibold text-apple-ink-muted tracking-tight">404</span>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+        className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black p-6 text-center relative overflow-hidden"
+      >
+        {/* The same ambient warmth as the app's screens */}
+        <div className="absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(70%_90%_at_50%_-10%,rgba(46,139,255,0.10),transparent_65%)] pointer-events-none" aria-hidden />
+        <div className="w-20 h-20 bg-apple-parchment dark:bg-apple-tile-1 rounded-[24px] flex items-center justify-center mb-6 shadow-sm">
+          <ShareTextLogo size={34} className="text-apple-blue" />
         </div>
-        <h2 className="text-[24px] font-semibold text-apple-ink dark:text-white mb-2">Page Not Found</h2>
-        <p className="text-[17px] text-apple-ink-muted max-w-sm mb-8">The page you're looking for doesn't exist.</p>
-        <button
-          onClick={() => { window.location.href = '/'; }}
-          className="px-6 py-3 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] min-h-[44px]"
-        >
-          Go to Homepage
-        </button>
-      </div>
+        <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">This page doesn't exist.</h2>
+        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 font-medium max-w-sm mb-9">
+          Nothing was shared to this address. ShareText lives on the home page.
+        </p>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full max-w-sm sm:max-w-none sm:w-auto">
+          <button
+            onClick={() => { window.location.href = '/'; }}
+            className="px-7 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] shadow-card hover:shadow-float min-h-[48px] flex items-center justify-center gap-2"
+          >
+            <Send className="w-4 h-4" /> Start a Session
+          </button>
+          <button
+            onClick={() => { window.location.href = '/'; }}
+            className="px-6 py-3 rounded-[12px] text-[14px] font-medium text-apple-ink-muted dark:text-white/60 border border-apple-divider dark:border-white/15 hover:text-apple-ink dark:hover:text-white hover:border-apple-ink/30 dark:hover:border-white/30 transition-motion active:scale-[0.97] min-h-[48px] flex items-center justify-center gap-1.5"
+          >
+            <Home className="w-4 h-4" /> Back to Home
+          </button>
+        </div>
+      </motion.div>
     );
   }
 

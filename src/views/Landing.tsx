@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSession } from '../lib/SessionContext';
-import { motion } from 'motion/react';
+import { motion, useMotionValue, useSpring } from 'motion/react';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { HeroDemo } from '../components/HeroDemo';
 import { ScrollStory } from '../components/ScrollStory';
@@ -9,6 +9,90 @@ import { ArrowRight, Send, Inbox } from 'lucide-react';
 import { LiveUsers } from '../components/LiveUsers';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
+
+/**
+ * The page's ambient backdrop — quiet layers behind everything:
+ *   - a soft azure glow breathing near the top (same warmth as the room screen),
+ *   - a faint dot grid that reads as texture, not a pattern,
+ *   - on hover-capable screens, a very subtle light that follows the pointer.
+ * Every layer respects prefers-reduced-motion (no movement) and none of it
+ * competes with the product — it's atmosphere, not decoration.
+ */
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setReduced(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  return reduced;
+}
+
+function PointerLight() {
+  const reduced = usePrefersReducedMotion();
+  const x = useMotionValue(-400);
+  const y = useMotionValue(-400);
+  const sx = useSpring(x, { stiffness: 60, damping: 18, mass: 0.6 });
+  const sy = useSpring(y, { stiffness: 60, damping: 18, mass: 0.6 });
+
+  // Listen on window so the light never blocks interaction — the layer below
+  // is pointer-events-none, but we still want the glow to follow the cursor.
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      x.set(e.clientX);
+      y.set(e.clientY);
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => window.removeEventListener('pointermove', onMove);
+  }, [x, y]);
+
+  if (reduced) return null;
+
+  return (
+    <div aria-hidden className="pointer-events-none fixed inset-0 z-0 hidden lg:block">
+      <motion.div
+        className="absolute w-[560px] h-[560px] rounded-full"
+        style={{
+          left: sx,
+          top: sy,
+          x: '-50%',
+          y: '-50%',
+          background: 'radial-gradient(circle, rgba(46,139,255,0.05) 0%, transparent 62%)',
+        }}
+      />
+    </div>
+  );
+}
+
+function AmbientBackdrop() {
+  const reduced = usePrefersReducedMotion();
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* Azure glow — breathes slowly; static under reduced motion */}
+      <div className="absolute -top-[18%] left-1/2 -translate-x-1/2 w-[120%] h-[52%]">
+        <motion.div
+          className="w-full h-full bg-[radial-gradient(50%_60%_at_50%_0%,rgba(46,139,255,0.12),transparent_70%)]"
+          animate={reduced ? undefined : { opacity: [0.7, 1, 0.7] }}
+          transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </div>
+      {/* Second, cooler tone lower on the page for depth */}
+      <div className="absolute top-[38%] right-[-10%] w-[55%] h-[45%] bg-[radial-gradient(60%_60%_at_50%_50%,rgba(120,80,220,0.06),transparent_70%)]" />
+      {/* Faint dot grid — barely-there texture */}
+      <div
+        className="absolute inset-0 opacity-[0.35] dark:opacity-40"
+        style={{
+          backgroundImage: 'radial-gradient(rgba(20,24,32,0.5) 1px, transparent 1px)',
+          backgroundSize: '34px 34px',
+          maskImage: 'radial-gradient(70% 50% at 50% 0%, black 0%, transparent 75%)',
+          WebkitMaskImage: 'radial-gradient(70% 50% at 50% 0%, black 0%, transparent 75%)',
+        }}
+      />
+    </div>
+  );
+}
 
 /**
  * ShareText is a temporary bridge between two devices.
@@ -35,7 +119,10 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
   };
 
   return (
-    <div className="min-h-screen bg-apple-canvas dark:bg-night-900 font-sans selection:bg-azure-500/20 flex flex-col overflow-x-clip">
+    <div className="min-h-screen relative bg-apple-canvas dark:bg-night-900 font-sans selection:bg-azure-500/20 flex flex-col overflow-x-clip">
+      <AmbientBackdrop />
+      <PointerLight />
+
       {/* ============ HEADER — logo only; nothing competes with the product ============ */}
       <header className="sticky top-0 z-40 bg-apple-canvas/85 dark:bg-night-900/85 backdrop-blur-md border-b border-apple-divider dark:border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">

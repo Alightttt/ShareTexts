@@ -45,8 +45,12 @@ for (const vp of VIEWPORTS) {
         const sendBtn = [...document.querySelectorAll('button')].find(b => (b.textContent || '').trim() === 'Send text');
         const hero = inViewport(sendBtn);
         // Sticky/fixed bars
+        // Sticky/fixed bars that could cover content. Transparent decorative
+        // layers (pointer-events-none, e.g. the landing's ambient glow) are
+        // not bars — they never block interaction or reading.
         const fixedBars = [...document.querySelectorAll('header, [class*="sticky"], [class*="fixed"]')]
           .filter(el => el.getBoundingClientRect().height > 0)
+          .filter(el => getComputedStyle(el).pointerEvents !== 'none')
           .length;
         return { overflow, scrollW, winW, heroVisible: hero, fixedBars };
       });

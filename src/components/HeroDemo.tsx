@@ -178,8 +178,13 @@ export function HeroDemo() {
       </div>
 
       <div className="flex flex-col sm:flex-row items-center sm:items-center sm:justify-between gap-20 sm:gap-0 px-2 sm:px-6 relative">
-        {/* Phone — the sender */}
-        <div className="flex flex-col items-center">
+        {/* Phone — the sender. A slow idle float keeps the scene alive without
+            competing with the transfer; reduced-motion users get a still device. */}
+        <motion.div
+          animate={reduced ? undefined : { y: [0, -6, 0] }}
+          transition={{ duration: 6.5, repeat: Infinity, ease: 'easeInOut', times: [0, 0.5, 1] }}
+          className="flex flex-col items-center will-change-transform"
+        >
           <PhoneFrame className="w-[124px] sm:w-[148px]">
             <div ref={phoneScreenRef} className="w-full h-full flex flex-col">
               <RoomHeader status={phoneStatus} label="Your phone" />
@@ -271,10 +276,14 @@ export function HeroDemo() {
             </div>
           </PhoneFrame>
           <DeviceLabel>Your phone</DeviceLabel>
-        </div>
+        </motion.div>
 
-        {/* Laptop — the receiver */}
-        <div className="flex flex-col items-center">
+        {/* Laptop — the receiver, floating on a slightly different phase */}
+        <motion.div
+          animate={reduced ? undefined : { y: [0, 5, 0] }}
+          transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', times: [0, 0.5, 1] }}
+          className="flex flex-col items-center will-change-transform"
+        >
           <LaptopFrame className="w-[248px] sm:w-[300px] xl:w-[330px]">
             <div ref={laptopScreenRef} className="w-full h-full flex flex-col">
               <RoomHeader status={laptopStatus} label="Your laptop" />
@@ -324,20 +333,27 @@ export function HeroDemo() {
             </div>
           </LaptopFrame>
           <DeviceLabel>Your laptop</DeviceLabel>
-        </div>
+        </motion.div>
       </div>
 
-      {/* The object in flight */}
+      {/* The object in flight — a natural arc, not a straight slide: it lifts,
+          travels, and settles with a slight rotation, like a card tossed
+          across the gap. Direction-aware: desktop bows upward, mobile bows
+          sideways. */}
       <AnimatePresence>
         {flying && !reduced && (
           <motion.div
             key={`fly-${scene}-${step}`}
             className="absolute z-20 pointer-events-none"
             style={{ left: from.x, top: from.y, transform: 'translate(-50%, -50%)' }}
-            initial={{ x: 0, y: 0, opacity: 0, scale: 0.9 }}
-            animate={{ x: dx, y: dy, opacity: [0, 1, 1, 1], scale: [0.9, 1.05, 1.02, 1.04] }}
+            initial={{ x: 0, y: 0, opacity: 0, scale: 0.85, rotate: -3 }}
+            animate={
+              beam.vertical
+                ? { x: [0, 14, 0], y: [0, dy * 0.42, dy], opacity: [0, 1, 1, 1], scale: [0.85, 1.04, 1, 1.03], rotate: [-3, 1.5, 0] }
+                : { x: [0, dx * 0.34, dx * 0.72, dx], y: [0, -18, -10, 0], opacity: [0, 1, 1, 1], scale: [0.85, 1.04, 1, 1.03], rotate: [-3, 1.5, 0] }
+            }
             exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 1.5, times: [0, 0.12, 0.75, 1], ease: 'easeInOut' }}
+            transition={{ duration: 1.6, times: [0, 0.18, 0.72, 1], ease: [0.32, 0.72, 0, 1] }}
           >
             <div className="bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 rounded-[12px] overflow-hidden shadow-float w-[72px] sm:w-[92px]">
               {TransferObject}
