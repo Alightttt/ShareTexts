@@ -9,7 +9,7 @@
  *     cache on first fetch. Cross-origin requests (the signaling Worker's
  *     /health, /lookup, /ws) are never intercepted.
  */
-const CACHE = 'sharetext-v3';
+const CACHE = 'sharetext-v4';
 const SHELL = [
   '/',
   '/index.html',
@@ -25,6 +25,7 @@ const SHELL = [
   '/apple-touch-icon.png',
   '/og.png',
   '/social-avatar.png',
+  '/demo/photo-4x3.jpg',
 ];
 
 self.addEventListener('install', (event) => {

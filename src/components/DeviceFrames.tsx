@@ -81,6 +81,8 @@ function PhoneStatusBar() {
   );
 }
 
+const KEY_SHARED = 'bg-[linear-gradient(180deg,#3a3a3f_0%,#2a2a2e_55%,#232327_100%)] ring-1 ring-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_1.5px_0_rgba(0,0,0,0.45),0_2px_3px_rgba(0,0,0,0.35)]';
+
 export function PhoneFrame({
   children,
   className,
@@ -158,32 +160,57 @@ export function LaptopFrame({
       {/* Hinge */}
       <div className="h-[0.9%] w-[88%] mx-auto rounded-b-[3px] bg-[linear-gradient(180deg,#4a4a4e_0%,#222226_55%,#17171a_100%)] shadow-[0_1px_1px_rgba(0,0,0,0.5)]" />
 
-      {/* Keyboard deck — function row, keycap depth, palm rest */}
-      <div className="rounded-b-[clamp(7px,2.2%,16px)] bg-[linear-gradient(180deg,#3a3a3e_0%,#2a2a2e_12%,#232326_45%,#1a1a1d_100%)] p-[3%] pt-[2.2%] shadow-[0_20px_40px_-16px_rgba(0,0,0,0.55)]">
+      {/* Keyboard deck — realistic key layout, keycap depth, palm rest.
+          The deck must read as smaller than the screen (real laptops are
+          ~45% lid height), so keys are short and the trackpad is flat. */}
+      <div className="rounded-b-[clamp(7px,2.2%,16px)] bg-[linear-gradient(180deg,#414146_0%,#2d2d31_14%,#242428_50%,#19191d_100%)] p-[2.6%] pt-[1.8%] shadow-[0_20px_40px_-16px_rgba(0,0,0,0.55)]">
         {/* Function row — slightly shorter, distinct from the main keys */}
-        <div className="flex justify-between gap-[2.2%] mb-[3.5%]">
-          {Array.from({ length: 12 }).map((_, k) => (
+        <div className="flex justify-between gap-[1.4%] mb-[2.4%]">
+          {Array.from({ length: 14 }).map((_, k) => (
             <span
               key={k}
-              className="flex-1 aspect-[1.55/1] rounded-[2px] bg-[linear-gradient(180deg,#2e2e32_0%,#232327_60%,#1e1e21_100%)] ring-1 ring-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_1px_1px_rgba(0,0,0,0.4)]"
+              className="flex-1 aspect-[2.6/1] rounded-[1.5px] bg-[linear-gradient(180deg,#333338_0%,#26262a_55%,#1e1e22_100%)] ring-1 ring-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_1px_1px_rgba(0,0,0,0.4)]"
             />
           ))}
         </div>
-        <div className="flex flex-col gap-[3.2%]">
-          {[0, 1, 2, 3].map((row) => (
-            <div key={row} className="flex justify-between gap-[2.2%]">
-              {Array.from({ length: 12 }).map((_, k) => (
-                <span
-                  key={k}
-                  className="flex-1 aspect-[1.35/1] rounded-[2px] bg-[linear-gradient(180deg,#343438_0%,#26262a_55%,#1f1f23_100%)] ring-1 ring-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_1.5px_0_rgba(0,0,0,0.45),0_2px_3px_rgba(0,0,0,0.35)]"
-                />
-              ))}
-            </div>
-          ))}
+        {/* Letter rows — realistic widths: modifiers, spacebar, enter, shift */}
+        <div className="flex flex-col gap-[2.4%]">
+          {/* Row 1: digits */}
+          <div className="flex justify-between gap-[1.4%]">
+            {Array.from({ length: 13 }).map((_, k) => (
+              <span key={k} className={cn('flex-1 aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED, k === 12 && 'flex-[1.35]')} />
+            ))}
+          </div>
+          {/* Row 2: QWERTY */}
+          <div className="flex justify-between gap-[1.4%]">
+            <span className={cn('flex-[1.25] aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED)} />
+            {Array.from({ length: 11 }).map((_, k) => (
+              <span key={k} className="flex-1 aspect-[2.2/1] rounded-[1.5px] bg-[linear-gradient(180deg,#3a3a3f_0%,#2a2a2e_55%,#232327_100%)] ring-1 ring-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_1.5px_0_rgba(0,0,0,0.45),0_2px_3px_rgba(0,0,0,0.35)]" />
+            ))}
+            <span className={cn('flex-[1.35] aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED)} />
+          </div>
+          {/* Row 3: home row */}
+          <div className="flex justify-between gap-[1.4%]">
+            <span className={cn('flex-[1.5] aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED)} />
+            {Array.from({ length: 10 }).map((_, k) => (
+              <span key={k} className="flex-1 aspect-[2.2/1] rounded-[1.5px] bg-[linear-gradient(180deg,#3a3a3f_0%,#2a2a2e_55%,#232327_100%)] ring-1 ring-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_1.5px_0_rgba(0,0,0,0.45),0_2px_3px_rgba(0,0,0,0.35)]" />
+            ))}
+            <span className={cn('flex-[1.5] aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED)} />
+          </div>
+          {/* Row 4: spacebar */}
+          <div className="flex justify-between gap-[1.4%]">
+            <span className={cn('flex-[1.35] aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED)} />
+            <span className={cn('flex-[1.5] aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED)} />
+            <span className="flex-[4.6] aspect-[2.2/1] rounded-[1.5px] bg-[linear-gradient(180deg,#3a3a3f_0%,#2a2a2e_55%,#232327_100%)] ring-1 ring-white/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_1.5px_0_rgba(0,0,0,0.45),0_2px_3px_rgba(0,0,0,0.35)]" />
+            <span className={cn('flex-[1.5] aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED)} />
+            <span className={cn('flex-[1.35] aspect-[2.2/1] rounded-[1.5px]', KEY_SHARED)} />
+          </div>
         </div>
-        {/* Trackpad with click line */}
-        <div className="relative mt-[4.5%] mx-auto w-[34%] aspect-[1.9/1] rounded-[4px] bg-[linear-gradient(180deg,#242428_0%,#1b1b1f_100%)] ring-1 ring-white/[0.07] shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]">
-          <span className="absolute left-1/2 top-[18%] bottom-[18%] w-px -translate-x-1/2 bg-black/50" />
+        {/* Palm rest + trackpad */}
+        <div className="mt-[3%] pt-[1.6%] border-t border-white/[0.04]">
+          <div className="relative mx-auto w-[30%] aspect-[3/1] rounded-[3px] bg-[linear-gradient(180deg,#26262a_0%,#1d1d21_100%)] ring-1 ring-white/[0.07] shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]">
+            <span className="absolute left-1/2 top-[14%] bottom-[14%] w-px -translate-x-1/2 bg-black/50" />
+          </div>
         </div>
       </div>
 

@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Check, Copy, FileText, Image as ImageIcon } from 'lucide-react';
 import { ShareTextLogo } from './ShareTextLogo';
 import { PhoneFrame, LaptopFrame, DeviceLabel } from './DeviceFrames';
+import { DemoPhoto } from './DemoPhoto';
 import { cn } from '../lib/utils';
 
 /**
@@ -40,12 +41,7 @@ const PhotoCard = ({ className }: { className?: string }) => (
     'w-[76px] aspect-[4/3] rounded-[8px] overflow-hidden border border-apple-hairline/60 dark:border-white/[0.06] shadow-card',
     className
   )}>
-    {/* A quiet photographic placeholder — two soft tones, no stock imagery */}
-    <div className="w-full h-full bg-[linear-gradient(135deg,#bcd3f7_0%,#8fb6ec_55%,#6f9ae0_100%)] relative">
-      <div className="absolute -left-3 -bottom-4 w-14 h-14 rounded-full bg-white/25" />
-      <div className="absolute right-2 top-3 w-4 h-4 rounded-full bg-white/30" />
-      <div className="absolute left-4 top-2 w-5 h-5 rounded-full bg-white/20" />
-    </div>
+    <DemoPhoto className="w-full h-full" />
   </div>
 );
 

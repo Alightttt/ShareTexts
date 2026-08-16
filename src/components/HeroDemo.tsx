@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Check, Image as ImageIcon, Link2, Send } from 'lucide-react';
 import { ShareTextLogo } from './ShareTextLogo';
 import { PhoneFrame, LaptopFrame, DeviceLabel } from './DeviceFrames';
+import { DemoPhoto } from './DemoPhoto';
 import { cn } from '../lib/utils';
 
 function useReducedMotion() {
@@ -15,30 +16,6 @@ function useReducedMotion() {
     return () => mq.removeEventListener('change', update);
   }, []);
   return reduced;
-}
-
-/** A real-looking photo, drawn in SVG — sky, sun, hills — reads as "a photo"
- *  at 40px and at 180px. No network request, crisp at any size. */
-function MiniPhoto({ className }: { className?: string }) {
-  const id = React.useId().replace(/:/g, '');
-  return (
-    <svg viewBox="0 0 200 150" preserveAspectRatio="xMidYMid slice" className={className} aria-hidden>
-      <defs>
-        <linearGradient id={`sky-${id}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#8ec9f8" />
-          <stop offset="1" stopColor="#eaf5ff" />
-        </linearGradient>
-      </defs>
-      <rect width="200" height="150" fill={`url(#sky-${id})`} />
-      <circle cx="152" cy="40" r="17" fill="#fff4bf" />
-      <path d="M0 98 Q50 80 100 95 T200 90 V150 H0 Z" fill="#b9d8ab" />
-      <path d="M0 118 Q60 100 130 114 T200 108 V150 H0 Z" fill="#83b47e" />
-      <circle cx="42" cy="110" r="9" fill="#5d9160" />
-      <rect x="40" y="110" width="4" height="14" rx="1.5" fill="#6d5039" />
-      <circle cx="152" cy="102" r="7" fill="#5d9160" />
-      <rect x="150" y="102" width="4" height="12" rx="1.5" fill="#6d5039" />
-    </svg>
-  );
 }
 
 /** The second transferable — a link, the app's other everyday object. */
@@ -178,7 +155,7 @@ export function HeroDemo() {
   const phoneStatus: 'connected' | 'sending' = step === 'sending' ? 'sending' : 'connected';
   const laptopStatus: 'connected' | 'received' = isReceiving ? 'received' : 'connected';
 
-  const TransferObject = scene === 'photo' ? <MiniPhoto className="w-full aspect-[4/3]" /> : <MiniLink className="m-1.5" />;
+  const TransferObject = scene === 'photo' ? <DemoPhoto className="w-full aspect-[4/3]" /> : <MiniLink className="m-1.5" />;
 
   return (
     <div
@@ -219,7 +196,7 @@ export function HeroDemo() {
                       className="self-end bg-azure-600 rounded-[14px] rounded-tr-[4px] shadow-sm p-1.5 sm:p-2 flex flex-col gap-1 max-w-[85%]"
                     >
                       {scene === 'photo'
-                        ? <MiniPhoto className="w-[64px] sm:w-[86px] aspect-[4/3] rounded-[8px]" />
+                        ? <DemoPhoto className="w-[64px] sm:w-[86px] aspect-[4/3] rounded-[8px]" />
                         : <MiniLink className="max-w-[110px]" />}
                       <span className="text-[6px] sm:text-[7px] text-white/85 px-0.5 flex items-center gap-1">
                         <Check className="w-2 h-2" strokeWidth={3} /> Sent • 09:41
@@ -255,7 +232,7 @@ export function HeroDemo() {
                       <div className="flex items-center gap-1.5">
                         <div className="rounded-[7px] overflow-hidden shrink-0">
                           {scene === 'photo'
-                            ? <MiniPhoto className="w-[40px] sm:w-[52px] aspect-[4/3]" />
+                            ? <DemoPhoto className="w-[40px] sm:w-[52px] aspect-[4/3] rounded-[6px]" />
                             : <div className="w-[40px] sm:w-[52px] aspect-[4/3] flex items-center justify-center"><MiniLink className="max-w-full mx-0.5" /></div>}
                         </div>
                         <span className="text-[6px] sm:text-[7px] text-apple-ink-muted font-medium truncate">
@@ -316,7 +293,7 @@ export function HeroDemo() {
                       <div className="bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 rounded-[12px] sm:rounded-[14px] shadow-card overflow-hidden w-[120px] sm:w-[176px]">
                         {scene === 'photo' ? (
                           <>
-                            <MiniPhoto className="w-full aspect-[4/3]" />
+                            <DemoPhoto className="w-full aspect-[4/3]" />
                             <div className="px-2 py-1 flex items-center justify-between">
                               <span className="text-[6.5px] sm:text-[8px] font-semibold text-apple-ink dark:text-white truncate">photo-2026.jpg</span>
                               <span className="text-[6px] sm:text-[7px] text-apple-ink-muted font-medium">2.4 MB</span>
