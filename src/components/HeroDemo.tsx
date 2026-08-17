@@ -58,20 +58,37 @@ function RoomHeader({ status, label }: { status: 'connected' | 'sending' | 'sent
 }
 
 type Scene = 'photo' | 'link';
-type Step = 'ready' | 'sending' | 'received';
+type Step = 'ready' | 'sending' | 'received' | 'composing';
+
+// Motion language: one arc (0.3s lift, 1.0s travel), a spring landing, and a
+// quiet compose-in. Everything is transform/opacity — nothing layout-based.
+const FLIGHT_MS = 1300;
+const PRE_LAUNCH_MS = 320;
+const HOLD_MS = 3400;
+const COMPOSE_MS = 950;
 
 export function HeroDemo() {
   const reduced = useReducedMotion();
   const containerRef = useRef<HTMLDivElement>(null);
   const phoneScreenRef = useRef<HTMLDivElement>(null);
   const laptopScreenRef = useRef<HTMLDivElement>(null);
+  // The object launches from the composer card and lands on the laptop's
+  // content area — cause→effect, not "appears near the phone".
+  const composerRef = useRef<HTMLDivElement>(null);
+  const laptopTargetRef = useRef<HTMLDivElement>(null);
   const pausedUntil = useRef(0);
 
   const [from, setFrom] = useState({ x: 0, y: 0 });
   const [to, setTo] = useState({ x: 0, y: 0 });
+  const [flyFrom, setFlyFrom] = useState({ x: 0, y: 0 });
+  const [flyTo, setFlyTo] = useState({ x: 0, y: 0 });
   const [beam, setBeam] = useState({ left: 0, width: 0, top: 0, vertical: false });
 
   const [scene, setScene] = useState<Scene>('photo');
+  // What actually landed on the laptop. Separate from `scene` (what the phone
+  // is about to send) so the received card keeps showing the object that
+  // really arrived while the sender composes the next one — continuity.
+  const [landed, setLanded] = useState<Scene | null>(reduced ? 'photo' : null);
   const [step, setStep] = useState<Step>('ready');
   const [flying, setFlying] = useState(false);
 
@@ -94,6 +111,18 @@ export function HeroDemo() {
     const toY = l.top - c.top + l.height / 2;
     setFrom({ x: fromX, y: fromY });
     setTo({ x: toX, y: toY });
+
+    // The flying object's true path: composer card center → laptop content
+    // center. Falls back to screen centers before first paint.
+    const comp = composerRef.current?.getBoundingClientRect();
+    const target = laptopTargetRef.current?.getBoundingClientRect();
+    setFlyFrom(comp
+      ? { x: comp.left - c.left + comp.width / 2, y: comp.top - c.top + comp.height / 2 }
+      : { x: fromX, y: fromY });
+    setFlyTo(target
+      ? { x: target.left - c.left + target.width / 2, y: target.top - c.top + target.height / 2 }
+      : { x: toX, y: toY });
+
     if (vertical) {
       // Beam: phone bottom -> laptop top, along the shared centerline.
       const top = p.bottom - c.top;
@@ -114,77 +143,96 @@ export function HeroDemo() {
 
   useEffect(() => {
     measure();
+    // The composer card mounts after the scene settles, so re-measure once
+    // the ready state is on screen (first frame only).
+    const t = setTimeout(measure, 120);
     window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
+    return () => { window.removeEventListener('resize', measure); clearTimeout(t); };
   }, [measure]);
 
+  // The auto-cycle's pending timers, so a manual tap interrupts it cleanly
+  // (no stale timer can land an early "received" over a fresh transfer).
+  const cycleTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const clearCycle = () => { cycleTimers.current.forEach(clearTimeout); cycleTimers.current = []; };
+
   // The send action — shared by the auto-cycle and the interactive button.
+  // A manual tap clears any in-flight auto timers and takes over: the loop
+  // resumes afterwards via pausedUntil.
   const playTransfer = useCallback((nextScene: Scene) => {
     if (reduced) return;
+    clearCycle();
     pausedUntil.current = Date.now() + 6000; // let the manual play finish
     setScene(nextScene);
     setStep('ready');
     setFlying(false);
-    setTimeout(() => {
+    cycleTimers.current.push(setTimeout(() => {
       setStep('sending');
       setFlying(true);
-      setTimeout(() => {
+      cycleTimers.current.push(setTimeout(() => {
         setFlying(false);
         setStep('received');
-      }, 1500);
-    }, 350);
+        setLanded(nextScene);
+      }, FLIGHT_MS));
+    }, PRE_LAUNCH_MS));
   }, [reduced]);
 
-  // Auto-choreography — alternates photo → link → photo, repeated gently.
-  // A manual tap pauses the loop for a moment, then it resumes.
+  // Auto-choreography — a seamless loop: photo → link → photo. Each transfer
+  // ends with the phone composing the next object (no hard reset), so it
+  // reads as one transfer naturally leading into another.
   useEffect(() => {
     if (reduced) return;
     let cancelled = false;
-    let timers: ReturnType<typeof setTimeout>[] = [];
     let sceneFlip: Scene = 'photo';
 
     const cycle = () => {
       if (cancelled) return;
       const wait = pausedUntil.current - Date.now();
       if (wait > 0) {
-        timers.push(setTimeout(cycle, Math.max(wait, 200)));
+        cycleTimers.current.push(setTimeout(cycle, Math.max(wait, 200)));
         return;
       }
-      sceneFlip = sceneFlip === 'photo' ? 'link' : 'photo';
-      setScene(sceneFlip);
-      setStep('ready');
-      setFlying(false);
-      timers.push(setTimeout(() => {
+      // Ready is already on screen — send it.
+      setStep('sending');
+      setFlying(true);
+      cycleTimers.current.push(setTimeout(() => {
         if (cancelled) return;
-        setStep('sending');
-        setFlying(true);
-        timers.push(setTimeout(() => {
+        setFlying(false);
+        setStep('received');
+        setLanded(sceneFlip);
+        cycleTimers.current.push(setTimeout(() => {
           if (cancelled) return;
-          setFlying(false);
-          setStep('received');
-          timers.push(setTimeout(cycle, 3600));
-        }, 1500));
-      }, 1000));
+          // Compose the next object into the sender's composer.
+          sceneFlip = sceneFlip === 'photo' ? 'link' : 'photo';
+          setScene(sceneFlip);
+          setStep('composing');
+          cycleTimers.current.push(setTimeout(() => {
+            if (cancelled) return;
+            setStep('ready');
+            cycleTimers.current.push(setTimeout(cycle, 1300));
+          }, COMPOSE_MS));
+        }, HOLD_MS));
+      }, FLIGHT_MS));
     };
-    timers.push(setTimeout(cycle, 700));
-    return () => { cancelled = true; timers.forEach(clearTimeout); };
+    cycleTimers.current.push(setTimeout(cycle, 700));
+    return () => { cancelled = true; clearCycle(); };
   }, [reduced]);
 
-  const dx = to.x - from.x;
-  const dy = to.y - from.y;
-  const isReceiving = step === 'received' || reduced;
-  // Full state story: Connected → Sending…/Receiving… (while in flight) →
-  // Sent ✓ / Received ✓ (when it lands). Both devices always agree.
+  const dx = flyTo.x - flyFrom.x;
+  const dy = flyTo.y - flyFrom.y;
+  const isSending = step === 'sending';
+  const landedVisible = reduced || step === 'received' || step === 'composing';
   const phoneStatus: 'connected' | 'sending' | 'sent' =
-    step === 'sending' ? 'sending' : isReceiving ? 'sent' : 'connected';
+    isSending ? 'sending' : (step === 'received' || reduced) ? 'sent' : 'connected';
   const laptopStatus: 'connected' | 'receiving' | 'received' =
-    step === 'sending' ? 'receiving' : isReceiving ? 'received' : 'connected';
-
-  const TransferObject = scene === 'photo' ? <DemoPhoto className="w-full aspect-[4/3]" /> : <MiniLink className="m-1.5" />;
+    isSending ? 'receiving' : (landedVisible && landed) ? 'received' : 'connected';
+  const landedScene = landed ?? (reduced ? 'photo' : scene);
 
   return (
     <div
       ref={containerRef}
+      data-step={step}
+      data-scene={scene}
+      data-landed={landed ?? ''}
       className="relative w-full max-w-[960px] mx-auto select-none min-h-[560px] sm:min-h-[500px] lg:min-h-[540px]"
       aria-hidden
     >
@@ -201,12 +249,7 @@ export function HeroDemo() {
       </div>
 
       {/* Center node — anchored to the TRUE midpoint between the two device
-          screens, which is (from + to) / 2 from the measured beam. Neither the
-          beam midpoint nor the container center is right: the laptop is ~2×
-          the phone's width, so the container center drifts toward the laptop
-          and the beam (which measures the laptop SCREEN, inset by its bezel)
-          drifts toward the phone. (from + to) / 2 is exactly halfway between
-          the two screens in every layout, desktop or stacked. */}
+          screens, which is (from + to) / 2 from the measured beam. */}
       <div
         className="absolute w-9 h-9 rounded-full shadow-card flex items-center justify-center bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 z-10"
         style={{
@@ -221,29 +264,25 @@ export function HeroDemo() {
       </div>
 
       <div className="flex flex-col sm:flex-row items-center sm:items-center sm:justify-between gap-12 sm:gap-0 px-2 sm:px-6 relative">
-        {/* Phone — the sender. A slow idle float keeps the scene alive without
-            competing with the transfer; reduced-motion users get a still device. */}
-        <motion.div
-          animate={reduced ? undefined : { y: [0, -6, 0] }}
-          transition={{ duration: 6.5, repeat: Infinity, ease: 'easeInOut', times: [0, 0.5, 1] }}
-          className="flex flex-col items-center will-change-transform"
-        >
+        {/* Phone — the sender. Still, not floating: motion is reserved for the
+            transfer, so the object's movement carries all the meaning. */}
+        <div data-device="phone" className="flex flex-col items-center">
           <PhoneFrame className="w-[132px] sm:w-[176px] lg:w-[190px] xl:w-[200px]">
             <div ref={phoneScreenRef} className="w-full h-full flex flex-col">
               <RoomHeader status={phoneStatus} label="Your phone" />
               {/* Messages */}
               <div className="flex-1 flex flex-col justify-end px-[7px] sm:px-2.5 pb-1.5">
                 <AnimatePresence mode="wait">
-                  {step === 'received' ? (
+                  {step === 'received' && landed ? (
                     <motion.div
-                      key={`sent-${scene}`}
+                      key={`sent-${landed}`}
                       initial={reduced ? { opacity: 1 } : { opacity: 0, y: 8, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={reduced ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.97 }}
-                      transition={{ type: 'spring', bounce: 0, duration: 0.5 }}
+                      transition={{ type: 'spring', bounce: 0.2, duration: 0.5 }}
                       className="self-end bg-azure-600 rounded-[14px] rounded-tr-[4px] shadow-sm p-1.5 sm:p-2 flex flex-col gap-1 max-w-[85%]"
                     >
-                      {scene === 'photo'
+                      {landed === 'photo'
                         ? <DemoPhoto className="w-[64px] sm:w-[86px] aspect-[4/3] rounded-[8px]" />
                         : <MiniLink className="max-w-[110px]" />}
                       <span className="text-[6px] sm:text-[7px] text-white/85 px-0.5 flex items-center gap-1">
@@ -265,16 +304,17 @@ export function HeroDemo() {
                 </AnimatePresence>
               </div>
 
-              {/* Composer — the send button is a real button: tap it to replay */}
+              {/* Composer — the object waits here, then LAUNCHES from here. */}
               <div className="shrink-0 px-[7px] sm:px-2.5 pb-[10px] sm:pb-3 pt-1.5">
                 <AnimatePresence mode="wait">
-                  {step === 'ready' ? (
+                  {(step === 'ready' || step === 'composing') ? (
                     <motion.div
+                      ref={composerRef}
                       key={`composer-${scene}`}
-                      initial={reduced ? { opacity: 1 } : { opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={reduced ? { opacity: 0 } : { opacity: 0, y: -4, scale: 0.98 }}
-                      transition={{ duration: 0.25 }}
+                      initial={reduced ? { opacity: 1 } : { opacity: 0, y: 10, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={reduced ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98 }}
+                      transition={{ type: 'spring', bounce: 0, duration: 0.45 }}
                       className="bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 rounded-[12px] sm:rounded-[14px] shadow-card p-[6px] sm:p-2 flex flex-col gap-1.5"
                     >
                       <div className="flex items-center gap-1.5">
@@ -294,8 +334,12 @@ export function HeroDemo() {
                         <button
                           type="button"
                           onClick={() => playTransfer(scene)}
-                          className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px] rounded-full bg-apple-blue flex items-center justify-center shadow-[0_2px_6px_rgba(0,102,204,0.45)] transition-transform active:scale-90"
+                          className={cn(
+                            "w-[18px] h-[18px] sm:w-[20px] sm:h-[20px] rounded-full bg-apple-blue flex items-center justify-center shadow-[0_2px_6px_rgba(0,102,204,0.45)] transition-transform active:scale-90",
+                            step === 'composing' && "opacity-40 cursor-default"
+                          )}
                           aria-label="Replay transfer"
+                          tabIndex={-1}
                         >
                           <Send className="w-[8px] h-[8px] text-white" strokeWidth={3} />
                         </button>
@@ -319,21 +363,19 @@ export function HeroDemo() {
             </div>
           </PhoneFrame>
           <DeviceLabel>Your phone</DeviceLabel>
-        </motion.div>
+        </div>
 
-        {/* Laptop — the receiver, floating on a slightly different phase */}
-        <motion.div
-          animate={reduced ? undefined : { y: [0, 5, 0] }}
-          transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', times: [0, 0.5, 1] }}
-          className="flex flex-col items-center will-change-transform"
-        >
+        {/* Laptop — the receiver. Shows exactly what landed, keeps showing it
+            while the sender composes the next thing, and only swaps when the
+            next transfer completes. */}
+        <div data-device="laptop" className="flex flex-col items-center">
           <LaptopFrame className="w-[260px] sm:w-[348px] lg:w-[380px] xl:w-[410px]">
             <div ref={laptopScreenRef} className="w-full h-full flex flex-col">
               <RoomHeader status={laptopStatus} label="Your laptop" />
               {/* Received object / receiving / empty */}
-              <div className="flex-1 flex flex-col items-center justify-center gap-[7px] sm:gap-2.5 px-3">
+              <div ref={laptopTargetRef} className="flex-1 flex flex-col items-center justify-center gap-[7px] sm:gap-2.5 px-3">
                 <AnimatePresence mode="wait">
-                  {step === 'sending' && !reduced ? (
+                  {isSending && !reduced ? (
                     <motion.div
                       key="receiving-progress"
                       initial={{ opacity: 0, y: 6 }}
@@ -347,7 +389,7 @@ export function HeroDemo() {
                           className="h-full rounded-full bg-apple-blue"
                           initial={{ width: '0%' }}
                           animate={{ width: '94%' }}
-                          transition={{ duration: 1.55, ease: [0.4, 0, 0.2, 1] }}
+                          transition={{ duration: (FLIGHT_MS) / 1000, ease: [0.4, 0, 0.2, 1] }}
                         />
                       </div>
                       <span className="text-[6.5px] sm:text-[8px] font-medium text-apple-ink-muted flex items-center gap-1.5">
@@ -355,17 +397,31 @@ export function HeroDemo() {
                         Receiving {scene === 'photo' ? 'photo…' : 'link…'}
                       </span>
                     </motion.div>
-                  ) : isReceiving ? (
+                  ) : (landedVisible && landed) ? (
                     <motion.div
-                      key={`received-${scene}`}
-                      initial={reduced ? { opacity: 1, y: 0 } : { opacity: 0, y: 10, scale: 0.94 }}
+                      key={`received-${landedScene}`}
+                      initial={reduced ? { opacity: 1, y: 0 } : { opacity: 0, y: 12, scale: 0.94 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={reduced ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.97 }}
                       transition={{ type: 'spring', bounce: 0, duration: 0.55 }}
-                      className="flex flex-col items-center gap-1.5 sm:gap-2"
+                      className="flex flex-col items-center gap-1.5 sm:gap-2 relative"
                     >
+                      {/* Arrival ring — one quiet pulse when the object lands.
+                          Mounted once per landing (step flips back to
+                          composing before the next receive), so it never
+                          loops or restarts mid-show. */}
+                      {!reduced && step === 'received' && (
+                        <motion.span
+                          key={`ring-${landedScene}`}
+                          initial={{ scale: 0.75, opacity: 0.45 }}
+                          animate={{ scale: 1.18, opacity: 0 }}
+                          transition={{ duration: 0.8, ease: 'easeOut' }}
+                          className="absolute -inset-2 rounded-[18px] border-2 border-apple-blue/50 pointer-events-none"
+                          aria-hidden
+                        />
+                      )}
                       <div className="bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 rounded-[12px] sm:rounded-[14px] shadow-card overflow-hidden w-[120px] sm:w-[176px]">
-                        {scene === 'photo' ? (
+                        {landedScene === 'photo' ? (
                           <>
                             <DemoPhoto className="w-full aspect-[4/3]" />
                             <div className="px-2 py-1 flex items-center justify-between">
@@ -398,30 +454,30 @@ export function HeroDemo() {
             </div>
           </LaptopFrame>
           <DeviceLabel>Your laptop</DeviceLabel>
-        </motion.div>
+        </div>
       </div>
 
-      {/* The object in flight — a natural arc, not a straight slide: it lifts,
-          travels, and settles with a slight rotation, like a card tossed
-          across the gap. Direction-aware: desktop bows upward, mobile bows
-          sideways. */}
+      {/* The object in flight — it lifts OUT OF the composer, arcs, and
+          settles into the laptop's content area with a slight rotation, like
+          a card tossed across the gap. Direction-aware: desktop bows upward,
+          mobile bows sideways. */}
       <AnimatePresence>
         {flying && !reduced && (
           <motion.div
             key={`fly-${scene}-${step}`}
             className="absolute z-20 pointer-events-none"
-            style={{ left: from.x, top: from.y, transform: 'translate(-50%, -50%)' }}
-            initial={{ x: 0, y: 0, opacity: 0, scale: 0.85, rotate: -3 }}
+            style={{ left: flyFrom.x, top: flyFrom.y, transform: 'translate(-50%, -50%)' }}
+            initial={{ x: 0, y: 0, opacity: 0, scale: 0.88, rotate: -3 }}
             animate={
               beam.vertical
-                ? { x: [0, 14, 0], y: [0, dy * 0.42, dy], opacity: [0, 1, 1, 1], scale: [0.85, 1.04, 1, 1.03], rotate: [-3, 1.5, 0] }
-                : { x: [0, dx * 0.34, dx * 0.72, dx], y: [0, -18, -10, 0], opacity: [0, 1, 1, 1], scale: [0.85, 1.04, 1, 1.03], rotate: [-3, 1.5, 0] }
+                ? { x: [0, 14, 0], y: [0, dy * 0.42, dy], opacity: [0, 1, 1, 1], scale: [0.88, 1.05, 1, 1.03], rotate: [-3, 1.5, 0] }
+                : { x: [0, dx * 0.34, dx * 0.72, dx], y: [0, -18, -10, 0], opacity: [0, 1, 1, 1], scale: [0.88, 1.05, 1, 1.03], rotate: [-3, 1.5, 0] }
             }
             exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 1.6, times: [0, 0.18, 0.72, 1], ease: [0.32, 0.72, 0, 1] }}
+            transition={{ duration: FLIGHT_MS / 1000, times: [0, 0.18, 0.72, 1], ease: [0.32, 0.72, 0, 1] }}
           >
             <div className="bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 rounded-[12px] overflow-hidden shadow-float w-[72px] sm:w-[108px]">
-              {TransferObject}
+              {scene === 'photo' ? <DemoPhoto className="w-full aspect-[4/3]" /> : <MiniLink className="m-1.5" />}
             </div>
           </motion.div>
         )}
