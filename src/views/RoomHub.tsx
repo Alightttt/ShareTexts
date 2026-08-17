@@ -199,7 +199,7 @@ export function RoomHub() {
 
         <button
           onPointerDown={copyCode}
-          className="mt-2 w-full flex items-center justify-center gap-2 px-5 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[14px] text-[15px] font-semibold transition-motion active:scale-[0.97] min-h-[48px] shadow-card hover:shadow-float"
+          className="mt-2 w-full flex items-center justify-center gap-2 px-5 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] min-h-[48px] shadow-card hover:shadow-float"
         >
           {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
           {copiedCode ? 'Code copied' : 'Copy Code'}

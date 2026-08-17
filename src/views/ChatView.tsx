@@ -79,6 +79,18 @@ export function ChatView() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const keepSessionRef = useRef<HTMLButtonElement>(null);
+
+  // Focus the dialog's safe action on open. React's autoFocus is insufficient
+  // here: the browser's default pointerdown focus on the opener button lands
+  // AFTER React's autoFocus and steals focus back, so focus the keep button
+  // on the next frame instead. Enter then closes safely, never ends.
+  useEffect(() => {
+    if (confirmClose) {
+      const raf = requestAnimationFrame(() => keepSessionRef.current?.focus());
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [confirmClose]);
   const audioInputRef = useRef<HTMLInputElement>(null);
 
   // Object URLs for staged image previews, keyed by attachment id; revoked
@@ -504,6 +516,7 @@ export function ChatView() {
               </p>
               <div className="flex flex-col gap-2">
                 <button
+                  ref={keepSessionRef}
                   onPointerDown={() => setConfirmClose(false)}
                   className="w-full py-3.5 bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white rounded-[14px] text-[15px] font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
                 >
@@ -708,22 +721,31 @@ export function ChatView() {
                   className="px-3 pt-3 origin-bottom overflow-hidden"
                 >
                   <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                    {attachments.map((a) => (
-                      <div key={a.id} className="relative shrink-0">
-                        {a.type === 'image' && a.file && previewUrls.has(a.id) ? (
-                          <div className="w-[88px] h-[88px] sm:w-[104px] sm:h-[104px] rounded-[14px] overflow-hidden bg-apple-canvas dark:bg-black border border-apple-divider dark:border-apple-tile-3 shadow-sm">
-                            <img src={previewUrls.get(a.id)} alt={a.name} className="w-full h-full object-cover" />
-                          </div>
-                        ) : (
-                          <div className="w-[88px] h-[88px] sm:w-[104px] sm:h-[104px] rounded-[14px] bg-apple-parchment dark:bg-surface-dark-2 border border-apple-divider dark:border-apple-tile-3 flex flex-col items-center justify-center gap-0.5 p-1.5">
-                            <FileTypeIcon name={a.name} mimeType={a.mimeType} size={15} />
-                            <span className="text-[9.5px] font-medium text-apple-ink dark:text-white truncate max-w-full">{a.name}</span>
-                            <span className="text-[9px] text-apple-ink-muted">{formatBytes(a.size)}</span>
-                          </div>
-                        )}
-                        <RemoveAttachmentButton onClick={() => setAttachments(prev => prev.filter(x => x.id !== a.id))} />
-                      </div>
-                    ))}
+                    <AnimatePresence initial={false}>
+                      {attachments.map((a) => (
+                        <motion.div
+                          key={a.id}
+                          layout
+                          initial={{ opacity: 0, scale: 0.92 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.18 } }}
+                          className="relative shrink-0"
+                        >
+                          {a.type === 'image' && a.file && previewUrls.has(a.id) ? (
+                            <div className="w-[88px] h-[88px] sm:w-[104px] sm:h-[104px] rounded-[14px] overflow-hidden bg-apple-canvas dark:bg-black border border-apple-divider dark:border-apple-tile-3 shadow-sm">
+                              <img src={previewUrls.get(a.id)} alt={a.name} className="w-full h-full object-cover" />
+                            </div>
+                          ) : (
+                            <div className="w-[88px] h-[88px] sm:w-[104px] sm:h-[104px] rounded-[14px] bg-apple-parchment dark:bg-surface-dark-2 border border-apple-divider dark:border-apple-tile-3 flex flex-col items-center justify-center gap-0.5 p-1.5">
+                              <FileTypeIcon name={a.name} mimeType={a.mimeType} size={15} />
+                              <span className="text-[9.5px] font-medium text-apple-ink dark:text-white truncate max-w-full">{a.name}</span>
+                              <span className="text-[9px] text-apple-ink-muted">{formatBytes(a.size)}</span>
+                            </div>
+                          )}
+                          <RemoveAttachmentButton onClick={() => setAttachments(prev => prev.filter(x => x.id !== a.id))} />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
                   </div>
                   <p className="text-[11px] font-medium text-apple-ink-muted mt-1">
                     {attachments.length} of {MAX_ATTACHMENTS} attached
@@ -1158,7 +1180,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
               {a.status === 'complete' ? (
                 <span className={cn("text-[11.5px] font-medium flex items-center gap-1", isMe ? "text-white/75" : "text-apple-ink-muted")}>
                   {isMe ? <DeliveryTick delivered={msg.delivered} seen={msg.seen} onBlue /> : msg.source === 'push' ? (
-                    <span className="font-semibold flex items-center gap-1"><Terminal className="w-3 h-3" /> From your push link</span>
+                    <span className="font-semibold flex items-center gap-1"><Terminal className="w-3 h-3" /> Sent from your computer</span>
                   ) : <span className="font-semibold">Received</span>}
                   {' • '}{formatBytes(a.size)}{' • '}{timeOf(msg.timestamp)}
                 </span>

@@ -180,7 +180,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 onPointerDown={handleCreate}
                 disabled={isCreating}
                 whileTap={{ scale: 0.97 }}
-                className="group px-7 py-3.5 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[10px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float"
+                className="group px-7 py-3.5 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float"
               >
                 {isCreating ? 'Creating…' : createError ? 'Try Again' : (
                   <><Send className="w-4 h-4" /> Send text</>
@@ -189,7 +189,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               <motion.button
                 onPointerDown={onJoinClick}
                 whileTap={{ scale: 0.97 }}
-                className="group px-7 py-3.5 bg-azure-600 text-white rounded-[10px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float hover:bg-azure-500"
+                className="group px-7 py-3.5 bg-azure-600 text-white rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float hover:bg-azure-500"
               >
                 <Inbox className="w-4 h-4" /> Receive text
               </motion.button>
