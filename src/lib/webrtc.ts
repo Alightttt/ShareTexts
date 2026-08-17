@@ -11,7 +11,11 @@ type SignalData = { type: 'offer' | 'answer'; sdp: string } | { type: 'candidate
 export type TransferPayload = ChunkEnvelope;
 
 const CHUNK_SIZE = 64 * 1024; // 64 KB
-const MAX_TRANSFER_SIZE = 200 * 1024 * 1024; // 200 MB max total
+// 2 GB ceiling. Files stream in 64KB slices (never whole-file arrayBuffers),
+// so the sender's memory stays flat; the receiver holds chunk buffers to
+// assemble the final Blob, so ~2 GB is the practical browser ceiling — a big
+// file works on desktop, and phones with limited RAM may struggle above ~1 GB.
+const MAX_TRANSFER_SIZE = 2 * 1024 * 1024 * 1024; // 2 GB max total
 const MAX_CHUNKS = Math.ceil(MAX_TRANSFER_SIZE / CHUNK_SIZE);
 const OFFER_RETRY_DELAY = 4000;
 const OFFER_RETRY_MAX = 3;

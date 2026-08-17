@@ -160,7 +160,7 @@ export function HeroDemo() {
   return (
     <div
       ref={containerRef}
-      className="relative w-full max-w-[900px] mx-auto select-none min-h-[560px] sm:min-h-[440px]"
+      className="relative w-full max-w-[960px] mx-auto select-none min-h-[560px] sm:min-h-[500px] lg:min-h-[540px]"
       aria-hidden
     >
       {/* Connection beam — horizontal on desktop, vertical when stacked.
@@ -186,7 +186,7 @@ export function HeroDemo() {
           transition={{ duration: 6.5, repeat: Infinity, ease: 'easeInOut', times: [0, 0.5, 1] }}
           className="flex flex-col items-center will-change-transform"
         >
-          <PhoneFrame className="w-[124px] sm:w-[148px]">
+          <PhoneFrame className="w-[132px] sm:w-[176px] lg:w-[196px]">
             <div ref={phoneScreenRef} className="w-full h-full flex flex-col">
               <RoomHeader status={phoneStatus} label="Your phone" />
               {/* Messages */}
@@ -285,7 +285,7 @@ export function HeroDemo() {
           transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', times: [0, 0.5, 1] }}
           className="flex flex-col items-center will-change-transform"
         >
-          <LaptopFrame className="w-[248px] sm:w-[300px] xl:w-[330px]">
+          <LaptopFrame className="w-[260px] sm:w-[348px] lg:w-[400px] xl:w-[430px]">
             <div ref={laptopScreenRef} className="w-full h-full flex flex-col">
               <RoomHeader status={laptopStatus} label="Your laptop" />
               {/* Received object / empty */}
@@ -356,7 +356,7 @@ export function HeroDemo() {
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 1.6, times: [0, 0.18, 0.72, 1], ease: [0.32, 0.72, 0, 1] }}
           >
-            <div className="bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 rounded-[12px] overflow-hidden shadow-float w-[72px] sm:w-[92px]">
+            <div className="bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 rounded-[12px] overflow-hidden shadow-float w-[72px] sm:w-[108px]">
               {TransferObject}
             </div>
           </motion.div>

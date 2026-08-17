@@ -22,8 +22,8 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
       ? "You ended this session."
       : "This room was closed.";
   const sub = reason === 'expired'
-    ? "Nothing you sent is stored anywhere — it only lived on your devices."
-    : "Everything you sent is already on your device. Nothing was stored.";
+    ? "This room is gone for good. Nothing you sent was stored anywhere — it only lived on your devices."
+    : "This room is now permanently gone — no trace remains on any server. Everything you sent is already on your device.";
 
   const [shared, setShared] = useState(false);
   const shareApp = async () => {
@@ -179,9 +179,11 @@ function AppContent() {
   }
 
   // Session ended — show a calm closing state instead of dumping the user on
-  // the landing page with no explanation. Two exits: start a fresh session
-  // (the useful next step) or return home.
-  if (!session.roomId && session.closedReason) {
+  // the landing page with no explanation. Checked BEFORE the room screens so
+  // a closing session can never flash the code/connect screen for a frame
+  // while the state settles. Two exits: start a fresh session (the useful
+  // next step) or return home.
+  if (session.closedReason) {
     return (
       <AnimatePresence mode="wait">
         <SessionEndedScreen

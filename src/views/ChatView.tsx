@@ -3,7 +3,7 @@ import { useSession } from '../lib/SessionContext';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Plus, Image as ImageIcon, Copy, Check, CheckCheck,
-  File as FileIcon, Play, Download, RefreshCw, AlertCircle, FileText, ChevronDown, ChevronUp, ArrowUp, Lock, ZoomIn, ShieldCheck, Terminal
+  File as FileIcon, Play, Download, RefreshCw, AlertCircle, FileText, ChevronDown, ChevronUp, ArrowUp, Lock, ZoomIn, ShieldCheck, Terminal, Music
 } from 'lucide-react';
 import { cn, formatBytes } from '../lib/utils';
 import { ChatMessage, Attachment } from '../types';
@@ -16,7 +16,9 @@ const LARGE_TEXT_PREVIEW = 1400;
 export function ChatView() {
   const { session, sendMessage, closeSession, cancelTransfer } = useSession();
   const [inputText, setInputText] = useState('');
-  const [attachment, setAttachment] = useState<Attachment & { file: File } | null>(null);
+  // Multiple staged attachments per send (up to 20) — each file becomes its
+  // own transfer bubble on send, but they're picked together in one message.
+  const [attachments, setAttachments] = useState<(Attachment & { file: File })[]>([]);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [showConnectionDetails, setShowConnectionDetails] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -49,14 +51,19 @@ export function ChatView() {
   const videoInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
 
-  const previewUrl = useMemo(
-    () => (attachment?.type === 'image' && attachment.file ? URL.createObjectURL(attachment.file) : null),
-    [attachment]
-  );
+  // Object URLs for staged image previews, keyed by attachment id; revoked
+  // when the set changes (or on unmount) so we never leak blob URLs.
+  const previewUrls = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of attachments) {
+      if (a.type === 'image' && a.file) map.set(a.id, URL.createObjectURL(a.file));
+    }
+    return map;
+  }, [attachments]);
 
   useEffect(() => {
-    return () => { if (previewUrl) URL.revokeObjectURL(previewUrl); };
-  }, [previewUrl]);
+    return () => { previewUrls.forEach((u) => URL.revokeObjectURL(u)); };
+  }, [previewUrls]);
 
   const disconnected = !session.partnerConnected && session.connectionType === 'disconnected';
 
@@ -187,37 +194,61 @@ export function ChatView() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const stageFile = (file: File, type: 'image' | 'file' | 'video' | 'audio') => {
-    if (type === 'image' && file.size > 100 * 1024 * 1024) {
-      setErrorMsg("This image is larger than 100 MB. Choose a smaller image to continue.");
-      return;
-    }
-    if (file.size > 200 * 1024 * 1024) {
-      setErrorMsg("This file is larger than 200 MB. ShareText supports files up to 200 MB.");
+  const MAX_ATTACHMENTS = 20;
+
+  // Stage one or more files (menu pick or drag-drop) into the composer strip.
+  // Per-file limits with honest messages: images above 100 MB can't preview
+  // in the browser but still arrive as files; anything over 2 GB is rejected
+  // up-front instead of failing mid-transfer.
+  const addFiles = (files: FileList | File[], type: 'image' | 'file' | 'video' | 'audio') => {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    const roomLeft = MAX_ATTACHMENTS - attachments.length;
+    if (roomLeft <= 0) {
+      setErrorMsg(`You can attach up to ${MAX_ATTACHMENTS} files in one message. Send this batch first.`);
       return;
     }
 
-    setErrorMsg(null);
-    setAttachment({
-      id: crypto.randomUUID(),
-      type,
-      name: file.name,
-      size: file.size,
-      mimeType: file.type,
-      file,
-      status: 'draft'
-    });
-    setShowAttachmentMenu(false);
+    const accepted: (Attachment & { file: File })[] = [];
+    for (const file of list) {
+      if (accepted.length >= roomLeft) {
+        setErrorMsg(`You can attach up to ${MAX_ATTACHMENTS} files in one message. ${list.length - accepted.length} more file${list.length - accepted.length === 1 ? ' was' : 's were'} left out.`);
+        break;
+      }
+      let t = type;
+      // A video/audio picked through the generic File picker still plays
+      // inline instead of arriving as a dead file card.
+      if (t === 'file' && file.type.startsWith('video/')) t = 'video';
+      else if (t === 'file' && file.type.startsWith('audio/')) t = 'audio';
+      if (t === 'image' && file.size > 100 * 1024 * 1024) {
+        setErrorMsg(`${file.name} is larger than 100 MB. Photos above 100 MB arrive as files — pick it from the File menu.`);
+        continue;
+      }
+      if (file.size > 2 * 1024 * 1024 * 1024) {
+        setErrorMsg(`${file.name} is larger than 2 GB — the largest ShareText can move.`);
+        continue;
+      }
+      accepted.push({
+        id: crypto.randomUUID(),
+        type: t,
+        name: file.name,
+        size: file.size,
+        mimeType: file.type,
+        file,
+        status: 'draft'
+      });
+    }
+
+    if (accepted.length > 0) {
+      setErrorMsg(null);
+      setAttachments(prev => [...prev, ...accepted]);
+      setShowAttachmentMenu(false);
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'file' | 'video' | 'audio') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    // A video/audio picked through the generic File picker still plays inline
-    // instead of arriving as a dead file card.
-    if (type === 'file' && file.type.startsWith('video/')) type = 'video';
-    else if (type === 'file' && file.type.startsWith('audio/')) type = 'audio';
-    stageFile(file, type);
+    if (!e.target.files || e.target.files.length === 0) return;
+    addFiles(e.target.files, type);
     e.target.value = ''; // allow picking the same file again after removing
   };
 
@@ -240,32 +271,37 @@ export function ChatView() {
     dragDepth.current = 0;
     setDragOver(false);
     const files = e.dataTransfer?.files;
-    const file = files && files.length > 0 ? files[0] : undefined;
-    if (!file) return;
-    const type = file.type.startsWith('image/')
+    if (!files || files.length === 0) return;
+    const first = files[0];
+    const type = first.type.startsWith('image/')
       ? 'image'
-      : file.type.startsWith('video/')
+      : first.type.startsWith('video/')
         ? 'video'
-        : file.type.startsWith('audio/')
+        : first.type.startsWith('audio/')
           ? 'audio'
           : 'file';
-    stageFile(file, type);
+    addFiles(files, type);
   };
 
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!inputText.trim() && !attachment) return;
+    if (!inputText.trim() && attachments.length === 0) return;
     if (disconnected) return;
 
-    if (attachment) {
-      const { file, ...attachmentMeta } = attachment;
-      sendMessage(inputText, attachmentMeta, file);
+    if (attachments.length > 0) {
+      // Each staged file goes as its own transfer (its own bubble + progress
+      // + resume), so 20 files become 20 reliable transfers — not one giant
+      // multi-blob message that would restart from zero on any hiccup.
+      for (const a of attachments) {
+        const { file, ...attachmentMeta } = a;
+        sendMessage(inputText, attachmentMeta, file);
+      }
     } else {
       sendMessage(inputText);
     }
 
     setInputText('');
-    setAttachment(null);
+    setAttachments([]);
   };
 
   const inputBytes = useMemo(() => new TextEncoder().encode(inputText).length, [inputText]);
@@ -588,45 +624,45 @@ export function ChatView() {
           </AnimatePresence>
 
           <div className="relative">
-            <input type="file" ref={imageInputRef} accept="image/*" className="hidden" onChange={(e) => handleFileSelect(e, 'image')} />
-            <input type="file" ref={videoInputRef} accept="video/*" className="hidden" onChange={(e) => handleFileSelect(e, 'video')} />
-            <input type="file" ref={audioInputRef} accept="audio/*" className="hidden" onChange={(e) => handleFileSelect(e, 'audio')} />
-            <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => handleFileSelect(e, 'file')} />
+            <input type="file" ref={imageInputRef} accept="image/*" multiple className="hidden" onChange={(e) => handleFileSelect(e, 'image')} />
+            <input type="file" ref={videoInputRef} accept="video/*" multiple className="hidden" onChange={(e) => handleFileSelect(e, 'video')} />
+            <input type="file" ref={audioInputRef} accept="audio/*" multiple className="hidden" onChange={(e) => handleFileSelect(e, 'audio')} />
+            <input type="file" ref={fileInputRef} multiple className="hidden" onChange={(e) => handleFileSelect(e, 'file')} />
           </div>
 
           <motion.div layout className="relative border border-apple-divider dark:border-apple-tile-3 rounded-[22px] bg-white dark:bg-surface-dark overflow-visible shadow-sm transition-motion focus-within:ring-2 focus-within:ring-apple-blue-focus/50 focus-within:border-apple-blue-focus focus-within:shadow-[0_6px_24px_-8px_rgba(46,139,255,0.25)] z-20">
-            {/* Attachment preview with a remove button that is ALWAYS visible
-                (touch users never hover), circular, and animated on removal. */}
+            {/* Multi-attachment preview strip — up to 20 files, each with a
+                circular remove button that's always visible and tappable. */}
             <AnimatePresence>
-              {attachment && (
+              {attachments.length > 0 && (
                 <motion.div
-                  initial={{ height: 0, opacity: 0, scale: 0.96 }}
-                  animate={{ height: 'auto', opacity: 1, scale: 1 }}
-                  exit={{ height: 0, opacity: 0, scale: 0.96, filter: 'blur(4px)' }}
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0, filter: 'blur(4px)' }}
                   transition={{ type: "spring", bounce: 0, duration: 0.35 }}
-                  className="px-3 pt-3 flex flex-col origin-bottom overflow-hidden"
+                  className="px-3 pt-3 origin-bottom overflow-hidden"
                 >
-                  {attachment.type === 'image' && attachment.file ? (
-                    <div className="relative self-start">
-                      <div className="w-[110px] h-[110px] sm:w-[150px] sm:h-[150px] rounded-[16px] overflow-hidden bg-apple-canvas dark:bg-black relative border border-apple-divider dark:border-apple-tile-3 shadow-sm">
-                        {previewUrl && <img src={previewUrl} alt="preview" className="w-full h-full object-cover" />}
+                  <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                    {attachments.map((a) => (
+                      <div key={a.id} className="relative shrink-0">
+                        {a.type === 'image' && a.file && previewUrls.has(a.id) ? (
+                          <div className="w-[88px] h-[88px] sm:w-[104px] sm:h-[104px] rounded-[14px] overflow-hidden bg-apple-canvas dark:bg-black border border-apple-divider dark:border-apple-tile-3 shadow-sm">
+                            <img src={previewUrls.get(a.id)} alt={a.name} className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className="w-[88px] h-[88px] sm:w-[104px] sm:h-[104px] rounded-[14px] bg-apple-parchment dark:bg-surface-dark-2 border border-apple-divider dark:border-apple-tile-3 flex flex-col items-center justify-center gap-0.5 p-1.5">
+                            {a.type === 'video' ? <Play className="w-4 h-4 text-apple-ink dark:text-white" /> : a.type === 'audio' ? <Music className="w-4 h-4 text-apple-ink dark:text-white" /> : <FileIcon className="w-4 h-4 text-apple-ink dark:text-white" />}
+                            <span className="text-[9.5px] font-medium text-apple-ink dark:text-white truncate max-w-full">{a.name}</span>
+                            <span className="text-[9px] text-apple-ink-muted">{formatBytes(a.size)}</span>
+                          </div>
+                        )}
+                        <RemoveAttachmentButton onClick={() => setAttachments(prev => prev.filter(x => x.id !== a.id))} />
                       </div>
-                      <RemoveAttachmentButton onClick={() => setAttachment(null)} />
-                    </div>
-                  ) : (
-                    <div className="relative flex items-center justify-between bg-apple-parchment dark:bg-surface-dark-2 p-3 rounded-[16px] pr-12">
-                      <div className="flex items-center gap-3 overflow-hidden min-w-0">
-                        <div className="w-10 h-10 bg-white dark:bg-black rounded-[10px] flex items-center justify-center shrink-0 shadow-sm">
-                          {attachment.type === 'video' ? <Play className="w-5 h-5 text-apple-ink dark:text-white" /> : <FileIcon className="w-5 h-5 text-apple-ink dark:text-white" />}
-                        </div>
-                        <div className="flex flex-col truncate min-w-0">
-                          <span className="text-[14px] font-medium text-apple-ink dark:text-white truncate">{attachment.name}</span>
-                          <span className="text-[12px] text-apple-ink-muted">{formatBytes(attachment.size)}</span>
-                        </div>
-                      </div>
-                      <RemoveAttachmentButton onClick={() => setAttachment(null)} />
-                    </div>
-                  )}
+                    ))}
+                  </div>
+                  <p className="text-[11px] font-medium text-apple-ink-muted mt-1">
+                    {attachments.length} of {MAX_ATTACHMENTS} attached
+                  </p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -664,7 +700,7 @@ export function ChatView() {
               <button
                 type="button"
                 onPointerDown={handleSend}
-                disabled={(!inputText.trim() && !attachment) || !session.partnerConnected}
+                disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
                 aria-label="Send"
                 className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-[0.92] bg-azure-600 hover:bg-azure-500 text-white shadow-[0_4px_12px_-2px_rgba(10,102,240,0.4)] disabled:opacity-25 disabled:bg-apple-divider dark:disabled:bg-apple-tile-2 disabled:text-apple-ink-muted dark:disabled:text-white/40 disabled:shadow-none"
               >

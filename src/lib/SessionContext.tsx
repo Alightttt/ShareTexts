@@ -385,6 +385,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // If a transfer was interrupted by the drop, resume it from the
       // position the peer actually received — never from zero.
       void resumeInterruptedTransfers();
+      // Honest late receipts: after a reload/rejoin, the OTHER device may
+      // still be open with messages it sent us that never got confirmed. We
+      // genuinely hold them (restored from localStorage), so confirm now —
+      // the sender flips those bubbles to Delivered truthfully, and a sender
+      // that reopens later gets the same when THIS side re-confirms.
+      for (const m of messagesRef.current) {
+        if (m.sender === 'partner' && (m.attachment?.status === 'complete' || !m.attachment)) {
+          pm.sendReceipt(m.id);
+        }
+      }
     };
 
     pm.onHello = (name) => {

@@ -170,6 +170,10 @@ async function shot(browser, html, size, out) {
 const browser = await chromium.launch(chrome ? { headless: true, executablePath: chrome } : { headless: true });
 try {
   await shot(browser, ogHtml, [1200, 630], 'public/og.png');
+  // A second, differently-named copy for the social card. The fresh path
+  // busts crawler caches (Twitter/X ignore query strings), so the current
+  // design actually shows up in previews instead of a stale card.
+  fs.copyFileSync(path.join(root, 'public/og.png'), path.join(root, 'public/og-2.png'));
   await shot(browser, avatarHtml, [1024, 1024], 'public/social-avatar.png');
   // The mark spans ~70% of its viewBox — keep it inside the maskable safe
   // zone (80% centre) at these scales.

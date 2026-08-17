@@ -20,23 +20,25 @@
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="ShareText" />
-    <meta property="og:title" content="ShareText — share anything between two devices" />
-    <meta property="og:description" content="No app. No account. Nothing stored. Text, photos and files up to 200 MB — iPhone to Windows, phone to laptop, any two browsers." />
+    <meta property="og:title" content="ShareText — Move something between your devices" />
+    <meta property="og:description" content="No app. No account. Nothing stored. Text, photos, videos and files up to 2 GB — straight from one screen to the other, iPhone to Windows." />
     <meta property="og:url" content="https://share-texts.vercel.app/" />
-    <!-- ?v=3 busts the aggressive social-crawler caches (WhatsApp/DM/Twitter)
-         so the new card actually appears after a deploy. -->
-    <meta property="og:image" content="https://share-texts.vercel.app/og.png?v=3" />
+    <!-- NEW FILE NAME (og-2.png), not just a query string: social crawlers
+         (Twitter/X especially) cache cards by URL and often ignore ?v= bumps,
+         which is why the old card kept showing. A fresh path forces a fresh
+         crawl. -->
+    <meta property="og:image" content="https://share-texts.vercel.app/og-2.png?v=1" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:type" content="image/png" />
-    <meta property="og:image:alt" content="ShareText — share anything between two devices, no app and no account." />
+    <meta property="og:image:alt" content="ShareText — a phone sends, a laptop receives, no app and no account." />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="ShareText — share anything between two devices" />
+    <meta name="twitter:title" content="ShareText — Move something between your devices" />
     <meta name="twitter:description" content="No app. No account. Nothing stored. iPhone to Windows, phone to laptop — in seconds." />
-    <meta name="twitter:image" content="https://share-texts.vercel.app/og.png?v=3" />
-    <meta name="twitter:image:alt" content="ShareText — share anything between two devices, no app and no account." />
+    <meta name="twitter:image" content="https://share-texts.vercel.app/og-2.png?v=1" />
+    <meta name="twitter:image:alt" content="ShareText — a phone sends, a laptop receives, no app and no account." />
 
     <link rel="canonical" href="https://share-texts.vercel.app/" />
 
