@@ -33,6 +33,10 @@ const QA = [
     q: 'How long does the pairing code last?',
     a: 'It\u2019s fresh for 40 seconds on screen. If it runs out, the app shows a new one.',
   },
+  {
+    q: 'Can a script or AI agent send text into my room?',
+    a: 'Yes — the connect screen offers a “Send from your computer” command. Paste it in any terminal, or hand it to an AI agent, and text (or a file) lands on your device instantly, even before the second device joins.',
+  },
 ];
 
 export function Faq() {

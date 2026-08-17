@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn, shortCodeOf, formatBytes } from '../lib/utils';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { ConnectingVisual } from '../components/ConnectingVisual';
-import { generateTOTP } from '../lib/totp';
+import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
 import { pushEndpoint } from '../lib/socket';
 
 function timeAgo(ts: number): string {
@@ -27,6 +27,10 @@ export function RoomHub() {
   const [showPush, setShowPush] = useState(false);
   const [copiedTextCmd, setCopiedTextCmd] = useState(false);
   const [copiedFileCmd, setCopiedFileCmd] = useState(false);
+  // QR re-renders on every pairing-code boundary so the scannable code is
+  // always the CURRENT one (the short link inside stays stable — the code
+  // query param just rotates with the 40s window).
+  const [, setQrTick] = useState(0);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(session.deviceName);
 
@@ -49,6 +53,17 @@ export function RoomHub() {
   // Same room, easy to send in any chat, and it survives longer than the
   // rotating 6-digit pairing code.
   const shareUrl = `${window.location.origin}/s/${shortCodeOf(session.roomId)}`;
+  const qrCode = generateTOTP(session.secret!, session.createdAt);
+  // The QR value embeds the CURRENT pairing code, so it visibly refreshes on
+  // every 40s boundary while the stable short link inside keeps working.
+  const qrValue = `${shareUrl}?c=${qrCode}`;
+  useEffect(() => {
+    if (!showQR) return;
+    const waitMs = Math.max(300, getTOTPRemainingSeconds(session.createdAt) * 1000 + 60);
+    const t = setTimeout(() => setQrTick(x => x + 1), waitMs);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showQR, qrCode, session.createdAt]);
 
   const copyLink = async () => {
     try {
@@ -228,10 +243,13 @@ export function RoomHub() {
                 transition={{ type: "spring", bounce: 0, duration: 0.4 }}
                 className="overflow-hidden"
               >
-                <div className="flex flex-col items-center justify-center p-6 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[16px] shadow-sm">
-                  <div className="bg-white p-3 rounded-[11px] mb-4">
-                    <QRCodeSVG value={shareUrl} size={140} />
+                <div className="flex flex-col items-center justify-center p-5 sm:p-6 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[16px] shadow-sm">
+                  <div className="bg-white p-4 rounded-[14px] mb-3 shadow-sm">
+                    <QRCodeSVG value={qrValue} size={216} />
                   </div>
+                  <p className="text-[12px] text-apple-ink-muted mb-1">
+                    Point the other device at this code — it stays in sync with the 40s timer.
+                  </p>
                   <button
                     onPointerDown={() => setShowQR(false)}
                     className="text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors px-4 py-2 min-h-[44px] flex items-center"
@@ -276,18 +294,17 @@ export function RoomHub() {
         {/* Agent push — "send from your computer" without a second browser.
             The curl command carries the room secret as a bearer credential;
             a script or AI agent can push text (or a small file) straight into
-            this room, even before the other device joins. */}
-        <div className="w-full mt-5">
+            this room, even before the other device joins. Deliberately a quiet
+            utility (a feature, not a button for humans) — collapsed and muted. */}
+        <div className="w-full mt-4 flex flex-col items-center">
           <button
             onPointerDown={() => setShowPush(!showPush)}
             aria-expanded={showPush}
-            className="w-full flex items-center justify-between p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-surface-dark-2 rounded-[14px] transition-colors active:scale-[0.98] shadow-sm"
+            className="flex items-center gap-1.5 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors active:scale-95 px-3 py-2 min-h-[44px]"
           >
-            <div className="flex items-center gap-3 text-[15px] font-medium text-apple-ink dark:text-white">
-              <Terminal className="w-5 h-5 text-apple-ink-muted" />
-              Send from your computer
-            </div>
-            <ChevronDown className={cn("w-4 h-4 text-apple-ink-muted transition-transform", showPush && "rotate-180")} />
+            <Terminal className="w-3.5 h-3.5" />
+            Send from your computer
+            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", showPush && "rotate-180")} />
           </button>
 
           <AnimatePresence>

@@ -192,11 +192,30 @@
 
 /* Hero demo: a data packet traveling along the connection beam */
 @keyframes beam-travel {
-  from { left: 0; }
-  to { left: calc(100% - 6px); }
+  from { left: 0; opacity: 0; }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  to { left: calc(100% - 6px); opacity: 0; }
 }
 .animate-beam {
   animation: beam-travel 1.6s linear infinite;
+}
+
+/* Second packet, half a cycle behind — the connection reads as a steady
+   stream instead of one dot sliding. Frozen by reduced-motion. */
+.animate-beam-delayed {
+  animation: beam-travel 1.6s linear 0.8s infinite;
+}
+
+/* Connecting screens: a soft ring expanding out of the lock badge — the
+   "channel is being secured" cue. Pure transform/opacity, no layout. */
+@keyframes ring-pulse {
+  0% { transform: translate(-50%, -50%) scale(0.7); opacity: 0.55; }
+  70% { transform: translate(-50%, -50%) scale(1.7); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(1.7); opacity: 0; }
+}
+.animate-ring-pulse {
+  animation: ring-pulse 2.2s ease-out infinite;
 }
 
 /* Connecting screens: the two device nodes drift on slow, offset phases.

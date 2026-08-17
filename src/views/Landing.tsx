@@ -1,17 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { motion, useMotionValue, useSpring } from 'motion/react';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { HeroDemo } from '../components/HeroDemo';
-import { ScrollStory } from '../components/ScrollStory';
-import { Situations } from '../components/Situations';
-import { HowItWorks } from '../components/HowItWorks';
-import { InsteadOf } from '../components/InsteadOf';
-import { PrivacyPromise } from '../components/PrivacyPromise';
-import { Faq } from '../components/Faq';
 import { ArrowRight, Send, Inbox, ShieldCheck } from 'lucide-react';
 import { LiveUsers } from '../components/LiveUsers';
 import { InstallPrompt } from '../components/InstallPrompt';
+
+// Below-the-fold sections load as separate chunks — the hero paints with only
+// the critical JS, and each story section streams in when it nears the viewport.
+const ScrollStory = lazy(() => import('../components/ScrollStory').then(m => ({ default: m.ScrollStory })));
+const HowItWorks = lazy(() => import('../components/HowItWorks').then(m => ({ default: m.HowItWorks })));
+const Situations = lazy(() => import('../components/Situations').then(m => ({ default: m.Situations })));
+const InsteadOf = lazy(() => import('../components/InsteadOf').then(m => ({ default: m.InsteadOf })));
+const PrivacyPromise = lazy(() => import('../components/PrivacyPromise').then(m => ({ default: m.PrivacyPromise })));
+const Faq = lazy(() => import('../components/Faq').then(m => ({ default: m.Faq })));
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -169,7 +172,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               <motion.button
                 onPointerDown={onJoinClick}
                 whileTap={{ scale: 0.97 }}
-                className="px-6 py-3 rounded-[10px] text-[14px] font-medium text-apple-ink-muted dark:text-white/55 border border-apple-divider dark:border-white/15 hover:text-apple-ink dark:hover:text-white hover:border-apple-ink/30 dark:hover:border-white/30 transition-motion flex items-center justify-center gap-1.5"
+                className="group px-7 py-3.5 bg-azure-600 text-white rounded-[10px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float hover:bg-azure-500"
               >
                 <Inbox className="w-4 h-4" /> Receive text
               </motion.button>
@@ -203,23 +206,27 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
         </div>
       </section>
 
-      {/* ============ THE STORY — the page becomes a demonstration ============ */}
-      <ScrollStory />
+      {/* Below-the-fold sections are lazy chunks; a bare placeholder keeps
+          layout stable while each loads (they're all well under the fold). */}
+      <Suspense fallback={<div className="h-[60vh]" aria-hidden />}>
+        {/* ============ THE STORY — the page becomes a demonstration ============ */}
+        <ScrollStory />
 
-      {/* ============ HOW IT WORKS — three plain steps, everyone understands ============ */}
-      <HowItWorks />
+        {/* ============ HOW IT WORKS — three plain steps, everyone understands ============ */}
+        <HowItWorks />
 
-      {/* ============ WHY SHARETEXT — told through situations, not features ============ */}
-      <Situations />
+        {/* ============ WHY SHARETEXT — told through situations, not features ============ */}
+        <Situations />
 
-      {/* ============ THE USUAL WAYS — contrast, honestly told ============ */}
-      <InsteadOf />
+        {/* ============ THE USUAL WAYS — contrast, honestly told ============ */}
+        <InsteadOf />
 
-      {/* ============ PRIVATE BY DESIGN — the trust wedge + the 2-6-0-0-0 strip ============ */}
-      <PrivacyPromise />
+        {/* ============ PRIVATE BY DESIGN — the trust wedge + the 2-6-0-0-0 strip ============ */}
+        <PrivacyPromise />
 
-      {/* ============ QUESTIONS PEOPLE ACTUALLY ASK ============ */}
-      <Faq />
+        {/* ============ QUESTIONS PEOPLE ACTUALLY ASK ============ */}
+        <Faq />
+      </Suspense>
 
       {/* ============ ENDING ============ */}
       <section className="px-6 pb-28 sm:pb-36 pt-24 sm:pt-28 bg-apple-parchment dark:bg-night-950">
@@ -250,7 +257,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             <motion.button
               onPointerDown={onJoinClick}
               whileTap={{ scale: 0.97 }}
-              className="px-8 py-4 rounded-[12px] text-[15px] font-medium text-apple-ink-muted dark:text-white/60 border border-apple-divider dark:border-white/15 hover:text-apple-ink dark:hover:text-white hover:border-apple-ink/30 dark:hover:border-white/30 transition-motion flex items-center justify-center gap-1.5 min-h-[52px]"
+              className="px-8 py-4 bg-azure-600 text-white rounded-[12px] text-[16px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float hover:bg-azure-500 min-h-[52px]"
             >
               <Inbox className="w-4 h-4" /> Receive text
             </motion.button>

@@ -34,6 +34,9 @@ export function ChatView() {
   const [showConnected, setShowConnected] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Composer textarea — auto-grows as the user types (rows=1 + height sync),
+  // capped at 30vh so long messages scroll instead of eating the screen.
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   // Messages scroll container — tracks whether the reader is at the bottom so
   // an incoming message can offer a "jump to newest" pill instead of yanking
   // the scroll position (the small thing chat apps get right).
@@ -56,6 +59,19 @@ export function ChatView() {
   }, [previewUrl]);
 
   const disconnected = !session.partnerConnected && session.connectionType === 'disconnected';
+
+  // Keep the composer exactly as tall as its content (1 line = 44px), growing
+  // smoothly up to 30vh. Without this the textarea sits at its default
+  // rows=2 height (68px), which is the "extra height / misaligned buttons"
+  // the old composer had — the + and ↑ were pinned to the bottom while the
+  // text floated at the top.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const next = Math.min(el.scrollHeight, Math.round(window.innerHeight * 0.3));
+    el.style.height = Math.max(44, next) + 'px';
+  }, [inputText]);
 
   // Keyboard-safe height: when the on-screen keyboard opens, the visual
   // viewport shrinks while 100dvh doesn't. Track it so the composer stays
@@ -269,14 +285,14 @@ export function ChatView() {
 
   return (
     <div
-      className="relative flex flex-col h-dvh bg-apple-canvas dark:bg-black font-sans"
+      className="relative flex flex-col h-dvh bg-apple-canvas dark:bg-night-950 font-sans"
       style={visualHeight ? { height: `${visualHeight}px` } : undefined}
     >
       {/* Screen-reader live region — invisible, announced on state changes */}
       <div aria-live="polite" role="status" className="sr-only">{announcement}</div>
 
       {/* Header */}
-      <div className="flex items-center justify-between gap-3 p-4 sm:p-5 shrink-0 border-b border-apple-divider/50 dark:border-apple-tile-3/50 backdrop-blur-xl bg-apple-canvas/80 dark:bg-black/80 z-20 sticky top-0">
+      <div className="flex items-center justify-between gap-3 p-4 sm:p-5 shrink-0 border-b border-apple-divider/50 dark:border-apple-tile-3/50 backdrop-blur-xl bg-apple-canvas/80 dark:bg-night-950/80 z-20 sticky top-0">
         <button
           onPointerDown={() => setShowConnectionDetails(!showConnectionDetails)}
           aria-expanded={showConnectionDetails}
@@ -558,7 +574,7 @@ export function ChatView() {
       </div>
 
       {/* Input Area */}
-      <div className="p-3 sm:p-5 bg-apple-canvas/90 dark:bg-black/90 backdrop-blur-xl border-t border-apple-divider/50 dark:border-apple-tile-3/50 z-10 pb-[env(safe-area-inset-bottom)] relative">
+      <div className="p-3 sm:p-5 bg-apple-canvas/90 dark:bg-night-950/90 backdrop-blur-xl border-t border-apple-divider/50 dark:border-apple-tile-3/50 z-10 pb-[env(safe-area-inset-bottom)] relative">
         <form onSubmit={handleSend} className="max-w-3xl mx-auto flex flex-col gap-2.5">
 
           <AnimatePresence>
@@ -615,7 +631,7 @@ export function ChatView() {
               )}
             </AnimatePresence>
 
-            <div className="flex items-end gap-0.5 p-1.5 relative">
+            <div className="flex items-end gap-0.5 p-1 relative">
               <button
                 type="button"
                 onPointerDown={() => setShowAttachmentMenu(!showAttachmentMenu)}
@@ -630,7 +646,9 @@ export function ChatView() {
               </button>
 
               <textarea
+                ref={textareaRef}
                 value={inputText}
+                rows={1}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -640,7 +658,7 @@ export function ChatView() {
                 }}
                 placeholder="Paste or type text…"
                 aria-label="Message"
-                className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[10px] pl-1 pr-1 text-apple-ink dark:text-white placeholder:text-apple-ink-muted focus:outline-none text-[16px] leading-[24px]"
+                className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[9px] pl-0.5 pr-0.5 text-apple-ink dark:text-white placeholder:text-apple-ink-muted focus:outline-none text-[16px] leading-[26px]"
               />
 
               <button
