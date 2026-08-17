@@ -9,7 +9,7 @@ try {
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
     await page.goto(URL, { waitUntil: 'networkidle' });
-    await page.getByRole('button', { name: 'Send text' }).first().click();
+    await page.getByRole('button', { name: 'Start a transfer' }).first().click();
 
     // Wait for LIVE CODE, then capture the ring number immediately.
     await page.getByText('LIVE CODE').waitFor({ timeout: 10000 });
@@ -46,7 +46,7 @@ try {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   await page.goto(URL, { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: 'Send text' }).first().click();
+  await page.getByRole('button', { name: 'Start a transfer' }).first().click();
   await page.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   // Wait until the window is mostly over (remaining ~8s).
   await sleep(32000);

@@ -383,6 +383,22 @@ async function runRegistry() {
   check('registry rejects an unknown short code', shortMiss.status === 404);
   const shortBad = await reg.fetch(new Request('http://x/resolve-short', { method: 'POST', body: JSON.stringify({ code: 'not-a-code' }) }));
   check('registry rejects a malformed short code', shortBad.status === 404);
+
+  // Edge-side abuse protection: the per-IP sliding window (lookup limit is
+  // 20/60s in RATE_LIMITS) must 429 once exhausted and reset on the next
+  // window. Shared networks aren't broken because real deployments always
+  // present a client IP; unknown/absent IPs are deliberately not limited.
+  let limited = false;
+  for (let i = 0; i < 25; i++) {
+    const r = await reg.fetch(new Request('http://x/rate-check', { method: 'POST', body: JSON.stringify({ ip: '203.0.113.7', scope: 'lookup' }) }));
+    const out = await r.json();
+    if (!out.ok) limited = true;
+  }
+  check('rate limit 429s after 20 lookups from one IP', limited);
+  const fresh = await reg.fetch(new Request('http://x/rate-check', { method: 'POST', body: JSON.stringify({ ip: '203.0.113.8', scope: 'lookup' }) }));
+  check('rate limit is per-IP (fresh IP allowed)', (await fresh.json()).ok === true);
+  const unknown = await reg.fetch(new Request('http://x/rate-check', { method: 'POST', body: JSON.stringify({ ip: 'unknown', scope: 'lookup' }) }));
+  check('rate limit skips unknown IPs (dev/test)', (await unknown.json()).ok === true);
 }
 
 await runRoomProtocol();

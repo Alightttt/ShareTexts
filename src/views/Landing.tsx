@@ -179,7 +179,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 className="group px-7 py-3.5 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[10px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float"
               >
                 {isCreating ? 'Creating…' : createError ? 'Try Again' : (
-                  <><Send className="w-4 h-4" /> Send text <ArrowRight className="w-4 h-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" /></>
+                  <><Send className="w-4 h-4" /> Start a transfer <ArrowRight className="w-4 h-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" /></>
                 )}
               </motion.button>
               <motion.button
@@ -187,7 +187,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 whileTap={{ scale: 0.97 }}
                 className="group px-7 py-3.5 bg-azure-600 text-white rounded-[10px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float hover:bg-azure-500"
               >
-                <Inbox className="w-4 h-4" /> Receive text
+                <Inbox className="w-4 h-4" /> Already have a code?
               </motion.button>
             </div>
             {/* The trust strip — the three promises that make ShareText
@@ -264,7 +264,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               className="group px-9 py-4 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[12px] text-[16px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float min-h-[52px]"
             >
               {isCreating ? 'Creating…' : createError ? 'Try Again' : (
-                <><Send className="w-4 h-4" /> Send text <ArrowRight className="w-4 h-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" /></>
+                <><Send className="w-4 h-4" /> Start a transfer <ArrowRight className="w-4 h-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" /></>
               )}
             </motion.button>
             <motion.button
@@ -272,7 +272,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               whileTap={{ scale: 0.97 }}
               className="px-8 py-4 bg-azure-600 text-white rounded-[12px] text-[16px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float hover:bg-azure-500 min-h-[52px]"
             >
-              <Inbox className="w-4 h-4" /> Receive text
+              <Inbox className="w-4 h-4" /> Already have a code?
             </motion.button>
           </div>
           <p className="mt-6 text-[15px] text-apple-ink-muted dark:text-white/55 font-medium">

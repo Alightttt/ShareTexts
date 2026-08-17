@@ -451,6 +451,10 @@ export function ChatView() {
               <div className="text-[13px] text-apple-ink-muted mt-2 pt-2 border-t border-apple-divider/50 dark:border-apple-tile-3">
                 Only your two devices can read what\u2019s sent here. Nothing is stored.
               </div>
+              {/* The pairing code lives here now, not on screen: it\u2019s only
+                  needed if the other device drops and has to rejoin, so it\u2019s
+                  one tap away instead of always visible. */}
+              <PairingMini secret={session.secret} createdAt={session.createdAt} className="mt-3" />
             </motion.div>
           )}
         </AnimatePresence>
@@ -638,11 +642,10 @@ export function ChatView() {
       </div>
 
       {/* Contextual room rail — large desktops only. Uses the horizontal
-          space without becoming a dashboard: the live pairing code (useful
-          if the other device drops and needs to rejoin), the connection
-          path, and a one-line privacy note. */}
+          space without becoming a dashboard: the connection path and a
+          one-line privacy note. No pairing code here — that lives in
+          Connection details now, so it\u2019s not continuously exposed. */}
       <div className="hidden xl:flex absolute top-24 right-6 bottom-24 w-[228px] flex-col gap-4" aria-hidden>
-        <PairingMini secret={session.secret} createdAt={session.createdAt} />
         <div className="rounded-[14px] bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 p-4 text-[12.5px] leading-relaxed text-apple-ink-muted">
           <div className="flex items-center gap-2 mb-1.5">
             <span className={cn(
@@ -666,7 +669,14 @@ export function ChatView() {
 
       {/* Input Area */}
       <div className="p-3 sm:p-5 bg-apple-canvas/90 dark:bg-night-950/90 backdrop-blur-xl border-t border-apple-divider/50 dark:border-apple-tile-3/50 z-10 pb-[env(safe-area-inset-bottom)] relative">
-        <form onSubmit={handleSend} className="max-w-3xl mx-auto flex flex-col gap-2.5">
+        <form onSubmit={handleSend} className="max-w-3xl mx-auto flex flex-col gap-2">
+          <div className="hidden sm:flex items-center justify-end gap-1.5 text-[11px] font-medium text-apple-ink-muted/70 dark:text-white/40 px-1">
+            <kbd className="px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">Enter</kbd>
+            <span>to send</span>
+            <span className="opacity-50">·</span>
+            <kbd className="px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">Shift+Enter</kbd>
+            <span>for a new line</span>
+          </div>
 
           <AnimatePresence>
             {errorMsg && (
@@ -749,6 +759,7 @@ export function ChatView() {
                 }}
                 placeholder="Paste or type text…"
                 aria-label="Message"
+                title="Enter to send · Shift+Enter for a new line"
                 className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[9px] pl-0.5 pr-0.5 text-apple-ink dark:text-white placeholder:text-apple-ink-muted focus:outline-none text-[16px] leading-[26px]"
               />
 
@@ -1362,9 +1373,10 @@ function ImageViewer({ src, name, onClose }: { src: string; name: string; onClos
   );
 }
 
-/** Desktop rail: the live pairing code at a glance, so a dropped device can
- *  rejoin without reopening the Connect screen. Re-ticks every second. */
-function PairingMini({ secret, createdAt }: { secret: string, createdAt?: number }) {
+/** Compact live pairing code — used inside Connection details, so a dropped
+ *  device can rejoin without reopening the Connect screen, without exposing
+ *  the code continuously on screen. Re-ticks every second. */
+function PairingMini({ secret, createdAt, className }: { secret: string, createdAt?: number, className?: string }) {
   const [code, setCode] = useState(() => generateTOTP(secret, createdAt));
   const [remaining, setRemaining] = useState(() => getTOTPRemainingSeconds(createdAt));
   useEffect(() => {
@@ -1375,9 +1387,9 @@ function PairingMini({ secret, createdAt }: { secret: string, createdAt?: number
     return () => clearInterval(t);
   }, [secret, createdAt]);
   return (
-    <div className="rounded-[14px] bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 p-4 shadow-sm">
-      <div className="flex items-center justify-between mb-2.5">
-        <span className="text-[11px] font-semibold tracking-widest uppercase text-apple-ink-muted">Pairing code</span>
+    <div className={cn("rounded-[14px] bg-apple-parchment/60 dark:bg-apple-tile-1 border border-apple-divider/60 dark:border-apple-tile-3 p-3", className)}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10.5px] font-semibold tracking-widest uppercase text-apple-ink-muted">Rejoin code</span>
         <span className={cn("text-[11px] font-medium tnum", remaining <= 3 ? "text-status-danger" : "text-apple-ink-muted")}>
           {Math.ceil(remaining)}s
         </span>
@@ -1385,13 +1397,16 @@ function PairingMini({ secret, createdAt }: { secret: string, createdAt?: number
       <div className="flex justify-between gap-1">
         {code.split('').map((d, i) => (
           <React.Fragment key={i}>
-            <span className="flex-1 aspect-[3/4] bg-apple-parchment dark:bg-black rounded-[8px] border border-apple-divider/50 dark:border-apple-tile-3 flex items-center justify-center font-mono tnum text-[17px] font-semibold text-apple-ink dark:text-white">
+            <span className="flex-1 aspect-[3/4] bg-white dark:bg-black rounded-[8px] border border-apple-divider/50 dark:border-apple-tile-3 flex items-center justify-center font-mono tnum text-[16px] font-semibold text-apple-ink dark:text-white">
               {d}
             </span>
             {i === 2 && <span className="w-1.5" />}
           </React.Fragment>
         ))}
       </div>
+      <p className="text-[11px] text-apple-ink-muted mt-2 leading-snug">
+        If the other device drops, it can rejoin with this code.
+      </p>
     </div>
   );
 }

@@ -114,7 +114,7 @@ async function sendAttachment(label, filePath, menuLabel) {
 
 try {
   await page.goto(URL, { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: 'Receive text' }).first().click();
+  await page.getByRole('button', { name: 'Already have a code?' }).first().click();
   await page.locator('input[inputmode="numeric"]').fill(code);
   await page.getByText(/Paste or type|Your private clipboard|End session/).first().waitFor({ timeout: 25000 });
   console.log('MARK:CHAT_READY');

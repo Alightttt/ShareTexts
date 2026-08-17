@@ -10,6 +10,39 @@ type SignalData = { type: 'offer' | 'answer'; sdp: string } | { type: 'candidate
  *  JSON form; file transfers use the compact binary variant. */
 export type TransferPayload = ChunkEnvelope;
 
+/**
+ * ICE servers: Google STUN for direct NAT traversal, plus a free public TURN
+ * relay (openrelay.metered.ca) so restrictive networks (symmetric NAT, hotel
+ * Wi-Fi, some mobile carriers) can still connect when STUN alone can't. The
+ * relay is used only as a last resort — data still flows end-to-end encrypted
+ * regardless of path.
+ *
+ * Self-host a TURN server (e.g. coturn) and point VITE_ICE_SERVERS at it as
+ * JSON: [{"urls":"turn:turn.example.com:3478","username":"u","credential":"p"}]
+ */
+function iceServers(): RTCIceServer[] {
+  try {
+    const custom = import.meta.env.VITE_ICE_SERVERS as string | undefined;
+    if (custom) {
+      const parsed = JSON.parse(custom);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /* fall back to defaults */ }
+  return [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    {
+      urls: [
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turn:openrelay.metered.ca:443?transport=tcp',
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+  ];
+}
+
 const CHUNK_SIZE = 64 * 1024; // 64 KB
 // 4 GB ceiling. Files stream in 64KB slices (never whole-file arrayBuffers),
 // so the sender's memory stays flat. The receiver assembles chunks in RAM for
@@ -108,7 +141,29 @@ interface PartialReceive {
   updatedAt: number;
 }
 const partialReceives = new Map<string, PartialReceive>();
-const MAX_PARTIALS = 4;
+
+// Chunks can race ahead of their metadata: metadata is a chunk-envelope text
+// message that decrypts asynchronously, so a fast 1-chunk file can have its
+// binary packet arrive before expectBinaryTransfer() registers the receive.
+// Old behavior dropped those chunks, permanently stalling the transfer at 0%
+// (visible with multi-file sends — the first files would never finish). These
+// buffers hold them until the metadata lands, then flush through the normal
+// path. Bounded: a metadata message always follows, so 4 MB per transfer is
+// far more than a real race ever needs; total orphans are capped too.
+interface OrphanBuffer {
+  sequences: number[];
+  chunks: ArrayBuffer[];
+  bytes: number;
+}
+const orphanChunks = new Map<string, OrphanBuffer>();
+const ORPHAN_MAX_BYTES = 4 * 1024 * 1024;
+const ORPHAN_MAX_ENTRIES = 64;
+// Up to 20 attachments ship as concurrent transfers, and the LRU must never
+// evict one whose chunks are still in flight — evicting a live registration
+// strands its chunks (they arrive to a missing record). 24 covers a full
+// batch plus a little headroom; memory is still bounded because big files
+// stream to disk via OPFS, so this only guards the in-RAM small-file path.
+const MAX_PARTIALS = 24;
 
 interface SendProgress {
   sentUpTo: number;   // chunks the local loop has pushed this connection
@@ -153,6 +208,7 @@ export function clearAllTransferState() {
   partialReceives.clear();
   sendProgress.clear();
   ackWaiters.clear();
+  orphanChunks.clear();
 }
 
 /** Dev/diagnostic view of a partial receive — which sequences are missing. */
@@ -274,8 +330,14 @@ export class PeerManager {
     this.dc = null;
   }
 
+  public onNegotiating?: () => void;
+
   private sendOffer() {
     if (!this.pc || !this.peerId) return;
+    // Real signal, not a timer: negotiation genuinely started (ICE is about
+    // to run) — the UI moves from "Connecting…" to "Establishing secure
+    // connection…" at this exact moment on both devices.
+    this.onNegotiating?.();
     this.pc.createOffer()
       .then(offer => this.pc!.setLocalDescription(offer))
       .then(() => {
@@ -292,12 +354,7 @@ export class PeerManager {
 
   private createPeerConnection() {
     if (this.destroyed) return;
-    this.pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
-      ]
-    });
+    this.pc = new RTCPeerConnection({ iceServers: iceServers() });
 
     this.pc.onicecandidate = (event) => {
       if (event.candidate && this.peerId) {
@@ -362,6 +419,8 @@ export class PeerManager {
       try {
         if (signal.type === 'offer') {
           diag('webrtc.offer_received', true, `from ${(from || '').slice(0, 8)}`);
+          // The handshake is live on the receiving side too.
+          this.onNegotiating?.();
           // Handle SDP glare defensively (both sides offered) by rolling back
           // our local offer before accepting theirs.
           if (this.pc!.signalingState !== 'stable') {
@@ -447,6 +506,25 @@ export class PeerManager {
         resolveReady();
       }
       partialReceives.set(transferId, rec);
+      // Flush chunks that raced ahead of this metadata (the metadata is a
+      // chunk-envelope text message whose decrypt completes in a later task,
+      // so a fast binary packet can land first). Re-inject them through the
+      // normal binary handler — the record now exists, so they process with
+      // full progress/ack/completion logic; the duplicate check skips repeats.
+      const orphans = orphanChunks.get(transferId);
+      if (orphans) {
+        orphanChunks.delete(transferId);
+        const idBytes = uuidToBytes(transferId);
+        for (let i = 0; i < orphans.sequences.length; i++) {
+          const payload = orphans.chunks[i];
+          const packet = new Uint8Array(16 + 4 + payload.byteLength);
+          packet.set(idBytes, 0);
+          new DataView(packet.buffer).setUint32(16, orphans.sequences[i], true);
+          packet.set(new Uint8Array(payload), 20);
+          void this.handleIncomingData(packet.buffer);
+        }
+        diag('transfer.orphans_flushed', true, `${orphans.sequences.length} chunks for ${transferId.slice(0, 8)}`);
+      }
     } else {
       existing.updatedAt = Date.now();
     }
@@ -572,7 +650,24 @@ export class PeerManager {
 
       let transfer = partialReceives.get(transferId);
       if (!transfer) {
-        // Expected to be pre-registered via metadata message
+        // The metadata (an async-decrypting text message) hasn't registered
+        // this transfer yet. Buffer the chunk instead of dropping it — the
+        // next expectBinaryTransfer() flushes it through the normal path.
+        let orphan = orphanChunks.get(transferId);
+        if (!orphan) {
+          orphan = { sequences: [], chunks: [], bytes: 0 };
+          orphanChunks.set(transferId, orphan);
+        }
+        if (orphan.bytes < ORPHAN_MAX_BYTES && !orphan.sequences.includes(sequence)) {
+          orphan.sequences.push(sequence);
+          orphan.chunks.push(payload);
+          orphan.bytes += payload.byteLength;
+          diag('transfer.chunk_orphaned', true, `${sequence} for ${transferId.slice(0, 8)}`);
+        }
+        if (orphanChunks.size > ORPHAN_MAX_ENTRIES) {
+          const oldest = orphanChunks.keys().next().value;
+          if (oldest !== undefined) orphanChunks.delete(oldest);
+        }
         return;
       }
       if (sequence < 0 || sequence >= transfer.total) return;

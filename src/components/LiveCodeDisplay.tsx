@@ -86,8 +86,14 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
         ))}
       </div>
       
-      <p className="text-[13px] text-apple-ink-muted dark:text-white/60 mt-8 text-center font-medium">
-        A new code appears every 40 seconds.
+      <p
+        aria-live="polite"
+        className={cn(
+          "text-[13px] mt-8 text-center font-medium transition-colors duration-300",
+          isUrgent ? "text-status-danger dark:text-status-danger" : "text-apple-ink-muted dark:text-white/60"
+        )}
+      >
+        {isUrgent ? `New code in ${Math.max(1, Math.ceil(remaining))}s` : `Code refreshes in ${Math.ceil(remaining)}s`}
       </p>
     </div>
   );

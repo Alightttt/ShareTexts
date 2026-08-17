@@ -191,7 +191,7 @@ export function RoomHub() {
               >
                 <ConnectingVisual className="mt-5" />
                 <p role="status" className="mt-3 text-[14px] font-medium text-apple-ink-muted dark:text-white/60">
-                  Connecting to your other device…
+                  {session.connectionType === 'establishing' ? 'Establishing secure connection…' : 'Connecting to your other device…'}
                 </p>
               </motion.div>
             )}

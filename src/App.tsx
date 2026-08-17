@@ -195,46 +195,59 @@ function AppContent() {
     );
   }
 
-  // Routing logic based on session state
+  // Routing logic based on session state. The pairing screen is REPLACED by
+  // the connected room (not layered) — once the peer is present the code and
+  // QR are gone; the only remaining reference to the code lives inside
+  // Connection details. The transition is a restrained cross-fade, never a
+  // slide of one screen over the other.
+  // Joiner: either the fresh "connecting" state or "partner gone, waiting".
+  const waitingForReconnect = session.connectionType === 'disconnected';
   if (session.roomId) {
-    if (session.partnerConnected) {
-      return <ChatView />;
-    }
-    if (session.isCreator) {
-      return <RoomHub />;
-    }
-    // Joiner: either the fresh "connecting" state or "partner gone, waiting".
-    const waitingForReconnect = session.connectionType === 'disconnected';
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black px-6 text-center">
-        <div className="flex flex-col items-center">
-          {!waitingForReconnect && <ConnectingVisual />}
-          <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">
-            {waitingForReconnect ? "Your other device disconnected." : "Connecting…"}
-          </h2>
-          {waitingForReconnect ? (
-            <p className="text-[17px] text-apple-ink-muted">Your room is still open — you can rejoin anytime.</p>
-          ) : (
-            <ConnectingWait key={waitKey} onRetry={() => { setWaitKey(k => k + 1); void requestReconnect(); }} />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={session.partnerConnected ? 'chat' : session.isCreator ? 'hub' : 'wait'}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {session.partnerConnected ? <ChatView /> : session.isCreator ? <RoomHub /> : (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black px-6 text-center">
+              <div className="flex flex-col items-center">
+                {!waitingForReconnect && <ConnectingVisual />}
+                <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">
+                  {waitingForReconnect ? "Your other device disconnected."
+                    : session.connectionType === 'establishing' ? "Establishing secure connection…"
+                    : "Connecting…"}
+                </h2>
+                {waitingForReconnect ? (
+                  <p className="text-[17px] text-apple-ink-muted">Your room is still open — you can rejoin anytime.</p>
+                ) : (
+                  <ConnectingWait key={waitKey} onRetry={() => { setWaitKey(k => k + 1); void requestReconnect(); }} />
+                )}
+                {waitingForReconnect && (
+                  <button
+                    onPointerDown={() => { void requestReconnect(); }}
+                    className="mt-8 px-8 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] shadow-card hover:shadow-float min-h-[48px]"
+                  >
+                    Reconnect
+                  </button>
+                )}
+                <button
+                  onPointerDown={leaveView}
+                  className="mt-4 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors px-4 py-2 min-h-[44px]"
+                >
+                  Leave session
+                </button>
+              </div>
+            </div>
           )}
-          {waitingForReconnect && (
-            <button
-              onPointerDown={() => { void requestReconnect(); }}
-              className="mt-8 px-8 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] shadow-card hover:shadow-float min-h-[48px]"
-            >
-              Reconnect
-            </button>
-          )}
-          <button
-            onPointerDown={leaveView}
-            className="mt-4 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors px-4 py-2 min-h-[44px]"
-          >
-            Leave session
-          </button>
-        </div>
-      </div>
+        </motion.div>
+      </AnimatePresence>
     );
   }
+
 
   return (
     <AnimatePresence mode="wait">

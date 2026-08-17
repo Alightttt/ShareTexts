@@ -21,7 +21,7 @@ page.on('console', (m) => { if (m.type() === 'error') console.log('CONSOLE ERROR
 try {
   // --- create a room as the creator --------------------------------------
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-  await page.getByRole('button', { name: 'Send text' }).first().click();
+  await page.getByRole('button', { name: 'Start a transfer' }).first().click();
   await page.getByText('LIVE CODE').waitFor({ timeout: 15000 });
 
   const stored = await page.evaluate(() => {

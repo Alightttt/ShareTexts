@@ -411,6 +411,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setSession(s => ({ ...s, connectionType: type }));
     };
 
+    // Negotiation really started (offer sent/received — ICE is running), so
+    // the UI can truthfully move from "Connecting…" to "Establishing secure
+    // connection…". Never downgrades an established type (direct/relay).
+    pm.onNegotiating = () => {
+      setSession(s => ({
+        ...s,
+        connectionType: s.connectionType === 'connecting' || s.connectionType === 'establishing' ? 'establishing' : s.connectionType,
+      }));
+    };
+
     pm.onOpen = () => {
       // The data channel opened — treat that as the peer being present,
       // including after a rejoin/recovery when no explicit event arrives.

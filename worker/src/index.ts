@@ -99,6 +99,9 @@ export default {
     }
 
     if (path === '/ws') {
+      if (!(await rateLimited(env, 'ws', clientIp(request)))) {
+        return json({ error: 'Too many attempts. Wait a moment and try again.' }, 429, cors);
+      }
       const roomId = url.searchParams.get('room');
       const cid = url.searchParams.get('cid');
       if (!roomId || !UUID_RE.test(roomId)) return json({ error: 'invalid room' }, 400, cors);
@@ -160,6 +163,9 @@ export default {
  * device (see Room.handlePush).
  */
 async function push(request: Request, env: Env, cors: Record<string, string>): Promise<Response> {
+  if (!(await rateLimited(env, 'push', clientIp(request)))) {
+    return json({ error: 'Too many attempts. Wait a moment and try again.' }, 429, cors);
+  }
   const auth = request.headers.get('authorization') || '';
   const secret = auth.startsWith('Bearer ') ? auth.slice(7) : '';
 
@@ -229,8 +235,39 @@ async function push(request: Request, env: Env, cors: Record<string, string>): P
   }
 }
 
+/** Best-effort client IP: Cloudflare always sets cf-connecting-ip in
+ *  production; local/dev requests fall back to x-forwarded-for. */
+function clientIp(request: Request): string {
+  const cf = (request.headers.get('cf-connecting-ip') || '').trim();
+  if (cf) return cf.slice(0, 64);
+  const xff = (request.headers.get('x-forwarded-for') || '').split(',')[0].trim();
+  if (xff) return xff.slice(0, 64);
+  return 'unknown';
+}
+
+/** Bounded per-IP rate limit via the current-day Registry shard. Skipped when
+ *  no real client IP is visible (local tests, non-CF origins) — the limits
+ *  only protect real traffic, never break shared or IP-less environments.
+ *  Documented limits live in registry.ts RATE_LIMITS. */
+async function rateLimited(env: Env, scope: string, ip: string): Promise<boolean> {
+  if (!ip || ip === 'unknown') return true;
+  const stub = env.REGISTRY.get(env.REGISTRY.idFromName('registry-' + dayKey()));
+  const res = await stub.fetch(
+    new Request('https://internal/rate-check', {
+      method: 'POST',
+      body: JSON.stringify({ ip, scope }),
+    })
+  );
+  if (res.status !== 200) return false;
+  const out = (await res.json()) as { ok?: boolean };
+  return out.ok !== false;
+}
+
 /** Resolve a 6-digit code → roomId via the day-sharded Registry. */
 async function lookup(request: Request, env: Env, cors: Record<string, string>): Promise<Response> {
+  if (!(await rateLimited(env, 'lookup', clientIp(request)))) {
+    return json({ error: 'Too many attempts. Wait a moment and try again.' }, 429, cors);
+  }
   let body: { code?: unknown };
   try {
     body = (await request.json()) as typeof body;
@@ -259,6 +296,9 @@ async function lookup(request: Request, env: Env, cors: Record<string, string>):
 
 /** Resolve a stable /s/<code> share link → room credentials via the Registry. */
 async function resolveShort(request: Request, env: Env, cors: Record<string, string>): Promise<Response> {
+  if (!(await rateLimited(env, 'resolve-short', clientIp(request)))) {
+    return json({ error: 'Too many attempts. Wait a moment and try again.' }, 429, cors);
+  }
   let body: { code?: unknown };
   try {
     body = (await request.json()) as typeof body;

@@ -30,8 +30,30 @@ export const SHORT_CODE_RE = /^[0-9a-f]{8}$/;
  * The Registry holds pairing secrets — the same trust domain as today's Node
  * server (which keeps every room secret in memory). It never sees message
  * contents: the relay path carries only client-side AES-GCM ciphertext.
+ *
+ * It also owns edge-side abuse protection: per-IP sliding-window counters for
+ * pairing attempts and signaling. In-memory is fine — the Registry is a
+ * singleton, and a reset on migration only lets a few extra attempts through.
  */
+interface RateBucket {
+  count: number;
+  windowStart: number;
+}
+
+// Documented limits (per IP per window):
+//   lookup / resolve-short: 20 / 60s  — a real user does 1–3 lookups
+//   push:                    30 / 60s  — agent pushes are bearer-authenticated
+//   ws:                      30 / 60s  — one session is 1–2 connections
+const RATE_LIMITS: Record<string, { limit: number; windowMs: number }> = {
+  lookup: { limit: 20, windowMs: 60_000 },
+  'resolve-short': { limit: 20, windowMs: 60_000 },
+  push: { limit: 30, windowMs: 60_000 },
+  ws: { limit: 30, windowMs: 60_000 },
+};
+
 export class Registry extends DurableObject<Env> {
+  private rateBuckets = new Map<string, RateBucket>();
+
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === '/register' && request.method === 'POST') {
@@ -43,7 +65,33 @@ export class Registry extends DurableObject<Env> {
     if (url.pathname === '/resolve-short' && request.method === 'POST') {
       return this.resolveShort(request);
     }
+    if (url.pathname === '/rate-check' && request.method === 'POST') {
+      return this.rateCheck(request);
+    }
     return json({ error: 'not found' }, 404);
+  }
+
+  /** Bounded per-IP sliding window: returns ok=false once the limit is hit. */
+  private async rateCheck(request: Request): Promise<Response> {
+    let body: { ip?: string; scope?: string };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return json({ error: 'bad request' }, 400);
+    }
+    if (!body.ip || !body.scope) return json({ error: 'bad request' }, 400);
+    const cfg = RATE_LIMITS[body.scope];
+    if (!cfg) return json({ error: 'bad request' }, 400);
+    const key = body.scope + ':' + body.ip;
+    const now = Date.now();
+    const bucket = this.rateBuckets.get(key);
+    if (!bucket || now - bucket.windowStart >= cfg.windowMs) {
+      this.rateBuckets.set(key, { count: 1, windowStart: now });
+      return json({ ok: true });
+    }
+    if (bucket.count >= cfg.limit) return json({ ok: false });
+    bucket.count++;
+    return json({ ok: true });
   }
 
   private async register(request: Request): Promise<Response> {
