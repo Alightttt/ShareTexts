@@ -11,14 +11,66 @@ type SignalData = { type: 'offer' | 'answer'; sdp: string } | { type: 'candidate
 export type TransferPayload = ChunkEnvelope;
 
 const CHUNK_SIZE = 64 * 1024; // 64 KB
-// 2 GB ceiling. Files stream in 64KB slices (never whole-file arrayBuffers),
-// so the sender's memory stays flat; the receiver holds chunk buffers to
-// assemble the final Blob, so ~2 GB is the practical browser ceiling — a big
-// file works on desktop, and phones with limited RAM may struggle above ~1 GB.
-const MAX_TRANSFER_SIZE = 2 * 1024 * 1024 * 1024; // 2 GB max total
+// 4 GB ceiling. Files stream in 64KB slices (never whole-file arrayBuffers),
+// so the sender's memory stays flat. The receiver assembles chunks in RAM for
+// files under OPFS_THRESHOLD; anything larger streams straight to the Origin
+// Private File System (disk-backed) chunk by chunk, so a multi-GB movie lands
+// on a phone without ever filling its memory. Where OPFS isn't available the
+// in-memory path still works up to ~2 GB on a desktop.
+const MAX_TRANSFER_SIZE = 4 * 1024 * 1024 * 1024; // 4 GB max total
 const MAX_CHUNKS = Math.ceil(MAX_TRANSFER_SIZE / CHUNK_SIZE);
 const OFFER_RETRY_DELAY = 4000;
 const OFFER_RETRY_MAX = 3;
+
+/**
+ * Receive path threshold: files at or above this size stream to disk via OPFS
+ * instead of accumulating 64KB buffers in RAM. Chosen low enough that even a
+ * 1 GB phone can receive a full-length movie without pressure.
+ */
+const OPFS_THRESHOLD = 64 * 1024 * 1024;
+
+interface OpfsSink {
+  handle: FileSystemFileHandle;
+  writable: FileSystemWritableFileStream;
+  bitmap: Uint8Array; // 1 = chunk sequence already written
+}
+
+/**
+ * Whether this browser can stream large receives to disk. The File System
+ * Access API (OPFS) is available in every evergreen browser (Chrome 86+,
+ * Edge, Firefox 111+, Safari 15.2+); anything else falls back to memory.
+ */
+function canStreamToOpfs(): boolean {
+  try {
+    return typeof navigator !== 'undefined' && !!navigator.storage?.getDirectory;
+  } catch {
+    return false;
+  }
+}
+
+async function openOpfsSink(transferId: string, totalChunks: number): Promise<OpfsSink> {
+  const dir = await navigator.storage.getDirectory();
+  const handle = await dir.getFileHandle(`sharetext-${transferId}.bin`, { create: true });
+  const writable = await handle.createWritable();
+  return { handle, writable, bitmap: new Uint8Array(totalChunks) };
+}
+
+/** Clean up a completed/cancelled OPFS sink — close the stream, delete the file. */
+async function closeOpfsSink(sink: OpfsSink | null | undefined) {
+  if (!sink) return;
+  try { await sink.writable.close(); } catch { /* already closed */ }
+  try { await (sink.handle as any).remove({ recursive: false }); } catch { /* already gone */ }
+}
+
+/**
+ * Completed OPFS files stay on disk until their blob URL is done being used;
+ * a one-shot timer sweeps them a few minutes later so the browser's OPFS
+ * quota never fills with finished transfers. Tracked per sink so a sweep
+ * only touches its own file.
+ */
+function scheduleOpfsSweep(sink: OpfsSink) {
+  setTimeout(() => { void closeOpfsSink(sink); }, 5 * 60 * 1000);
+}
 
 /**
  * The contiguous received prefix (first missing index). `received` is a
@@ -32,6 +84,13 @@ function firstMissing(chunks: ArrayBuffer[]): number {
   return i;
 }
 
+/** Same prefix computation for the OPFS disk-backed bitmap. */
+function firstMissingBitmap(bitmap: Uint8Array): number {
+  let i = 0;
+  while (i < bitmap.length && bitmap[i]) i++;
+  return i;
+}
+
 /**
  * Transfer state lives OUTSIDE PeerManager instances. WebRTC teardown on a
  * reconnect (peer re-offer) destroys the old PeerManager — if the partially
@@ -39,7 +98,11 @@ function firstMissing(chunks: ArrayBuffer[]): number {
  * could never resume, only restart from zero.
  */
 interface PartialReceive {
-  chunks: ArrayBuffer[];
+  chunks: ArrayBuffer[] | null;
+  /** When set, chunks stream to OPFS (disk) instead of RAM; `chunks` stays null. */
+  opfs: OpfsSink | null;
+  /** Resolves once the receive sink (OPFS or memory) is ready for writes. */
+  ready: Promise<void>;
   received: number;
   total: number;
   updatedAt: number;
@@ -72,6 +135,10 @@ export function getAckedPosition(transferId: string): number {
  * when a session resets so memory isn't held forever.
  */
 export function clearTransferState(transferId: string) {
+  const p = partialReceives.get(transferId);
+  // Only clean up disk sinks that never completed — a finished OPFS file's
+  // blob URL may still be live for the user to download.
+  if (p?.opfs && p.received < p.total) void closeOpfsSink(p.opfs);
   partialReceives.delete(transferId);
   sendProgress.delete(transferId);
   ackWaiters.delete(transferId);
@@ -80,6 +147,9 @@ export function clearTransferState(transferId: string) {
 /** Forget all transfer state — used on full session reset. */
 export function clearAllTransferState() {
   diag('transfer.state_cleared', true, `${partialReceives.size} partials, ${sendProgress.size} sends`);
+  for (const p of partialReceives.values()) {
+    if (p.opfs && p.received < p.total) void closeOpfsSink(p.opfs);
+  }
   partialReceives.clear();
   sendProgress.clear();
   ackWaiters.clear();
@@ -91,7 +161,7 @@ export function getPartialInfo(transferId: string): { received: number; total: n
   if (!p) return null;
   const missing: number[] = [];
   for (let i = 0; i < p.total; i++) {
-    if (!p.chunks[i]) missing.push(i);
+    if (p.opfs ? !p.opfs.bitmap[i] : !p.chunks![i]) missing.push(i);
   }
   return { received: p.received, total: p.total, missing: missing.slice(0, 20) };
 }
@@ -347,21 +417,47 @@ export class PeerManager {
 
   public expectBinaryTransfer(transferId: string, totalChunks: number) {
     const existing = partialReceives.get(transferId);
-    if (!existing || existing.total !== totalChunks) {
-      partialReceives.set(transferId, {
-        chunks: new Array(totalChunks),
-        received: 0,
-        total: totalChunks,
-        updatedAt: Date.now()
-      });
+    const totalBytes = totalChunks * CHUNK_SIZE;
+    // Stream to disk for large files when the browser supports it; small files
+    // stay in RAM (faster, no OPFS cleanup needed). This is what lets a phone
+    // receive a multi-GB movie: the file never accumulates in memory.
+    const useOpfs = totalBytes >= OPFS_THRESHOLD && canStreamToOpfs();
+    if (!existing || existing.total !== totalChunks || !!existing.opfs !== useOpfs) {
+      let resolveReady!: () => void;
+      const ready = new Promise<void>(r => { resolveReady = r; });
+      const rec: PartialReceive = useOpfs
+        ? { chunks: null, opfs: null, ready, received: 0, total: totalChunks, updatedAt: Date.now() }
+        : { chunks: new Array(totalChunks), opfs: null, ready, received: 0, total: totalChunks, updatedAt: Date.now() };
+      if (useOpfs) {
+        // Fire the sink open asynchronously; the first chunk handler awaits
+        // `ready` before writing, so nothing is lost to the race.
+        openOpfsSink(transferId, totalChunks).then(sink => {
+          rec.opfs = sink;
+          resolveReady();
+        }).catch(() => {
+          // OPFS failed (quota?) — fall back to memory.
+          rec.opfs = null;
+          rec.chunks = new Array(totalChunks);
+          resolveReady();
+        });
+      } else {
+        resolveReady();
+      }
+      partialReceives.set(transferId, rec);
     } else {
       existing.updatedAt = Date.now();
     }
     // Bound memory: keep only the newest few partials (LRU by touch time).
+    // A completed OPFS entry is left in place (its blob URL may be live) —
+    // only incomplete disk sinks are closed + removed on eviction.
     if (partialReceives.size > MAX_PARTIALS) {
       const oldest = [...partialReceives.entries()]
         .sort((a, b) => a[1].updatedAt - b[1].updatedAt)[0];
-      if (oldest) partialReceives.delete(oldest[0]);
+      if (oldest) {
+        const [id, rec] = oldest;
+        if (rec.opfs && rec.received < rec.total) void closeOpfsSink(rec.opfs);
+        partialReceives.delete(id);
+      }
     }
   }
 
@@ -424,12 +520,18 @@ export class PeerManager {
                 if (inner && inner.type === 'resume_query' && typeof inner.transferId === 'string') {
                   // The peer is re-sending a transfer after a reconnect and
                   // wants to know where to start. Answer with our contiguous
-                  // prefix — the first missing index is the safe resume point.
+                  // prefix — the first missing index is the safe resume point
+                  // (works for both the RAM and OPFS disk-backed paths).
                   const partial = partialReceives.get(inner.transferId);
+                  const prefix = partial
+                    ? partial.opfs
+                      ? firstMissingBitmap(partial.opfs.bitmap)
+                      : partial.chunks ? firstMissing(partial.chunks) : 0
+                    : 0;
                   void this.sendControl({
                     type: 'ack',
                     transferId: inner.transferId,
-                    received: partial ? firstMissing(partial.chunks) : 0
+                    received: prefix
                   });
                   return;
                 }
@@ -466,8 +568,53 @@ export class PeerManager {
         return;
       }
       if (sequence < 0 || sequence >= transfer.total) return;
+      await transfer.ready;
 
-      if (!transfer.chunks[sequence]) {
+      // Disk-backed path: mark the bitmap and stream the decrypted chunk to
+      // the OPFS file at its byte offset. Out-of-order arrival is fine —
+      // position-based writes land wherever they belong.
+      if (transfer.opfs) {
+        const opfs = transfer.opfs;
+        if (opfs.bitmap[sequence]) return; // duplicate
+        try {
+          const decrypted = await decryptBinaryChunk(payload, this.cryptoKey);
+          await opfs.writable.write({ type: 'write', position: sequence * CHUNK_SIZE, data: decrypted });
+          opfs.bitmap[sequence] = 1;
+          transfer.received++;
+          transfer.updatedAt = Date.now();
+
+          if (this.onFileProgress) {
+            this.onFileProgress(transferId, transfer.received, transfer.total);
+          }
+          if (transfer.received % 32 === 0) {
+            void this.sendControl({ type: 'ack', transferId, received: firstMissingBitmap(opfs.bitmap) });
+          }
+          if (transfer.received % 64 === 0) diag('transfer.received', true, `${transfer.received}/${transfer.total}`);
+
+          if (transfer.received === transfer.total) {
+            diag('transfer.received_complete', true, transferId.slice(0, 8));
+            try {
+              await opfs.writable.close();
+              // Grab the finished file from disk — the File is disk-backed, so
+              // a multi-GB blob costs no extra RAM on this device. The blob URL
+              // keeps the File alive for download; the sweep removes the OPFS
+              // backing after a grace period so the browser's storage quota
+              // isn't eaten by finished transfers.
+              const file = await opfs.handle.getFile();
+              transfer.updatedAt = Date.now();
+              scheduleOpfsSweep(opfs);
+              if (this.onFileComplete) this.onFileComplete(transferId, file);
+            } catch (e) {
+              console.error("Failed to finalize OPFS receive", e);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to decrypt binary chunk", e);
+        }
+        return;
+      }
+
+      if (transfer.chunks && !transfer.chunks[sequence]) {
         try {
           const decrypted = await decryptBinaryChunk(payload, this.cryptoKey);
           transfer.chunks[sequence] = decrypted;

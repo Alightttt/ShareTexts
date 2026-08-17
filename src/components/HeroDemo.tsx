@@ -73,6 +73,8 @@ export function HeroDemo() {
   const [step, setStep] = useState<Step>('ready');
   const [flying, setFlying] = useState(false);
 
+  const [nodePos, setNodePos] = useState({ x: 0, y: 0 });
+
   const measure = useCallback(() => {
     const container = containerRef.current;
     const phone = phoneScreenRef.current;
@@ -81,13 +83,30 @@ export function HeroDemo() {
     const c = container.getBoundingClientRect();
     const p = phone.getBoundingClientRect();
     const l = laptop.getBoundingClientRect();
-    const vertical = p.top > l.top + l.height * 0.4; // stacked on mobile
-    setFrom({ x: p.left - c.left + p.width / 2, y: p.top - c.top + p.height / 2 });
-    setTo({ x: l.left - c.left + l.width / 2, y: l.top - c.top + l.height / 2 });
+    // Stacked = the phone's screen bottom is at or above the laptop's screen
+    // top (flex-col on small screens). Side-by-side otherwise.
+    const vertical = p.bottom <= l.top + 10;
+    const fromX = p.left - c.left + p.width / 2;
+    const fromY = p.top - c.top + p.height / 2;
+    const toX = l.left - c.left + l.width / 2;
+    const toY = l.top - c.top + l.height / 2;
+    setFrom({ x: fromX, y: fromY });
+    setTo({ x: toX, y: toY });
     if (vertical) {
-      setBeam({ left: p.left - c.left + p.width / 2, width: 0, top: p.bottom - c.top, vertical: true });
+      // Beam: phone bottom -> laptop top, along the shared centerline.
+      const top = p.bottom - c.top;
+      setBeam({ left: fromX, width: 0, top, vertical: true, height: Math.max(0, l.top - c.top - top) });
+      // Node: centered in the open space between the two screens.
+      setNodePos({ x: fromX, y: top + Math.max(0, l.top - c.top - top) / 2 });
     } else {
-      setBeam({ left: p.left - c.left + p.width - 8, width: Math.max(0, l.left - c.left - (p.left - c.left + p.width) + 16), top: p.top - c.top + p.height / 2, vertical: false });
+      const left = p.left - c.left + p.width - 8;
+      const width = Math.max(0, l.left - c.left - left + 16);
+      setBeam({ left, width, top: fromY, vertical: false, height: 0 });
+      // Node: centered in the OPEN GAP between the two device edges, on the
+      // beam line. Center-of-centers would overlap the wider laptop; the gap
+      // center is the empty space the beam crosses — never overlapping either
+      // device, in every layout.
+      setNodePos({ x: (p.left - c.left + p.width + l.left - c.left) / 2, y: fromY });
     }
   }, []);
 
@@ -167,15 +186,32 @@ export function HeroDemo() {
           Visible at every size: the line between the devices IS the story. */}
       <div
         className="absolute"
-        style={beam.vertical ? { left: beam.left, top: beam.top, height: to.y - from.y, width: 0, transform: 'translateX(-50%)' } : { left: beam.left, width: beam.width, top: beam.top, transform: 'translateY(-50%)' }}
+        style={beam.vertical ? { left: beam.left, top: beam.top, height: beam.height ?? 0, width: 0, transform: 'translateX(-50%)' } : { left: beam.left, width: beam.width, top: beam.top, transform: 'translateY(-50%)' }}
       >
         <div className={beam.vertical ? "w-px h-full bg-apple-ink/10 dark:bg-white/10" : "h-px w-full bg-apple-ink/10 dark:bg-white/10"} />
         {!reduced && (
           <div className={cn("absolute w-1.5 h-1.5 rounded-full animate-beam bg-apple-blue shadow-[0_0_8px_rgba(0,102,204,0.7)]", beam.vertical ? "top-0 left-1/2 -translate-x-1/2" : "top-1/2 -translate-y-1/2 left-0")} />
         )}
-        <div className={cn("absolute w-8 h-8 rounded-full shadow-card flex items-center justify-center bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3", beam.vertical ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" : "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2")}>
-          <ShareTextLogo size={16} className="text-apple-blue" />
-        </div>
+      </div>
+
+      {/* Center node — anchored to the TRUE midpoint between the two device
+          screens, which is (from + to) / 2 from the measured beam. Neither the
+          beam midpoint nor the container center is right: the laptop is ~2×
+          the phone's width, so the container center drifts toward the laptop
+          and the beam (which measures the laptop SCREEN, inset by its bezel)
+          drifts toward the phone. (from + to) / 2 is exactly halfway between
+          the two screens in every layout, desktop or stacked. */}
+      <div
+        className="absolute w-9 h-9 rounded-full shadow-card flex items-center justify-center bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 z-10"
+        style={{
+          left: nodePos.x,
+          top: nodePos.y,
+          transform: 'translate(-50%, -50%)',
+          opacity: nodePos.x || nodePos.y ? 1 : 0,
+          transition: 'opacity 0.3s ease',
+        }}
+      >
+        <ShareTextLogo size={18} className="text-apple-blue" />
       </div>
 
       <div className="flex flex-col sm:flex-row items-center sm:items-center sm:justify-between gap-12 sm:gap-0 px-2 sm:px-6 relative">
@@ -186,7 +222,7 @@ export function HeroDemo() {
           transition={{ duration: 6.5, repeat: Infinity, ease: 'easeInOut', times: [0, 0.5, 1] }}
           className="flex flex-col items-center will-change-transform"
         >
-          <PhoneFrame className="w-[132px] sm:w-[176px] lg:w-[196px]">
+          <PhoneFrame className="w-[132px] sm:w-[176px] lg:w-[190px] xl:w-[200px]">
             <div ref={phoneScreenRef} className="w-full h-full flex flex-col">
               <RoomHeader status={phoneStatus} label="Your phone" />
               {/* Messages */}
@@ -285,7 +321,7 @@ export function HeroDemo() {
           transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', times: [0, 0.5, 1] }}
           className="flex flex-col items-center will-change-transform"
         >
-          <LaptopFrame className="w-[260px] sm:w-[348px] lg:w-[400px] xl:w-[430px]">
+          <LaptopFrame className="w-[260px] sm:w-[348px] lg:w-[380px] xl:w-[410px]">
             <div ref={laptopScreenRef} className="w-full h-full flex flex-col">
               <RoomHeader status={laptopStatus} label="Your laptop" />
               {/* Received object / empty */}

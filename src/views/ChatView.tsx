@@ -9,6 +9,7 @@ import { cn, formatBytes } from '../lib/utils';
 import { ChatMessage, Attachment } from '../types';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
+import { saveDraft, loadDraft, clearDraft, ComposerDraft } from '../lib/draftStore';
 
 const LARGE_TEXT_THRESHOLD = 8000; // chars
 const LARGE_TEXT_PREVIEW = 1400;
@@ -19,6 +20,33 @@ export function ChatView() {
   // Multiple staged attachments per send (up to 20) — each file becomes its
   // own transfer bubble on send, but they're picked together in one message.
   const [attachments, setAttachments] = useState<(Attachment & { file: File })[]>([]);
+
+  // ---- Draft persistence: text + attachments survive an accidental refresh.
+  // Restore on mount, save (debounced) on every change, clear on send. The
+  // draft is keyed by room, so switching rooms never mixes composers. A
+  // ready flag prevents the empty initial state from overwriting the stored
+  // draft before the async restore lands.
+  const [draftReady, setDraftReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void loadDraft(session.roomId).then((d) => {
+      if (cancelled || !d) { setDraftReady(true); return; }
+      setInputText(d.text);
+      setAttachments(d.attachments.filter(a => a.file && a.file.size > 0));
+      setDraftReady(true);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.roomId]);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    const t = setTimeout(() => {
+      const draft: ComposerDraft = { text: inputText, attachments, updatedAt: Date.now() };
+      void saveDraft(session.roomId, draft);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [inputText, attachments, session.roomId, draftReady]);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [showConnectionDetails, setShowConnectionDetails] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -221,11 +249,11 @@ export function ChatView() {
       if (t === 'file' && file.type.startsWith('video/')) t = 'video';
       else if (t === 'file' && file.type.startsWith('audio/')) t = 'audio';
       if (t === 'image' && file.size > 100 * 1024 * 1024) {
-        setErrorMsg(`${file.name} is larger than 100 MB. Photos above 100 MB arrive as files — pick it from the File menu.`);
+        setErrorMsg(`${file.name} is larger than 100 MB. Photos above 100 MB still transfer full-quality — they arrive as a file you can open, with no preview.`);
         continue;
       }
-      if (file.size > 2 * 1024 * 1024 * 1024) {
-        setErrorMsg(`${file.name} is larger than 2 GB — the largest ShareText can move.`);
+      if (file.size > 4 * 1024 * 1024 * 1024) {
+        setErrorMsg(`${file.name} is larger than 4 GB — the largest ShareText can move.`);
         continue;
       }
       accepted.push({
@@ -302,6 +330,7 @@ export function ChatView() {
 
     setInputText('');
     setAttachments([]);
+    void clearDraft(session.roomId);
   };
 
   const inputBytes = useMemo(() => new TextEncoder().encode(inputText).length, [inputText]);
