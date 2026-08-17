@@ -233,7 +233,8 @@ export function HeroDemo() {
       data-step={step}
       data-scene={scene}
       data-landed={landed ?? ''}
-      className="relative w-full max-w-[960px] mx-auto select-none min-h-[560px] sm:min-h-[500px] lg:min-h-[540px]"
+      onClick={reduced ? undefined : () => playTransfer(scene)}
+      className="relative w-full max-w-[960px] mx-auto select-none min-h-[560px] sm:min-h-[500px] lg:min-h-[540px] cursor-pointer"
       aria-hidden
     >
       {/* Connection beam — horizontal on desktop, vertical when stacked.
@@ -333,7 +334,7 @@ export function HeroDemo() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => playTransfer(scene)}
+                          onClick={(e) => { e.stopPropagation(); playTransfer(scene); }}
                           className={cn(
                             "w-[18px] h-[18px] sm:w-[20px] sm:h-[20px] rounded-full bg-apple-blue flex items-center justify-center shadow-[0_2px_6px_rgba(0,102,204,0.45)] transition-transform active:scale-90",
                             step === 'composing' && "opacity-40 cursor-default"
