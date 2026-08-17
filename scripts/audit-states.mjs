@@ -38,7 +38,7 @@ try {
 
   // Create session (A)
   await A.evaluate(() => {
-    const btn = [...document.querySelectorAll('button')].find(b => (b.textContent || '').trim() === 'Start a transfer');
+    const btn = [...document.querySelectorAll('button')].find(b => (b.textContent || '').trim() === 'Send text');
     const o = { bubbles: true, cancelable: true, composed: true, pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0 };
     btn.dispatchEvent(new PointerEvent('pointerdown', o));
   });
@@ -48,7 +48,7 @@ try {
   // Join (B) via the live code shown on A
   const code = await readLiveCode(A);
   await B.evaluate(() => {
-    const btn = [...document.querySelectorAll('button')].find(b => (b.textContent || '').trim() === 'Already have a code?');
+    const btn = [...document.querySelectorAll('button')].find(b => (b.textContent || '').trim() === 'Receive text');
     const o = { bubbles: true, cancelable: true, composed: true, pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0 };
     btn.dispatchEvent(new PointerEvent('pointerdown', o));
   });

@@ -62,12 +62,12 @@ try {
   // ---- 1. Create + wrong code + correct code ----
   await A.goto(URL, { waitUntil: 'networkidle' });
   await B.goto(URL, { waitUntil: 'networkidle' });
-  await A.getByRole('button', { name: 'Start a transfer' }).first().click();
+  await A.getByRole('button', { name: 'Send text' }).first().click();
   await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   const code = await readLiveCode(A);
   report('A created a room with a 6-digit code', /^\d{6}$/.test(code), code);
 
-  await B.getByRole('button', { name: 'Already have a code?' }).first().click();
+  await B.getByRole('button', { name: 'Receive text' }).first().click();
   await B.locator('input[inputmode="numeric"]').waitFor({ timeout: 10000 });
 
   // Wrong code
@@ -229,7 +229,7 @@ try {
   const B2 = await ctxB2.newPage();
   await A2.goto(URL, { waitUntil: 'networkidle' });
   await B2.goto(URL, { waitUntil: 'networkidle' });
-  await A2.getByRole('button', { name: 'Start a transfer' }).first().click();
+  await A2.getByRole('button', { name: 'Send text' }).first().click();
   await A2.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   const code1 = await readLiveCode(A2);
   // The TOTP validation window is ±1 step, so a rotated code stays valid for
@@ -237,7 +237,7 @@ try {
   await sleep(85000);
   const code2 = await readLiveCode(A2);
   report('code rotates after the 40s window', code2 !== code1, `${code1} -> ${code2}`);
-  await B2.getByRole('button', { name: 'Already have a code?' }).first().click();
+  await B2.getByRole('button', { name: 'Receive text' }).first().click();
   await B2.locator('input[inputmode="numeric"]').waitFor({ timeout: 10000 });
   await B2.locator('input[inputmode="numeric"]').fill(code1);
   await B2.keyboard.press('Enter');

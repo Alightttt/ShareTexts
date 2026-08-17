@@ -1,49 +1,55 @@
 import { launchBrowser, URL, sleep } from './lib.mjs';
 
-// The loop must feel continuous: after a photo lands, the phone composes the
-// LINK (step=composing, phone chip Connected) while the laptop STILL shows the
-// photo card with its chip reading Received — one transfer leads into the
-// next. Only when the link completes does the laptop swap objects.
+// The interactive demo must stay coherent across successive transfers:
+// send the pre-attached PHOTO, then send a typed TEXT message. The phone's
+// stream accumulates both sent items (newest last) and the laptop shows the
+// LATEST received object — the photo lands first, the text replaces it.
 const b = await launchBrowser();
 try {
   const page = await b.newPage({ viewport: { width: 1280, height: 900 } });
   await page.goto(URL, { waitUntil: 'networkidle' });
-  await page.locator('text=Move something between your devices').first().waitFor({ timeout: 15000 });
+  await page.locator('text=Move anything between your devices').first().waitFor({ timeout: 15000 });
   await sleep(500);
 
-  const seen = new Set();
-  let composingContinuity = false;
-  let sawLaptopSwap = false;
-  let lastLanded = null;
-  for (let i = 0; i < 50; i++) {
-    await sleep(250);
-    const snap = await page.evaluate(() => {
-      const root = document.querySelector('[data-step]');
-      const step = root?.getAttribute('data-step');
-      const scene = root?.getAttribute('data-scene');
-      const landed = root?.getAttribute('data-landed');
-      const phone = document.querySelector('[data-device="phone"]');
-      const laptop = document.querySelector('[data-device="laptop"]');
-      const chip = (el) => [...el.querySelectorAll('span')].map(s => s.textContent).find(t => ['Sending…', 'Sent', 'Connected', 'Receiving…', 'Received'].includes(t)) || null;
-      const photoCard = [...laptop.querySelectorAll('span')].some(s => s.textContent === 'photo-2026.jpg' && s.getBoundingClientRect().height > 0 && getComputedStyle(s).opacity !== '0');
-      const linkCard = [...laptop.querySelectorAll('span')].some(s => s.textContent === 'example.com/a/very-long-link' && s.getBoundingClientRect().height > 0);
-      return { step, scene, landed, phoneChip: chip(phone), laptopChip: chip(laptop), photoCard, linkCard };
-    });
-    if (!snap.step) continue;
-    seen.add(snap.step);
-    // Composing the next object while the laptop keeps the landed card.
-    if (snap.step === 'composing' && snap.laptopChip === 'Received' && (snap.photoCard || snap.linkCard)) {
-      composingContinuity = true;
-    }
-    // Laptop swaps to the other object only when the next transfer completes.
-    if (lastLanded && snap.landed && snap.landed !== lastLanded && snap.laptopChip === 'Received') {
-      sawLaptopSwap = true;
-    }
-    if (snap.landed) lastLanded = snap.landed;
-  }
+  const snap = () => page.evaluate(() => {
+    const root = document.querySelector('[data-step]');
+    const phone = document.querySelector('[data-device="phone"]');
+    const laptop = document.querySelector('[data-device="laptop"]');
+    const chip = (el) => [...el.querySelectorAll('span')].map(s => s.textContent).find(t => ['Sending…', 'Sent', 'Connected', 'Receiving…', 'Received'].includes(t)) || null;
+    return {
+      step: root?.getAttribute('data-step'),
+      landedKind: root?.getAttribute('data-landed-kind') || '',
+      landedText: root?.getAttribute('data-landed-text') || '',
+      phoneChip: chip(phone),
+      laptopChip: chip(laptop),
+      phoneStreamText: (phone.innerText.match(/hello from the demo/g) || []).length,
+      photoOnPhone: phone.innerText.includes('photo-2026.jpg'),
+    };
+  });
 
-  console.log(JSON.stringify({ composingContinuity, sawLaptopSwap, steps: [...seen] }, null, 2));
-  const ok = composingContinuity && sawLaptopSwap && ['ready', 'sending', 'received', 'composing'].every(s => seen.has(s));
+  // 1. Send the pre-attached photo sample.
+  await page.evaluate(() => document.querySelector('button[aria-label="Send demo"]')?.click());
+  await sleep(2200);
+  const afterPhoto = await snap();
+
+  // 2. Type a text message and send it — the laptop should swap to the text.
+  await page.evaluate(() => {
+    const ta = document.querySelector('textarea[aria-label="Demo message"]');
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+    setter.call(ta, 'hello from the demo');
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await sleep(200);
+  await page.evaluate(() => document.querySelector('button[aria-label="Send demo"]')?.click());
+  await sleep(2200);
+  const afterText = await snap();
+
+  console.log(JSON.stringify({ afterPhoto, afterText }, null, 2));
+  const ok = afterPhoto.step === 'received' && afterPhoto.landedKind === 'photo'
+    && afterPhoto.phoneChip === 'Sent' && afterPhoto.laptopChip === 'Received'
+    && afterPhoto.photoOnPhone
+    && afterText.step === 'received' && afterText.landedKind === 'text'
+    && afterText.landedText === 'hello from the demo' && afterText.phoneStreamText === 1;
   console.log(ok ? 'HERO_LOOP_OK' : 'HERO_LOOP_FAIL');
 } finally {
   await b.close();

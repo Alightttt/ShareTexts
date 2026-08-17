@@ -3,7 +3,7 @@ import { useSession } from '../lib/SessionContext';
 import { motion, useMotionValue, useSpring } from 'motion/react';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { HeroDemo } from '../components/HeroDemo';
-import { ArrowRight, Send, Inbox, ShieldCheck } from 'lucide-react';
+import { Send, Inbox, ShieldCheck } from 'lucide-react';
 import { LiveUsers } from '../components/LiveUsers';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { InstallPrompt } from '../components/InstallPrompt';
@@ -155,27 +155,27 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
         </div>
       </header>
 
-      {/* ============ HERO — a centered, quiet frame. The copy leads, the
-          product demonstration sits directly beneath it and does the talking:
-          watch a thing move from one device to the other. No split, no
-          competing columns — one idea, then the proof. ============ */}
-      <section className="px-6 pt-16 sm:pt-24 pb-16 sm:pb-20">
-        <div className="max-w-4xl mx-auto flex flex-col items-center text-center">
+      {/* ============ HERO — a natural two-part frame. Copy leads on the left,
+          and the live demo — the actual product in miniature — sits beside it.
+          No centered stack: one quiet idea, then the working proof, side by
+          side on desktop, stacked on mobile. ============ */}
+      <section className="px-6 pt-14 sm:pt-20 pb-16 sm:pb-20">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-10 items-center">
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: EASE }}
-            className="flex flex-col items-center"
+            className="text-center lg:text-left flex flex-col items-center lg:items-start"
           >
-            <h1 className="text-[34px] sm:text-[44px] lg:text-[52px] font-semibold text-apple-ink dark:text-white tracking-[-0.035em] leading-[1.08] max-w-[16ch]">
-              Move something between your devices.
+            <h1 className="text-[36px] sm:text-[46px] lg:text-[52px] font-semibold text-apple-ink dark:text-white tracking-[-0.035em] leading-[1.06] max-w-[13ch]">
+              Move anything between your devices.
             </h1>
-            <p className="mt-5 text-[15.5px] sm:text-[17px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[44ch]">
-              Text, photos, and videos — straight from one screen to the other. No app to install, no account to make, nothing kept in between.
+            <p className="mt-5 text-[15.5px] sm:text-[17px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[46ch]">
+              Text, links, photos, videos, files — straight from one screen to the other. No app to install, no account to make, nothing kept in between.
             </p>
             {/* Live count near the top on smaller devices (header pill is desktop-only). */}
             <LiveUsers className="mt-5 lg:hidden" />
-            <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
               <motion.button
                 onPointerDown={handleCreate}
                 disabled={isCreating}
@@ -183,7 +183,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 className="group px-7 py-3.5 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[10px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float"
               >
                 {isCreating ? 'Creating…' : createError ? 'Try Again' : (
-                  <><Send className="w-4 h-4" /> Start a transfer <ArrowRight className="w-4 h-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" /></>
+                  <><Send className="w-4 h-4" /> Send text</>
                 )}
               </motion.button>
               <motion.button
@@ -191,12 +191,12 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 whileTap={{ scale: 0.97 }}
                 className="group px-7 py-3.5 bg-azure-600 text-white rounded-[10px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float hover:bg-azure-500"
               >
-                <Inbox className="w-4 h-4" /> Already have a code?
+                <Inbox className="w-4 h-4" /> Receive text
               </motion.button>
             </div>
-            {/* The trust strip — the three promises that make ShareText
-                shareable. Each is true and each answers a first-objection. */}
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-3.5 gap-y-2 text-[13px] font-medium text-apple-ink-muted dark:text-white/60">
+            {/* The trust strip — the promises that make ShareText shareable.
+                Each is true and each answers a first objection. */}
+            <div className="mt-6 flex flex-wrap items-center justify-center lg:justify-start gap-x-3.5 gap-y-2 text-[13px] font-medium text-apple-ink-muted dark:text-white/60">
               <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-status-success" /> End-to-end encrypted</span>
               <span className="w-1 h-1 rounded-full bg-apple-ink-muted/40" aria-hidden />
               <span>No account</span>
@@ -216,7 +216,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             initial={{ opacity: 0, y: 26 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.15, ease: EASE }}
-            className="w-full flex justify-center mt-12 sm:mt-14"
+            className="mt-12 lg:mt-0 w-full flex justify-center"
           >
             <HeroDemo />
           </motion.div>
@@ -268,7 +268,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               className="group px-9 py-4 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[12px] text-[16px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float min-h-[52px]"
             >
               {isCreating ? 'Creating…' : createError ? 'Try Again' : (
-                <><Send className="w-4 h-4" /> Start a transfer <ArrowRight className="w-4 h-4 transition-transform duration-200 ease-out group-hover:translate-x-0.5" /></>
+                <><Send className="w-4 h-4" /> Send text</>
               )}
             </motion.button>
             <motion.button
@@ -276,7 +276,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               whileTap={{ scale: 0.97 }}
               className="px-8 py-4 bg-azure-600 text-white rounded-[12px] text-[16px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float hover:bg-azure-500 min-h-[52px]"
             >
-              <Inbox className="w-4 h-4" /> Already have a code?
+              <Inbox className="w-4 h-4" /> Receive text
             </motion.button>
           </div>
           <p className="mt-6 text-[15px] text-apple-ink-muted dark:text-white/55 font-medium">

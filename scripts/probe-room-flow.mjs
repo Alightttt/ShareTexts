@@ -25,7 +25,7 @@ async function main() {
   await sleep(1500);
 
   // --- Pair up ---
-  await A.getByRole('button', { name: 'Start a transfer' }).first().click();
+  await A.getByRole('button', { name: 'Send text' }).first().click();
   await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   const code = await readLiveCode(A);
 
@@ -42,7 +42,7 @@ async function main() {
     if (r.visual) visualSeen.push(true);
   }, 120);
 
-  await B.getByRole('button', { name: 'Already have a code?' }).first().click();
+  await B.getByRole('button', { name: 'Receive text' }).first().click();
   await B.locator('input[inputmode="numeric"]').fill(code);
   await B.getByText('Connecting').waitFor({ timeout: 8000 }).catch(() => {});
   // Snapshot joiner's connecting screen.

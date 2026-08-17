@@ -29,7 +29,7 @@ async function main() {
 
   // --- Device A: create session ---
   await A.goto(URL, { waitUntil: 'networkidle' });
-  await A.getByRole('button', { name: 'Start a transfer' }).first().click();
+  await A.getByRole('button', { name: 'Send text' }).first().click();
   await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   console.log('STEP 1 OK: A created session, Live Code visible');
   const code = await readLiveCode(A);
@@ -37,7 +37,7 @@ async function main() {
 
   // --- Device B: join ---
   await B.goto(URL, { waitUntil: 'networkidle' });
-  await B.getByRole('button', { name: 'Already have a code?' }).first().click();
+  await B.getByRole('button', { name: 'Receive text' }).first().click();
   await B.locator('input[inputmode="numeric"]').fill(code);
   await waitForChat(B, 'B');
   await waitForChat(A, 'A');
@@ -145,7 +145,7 @@ async function main() {
   const freshCode = totp.generate({ timestamp: Date.now() - (createdAt || 0) });
   console.log('Fresh code for third device test:', freshCode);
   await C.goto(URL, { waitUntil: 'networkidle' });
-  await C.getByRole('button', { name: 'Already have a code?' }).first().click();
+  await C.getByRole('button', { name: 'Receive text' }).first().click();
   await C.locator('input[inputmode="numeric"]').fill(freshCode);
   await sleep(4000);
   const cBody = await C.locator('body').innerText();

@@ -42,21 +42,17 @@ async function renderAd({ name, width, height, dpr }) {
   });
   const page = await context.newPage();
   await page.goto(URL, { waitUntil: 'networkidle' });
-  await page.locator('text=Move something between your devices').first().waitFor({ timeout: 15000 });
+  await page.locator('text=Move anything between your devices').first().waitFor({ timeout: 15000 });
 
-  // The hero demo: find its container, and click replay the instant it's in
-  // the ready state so the capture timeline is deterministic.
+  // The interactive demo starts ready with a photo sample in the composer —
+  // one click on its send button gives a deterministic ready → sending →
+  // received timeline for the capture.
   await page.evaluate(() => window.scrollTo(0, 0));
   const demo = page.locator('[data-step]').first();
   await demo.waitFor({ timeout: 15000 });
+  await sleep(800);
   await page.evaluate(() => {
-    const btn = document.querySelector('button[aria-label="Replay transfer"]');
-    btn?.click();
-  });
-  // If the button wasn't up yet (mid-flight), wait for ready and click again.
-  await sleep(600);
-  await page.evaluate(() => {
-    const btn = document.querySelector('button[aria-label="Replay transfer"]');
+    const btn = document.querySelector('button[aria-label="Send demo"]');
     btn?.click();
   });
 

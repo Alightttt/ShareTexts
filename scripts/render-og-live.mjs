@@ -1,8 +1,10 @@
-// Render the NEW OG image (og-3.png) from the LIVE hero animation:
-//   1. Open the landing page, wait for a transfer "received" frame.
-//   2. Screenshot the hero device scene at high fidelity.
+// Render the NEW OG image (og-4.png) from the LIVE hero demo:
+//   1. Open the landing page; the demo starts with a photo sample in the
+//      composer. Click its send button (deterministic — the interactive
+//      demo has no auto-loop).
+//   2. Wait for the transfer "received" frame and screenshot the device scene.
 //   3. Compose the final 1200x630 card: scene + headline + brand + URL.
-// A brand-new filename (og-3.png) busts social crawler caches — Twitter/X
+// A brand-new filename (og-4.png) busts social crawler caches — Twitter/X
 // ignore query-string bumps, so a fresh path is the reliable way to replace
 // an old preview card.
 // Run: URL=http://localhost:3000 node scripts/render-og-live.mjs
@@ -24,35 +26,25 @@ const chrome = KNOWN_PATHS.find((p) => { try { return fs.existsSync(p); } catch 
 const browser = await chromium.launch(chrome ? { headless: true, executablePath: chrome } : { headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
 
-// Drive the hero deterministically instead of racing its auto-cycle: click
-// the replay button (a real button in the phone composer), which plays a full
-// ready -> sending -> received transfer of the CURRENT scene. Land the shot
-// ~2.1s later, when the photo card is sitting on the laptop screen.
+// Drive the hero deterministically: the interactive demo starts with the
+// PHOTO sample already in the composer, so one click on the send button
+// plays a full ready -> sending -> received transfer. Land the shot after
+// the flight (~1.3s) when the photo card is sitting on the laptop.
 await page.goto(URL + '/', { waitUntil: 'domcontentloaded' });
-await page.waitForTimeout(1200);
-// Ensure the scene is the PHOTO (the app's hero story): if the auto-cycle
-// has already flipped to link, click twice won't help — instead we re-click
-// the replay button on whatever scene is current, then force photo by
-// clicking again after the flip. Keep it simple: click replay, and if the
-// laptop's received card shows a link (no filename span), click again next
-// cycle. For the OG we accept whichever received card is up, but prefer
-// photo by waiting for it within a few cycles.
+await page.waitForTimeout(1500);
 const clicked = await page.evaluate(() => {
-  const btn = [...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === 'Replay transfer');
+  const btn = [...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === 'Send demo');
   if (btn) { btn.click(); return true; }
   return false;
 });
-if (!clicked) console.warn('⚠ replay button not found — falling back to auto-cycle wait');
-// The transfer takes ~1.85s to reach the received frame; poll for the
-// laptop's received PHOTO card (the "2.4 MB" size caption only exists on
-// the received photo card). Up to 6 replay attempts across the auto-cycle.
+if (!clicked) console.warn('⚠ send button not found — capturing whatever is up');
 let gotFrame = false;
-for (let attempt = 0; attempt < 6 && !gotFrame; attempt++) {
-  await page.waitForTimeout(2400);
+for (let attempt = 0; attempt < 5 && !gotFrame; attempt++) {
+  await page.waitForTimeout(1900);
   gotFrame = await page.evaluate(() => {
-    const hasPhotoCard = [...document.querySelectorAll('span')].some(s => s.textContent.trim() === '2.4 MB');
+    const hasPhotoCard = [...document.querySelectorAll('span')].some(s => s.textContent.trim() === '18.4 MB');
     if (hasPhotoCard) return true;
-    const btn = [...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === 'Replay transfer');
+    const btn = [...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === 'Send demo');
     if (btn) btn.click();
     return false;
   });
@@ -136,7 +128,7 @@ const ogHtml = `<!doctype html><html><head><meta charset="utf-8"><style>
 </style></head><body>
   <div class="dots"></div>
   <div class="glow"></div>
-  <div class="headline">Move something between <em>two devices</em>.</div>
+  <div class="headline">Move anything between <em>your devices</em>.</div>
   <div class="scene"><img src="data:image/png;base64,${scenePng}" /></div>
   <p class="sub">Text · Photos · Videos · Files — no app, no account, nothing stored</p>
   <div class="foot">
@@ -152,6 +144,6 @@ const ogHtml = `<!doctype html><html><head><meta charset="utf-8"><style>
 const comp = await chromium.launch(chrome ? { headless: true, executablePath: chrome } : { headless: true });
 const ogPage = await comp.newPage({ viewport: { width: 1200, height: 630 } });
 await ogPage.setContent(ogHtml);
-await ogPage.screenshot({ path: path.join(root, 'public/og-3.png'), type: 'png' });
+await ogPage.screenshot({ path: path.join(root, 'public/og-4.png'), type: 'png' });
 await comp.close();
-console.log('wrote public/og-3.png');
+console.log('wrote public/og-4.png');

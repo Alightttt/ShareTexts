@@ -74,9 +74,9 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>
   <div class="glow"></div>
   <div class="left">
     <div class="brand">${svgLogo.replace('<svg', '<svg style="width:44px;height:44px"').replace('width="44" height="44"', '')}<span class="brand-name">ShareText</span></div>
-    <h1>Move something between your devices.</h1>
-    <p class="sub">Text, photos and files. No app. No account.</p>
-    <div class="chips"><span class="chip">Text</span><span class="chip">Photos</span><span class="chip">Files</span></div>
+    <h1>Move anything between your devices.</h1>
+    <p class="sub">Text, links, photos, videos, files. No app. No account.</p>
+    <div class="chips"><span class="chip">Text</span><span class="chip">Photos</span><span class="chip">Videos</span><span class="chip">Files</span></div>
   </div>
   <div class="right">
     <div class="phone">

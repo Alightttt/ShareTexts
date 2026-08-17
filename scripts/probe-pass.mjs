@@ -11,16 +11,16 @@ try {
 
   // Landing CTAs
   const landing = await A.evaluate(() => ({
-    start: [...document.querySelectorAll('button')].some(b => b.textContent?.includes('Start a transfer')),
-    haveCode: [...document.querySelectorAll('button')].some(b => b.textContent?.includes('Already have a code?')),
+    start: [...document.querySelectorAll('button')].some(b => b.textContent?.includes('Send text')),
+    haveCode: [...document.querySelectorAll('button')].some(b => b.textContent?.includes('Receive text')),
   }));
 
-  await A.getByRole('button', { name: 'Start a transfer' }).first().click();
+  await A.getByRole('button', { name: 'Send text' }).first().click();
   await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   // Rotation message: dynamic countdown, not the static 40s line
   const rotText = await A.evaluate(() => [...document.querySelectorAll('p')].map(p => p.textContent).find(t => t && t.includes('refreshes in')));
   const code = await readLiveCode(A);
-  await B.getByRole('button', { name: 'Already have a code?' }).first().click();
+  await B.getByRole('button', { name: 'Receive text' }).first().click();
   await B.locator('input[inputmode="numeric"]').fill(code);
   await waitForChat(B, 'B');
   await waitForChat(A, 'A');

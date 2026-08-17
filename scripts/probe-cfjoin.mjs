@@ -25,7 +25,7 @@ B.on('console', m => { if (m.type() === 'error') logs.push(`[B:console] ${m.text
 B.on('requestfailed', r => logs.push(`[B:reqfail] ${r.url()} ${r.failure()?.errorText}`));
 
 await A.goto(URL, { waitUntil: 'networkidle' });
-await A.getByRole('button', { name: 'Start a transfer' }).first().click();
+await A.getByRole('button', { name: 'Send text' }).first().click();
 await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
 const code = await A.evaluate(() => {
   const spans = [...document.querySelectorAll('span')].filter(s => /^\d$/.test(s.textContent || ''));
@@ -37,7 +37,7 @@ const stored = await A.evaluate(() => localStorage.getItem('sharetext.session.v1
 console.log('A stored session:', stored);
 
 await B.goto(URL, { waitUntil: 'networkidle' });
-await B.getByRole('button', { name: 'Already have a code?' }).first().click();
+await B.getByRole('button', { name: 'Receive text' }).first().click();
 await B.locator('input[inputmode="numeric"]').fill(code);
 await B.waitForTimeout(6000);
 const bBody = await B.locator('body').innerText();

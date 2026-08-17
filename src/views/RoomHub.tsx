@@ -48,23 +48,22 @@ export function RoomHub() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!session.roomId || !session.secret) return null;
-
-  // A short, stable share link — /s/<code> instead of a long ?join=<uuid>.
-  // Same room, easy to send in any chat, and it survives longer than the
-  // rotating 6-digit pairing code.
-  const shareUrl = `${window.location.origin}/s/${shortCodeOf(session.roomId)}`;
-  const qrCode = generateTOTP(session.secret!, session.createdAt);
-  // The QR value embeds the CURRENT pairing code, so it visibly refreshes on
-  // every 40s boundary while the stable short link inside keeps working.
-  const qrValue = `${shareUrl}?c=${qrCode}`;
+  // QR auto-refresh on the pairing-code boundary. Declared BEFORE the early
+  // return below — RoomHub can re-render with a cleared session during the
+  // exit transition, and a hook after a conditional return would change the
+  // hook count and crash React ("Rendered fewer hooks than expected").
+  const shareUrl = session.roomId ? `${window.location.origin}/s/${shortCodeOf(session.roomId)}` : '';
+  const qrCode = session.secret ? generateTOTP(session.secret, session.createdAt) : '';
+  const qrValue = shareUrl ? `${shareUrl}?c=${qrCode}` : '';
   useEffect(() => {
-    if (!showQR) return;
+    if (!showQR || !session.roomId || !session.secret) return;
     const waitMs = Math.max(300, getTOTPRemainingSeconds(session.createdAt) * 1000 + 60);
     const t = setTimeout(() => setQrTick(x => x + 1), waitMs);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showQR, qrCode, session.createdAt]);
+
+  if (!session.roomId || !session.secret) return null;
 
   const copyLink = async () => {
     try {

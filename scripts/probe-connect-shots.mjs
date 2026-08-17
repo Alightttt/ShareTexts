@@ -15,7 +15,7 @@ for (const [w, h] of [[375, 812], [1440, 900]]) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, isMobile: w < 500, hasTouch: w < 500 });
   const page = await ctx.newPage();
   await page.goto(URL, { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: 'Start a transfer' }).first().click();
+  await page.getByRole('button', { name: 'Send text' }).first().click();
   await page.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   await page.waitForTimeout(600);
   await page.screenshot({ path: path.join(root, `scripts/connect-${w}.png`), fullPage: false });

@@ -48,7 +48,7 @@ try {
   await B.goto(FRONTEND, { waitUntil: 'networkidle', timeout: 30000 });
 
   // Create
-  await A.getByRole('button', { name: 'Start a transfer' }).first().click();
+  await A.getByRole('button', { name: 'Send text' }).first().click();
   await A.getByText('LIVE CODE').waitFor({ timeout: 15000 });
   console.log('[3] room created — waiting screen shown');
 
@@ -60,7 +60,7 @@ try {
     console.log(`[4] code read (${code})`);
 
     // Join
-    await B.getByRole('button', { name: 'Already have a code?' }).first().click();
+    await B.getByRole('button', { name: 'Receive text' }).first().click();
     await B.locator('input[inputmode="numeric"]').fill(code);
     await waitForChat(B, 'B');
     await waitForChat(A, 'A');
