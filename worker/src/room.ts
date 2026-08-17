@@ -21,6 +21,17 @@ export const ROOM_EMPTY_TTL = 4 * 60 * 60 * 1000;  // rejoinable 4h after both p
 const SIGNAL_MAX = 64 * 1024;                      // SDP offers/answers are a few KB
 const RELAY_TEXT_MAX = 512 * 1024;
 const RELAY_BIN_MAX = 128 * 1024;
+const PUSH_TEXT_MAX = 256 * 1024;                  // agent-push text cap
+const PUSH_FILE_MAX = 8 * 1024 * 1024;             // agent-push file cap (raw bytes)
+const PUSH_CHUNK = 45 * 1024;                      // raw bytes per base64 push chunk
+
+/** Constant-time string comparison for bearer secrets. */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Wire protocol version. Bump on breaking message-shape changes. */
@@ -121,10 +132,15 @@ export class Room extends DurableObject<Env> {
   // ---- connection lifecycle ----------------------------------------------
 
   async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    // Agent push API — an authenticated HTTP request injects a message into
+    // this room, fanned out to every live seated device (see handlePush).
+    if (url.pathname === '/push' && request.method === 'POST') {
+      return this.handlePush(request);
+    }
     if (request.headers.get('Upgrade') !== 'websocket') {
       return json({ error: 'expected websocket upgrade' }, 400);
     }
-    const url = new URL(request.url);
     this.urlRoomId = url.searchParams.get('room');
     const cid = url.searchParams.get('cid') ?? crypto.randomUUID();
     const pair = new WebSocketPair();
@@ -578,6 +594,85 @@ export class Room extends DurableObject<Env> {
     if (!(await this.memberOf(cid))) return;
     log('room closed manually', this.room?.roomId.slice(0, 8));
     await this.destroyRoom('manual_close');
+  }
+
+  /**
+   * Agent push: an authenticated POST (secret in the Authorization header)
+   * delivers a text message or a file into this room. The message is sent as
+   * one WS frame per base64 chunk (~45KB raw each) so nothing exceeds the 1MB
+   * frame cap; the client reassembles. Only live seated peers receive it.
+   */
+  private async handlePush(request: Request): Promise<Response> {
+    const r = await this.loadRoom();
+    if (!r) {
+      await count(this.env, 'push.failed:not_found');
+      return json({ error: 'Room not found — it may have expired.' }, 404);
+    }
+
+    const auth = request.headers.get('authorization') || '';
+    const secret = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+    if (!secret || !timingSafeEqual(secret, r.secret)) {
+      await count(this.env, 'push.failed:unauthorized');
+      return json({ error: 'Invalid secret. Copy the command from the connect screen.' }, 401);
+    }
+
+    let body: { roomId?: unknown; text?: unknown; name?: unknown; mimeType?: unknown; dataBase64?: unknown };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return json({ error: 'Bad request' }, 400);
+    }
+    if (typeof body.roomId !== 'string' || body.roomId !== r.roomId) {
+      return json({ error: 'Bad request' }, 400);
+    }
+
+    const messageId = crypto.randomUUID();
+    const timestamp = Date.now();
+    r.lastActive = timestamp;
+    r.expiresAt = timestamp + ROOM_TTL;
+    await this.ctx.storage.put('room', r);
+    const live = await this.livePeers();
+
+    if (typeof body.text === 'string' && body.text.trim().length > 0) {
+      const text = body.text.slice(0, PUSH_TEXT_MAX);
+      await count(this.env, 'push.text');
+      for (const cid of live) {
+        await this.sendTo(cid, { type: 'event', event: 'push_message', payload: { id: messageId, kind: 'text', text, timestamp } });
+      }
+      return json({ ok: true, messageId });
+    }
+
+    if (typeof body.dataBase64 !== 'string' || typeof body.name !== 'string') {
+      return json({ error: 'Bad request. Send { text } or { name, dataBase64 }.' }, 400);
+    }
+    let raw: string;
+    try {
+      raw = atob(body.dataBase64);
+    } catch {
+      return json({ error: 'Bad request — invalid base64.' }, 400);
+    }
+    if (raw.length === 0 || raw.length > PUSH_FILE_MAX) {
+      return json({ error: 'File must be between 1 byte and 8 MB.' }, 400);
+    }
+    const chunkCount = Math.ceil(raw.length / PUSH_CHUNK);
+    const base = {
+      id: messageId,
+      kind: 'file',
+      name: body.name.slice(0, 200),
+      mimeType: typeof body.mimeType === 'string' ? body.mimeType.slice(0, 100) : 'application/octet-stream',
+      size: raw.length,
+      chunkCount,
+      timestamp,
+    };
+    await count(this.env, 'push.file');
+    for (let i = 0; i < chunkCount; i++) {
+      const chunk = raw.slice(i * PUSH_CHUNK, (i + 1) * PUSH_CHUNK);
+      const payload = { ...base, chunkIndex: i, dataBase64: btoa(chunk) };
+      for (const cid of live) {
+        await this.sendTo(cid, { type: 'event', event: 'push_message', payload });
+      }
+    }
+    return json({ ok: true, messageId });
   }
 
   // ---- acks / errors -----------------------------------------------------

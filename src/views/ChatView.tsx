@@ -3,7 +3,7 @@ import { useSession } from '../lib/SessionContext';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Plus, Image as ImageIcon, Copy, Check, CheckCheck,
-  File as FileIcon, Play, Download, RefreshCw, AlertCircle, FileText, ChevronDown, ChevronUp, ArrowUp, Lock, ZoomIn, ShieldCheck
+  File as FileIcon, Play, Download, RefreshCw, AlertCircle, FileText, ChevronDown, ChevronUp, ArrowUp, Lock, ZoomIn, ShieldCheck, Terminal
 } from 'lucide-react';
 import { cn, formatBytes } from '../lib/utils';
 import { ChatMessage, Attachment } from '../types';
@@ -858,6 +858,10 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
                 <span className={cn("text-[11.5px] font-medium flex items-center gap-1", isMe ? "text-white/75" : "text-apple-ink-muted")}>
                   {isMe ? (
                     <DeliveryTick delivered={msg.delivered} onBlue />
+                  ) : msg.source === 'push' ? (
+                    <span className="font-semibold flex items-center gap-1">
+                      <Terminal className="w-3 h-3" /> From your push link
+                    </span>
                   ) : (
                     <span className="font-semibold">Received</span>
                   )}
@@ -989,7 +993,9 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
             <div className="flex flex-col min-w-0">
               {a.status === 'complete' ? (
                 <span className={cn("text-[11.5px] font-medium flex items-center gap-1", isMe ? "text-white/75" : "text-apple-ink-muted")}>
-                  {isMe ? <DeliveryTick delivered={msg.delivered} onBlue /> : <span className="font-semibold">Received</span>}
+                  {isMe ? <DeliveryTick delivered={msg.delivered} onBlue /> : msg.source === 'push' ? (
+                    <span className="font-semibold flex items-center gap-1"><Terminal className="w-3 h-3" /> From your push link</span>
+                  ) : <span className="font-semibold">Received</span>}
                   {' • '}{formatBytes(a.size)}{' • '}{timeOf(msg.timestamp)}
                 </span>
               ) : (

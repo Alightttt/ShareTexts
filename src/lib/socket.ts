@@ -67,6 +67,20 @@ devLog('Signaling transport:', mode, url || '(same origin)');
 diag('transport.choose', true, `${mode}${url ? ' ' + url : ' (same origin)'}`);
 
 /**
+ * Absolute URL of the agent push endpoint on the ACTIVE transport, for the
+ * connect screen's "Send from your computer" curl command. Same-origin (dev /
+ * self-hosted) resolves against window.location; the Cloudflare transport
+ * uses the worker's base URL. Callers only use this in the browser.
+ */
+export function pushEndpoint(): string | null {
+  if (mode === 'cloudflare' && url) {
+    return url.replace(/\/+$/, '').replace(/\/ws$/i, '') + '/api/push';
+  }
+  if (typeof window === 'undefined') return null;
+  return window.location.origin + '/api/push';
+}
+
+/**
  * Human-readable reason when a deployed build has no signaling backend to
  * talk to. In production the transport is chosen at BUILD time — Vite inlines
  * VITE_SIGNALING_URL / VITE_SOCKET_URL into the bundle, so adding the env var

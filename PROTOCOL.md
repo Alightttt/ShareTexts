@@ -80,19 +80,39 @@ re-establishes WebRTC.
 - Logs never contain message contents, secrets, or tokens (server logs print
   truncated room/socket ids only).
 
-## Future: AI agents
+## Agent push API (implemented)
 
-The same events (`create_room`, `join_with_code`, `signal`, `relay_message`,
-typed objects) form a clean programmatic surface. An HTTP/MCP adapter could
-later map "create a session", "send object", "receive object" onto them
-without touching the UI or the WebRTC path.
+A script or AI agent can push text (or a small file) straight into a room
+without a second browser — this is how "tell the agent to send this text to my
+phone" works. The creator copies a curl command from the connect screen; it
+carries the room secret as a bearer credential.
 
-That adapter is intentionally **not implemented yet**. When it is:
+```
+POST /api/push                      (JSON text)
+  Authorization: Bearer <room secret>
+  { "roomId": "<uuid>", "text": "Hello" }
 
-- Sessions stay secret-gated (server-issued room secret), never ambient.
-- Automation inherits the same rate limits and CORS policy.
-- Agents receive typed objects (json / structured-data) with checksums —
-  which is why the metadata model already includes them.
+POST /api/push                      (JSON file, base64)
+  { "roomId": "<uuid>", "name": "photo.jpg", "mimeType": "image/jpeg",
+    "dataBase64": "..." }
+
+POST /api/push?roomId=<uuid>        (binary file, curl --data-binary @file)
+  Content-Type: application/octet-stream
+  X-File-Name / X-File-Mime headers
+```
+
+- Implemented identically on **both** transports: the Node server (Express
+  route) and the Cloudflare Worker (`/api/push` → the room's Durable Object).
+- Text cap 256 KB; file cap 8 MB. Files travel to devices as ~45 KB base64
+  chunks (fits the 1 MB WS frame cap on both transports); the client
+  reassembles them into a normal attachment bubble.
+- Authenticated by the room secret (constant-time compare), rate-limited per
+  IP (Node) / inherent to the room (Worker), and never exposed to browsers
+  that aren't allowlisted (same origin policy as /lookup).
+- Security model: the curl command IS the room key. Anyone holding it can
+  push to the room — same trust domain as the 6-digit pairing code.
+- The message lands on every seated device as an incoming bubble tagged
+  "From your push link"; the connect screen also shows a push inbox.
 
 ## Deployment topology (current)
 

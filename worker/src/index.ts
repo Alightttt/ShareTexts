@@ -115,6 +115,10 @@ export default {
       return resolveShort(request, env, cors);
     }
 
+    if (path === '/api/push' && request.method === 'POST') {
+      return push(request, env, cors);
+    }
+
     if (path === '/metrics') {
       // Anonymous aggregate counters (see metrics.ts). Optional bearer gate so
       // operators can keep volumes private if they want to.
@@ -143,10 +147,87 @@ export default {
 
     return json({
       name: 'sharetext-signaling',
-      endpoints: ['/health', '/ws', '/lookup', '/resolve-short'],
+      endpoints: ['/health', '/ws', '/lookup', '/resolve-short', '/api/push'],
     }, 200, cors);
   },
 } satisfies ExportedHandler<Env>;
+
+/**
+ * Agent push API — a script or AI agent pushes text (or a small file) into a
+ * room using the room secret as a bearer credential. Canonicalizes JSON and
+ * raw-binary bodies into one internal JSON request to the room's Durable
+ * Object, which validates the secret and fans the message out to every seated
+ * device (see Room.handlePush).
+ */
+async function push(request: Request, env: Env, cors: Record<string, string>): Promise<Response> {
+  const auth = request.headers.get('authorization') || '';
+  const secret = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+
+  const ct = (request.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  let roomId = '';
+  let body: string;
+
+  try {
+    if (ct === 'application/json') {
+      const parsed = (await request.json()) as { roomId?: unknown; text?: unknown; name?: unknown; mimeType?: unknown; dataBase64?: unknown };
+      if (typeof parsed.roomId !== 'string') return json({ error: 'Bad request' }, 400, cors);
+      roomId = parsed.roomId;
+      if (typeof parsed.text === 'string' && parsed.text.trim().length > 0) {
+        body = JSON.stringify({ roomId, text: parsed.text.slice(0, 256 * 1024) });
+      } else if (typeof parsed.name === 'string' && typeof parsed.dataBase64 === 'string') {
+        body = JSON.stringify({
+          roomId,
+          name: parsed.name.slice(0, 200),
+          mimeType: typeof parsed.mimeType === 'string' ? parsed.mimeType.slice(0, 100) : 'application/octet-stream',
+          dataBase64: parsed.dataBase64,
+        });
+      } else {
+        return json({ error: 'Bad request. Send { roomId, text } or { roomId, name, dataBase64 }.' }, 400, cors);
+      }
+    } else if (ct === 'application/octet-stream') {
+      const url = new URL(request.url);
+      const rid = url.searchParams.get('roomId');
+      if (typeof rid !== 'string') return json({ error: 'Bad request. Use ?roomId=... with a binary body.' }, 400, cors);
+      roomId = rid;
+      const buf = await request.arrayBuffer();
+      if (buf.byteLength === 0 || buf.byteLength > 8 * 1024 * 1024) {
+        return json({ error: 'File must be between 1 byte and 8 MB.' }, 400, cors);
+      }
+      let bin = '';
+      const bytes = new Uint8Array(buf);
+      for (let i = 0; i < bytes.length; i += 0x8000) {
+        bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      }
+      body = JSON.stringify({
+        roomId,
+        name: (request.headers.get('x-file-name') || 'file').slice(0, 200),
+        mimeType: (request.headers.get('x-file-mime') || 'application/octet-stream').slice(0, 100),
+        dataBase64: btoa(bin),
+      });
+    } else {
+      return json({ error: 'Bad request. Use Content-Type: application/json or application/octet-stream.' }, 400, cors);
+    }
+  } catch {
+    return json({ error: 'Bad request' }, 400, cors);
+  }
+
+  if (!UUID_RE.test(roomId)) return json({ error: 'Bad request' }, 400, cors);
+  if (!secret) return json({ error: 'Missing Authorization: Bearer <secret> header.' }, 401, cors);
+
+  const stub = env.ROOMS.get(env.ROOMS.idFromName(roomId));
+  try {
+    const res = await stub.fetch(
+      new Request('https://internal/push', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + secret },
+        body,
+      })
+    );
+    return new Response(res.body, { status: res.status, headers: { 'content-type': 'application/json', ...cors } });
+  } catch {
+    return json({ error: "Couldn't reach the room." }, 503, cors);
+  }
+}
 
 /** Resolve a 6-digit code → roomId via the day-sharded Registry. */
 async function lookup(request: Request, env: Env, cors: Record<string, string>): Promise<Response> {

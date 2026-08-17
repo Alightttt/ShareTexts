@@ -80,6 +80,159 @@ app.get('/stats', (_req, res) => {
   });
 });
 
+// --- Agent push API --------------------------------------------------------
+//
+// Lets a script or AI agent push text (or a small file) straight into a room,
+// addressed by the room's secret — the same credential the devices hold. This
+// is how "tell the agent to send this text to my phone" works: the creator
+// copies a curl command from the connect screen, runs it (or hands it to an
+// agent), and the message lands in the room on every seated device.
+//
+//   JSON text:    POST /api/push   { roomId, text }
+//   JSON file:    POST /api/push   { roomId, name, mimeType, dataBase64 }
+//   Binary file:  POST /api/push?roomId=...  (Content-Type: application/octet-stream,
+//                 X-File-Name / X-File-Mime headers, raw body)
+//   Auth:         Authorization: Bearer <room secret>
+//
+// Files travel to the devices as base64 chunks (~45KB each) so they fit the
+// 1MB WebSocket frame cap on both transports; the client reassembles.
+
+const PUSH_TEXT_MAX = 256 * 1024;      // text cap
+const PUSH_FILE_MAX = 8 * 1024 * 1024; // file cap (raw bytes)
+const PUSH_CHUNK = 45 * 1024;          // raw bytes per base64 chunk
+
+function secretMatches(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
+
+// Parse a push request body (JSON text/file OR raw binary) into a uniform
+// { roomId, kind, text?, file? } shape. Never trusts the client's size claim.
+function parsePushBody(req: express.Request): { roomId?: string; kind?: 'text' | 'file'; text?: string; file?: { name: string; mimeType: string; data: Buffer } } | null {
+  const auth = req.headers.authorization || '';
+  const secret = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+
+  const roomId =
+    (typeof (req.body as any)?.roomId === 'string' && (req.body as any).roomId) ||
+    (typeof req.query.roomId === 'string' && req.query.roomId) ||
+    '';
+  if (!/^[0-9a-f-]{36}$/i.test(roomId)) return null;
+
+  const ct = (req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+
+  if (ct === 'application/json') {
+    const body = req.body as any;
+    if (typeof body?.text === 'string' && body.text.trim().length > 0) {
+      const text = body.text.slice(0, PUSH_TEXT_MAX);
+      return { roomId, kind: 'text', text, file: undefined };
+    }
+    if (typeof body?.name === 'string' && typeof body?.dataBase64 === 'string') {
+      const data = Buffer.from(body.dataBase64, 'base64');
+      if (data.length === 0 || data.length > PUSH_FILE_MAX) return null;
+      return {
+        roomId,
+        kind: 'file',
+        file: {
+          name: body.name.slice(0, 200),
+          mimeType: typeof body.mimeType === 'string' ? body.mimeType.slice(0, 100) : 'application/octet-stream',
+          data,
+        },
+      };
+    }
+    return null;
+  }
+
+  if (ct === 'application/octet-stream' && Buffer.isBuffer(req.body) && req.body.length > 0) {
+    if (req.body.length > PUSH_FILE_MAX) return null;
+    const name = (req.headers['x-file-name'] as string) || 'file';
+    const mimeType = (req.headers['x-file-mime'] as string) || 'application/octet-stream';
+    return {
+      roomId,
+      kind: 'file',
+      file: { name: name.slice(0, 200), mimeType: mimeType.slice(0, 100), data: req.body },
+    };
+  }
+
+  return null;
+}
+
+function pushRateLimited(ip: string): boolean {
+  return limited(ip, pushAttempts, 40, 60 * 1000);
+}
+
+function handlePush(req: express.Request, res: express.Response) {
+  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  if (pushRateLimited(ip)) {
+    return res.status(429).json({ error: 'Too many pushes. Try again shortly.' });
+  }
+
+  const parsed = parsePushBody(req);
+  const auth = req.headers.authorization || '';
+  const secret = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  if (!parsed || !parsed.roomId) {
+    return res.status(400).json({
+      error: 'Bad request. Send { roomId, text } (or { roomId, name, dataBase64 } / binary body) with an Authorization: Bearer <secret> header.',
+    });
+  }
+
+  const room = rooms.get(parsed.roomId);
+  if (!room) {
+    count('push.failed:not_found');
+    return res.status(404).json({ error: 'Room not found — it may have expired.' });
+  }
+  if (!secret || !secretMatches(secret, room.secret)) {
+    count('push.failed:unauthorized');
+    return res.status(401).json({ error: 'Invalid secret. Copy the command from the connect screen.' });
+  }
+
+  const messageId = crypto.randomUUID();
+  const timestamp = Date.now();
+  room.lastActive = Date.now();
+
+  if (parsed.kind === 'text') {
+    io.to(room.id).emit('push_message', {
+      id: messageId,
+      kind: 'text',
+      text: parsed.text!,
+      timestamp,
+    });
+    count('push.text');
+  } else {
+    // Files travel as base64 chunks (~45KB raw each) so every frame stays
+    // well under the 1MB socket frame cap; the client reassembles them.
+    const file = parsed.file!;
+    const chunkCount = Math.ceil(file.data.length / PUSH_CHUNK);
+    const base = {
+      id: messageId,
+      kind: 'file',
+      name: file.name,
+      mimeType: file.mimeType,
+      size: file.data.length,
+      chunkCount,
+      timestamp,
+    };
+    for (let i = 0; i < chunkCount; i++) {
+      const slice = file.data.subarray(i * PUSH_CHUNK, (i + 1) * PUSH_CHUNK);
+      io.to(room.id).emit('push_message', {
+        ...base,
+        chunkIndex: i,
+        dataBase64: slice.toString('base64'),
+      });
+    }
+    count('push.file');
+  }
+
+  res.json({ ok: true, messageId });
+}
+
+// Both body parsers in ONE route: whichever matches the content-type populates
+// req.body and the other skips it (body-parser calls next() on type mismatch).
+// Two separate mounts would let the first handler see an empty body for the
+// octet-stream case and reject it before the raw parser ever ran.
+app.post('/api/push', express.json({ limit: '12mb', type: 'application/json' }), express.raw({ limit: '12mb', type: 'application/octet-stream' }), handlePush);
+
 // CORS allowlist. Production must NOT accept `*` — only the intended
 // frontend origins. Defaults: localhost dev origins + the Vercel frontend.
 // Add your own via ALLOWED_ORIGINS (comma-separated) — render.yaml sets this
@@ -174,6 +327,7 @@ setInterval(() => {
 
 const createAttempts = new Map<string, { count: number, resetAt: number }>();
 const codeAttempts = new Map<string, { count: number, resetAt: number }>();
+const pushAttempts = new Map<string, { count: number, resetAt: number }>();
 
 function limited(ip: string, map: Map<string, { count: number, resetAt: number }>, max: number, windowMs: number): boolean {
   const now = Date.now();

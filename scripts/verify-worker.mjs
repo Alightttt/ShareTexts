@@ -297,6 +297,69 @@ async function runDisconnectedState() {
   check('empty room storage cleared by alarm', ctx.storage.map.size === 0);
 }
 
+async function runPush() {
+  const roomId = uuid();
+  const ctx = new FakeCtx();
+  const room = new Room(ctx, makeEnv());
+  const creator = await connect(room, roomId);
+  const created = await creator.send('create_room');
+  const secret = created.secret;
+
+  // Unauthenticated / wrong-secret push → 401.
+  const noAuth = await room.fetch(new Request('http://x/push', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ roomId, text: 'hi' }) }));
+  check('push without secret → 401', noAuth.status === 401);
+  const badAuth = await room.fetch(new Request('http://x/push', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer WRONG' },
+    body: JSON.stringify({ roomId, text: 'hi' }),
+  }));
+  check('push with wrong secret → 401', badAuth.status === 401);
+
+  // Text push → creator receives push_message(kind=text).
+  const textPromise = creator.waitFor((m) => m.type === 'event' && m.event === 'push_message');
+  const textRes = await room.fetch(new Request('http://x/push', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + secret },
+    body: JSON.stringify({ roomId, text: 'Hello from an agent' }),
+  }));
+  check('text push → 200', textRes.status === 200);
+  const textMsg = await textPromise;
+  check('creator receives push_message text', textMsg?.kind === 'text' && textMsg?.text === 'Hello from an agent', textMsg?.text);
+
+  // File push (multi-chunk) → creator receives every chunk intact, in order.
+  const fileBytes = Buffer.from('\x00\x01 payload '.repeat(50) + '\xff\xfe', 'utf8'); // ~700 bytes → 1 chunk
+  const big = Buffer.alloc(90 * 1024, 7); // 90KB → 2 chunks (45KB each)
+  big.set(fileBytes, 0);
+  const b64 = big.toString('base64');
+  const chunkPromise = creator.waitFor((m) => m.type === 'event' && m.event === 'push_message' && m.payload?.kind === 'file' && m.payload?.chunkIndex === 1, 6000);
+  const fileRes = await room.fetch(new Request('http://x/push', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + secret },
+    body: JSON.stringify({ roomId, name: 'payload.bin', mimeType: 'application/octet-stream', dataBase64: b64 }),
+  }));
+  check('file push → 200', fileRes.status === 200);
+  const lastChunk = await chunkPromise;
+  check('file push chunked (2 chunks)', lastChunk?.chunkCount === 2, `count ${lastChunk?.chunkCount}`);
+  const fileEvents = creator.inbox.filter((m) => m.type === 'event' && m.event === 'push_message' && m.payload?.kind === 'file' && m.payload?.id === lastChunk?.id);
+  const joined = Buffer.concat(fileEvents.map((e) => Buffer.from(e.payload.dataBase64, 'base64')));
+  check('file push reassembles byte-identical', joined.length === big.length && joined.equals(big), `${joined.length} bytes`);
+
+  // Push to a closed/missing room → 404.
+  const gone = await room.fetch(new Request('http://x/push', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + secret },
+    body: JSON.stringify({ roomId, text: 'hi' }),
+  }));
+  await creator.send('close_room');
+  const afterClose = await room.fetch(new Request('http://x/push', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + secret },
+    body: JSON.stringify({ roomId, text: 'hi' }),
+  }));
+  check('push before close ok, after close → 404', gone.status === 200 && afterClose.status === 404);
+  creator.close();
+}
+
 async function runRegistry() {
   const ctx = new FakeCtx();
   const reg = new Registry(ctx, {});
@@ -324,6 +387,7 @@ async function runRegistry() {
 
 await runRoomProtocol();
 await runRefreshCode();
+await runPush();
 await runLiveIdleExpiry();
 await runDisconnectedState();
 await runRegistry();

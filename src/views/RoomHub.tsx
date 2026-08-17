@@ -2,12 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { LiveCodeDisplay } from '../components/LiveCodeDisplay';
 import { QRCodeSVG } from 'qrcode.react';
-import { Copy, QrCode, Check, Share2, ChevronDown, ChevronLeft, Pencil, Check as CheckIcon, Link2, RefreshCw } from 'lucide-react';
+import { Copy, QrCode, Check, Share2, ChevronDown, ChevronLeft, Pencil, Check as CheckIcon, Link2, RefreshCw, Terminal, ShieldAlert, Inbox } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn, shortCodeOf } from '../lib/utils';
+import { cn, shortCodeOf, formatBytes } from '../lib/utils';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { ConnectingVisual } from '../components/ConnectingVisual';
 import { generateTOTP } from '../lib/totp';
+import { pushEndpoint } from '../lib/socket';
+
+function timeAgo(ts: number): string {
+  const s = Math.max(1, Math.round((Date.now() - ts) / 1000));
+  if (s < 60) return `${s}s ago`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m}m ago`;
+  return `${Math.round(m / 60)}h ago`;
+}
 
 export function RoomHub() {
   const { session, setDeviceName, requestReconnect, abandonSession, refreshCode } = useSession();
@@ -15,6 +24,9 @@ export function RoomHub() {
   const [copiedCode, setCopiedCode] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showHow, setShowHow] = useState(false);
+  const [showPush, setShowPush] = useState(false);
+  const [copiedTextCmd, setCopiedTextCmd] = useState(false);
+  const [copiedFileCmd, setCopiedFileCmd] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(session.deviceName);
 
@@ -260,6 +272,116 @@ export function RoomHub() {
         <p className="text-[13px] text-apple-ink-muted mt-6">
           This room stays open for hours — you can rejoin anytime.
         </p>
+
+        {/* Agent push — "send from your computer" without a second browser.
+            The curl command carries the room secret as a bearer credential;
+            a script or AI agent can push text (or a small file) straight into
+            this room, even before the other device joins. */}
+        <div className="w-full mt-5">
+          <button
+            onPointerDown={() => setShowPush(!showPush)}
+            aria-expanded={showPush}
+            className="w-full flex items-center justify-between p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-surface-dark-2 rounded-[14px] transition-colors active:scale-[0.98] shadow-sm"
+          >
+            <div className="flex items-center gap-3 text-[15px] font-medium text-apple-ink dark:text-white">
+              <Terminal className="w-5 h-5 text-apple-ink-muted" />
+              Send from your computer
+            </div>
+            <ChevronDown className={cn("w-4 h-4 text-apple-ink-muted transition-transform", showPush && "rotate-180")} />
+          </button>
+
+          <AnimatePresence>
+            {showPush && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="mt-3 p-4 bg-apple-parchment dark:bg-apple-tile-1 rounded-[14px] text-left">
+                  <p className="text-[13px] text-apple-ink-muted leading-relaxed mb-3">
+                    Paste this in any terminal — or hand it to an AI agent. It pushes text straight
+                    into this room, even before the other device joins.
+                  </p>
+                  <pre className="text-[11.5px] sm:text-[12px] font-mono text-apple-ink dark:text-white bg-white/70 dark:bg-black/30 border border-apple-divider dark:border-apple-tile-3 rounded-[10px] p-3 overflow-x-auto whitespace-pre-wrap break-all leading-relaxed mb-2">
+{`curl -X POST ${pushEndpoint() ?? ''} \
+  -H "Authorization: Bearer ${session.secret}" \
+  -H "Content-Type: application/json" \
+  -d '{"roomId":"${session.roomId}","text":"Hello from my computer"}'`}
+                  </pre>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    <button
+                      onPointerDown={async () => {
+                        const cmd = `curl -X POST ${pushEndpoint() ?? ''} \\n  -H "Authorization: Bearer ${session.secret}" \\n  -H "Content-Type: application/json" \\n  -d '{"roomId":"${session.roomId}","text":"Hello from my computer"}'`;
+                        try { await navigator.clipboard.writeText(cmd); } catch { /* ignore */ }
+                        setCopiedTextCmd(true);
+                        setTimeout(() => setCopiedTextCmd(false), 2000);
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[12.5px] font-semibold transition-motion active:scale-95 min-h-[40px]"
+                    >
+                      {copiedTextCmd ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedTextCmd ? 'Copied' : 'Copy text command'}
+                    </button>
+                    <button
+                      onPointerDown={async () => {
+                        const cmd = `# File (any type, up to 8 MB):\ncurl -X POST ${pushEndpoint() ?? ''}?roomId=${session.roomId} \\n  -H "Authorization: Bearer ${session.secret}" \\n  -H "Content-Type: application/octet-stream" \\n  -H "X-File-Name: notes.txt" \\n  --data-binary @notes.txt`;
+                        try { await navigator.clipboard.writeText(cmd); } catch { /* ignore */ }
+                        setCopiedFileCmd(true);
+                        setTimeout(() => setCopiedFileCmd(false), 2000);
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-apple-divider dark:border-apple-tile-3 text-apple-ink dark:text-white text-[12.5px] font-semibold transition-motion active:scale-95 min-h-[40px]"
+                    >
+                      {copiedFileCmd ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedFileCmd ? 'Copied' : 'Copy file command'}
+                    </button>
+                  </div>
+                  <p className="flex items-start gap-1.5 text-[12px] text-apple-ink-muted leading-relaxed">
+                    <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    This command is your room\u2019s private key — anyone with it can push to this room. Only
+                    share it with devices or agents you trust.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Push inbox — messages an agent pushed while this device sat on the
+            connect screen. They live in the room, so they carry over into the
+            chat once a partner pairs. */}
+        {session.messages.filter(m => m.source === 'push').length > 0 && (
+          <div className="w-full mt-4 p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[14px] shadow-sm">
+            <div className="flex items-center gap-2 mb-2.5">
+              <Inbox className="w-4 h-4 text-apple-blue" />
+              <span className="text-[14px] font-semibold text-apple-ink dark:text-white">From your push link</span>
+            </div>
+            <div className="space-y-2">
+              {session.messages.filter(m => m.source === 'push').slice(-3).map(m => (
+                <div key={m.id} className="flex items-center justify-between gap-2 text-left">
+                  <div className="min-w-0">
+                    <p className="text-[13px] text-apple-ink dark:text-white truncate">
+                      {m.attachment ? `${m.attachment.name} · ${formatBytes(m.attachment.size)}` : m.text}
+                    </p>
+                    <p className="text-[11.5px] text-apple-ink-muted">{timeAgo(m.timestamp)}</p>
+                  </div>
+                  <button
+                    onPointerDown={async () => {
+                      try { await navigator.clipboard.writeText(m.attachment ? m.attachment.name : m.text); } catch { /* ignore */ }
+                    }}
+                    aria-label="Copy"
+                    className="flex items-center justify-center w-8 h-8 rounded-full text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/60 dark:hover:bg-apple-tile-3 transition-motion active:scale-90 shrink-0"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2.5 text-[12px] text-apple-ink-muted leading-relaxed">
+              These live in the room — pair the other device to open the chat and see everything.
+            </p>
+          </div>
+        )}
 
         <button
           onPointerDown={() => setShowHow(!showHow)}

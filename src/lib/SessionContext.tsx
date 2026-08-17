@@ -167,6 +167,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   // room) dedupe against the CURRENT list, not the one from the first render.
   const messagesRef = useRef(session.messages);
   messagesRef.current = session.messages;
+  // In-flight agent-push file chunks, keyed by push message id. The server
+  // delivers files as ~45KB base64 chunks (to fit WS frame caps on both
+  // transports); this buffer reassembles them before the bubble appears.
+  const pushBuffersRef = useRef<Map<string, { name: string; mimeType: string; size: number; chunkCount: number; timestamp: number; chunks: string[]; filled: number }>>(new Map());
 
   // Dev/test hook: reach the live PeerManager without exposing the secret.
   // requestReconnect is re-created each render (it closes over `session`), so
@@ -267,6 +271,93 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
+    // Agent push API — a script/AI agent pushed text or a file into this
+    // room (authenticated with the room secret). It lands as an incoming
+    // message on every seated device, even before a joiner pairs.
+    socket.on('push_message', (payload) => {
+      if (!payload || typeof payload !== 'object') return;
+      const id = (payload as any).id;
+      if (typeof id !== 'string' || !id) return;
+      if (messagesRef.current.some(m => m.id === id)) return; // dedupe
+
+      if ((payload as any).kind === 'text') {
+        const msg: ChatMessage = {
+          id,
+          sender: 'partner',
+          source: 'push',
+          text: String((payload as any).text ?? ''),
+          timestamp: typeof (payload as any).timestamp === 'number' ? (payload as any).timestamp : Date.now(),
+        };
+        setSession(s => ({ ...s, messages: [...s.messages, msg] }));
+        return;
+      }
+
+      if ((payload as any).kind === 'file') {
+        const chunkIndex = (payload as any).chunkIndex;
+        const chunkCount = (payload as any).chunkCount;
+        const dataBase64 = (payload as any).dataBase64;
+        if (typeof chunkIndex !== 'number' || typeof chunkCount !== 'number' || typeof dataBase64 !== 'string') return;
+
+        let buf = pushBuffersRef.current.get(id);
+        if (!buf) {
+          buf = {
+            name: String((payload as any).name ?? 'file'),
+            mimeType: String((payload as any).mimeType ?? 'application/octet-stream'),
+            size: typeof (payload as any).size === 'number' ? (payload as any).size : 0,
+            chunkCount,
+            timestamp: typeof (payload as any).timestamp === 'number' ? (payload as any).timestamp : Date.now(),
+            chunks: new Array(chunkCount),
+            filled: 0,
+          };
+          pushBuffersRef.current.set(id, buf);
+        }
+        if (!buf.chunks[chunkIndex]) {
+          buf.chunks[chunkIndex] = dataBase64;
+          buf.filled++;
+        }
+        if (buf.filled >= buf.chunkCount) {
+          pushBuffersRef.current.delete(id);
+          try {
+            const binary = atob(buf.chunks.join(''));
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: buf.mimeType });
+            const url = URL.createObjectURL(blob);
+            const mime = buf.mimeType.toLowerCase();
+            const type: import('../types').Attachment['type'] = mime.startsWith('image/')
+              ? 'image'
+              : mime.startsWith('video/')
+                ? 'video'
+                : mime.startsWith('audio/')
+                  ? 'audio'
+                  : 'file';
+            const msg: ChatMessage = {
+              id,
+              sender: 'partner',
+              source: 'push',
+              text: '',
+              timestamp: buf.timestamp,
+              attachment: {
+                id,
+                type,
+                name: buf.name,
+                size: buf.size,
+                mimeType: buf.mimeType,
+                url,
+                status: 'complete',
+                progress: 1,
+              },
+            };
+            setSession(s => ({ ...s, messages: [...s.messages, msg] }));
+          } catch {
+            // Undecodable chunk data — drop the push silently.
+            pushBuffersRef.current.delete(id);
+          }
+        }
+        return;
+      }
+    });
+
     socket.on('connect_error', () => {
       // Surface nothing here; individual actions report their own errors.
     });
@@ -276,6 +367,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       socket.off('peer_recovered');
       socket.off('peer_disconnected');
       socket.off('room_closed');
+      socket.off('push_message');
       socket.off('connect_error');
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -861,6 +953,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
     pendingFilesRef.current.clear();
     progressRef.current.clear();
+    pushBuffersRef.current.clear();
     // The room is gone — partial receives and send progress can't resume,
     // so release the memory.
     clearAllTransferState();
