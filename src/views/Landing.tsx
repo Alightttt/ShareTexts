@@ -5,6 +5,7 @@ import { ShareTextLogo } from '../components/ShareTextLogo';
 import { HeroDemo } from '../components/HeroDemo';
 import { ArrowRight, Send, Inbox, ShieldCheck } from 'lucide-react';
 import { LiveUsers } from '../components/LiveUsers';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { InstallPrompt } from '../components/InstallPrompt';
 
 // Below-the-fold sections load as separate chunks — the hero paints with only
@@ -133,12 +134,24 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
 
       {/* ============ HEADER — logo only; nothing competes with the product ============ */}
       <header className="sticky top-0 z-40 bg-apple-canvas/85 dark:bg-night-900/85 backdrop-blur-md border-b border-apple-divider dark:border-white/[0.06]">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">            <a href="/" className="flex items-center gap-2" aria-label="ShareText — share anything between two devices">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center gap-4">
+          <a href="/" className="flex items-center gap-2" aria-label="ShareText — share anything between two devices">
             <ShareTextLogo size={21} className="text-apple-ink dark:text-white" />
             <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>
           </a>
-          {/* Live count in the header — desktop only; mobile gets it in the hero below. */}
-          <LiveUsers className="ml-auto hidden lg:inline-flex" />
+          {/* Quiet section navigation — desktop only; mobile keeps the
+              header minimal and scrolls naturally. Anchor links, no JS. */}
+          <nav className="hidden md:flex items-center gap-5 ml-4" aria-label="Page sections">
+            <a href="#how-it-works" className="text-[13.5px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">How it works</a>
+            <a href="#private" className="text-[13.5px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Privacy</a>
+            <a href="#faq" className="text-[13.5px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Questions</a>
+          </nav>
+          {/* Live count + theme toggle — desktop; mobile gets the live count
+              in the hero below and keeps the theme switch in the header. */}
+          <div className="ml-auto flex items-center gap-1.5">
+            <LiveUsers className="hidden lg:inline-flex" />
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
@@ -213,7 +226,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
         <ScrollStory />
 
         {/* ============ HOW IT WORKS — three plain steps, everyone understands ============ */}
-        <HowItWorks />
+        <section id="how-it-works" aria-label="How it works"><HowItWorks /></section>
 
         {/* ============ WHY SHARETEXT — told through situations, not features ============ */}
         <Situations />
@@ -222,10 +235,10 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
         <InsteadOf />
 
         {/* ============ PRIVATE BY DESIGN — the trust wedge + the 2-6-0-0-0 strip ============ */}
-        <PrivacyPromise />
+        <section id="private" aria-label="Privacy"><PrivacyPromise /></section>
 
         {/* ============ QUESTIONS PEOPLE ACTUALLY ASK ============ */}
-        <Faq />
+        <section id="faq" aria-label="Questions"><Faq /></section>
       </Suspense>
 
       {/* ============ ENDING ============ */}

@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Class-based dark mode: `dark:` matches a `.dark` class on <html> instead of
+   the system media query, so a manual toggle (and its persistence) can drive
+   the theme. The class is applied by the inline script in index.html before
+   first paint, so there is no flash of the wrong theme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* System-first: SF Pro on Apple, Segoe on Windows, Roboto/Helvetica elsewhere.
      Explicit SF names let macOS pick the optical variant before falling back. */
@@ -91,12 +97,14 @@
     letter-spacing: -0.022em;
   }
   
-  /* Dark mode follows the system preference (matches Tailwind's `dark:` variant).
-     Without this, the page chrome behind the app stays white in dark mode. */
-  @media (prefers-color-scheme: dark) {
-    body {
-      @apply bg-night-950 text-white;
-    }
+  /* Dark canvas: driven by the `.dark` class (set by the theme toggle or the
+     system preference at boot). Without this, the page chrome behind the app
+     stays white in dark mode. */
+  html.dark body {
+    @apply bg-night-950 text-white;
+  }
+  html:not(.dark) body {
+    @apply bg-apple-canvas text-apple-ink;
   }
   
   h1, h2, h3, h4, h5, h6 {

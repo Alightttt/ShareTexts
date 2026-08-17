@@ -57,7 +57,7 @@ for (const [w, h, label] of viewports) {
   await sleep(300);
   r = await A.evaluate(() => {
     const bubble = [...document.querySelectorAll('div')].find(d =>
-      d.className && typeof d.className === 'string' && d.className.includes('from-azure-500'));
+      d.className && typeof d.className === 'string' && d.className.includes('bg-azure-600') && d.className.includes('rounded'));
     const bubbleText = bubble ? getComputedStyle(bubble).color : null;
     return {
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,

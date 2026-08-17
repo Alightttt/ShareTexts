@@ -6,6 +6,7 @@ import { Copy, QrCode, Check, Share2, ChevronDown, ChevronLeft, Pencil, Check as
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, shortCodeOf, formatBytes } from '../lib/utils';
 import { ShareTextLogo } from '../components/ShareTextLogo';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { ConnectingVisual } from '../components/ConnectingVisual';
 import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
 import { pushEndpoint } from '../lib/socket';
@@ -141,6 +142,9 @@ export function RoomHub() {
           <ShareTextLogo size={24} className="text-apple-ink dark:text-white" />
           <span className="text-[14px] font-semibold tracking-tight text-apple-ink dark:text-white">ShareText</span>
         </div>
+        <div className="ml-auto">
+          <ThemeToggle />
+        </div>
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-8 sm:py-10 w-full">
@@ -192,36 +196,6 @@ export function RoomHub() {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
-
-        {/* Device name */}
-        <div className="flex items-center gap-2 mt-2 mb-8">
-          {editingName ? (
-            <div className="flex items-center gap-2">
-              <input
-                autoFocus
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') commitName(); if (e.key === 'Escape') setEditingName(false); }}
-                className="px-3 py-1.5 text-[14px] font-medium text-apple-ink dark:text-white bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 rounded-[10px] outline-none focus:ring-2 focus:ring-apple-blue/40 w-[160px]"
-                maxLength={40}
-              />
-              <button onPointerDown={commitName} className="p-2 text-apple-blue active:scale-90 transition-transform" aria-label="Save device name">
-                <CheckIcon className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onPointerDown={() => { setNameDraft(session.deviceName); setEditingName(true); }}
-              className="flex items-center gap-1.5 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors active:scale-95 px-2 py-2 -my-1 -mx-2 min-h-[44px]"
-              title="Edit device name"
-            >
-              <span className="w-6 h-6 rounded-full bg-apple-parchment dark:bg-apple-tile-2 flex items-center justify-center">
-                <Pencil className="w-3 h-3" />
-              </span>
-              {session.deviceName}
-            </button>
-          )}
         </div>
 
         <button
@@ -287,7 +261,38 @@ export function RoomHub() {
           </button>
         </div>
 
-        <p className="text-[13px] text-apple-ink-muted mt-6">
+        {/* Device name — a quiet detail below the actions, not a competing
+            control. Lets the other device recognize this one at a glance. */}
+        <div className="flex items-center gap-2 mt-6">
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <input
+                autoFocus
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') commitName(); if (e.key === 'Escape') setEditingName(false); }}
+                className="px-3 py-1.5 text-[14px] font-medium text-apple-ink dark:text-white bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 rounded-[10px] outline-none focus:ring-2 focus:ring-apple-blue/40 w-[160px]"
+                maxLength={40}
+              />
+              <button onPointerDown={commitName} className="p-2 text-apple-blue active:scale-90 transition-transform" aria-label="Save device name">
+                <CheckIcon className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onPointerDown={() => { setNameDraft(session.deviceName); setEditingName(true); }}
+              className="flex items-center gap-1.5 text-[13px] font-medium text-apple-ink-muted/90 hover:text-apple-ink dark:hover:text-white transition-colors active:scale-95 px-2 py-2 -my-1 -mx-2 min-h-[44px]"
+              title="Edit device name"
+            >
+              <span className="w-6 h-6 rounded-full bg-apple-parchment dark:bg-apple-tile-2 flex items-center justify-center">
+                <Pencil className="w-3 h-3" />
+              </span>
+              {session.deviceName}
+            </button>
+          )}
+        </div>
+
+        <p className="text-[13px] text-apple-ink-muted mt-2">
           This room stays open for hours — you can rejoin anytime.
         </p>
 

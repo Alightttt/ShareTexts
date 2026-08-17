@@ -8,6 +8,7 @@ import {
 import { cn, formatBytes } from '../lib/utils';
 import { ChatMessage, Attachment } from '../types';
 import { ShareTextLogo } from '../components/ShareTextLogo';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
 import { saveDraft, loadDraft, clearDraft, ComposerDraft } from '../lib/draftStore';
 
@@ -111,20 +112,40 @@ export function ChatView() {
   // Keyboard-safe height: when the on-screen keyboard opens, the visual
   // viewport shrinks while 100dvh doesn't. Track it so the composer stays
   // pinned above the keyboard (the primary mobile input surface).
+  //
+  // The visible area is `vv.height - vv.offsetTop` — offsetTop is the space
+  // ABOVE the visual viewport (e.g. collapsed browser chrome), and counting
+  // it in the container height is what produced the "huge gap" between the
+  // composer and the keyboard on some devices. Focus/blur are also tracked:
+  // Android fires a resize when the keyboard opens but can fire blur before
+  // the viewport restores, leaving a stale shrunken height behind.
   const [visualHeight, setVisualHeight] = useState<number | null>(null);
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
+    // Baseline: the tallest visual viewport we've seen is the keyboard-closed
+    // height. Detecting "shrunk" against a running max (not innerHeight) is
+    // robust on Android, where innerHeight also shrinks with the keyboard.
+    let maxHeight = vv.height;
     const update = () => {
-      const shrank = vv.height < window.innerHeight - 120; // keyboard open
-      setVisualHeight(shrank ? vv.height : null);
+      maxHeight = Math.max(maxHeight, vv.height);
+      const shrank = vv.height < maxHeight - 120; // keyboard open
+      setVisualHeight(shrank ? Math.max(0, vv.height - vv.offsetTop) : null);
     };
     update();
     vv.addEventListener('resize', update);
     vv.addEventListener('scroll', update);
+    // Android can fire blur before the viewport restores — re-measure shortly
+    // after focus/blur so a stale shrunken height never leaves a dead gap.
+    const onFocus = () => setTimeout(update, 120);
+    const onBlur = () => setTimeout(update, 120);
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('blur', onBlur);
     return () => {
       vv.removeEventListener('resize', update);
       vv.removeEventListener('scroll', update);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('blur', onBlur);
     };
   }, []);
 
@@ -361,7 +382,7 @@ export function ChatView() {
         <button
           onPointerDown={() => setShowConnectionDetails(!showConnectionDetails)}
           aria-expanded={showConnectionDetails}
-          className="flex items-center gap-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue rounded-[10px] min-h-[40px] max-w-[62vw] sm:max-w-none"
+          className="flex items-center gap-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue rounded-[10px] min-h-[40px] min-w-0 max-w-[50vw] sm:max-w-none"
         >
           <ShareTextLogo size={24} className="text-apple-ink dark:text-white shrink-0" />
           <span className="flex items-center gap-2 min-w-0">
@@ -387,6 +408,7 @@ export function ChatView() {
         </button>
 
         <div className="flex items-center gap-2 shrink-0">
+          <ThemeToggle />
           <button
             onPointerDown={() => setShowConnectionDetails(!showConnectionDetails)}
             title="Connection & encryption details"
@@ -397,9 +419,12 @@ export function ChatView() {
           </button>
           <button
             onPointerDown={() => setConfirmClose(true)}
-            className="px-4 py-2 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-apple-tile-3/50 rounded-[10px] transition-colors active:scale-95 min-h-[44px] flex items-center"
+            aria-label="End session"
+            title="End session"
+            className="flex items-center justify-center w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 rounded-full sm:rounded-[10px] text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-apple-tile-3/50 transition-colors active:scale-95 min-h-[44px] shrink-0"
           >
-            End session
+            <X className="w-4.5 h-4.5 sm:hidden w-[18px] h-[18px]" />
+            <span className="hidden sm:inline text-[14px] font-medium">End session</span>
           </button>
         </div>
 
@@ -794,8 +819,24 @@ const timeOf = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-di
  * Delivery state for MY messages — a true receipt, never guessed:
  *   Sent      — the packet left this device
  *   Delivered — the OTHER device confirmed arrival (encrypted ack)
+ *   Seen      — the OTHER device's room is open with it on screen (read ack)
  */
-function DeliveryTick({ delivered, onBlue }: { delivered?: boolean; onBlue: boolean }) {
+function DeliveryTick({ delivered, seen, onBlue }: { delivered?: boolean; seen?: boolean; onBlue: boolean }) {
+  if (seen) {
+    return (
+      <span className={cn("flex items-center gap-1", onBlue ? "text-white/90" : "text-azure-600 dark:text-azure-400")}>
+        <motion.span
+          initial={{ scale: 0.4, opacity: 0, rotate: -12 }}
+          animate={{ scale: 1, opacity: 1, rotate: 0 }}
+          transition={{ type: 'spring', bounce: 0.55, duration: 0.45 }}
+          className="flex"
+        >
+          <CheckCheck className="w-3.5 h-3.5" />
+        </motion.span>
+        <span className="font-semibold">Seen</span>
+      </span>
+    );
+  }
   if (delivered) {
     return (
       <span className={cn("flex items-center gap-1", onBlue ? "text-white/80" : "text-status-success")}>
@@ -940,7 +981,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
               <>
                 <span className={cn("text-[11.5px] font-medium flex items-center gap-1", isMe ? "text-white/75" : "text-apple-ink-muted")}>
                   {isMe ? (
-                    <DeliveryTick delivered={msg.delivered} onBlue />
+                    <DeliveryTick delivered={msg.delivered} seen={msg.seen} onBlue />
                   ) : msg.source === 'push' ? (
                     <span className="font-semibold flex items-center gap-1">
                       <Terminal className="w-3 h-3" /> From your push link
@@ -1076,7 +1117,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
             <div className="flex flex-col min-w-0">
               {a.status === 'complete' ? (
                 <span className={cn("text-[11.5px] font-medium flex items-center gap-1", isMe ? "text-white/75" : "text-apple-ink-muted")}>
-                  {isMe ? <DeliveryTick delivered={msg.delivered} onBlue /> : msg.source === 'push' ? (
+                  {isMe ? <DeliveryTick delivered={msg.delivered} seen={msg.seen} onBlue /> : msg.source === 'push' ? (
                     <span className="font-semibold flex items-center gap-1"><Terminal className="w-3 h-3" /> From your push link</span>
                   ) : <span className="font-semibold">Received</span>}
                   {' • '}{formatBytes(a.size)}{' • '}{timeOf(msg.timestamp)}

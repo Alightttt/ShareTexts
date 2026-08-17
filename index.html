@@ -106,6 +106,20 @@
       ]
     }
     </script>
+    <!-- Apply the saved theme before first paint (no flash): default to the
+         system preference; a manual choice in localStorage wins. The same
+         logic lives in src/lib/theme.ts for runtime changes. -->
+    <script>
+      (function () {
+        try {
+          var v = localStorage.getItem('sharetext.theme');
+          var dark = v === 'dark' || (v !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.classList.toggle('dark', dark);
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.content = dark ? '#060a13' : '#ffffff';
+        } catch (e) { /* storage unavailable — system default applies */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

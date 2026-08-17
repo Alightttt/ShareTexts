@@ -30,6 +30,10 @@ export interface ChatMessage {
   /** True only after the OTHER device confirms (via encrypted receipt) that
    *  this message actually arrived. Set by the sender; never guessed. */
   delivered?: boolean;
+  /** True only after the OTHER device confirms its room is open with this
+   *  message on screen (a 'seen' receipt — the message was actually looked
+   *  at, not just stored). Set by the sender; never guessed. */
+  seen?: boolean;
 }
 
 export interface SessionState {

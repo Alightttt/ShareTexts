@@ -5,6 +5,7 @@ import { ChevronLeft, Loader2, QrCode, Keyboard } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { ShareTextLogo } from '../components/ShareTextLogo';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 // html5-qrcode is heavy — load it only when the user opens the scanner.
 const QRScanner = lazy(() => import('../components/QRScanner').then(m => ({ default: m.QRScanner })));
@@ -116,9 +117,12 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
         </button>
       </div>
 
-      <div className="absolute top-6 right-6 hidden sm:flex items-center gap-2">
-        <ShareTextLogo size={24} className="text-apple-ink dark:text-white" />
-        <span className="text-[14px] font-semibold tracking-tight text-apple-ink dark:text-white">ShareText</span>
+      <div className="absolute top-5 right-5 flex items-center gap-1">
+        <div className="hidden sm:flex items-center gap-2 mr-1">
+          <ShareTextLogo size={24} className="text-apple-ink dark:text-white" />
+          <span className="text-[14px] font-semibold tracking-tight text-apple-ink dark:text-white">ShareText</span>
+        </div>
+        <ThemeToggle />
       </div>
 
       <div className="w-full max-w-sm mx-auto flex flex-col items-center mt-24 sm:mt-4">

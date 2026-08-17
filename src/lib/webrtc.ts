@@ -196,6 +196,9 @@ export class PeerManager {
   public onOpen: (() => void) | null = null;
   /** A chat message we sent was confirmed received by the peer (true ack). */
   public onReceipt: ((messageId: string) => void) | null = null;
+  /** A chat message we sent was SEEN by the peer — their room is open with
+   *  it on screen (true read receipt, distinct from mere arrival). */
+  public onSeen: ((messageId: string) => void) | null = null;
 
   private isRelayFallback = false;
   private iceCandidatesQueue: RTCIceCandidateInit[] = [];
@@ -540,6 +543,11 @@ export class PeerManager {
                   if (this.onReceipt) this.onReceipt(inner.messageId);
                   return;
                 }
+                if (inner && inner.type === 'seen' && typeof inner.messageId === 'string') {
+                  // A peer confirmed one of our messages is on their screen.
+                  if (this.onSeen) this.onSeen(inner.messageId);
+                  return;
+                }
                 if (this.onMessage) this.onMessage(decrypted);
               } catch (e) {
                 console.error("Failed to decrypt text");
@@ -783,6 +791,15 @@ export class PeerManager {
    */
   public sendReceipt(messageId: string) {
     void this.sendControl({ type: 'receipt', messageId });
+  }
+
+  /**
+   * Tell the peer that one of their messages is ON SCREEN on this device
+   * (the room is open and the message is rendered). A true read receipt —
+   * sent only when the ChatView is actually mounted, never pre-emptively.
+   */
+  public sendSeen(messageId: string) {
+    void this.sendControl({ type: 'seen', messageId });
   }
 
   /**

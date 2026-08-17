@@ -426,8 +426,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       for (const m of messagesRef.current) {
         if (m.sender === 'partner' && (m.attachment?.status === 'complete' || !m.attachment)) {
           pm.sendReceipt(m.id);
+          // The room is open on this device right now, so every restored
+          // message is genuinely ON SCREEN — confirm seen too.
+          pm.sendSeen(m.id);
         }
       }
+    };
+
+    // The peer confirmed one of our messages is on their screen.
+    pm.onSeen = (messageId) => {
+      setSession(s => ({
+        ...s,
+        messages: s.messages.map(m => m.id === messageId ? { ...m, seen: true } : m)
+      }));
     };
 
     pm.onHello = (name) => {
@@ -458,6 +469,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             // Text arrived — confirm receipt immediately so the sender can
             // show a true "Delivered" (not a guessed one).
             pm.sendReceipt(parsed.id);
+            // The room is open on this device (that's how the message got
+            // here), so once the bubble has rendered it's genuinely seen.
+            // The short delay keeps the receipt honest: we only claim seen
+            // after the message is actually on screen, not the instant it
+            // lands in state.
+            setTimeout(() => pm.sendSeen(parsed.id), 450);
           }
           return;
         }
@@ -519,7 +536,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // The whole file arrived — only now confirm receipt (metadata alone
       // would be a lie if the transfer later failed).
       const msg = messagesRef.current.find(m => m.attachment?.id === transferId);
-      if (msg && msg.sender === 'partner') pm.sendReceipt(msg.id);
+      if (msg && msg.sender === 'partner') {
+        pm.sendReceipt(msg.id);
+        // The completed file card is on screen in the open room — confirm
+        // seen too (same honesty rule as text: only after it's rendered).
+        setTimeout(() => pm.sendSeen(msg.id), 450);
+      }
     };
 
     // The peer confirmed one of our messages arrived.
