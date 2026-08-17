@@ -44,13 +44,19 @@ async function renderAd({ name, width, height, dpr }) {
   await page.goto(URL, { waitUntil: 'networkidle' });
   await page.locator('text=Move anything between your devices').first().waitFor({ timeout: 15000 });
 
-  // The interactive demo starts ready with a photo sample in the composer —
-  // one click on its send button gives a deterministic ready → sending →
-  // received timeline for the capture.
+  // The demo now runs on its own, so click its send button the moment the
+  // composer is in the ready phase — a deterministic ready → sending →
+  // received timeline for the capture (the auto-run yields to the click).
   await page.evaluate(() => window.scrollTo(0, 0));
   const demo = page.locator('[data-step]').first();
   await demo.waitFor({ timeout: 15000 });
-  await sleep(800);
+  for (let i = 0; i < 60; i++) {
+    const ready = await page.evaluate(() => document.querySelector('[data-step]')?.getAttribute('data-step') === 'ready'
+      && !!document.querySelector('button[aria-label="Send demo"]'));
+    if (ready) break;
+    await sleep(100);
+  }
+  await sleep(150);
   await page.evaluate(() => {
     const btn = document.querySelector('button[aria-label="Send demo"]');
     btn?.click();

@@ -2,26 +2,33 @@ import { launchBrowser, URL, sleep } from './lib.mjs';
 
 // Verify the interactive hero's full state story: type a message → click send
 // → Sending…/Receiving… with progress bar → Sent ✓ on the phone, the exact
-// text received on the laptop. No auto-loop — everything is user-driven.
+// text received on the laptop. The demo also runs on its own, so the probe
+// waits for the composer (visible in the ready phase) before typing.
 const b = await launchBrowser();
 try {
   const page = await b.newPage({ viewport: { width: 1280, height: 900 } });
   await page.goto(URL, { waitUntil: 'networkidle' });
   await page.locator('text=Move anything between your devices').first().waitFor({ timeout: 15000 });
 
-  // The demo starts ready with a photo sample pre-attached. Clear it and type
-  // a real message instead, to prove the typed text travels. (React tracks
-  // the input value via its own setter, so drive it through the prototype
-  // setter + input event — the same thing real keystrokes produce.)
+  // Wait until the composer is on screen (the auto-run hides it during flight).
+  let composerUp = false;
+  for (let i = 0; i < 80; i++) {
+    composerUp = await page.evaluate(() => !!document.querySelector('textarea[aria-label="Demo message"]'));
+    if (composerUp) break;
+    await sleep(100);
+  }
+  if (!composerUp) throw new Error('composer never appeared');
+
+  // Remove the pre-attached photo sample so the TEXT is what travels.
+  await page.evaluate(() => document.querySelector('button[aria-label="Remove attachment"]')?.click());
+  await sleep(200);
+  // Type a real message (React tracks the value via its prototype setter).
   await page.evaluate(() => {
     const ta = document.querySelector('textarea[aria-label="Demo message"]');
     const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
     setter.call(ta, 'hello from the demo ✨');
     ta.dispatchEvent(new Event('input', { bubbles: true }));
   });
-  await sleep(200);
-  // Remove the pre-attached photo sample so the TEXT is what travels.
-  await page.evaluate(() => document.querySelector('button[aria-label="Remove attachment"]')?.click());
   await sleep(200);
 
   await page.evaluate(() => {
@@ -56,7 +63,6 @@ try {
   console.log(JSON.stringify({ sending, received }, null, 2));
   const ok = sending.phone && sending.recv && sending.progressBar && received.sent && received.got
     && received.landedText === 'hello from the demo ✨' && received.laptopShowsText;
-  console.log('expected landedText: hello from the demo ✨');
   console.log(ok ? 'HERO_STORY_OK' : 'HERO_STORY_FAIL');
 } finally {
   await b.close();

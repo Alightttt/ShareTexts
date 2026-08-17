@@ -19,10 +19,10 @@ function useReducedMotion() {
 }
 
 /**
- * The transferable objects — the same four everyday things the real app moves:
- * text, a photo, a link, a file. The visitor creates one in the phone's
- * composer (type it or tap a sample) and sends it; the SAME object travels
- * across the beam and lands on the laptop — continuity, not a mockup.
+ * The transferable objects — text, a photo, a link, a file. The hero runs its
+ * own transfer story on a loop (photo → link → file → photo), and the visitor
+ * can jump in at any moment: type, paste, or tap a sample and send — the loop
+ * yields to the visitor's transfer, then resumes from where it left off.
  */
 type Kind = 'text' | 'photo' | 'link' | 'file';
 interface TransferObject {
@@ -37,10 +37,20 @@ const SAMPLES: { key: Exclude<Kind, 'text'>; label: string; Icon: typeof ImageIc
   { key: 'link', label: 'Link', Icon: Link2, object: { kind: 'link', text: 'example.com/a/very-long-link' } },
   { key: 'file', label: 'File', Icon: FileArchive, object: { kind: 'file', name: 'project.zip', size: '184 MB' } },
 ];
+const SCENE_ORDER: Kind[] = ['photo', 'link', 'file'];
+const nextScene = (k: Kind) => SCENE_ORDER[(SCENE_ORDER.indexOf(k) + 1) % SCENE_ORDER.length];
+const sampleOf = (k: Kind) => SAMPLES.find(s => s.key === k)!.object;
 
-type Step = 'ready' | 'sending' | 'received';
+type Step = 'ready' | 'sending' | 'received' | 'composing';
 
-const FLIGHT_MS = 1200;
+// One motion language: a short lift, a 1.15s travel, a spring landing, and a
+// quiet compose-in. The visitor's transfers use the same arc as the auto-run.
+const PRE_LAUNCH_MS = 260;
+const FLIGHT_MS = 1150;
+const HOLD_MS = 2900;    // how long the received object stays on the laptop
+const COMPOSE_MS = 850;  // the next object composing into the phone
+const READY_MS = 2600;   // how long the auto-run waits before sending
+const TAKEOVER_MS = 6000; // if the visitor interacts but doesn't send, the demo resumes
 
 /** Tiny per-device connection chip — the only status text in the demo. */
 function DeviceStatus({ state }: { state: 'connected' | 'sending' | 'sent' | 'receiving' | 'received' }) {
@@ -71,8 +81,7 @@ function RoomHeader({ status, label }: { status: 'connected' | 'sending' | 'sent
   );
 }
 
-/* ---------- The four object cards — shared by the phone stream, the flight,
-   and the laptop's landed state so the SAME object visibly travels. ---------- */
+/* ---------- The four object cards — the SAME object visibly travels. ---------- */
 
 function TextCard({ obj, className }: { obj: TransferObject; className?: string }) {
   return (
@@ -143,14 +152,28 @@ export function HeroDemo() {
   const [beam, setBeam] = useState<{ left: number; width: number; top: number; vertical: boolean; height?: number }>({ left: 0, width: 0, top: 0, vertical: false });
   const [nodePos, setNodePos] = useState({ x: 0, y: 0 });
 
-  // The interactive state — a real composer, real samples, real transfers.
+  // Interactive state — a real composer. `attach` holds the object staged in
+  // the composer (the auto-run sets it to each scene's sample; the visitor
+  // can replace it with a sample or type text).
   const [draft, setDraft] = useState('');
   const [attach, setAttach] = useState<TransferObject | null>(SAMPLES[0].object);
   const [pending, setPending] = useState<TransferObject | null>(null);
   const [landed, setLanded] = useState<TransferObject | null>(null);
   const [stream, setStream] = useState<TransferObject[]>([]);
   const [step, setStep] = useState<Step>('ready');
-  const flightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // The auto-run's timers + takeover bookkeeping. A visitor's send clears the
+  // pending timers (interrupt), plays their transfer, then re-arms the loop
+  // so it resumes from the scene that would have come next.
+  const loopTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const clearLoop = useCallback(() => {
+    loopTimers.current.forEach(clearTimeout);
+    loopTimers.current = [];
+  }, []);
+  const sceneRef = useRef<Kind>('photo');
+  const userTouched = useRef(false);
+  const userTouchedAt = useRef(0);
+  const [autoArmed, setAutoArmed] = useState(false);
 
   const measure = useCallback(() => {
     const container = containerRef.current;
@@ -196,33 +219,98 @@ export function HeroDemo() {
     return () => { window.removeEventListener('resize', measure); clearTimeout(t); };
   }, [measure]);
 
-  // Re-measure when the composer grows/shrinks (attachment appears/removes).
   useEffect(() => { measure(); }, [attach, measure]);
+  useEffect(() => () => clearLoop(), [clearLoop]);
 
-  useEffect(() => () => { if (flightTimer.current) clearTimeout(flightTimer.current); }, []);
+  // playRef breaks the scheduleAuto <-> playObject cycle.
+  const playRef = useRef<(obj: TransferObject, fromUser: boolean) => void>(() => {});
+  const scheduleRef = useRef<() => void>(() => {});
 
-  const send = useCallback(() => {
-    if (step === 'sending') return;
-    const obj: TransferObject = attach ?? { kind: 'text', text: draft.trim() };
-    if (obj.kind === 'text' && !obj.text) return;
+  /** Play one transfer. fromUser interrupts the auto-run; on completion the
+      auto-run resumes from the next scene. */
+  const playObject = useCallback((obj: TransferObject, fromUser: boolean) => {
+    clearLoop();
     setDraft('');
     setAttach(null);
     setPending(obj);
     setStep('sending');
-    if (reduced) {
+    const finish = () => {
       setLanded(obj);
       setStream(s => [...s.slice(-2), obj]);
       setStep('received');
+      if (fromUser) {
+        // Resume the auto-run from where it would have gone next.
+        sceneRef.current = nextScene(sceneRef.current);
+        loopTimers.current.push(setTimeout(() => {
+          setStep('composing');
+          loopTimers.current.push(setTimeout(() => scheduleRef.current(), COMPOSE_MS));
+        }, HOLD_MS));
+      }
+    };
+    if (reduced) { finish(); return; }
+    measure();
+    loopTimers.current.push(setTimeout(finish, FLIGHT_MS));
+  }, [reduced, measure, clearLoop]);
+
+  /** The auto-run: stage the current scene's sample, wait, send it (unless
+      the visitor took over the composer), hold, compose the next, repeat. */
+  const scheduleAuto = useCallback(() => {
+    clearLoop();
+    const scene = sceneRef.current;
+    setAttach(sampleOf(scene));
+    setDraft('');
+    setStep('ready');
+    userTouched.current = false;
+    userTouchedAt.current = 0;
+    setAutoArmed(true);
+
+    loopTimers.current.push(setTimeout(() => {
+      const trySend = () => {
+        if (userTouched.current) {
+          if (Date.now() - userTouchedAt.current > TAKEOVER_MS) {
+            // The visitor started typing/selecting but didn't send — reset
+            // this scene's ready phase and let the demo keep living.
+            scheduleRef.current();
+            return;
+          }
+          loopTimers.current.push(setTimeout(trySend, 400));
+          return;
+        }
+        playRef.current(sampleOf(scene), false);
+        sceneRef.current = nextScene(scene);
+        loopTimers.current.push(setTimeout(() => {
+          setStep('composing');
+          loopTimers.current.push(setTimeout(() => scheduleRef.current(), COMPOSE_MS));
+        }, HOLD_MS));
+      };
+      trySend();
+    }, READY_MS));
+  }, [clearLoop]);
+
+  playRef.current = playObject;
+  scheduleRef.current = scheduleAuto;
+
+  useEffect(() => {
+    if (reduced) {
+      setAutoArmed(false);
       return;
     }
-    measure();
-    if (flightTimer.current) clearTimeout(flightTimer.current);
-    flightTimer.current = setTimeout(() => {
-      setLanded(obj);
-      setStream(s => [...s.slice(-2), obj]);
-      setStep('received');
-    }, FLIGHT_MS);
-  }, [step, attach, draft, reduced, measure]);
+    const t = setTimeout(() => scheduleRef.current(), 900);
+    return () => clearTimeout(t);
+  }, [reduced]);
+
+  const send = () => {
+    if (step === 'sending') return;
+    const obj: TransferObject = attach ?? { kind: 'text', text: draft.trim() };
+    if (obj.kind === 'text' && !obj.text) return;
+    userTouched.current = false;
+    playRef.current(obj, true);
+  };
+
+  const touch = () => {
+    if (!userTouched.current) userTouchedAt.current = Date.now();
+    userTouched.current = true;
+  };
 
   const canSend = (draft.trim().length > 0 || attach != null) && step !== 'sending';
 
@@ -233,6 +321,7 @@ export function HeroDemo() {
     isSending ? 'sending' : (stream.length > 0 || reduced) ? 'sent' : 'connected';
   const laptopStatus: 'connected' | 'receiving' | 'received' =
     isSending ? 'receiving' : landed ? 'received' : 'connected';
+  const composerVisible = step === 'ready' || step === 'composing';
 
   return (
     <div
@@ -241,6 +330,7 @@ export function HeroDemo() {
       data-pending-kind={pending?.kind ?? ''}
       data-landed-kind={landed?.kind ?? ''}
       data-landed-text={landed?.text ?? ''}
+      data-auto={autoArmed ? 'on' : 'off'}
       className="relative w-full max-w-[920px] mx-auto select-none min-h-[540px] sm:min-h-[480px] lg:min-h-[520px]"
       aria-hidden
     >
@@ -270,12 +360,12 @@ export function HeroDemo() {
       </div>
 
       <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-10 sm:gap-0 px-2 sm:px-6 relative">
-        {/* ================= PHONE — the sender. A real composer. ================= */}
+        {/* ================= PHONE — the sender. ================= */}
         <div data-device="phone" className="flex flex-col items-center">
           <PhoneFrame className="w-[136px] sm:w-[182px] lg:w-[196px]">
             <div ref={phoneScreenRef} className="w-full h-full flex flex-col">
               <RoomHeader status={phoneStatus} label="Your phone" />
-              {/* Sent stream — what this device has sent. */}
+              {/* Sent stream */}
               <div className="flex-1 flex flex-col justify-end gap-[5px] px-[7px] sm:px-2.5 pb-1.5 overflow-hidden">
                 <AnimatePresence initial={false}>
                   {stream.map((obj, i) => (
@@ -305,80 +395,101 @@ export function HeroDemo() {
                 </AnimatePresence>
               </div>
 
-              {/* Composer — type, paste, or tap a sample, then send. */}
+              {/* Composer — visible in ready/composing; the object launches
+                  from here, so the flight is always cause→effect. */}
               <div ref={composerRef} className="shrink-0 px-[7px] sm:px-2.5 pb-[10px] sm:pb-3 pt-1.5">
-                <div className="bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 rounded-[12px] sm:rounded-[14px] shadow-card p-[6px] sm:p-2 flex flex-col gap-1.5">
-                  {attach && (
+                <AnimatePresence mode="wait">
+                  {composerVisible ? (
                     <motion.div
-                      key={`attach-${attach.kind}`}
-                      initial={reduced ? { opacity: 1 } : { opacity: 0, y: 6, scale: 0.97 }}
+                      key={`composer-${step}`}
+                      initial={reduced ? { opacity: 1 } : { opacity: 0, y: 8, scale: 0.97 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={reduced ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98 }}
                       transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
-                      className="relative rounded-[9px] bg-apple-parchment dark:bg-white/[0.06] p-1 pr-6"
+                      className="bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 rounded-[12px] sm:rounded-[14px] shadow-card p-[6px] sm:p-2 flex flex-col gap-1.5"
                     >
-                      <ObjectCard obj={attach} className="w-[58px] sm:w-[78px]" />
-                      <button
-                        type="button"
-                        onClick={() => setAttach(null)}
-                        aria-label="Remove attachment"
-                        tabIndex={-1}
-                        className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-apple-ink/80 dark:bg-white/80 text-white dark:text-night-900 flex items-center justify-center shadow-sm active:scale-90 transition-transform"
-                      >
-                        <X className="w-2.5 h-2.5" strokeWidth={3} />
-                      </button>
-                    </motion.div>
-                  )}
-                  <textarea
-                    rows={1}
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
-                    }}
-                    placeholder={attach ? 'Add a note…' : 'Type or paste anything…'}
-                    aria-label="Demo message"
-                    className="bg-transparent resize-none outline-none w-full text-[7px] sm:text-[8.5px] leading-snug text-apple-ink dark:text-white placeholder:text-apple-ink-muted/50 max-h-[34px]"
-                  />
-                  <div className="flex items-center justify-between gap-1">
-                    <div className="flex items-center gap-1">
-                      {SAMPLES.map(({ key, label, Icon, object }) => (
+                      {attach && (
+                        <motion.div
+                          key={`attach-${attach.kind}`}
+                          initial={reduced ? { opacity: 1 } : { opacity: 0, y: 6, scale: 0.97 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+                          className="relative rounded-[9px] bg-apple-parchment dark:bg-white/[0.06] p-1 pr-6"
+                        >
+                          <ObjectCard obj={attach} className="w-[58px] sm:w-[78px]" />
+                          <button
+                            type="button"
+                            onClick={() => setAttach(null)}
+                            aria-label="Remove attachment"
+                            tabIndex={-1}
+                            className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-apple-ink/80 dark:bg-white/80 text-white dark:text-night-900 flex items-center justify-center shadow-sm active:scale-90 transition-transform"
+                          >
+                            <X className="w-2.5 h-2.5" strokeWidth={3} />
+                          </button>
+                        </motion.div>
+                      )}
+                      <textarea
+                        rows={1}
+                        value={draft}
+                        onChange={(e) => { setDraft(e.target.value); touch(); }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+                        }}
+                        placeholder={attach ? 'Add a note…' : 'Type or paste anything…'}
+                        aria-label="Demo message"
+                        className="bg-transparent resize-none outline-none w-full text-[7px] sm:text-[8.5px] leading-snug text-apple-ink dark:text-white placeholder:text-apple-ink-muted/50 max-h-[34px]"
+                      />
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-1">
+                          {SAMPLES.map(({ key, label, Icon, object }) => (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => { setAttach(object); touch(); }}
+                              aria-pressed={attach?.kind === key}
+                              tabIndex={-1}
+                              className={cn(
+                                'flex items-center gap-0.5 px-1.5 py-[3px] rounded-full text-[6px] sm:text-[6.5px] font-medium transition-colors',
+                                attach?.kind === key
+                                  ? 'bg-apple-blue/12 text-apple-blue'
+                                  : 'bg-apple-parchment dark:bg-white/[0.06] text-apple-ink-muted hover:text-apple-ink dark:hover:text-white'
+                              )}
+                            >
+                              <Icon className="w-2 h-2 sm:w-2.5 sm:h-2.5" />
+                              {label}
+                            </button>
+                          ))}
+                        </div>
                         <button
-                          key={key}
                           type="button"
-                          onClick={() => setAttach(object)}
-                          aria-pressed={attach?.kind === key}
-                          tabIndex={-1}
+                          onClick={send}
+                          disabled={!canSend}
+                          aria-label="Send demo"
                           className={cn(
-                            'flex items-center gap-0.5 px-1.5 py-[3px] rounded-full text-[6px] sm:text-[6.5px] font-medium transition-colors',
-                            attach?.kind === key
-                              ? 'bg-apple-blue/12 text-apple-blue'
-                              : 'bg-apple-parchment dark:bg-white/[0.06] text-apple-ink-muted hover:text-apple-ink dark:hover:text-white'
+                            'w-[22px] h-[22px] sm:w-[24px] sm:h-[24px] rounded-full flex items-center justify-center transition-all active:scale-90',
+                            canSend
+                              ? 'bg-apple-blue text-white shadow-[0_2px_6px_rgba(0,102,204,0.45)]'
+                              : 'bg-apple-ink/10 dark:bg-white/10 text-apple-ink-muted/60 cursor-default'
                           )}
                         >
-                          <Icon className="w-2 h-2 sm:w-2.5 sm:h-2.5" />
-                          {label}
+                          <Send className="w-[9px] h-[9px]" strokeWidth={3} />
                         </button>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={send}
-                      disabled={!canSend}
-                      aria-label="Send demo"
-                      className={cn(
-                        'w-[22px] h-[22px] sm:w-[24px] sm:h-[24px] rounded-full flex items-center justify-center transition-all active:scale-90',
-                        canSend
-                          ? 'bg-apple-blue text-white shadow-[0_2px_6px_rgba(0,102,204,0.45)]'
-                          : 'bg-apple-ink/10 dark:bg-white/10 text-apple-ink-muted/60 cursor-default'
-                      )}
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="composer-empty"
+                      initial={reduced ? { opacity: 1 } : { opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 rounded-[12px] sm:rounded-[14px] shadow-card px-2.5 py-2 flex items-center justify-between"
                     >
-                      <Send className="w-[9px] h-[9px]" strokeWidth={3} />
-                    </button>
-                  </div>
-                </div>
-                <div className="mt-1.5 text-center text-[5.5px] sm:text-[6.5px] text-apple-ink-muted/60 font-medium">
-                  Enter to send · Shift+Enter for a new line
-                </div>
+                      <span className="text-[6px] sm:text-[7px] text-apple-ink-muted/70 font-medium">Sending…</span>
+                      <Send className="w-[8px] h-[8px] text-apple-blue/50" strokeWidth={3} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           </PhoneFrame>
@@ -470,8 +581,8 @@ export function HeroDemo() {
         </div>
       </div>
 
-      {/* The object in flight — it lifts OUT of the composer, arcs, and settles
-          into the laptop. The SAME object the visitor created. */}
+      {/* The object in flight — the SAME object the visitor created or the
+          auto-run staged. */}
       <AnimatePresence>
         {isSending && !reduced && pending && (
           <motion.div
@@ -494,10 +605,10 @@ export function HeroDemo() {
         )}
       </AnimatePresence>
 
-      {/* The invite line — the demo is real, and nothing leaves the page. */}
+      {/* The invite line — the demo runs on its own, and you can jump in. */}
       <div className="mt-6 sm:mt-7 text-center">
         <p className="text-[12.5px] sm:text-[13.5px] font-medium text-apple-ink-muted dark:text-white/55">
-          Live demo — type, paste, or tap a sample. <span className="hidden sm:inline">Nothing leaves this page.</span>
+          Live demo — it runs on its own. <span className="hidden sm:inline">Type, paste, or tap a sample to jump in anytime.</span>
         </p>
       </div>
     </div>
