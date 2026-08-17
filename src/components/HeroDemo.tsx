@@ -29,10 +29,12 @@ function MiniLink({ className }: { className?: string }) {
 }
 
 /** Tiny per-device connection chip — the only status text in the demo. */
-function DeviceStatus({ state }: { state: 'connected' | 'sending' | 'received' }) {
+function DeviceStatus({ state }: { state: 'connected' | 'sending' | 'sent' | 'receiving' | 'received' }) {
   const map = {
     connected: { dot: 'bg-[#34c759]', text: 'Connected', cls: 'text-apple-ink-muted' },
     sending: { dot: 'bg-apple-blue animate-pulse', text: 'Sending…', cls: 'text-apple-blue' },
+    sent: { dot: 'bg-[#34c759]', text: 'Sent', cls: 'text-[#1d9c43] dark:text-[#34c759]' },
+    receiving: { dot: 'bg-apple-blue animate-pulse', text: 'Receiving…', cls: 'text-apple-blue' },
     received: { dot: 'bg-[#34c759]', text: 'Received', cls: 'text-[#1d9c43] dark:text-[#34c759]' },
   }[state];
   return (
@@ -43,7 +45,7 @@ function DeviceStatus({ state }: { state: 'connected' | 'sending' | 'received' }
   );
 }
 
-function RoomHeader({ status, label }: { status: 'connected' | 'sending' | 'received'; label: string }) {
+function RoomHeader({ status, label }: { status: 'connected' | 'sending' | 'sent' | 'receiving' | 'received'; label: string }) {
   return (
     <div className="shrink-0 flex items-center justify-between px-[9px] sm:px-3 pt-[16%] sm:pt-[13%] pb-[7px] sm:pb-2 border-b border-apple-ink/[0.06] dark:border-white/[0.08]">
       <div className="flex items-center gap-1">
@@ -171,8 +173,12 @@ export function HeroDemo() {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const isReceiving = step === 'received' || reduced;
-  const phoneStatus: 'connected' | 'sending' = step === 'sending' ? 'sending' : 'connected';
-  const laptopStatus: 'connected' | 'received' = isReceiving ? 'received' : 'connected';
+  // Full state story: Connected → Sending…/Receiving… (while in flight) →
+  // Sent ✓ / Received ✓ (when it lands). Both devices always agree.
+  const phoneStatus: 'connected' | 'sending' | 'sent' =
+    step === 'sending' ? 'sending' : isReceiving ? 'sent' : 'connected';
+  const laptopStatus: 'connected' | 'receiving' | 'received' =
+    step === 'sending' ? 'receiving' : isReceiving ? 'received' : 'connected';
 
   const TransferObject = scene === 'photo' ? <DemoPhoto className="w-full aspect-[4/3]" /> : <MiniLink className="m-1.5" />;
 
@@ -324,10 +330,32 @@ export function HeroDemo() {
           <LaptopFrame className="w-[260px] sm:w-[348px] lg:w-[380px] xl:w-[410px]">
             <div ref={laptopScreenRef} className="w-full h-full flex flex-col">
               <RoomHeader status={laptopStatus} label="Your laptop" />
-              {/* Received object / empty */}
+              {/* Received object / receiving / empty */}
               <div className="flex-1 flex flex-col items-center justify-center gap-[7px] sm:gap-2.5 px-3">
                 <AnimatePresence mode="wait">
-                  {isReceiving ? (
+                  {step === 'sending' && !reduced ? (
+                    <motion.div
+                      key="receiving-progress"
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.25 }}
+                      className="flex flex-col items-center gap-2 w-full max-w-[150px]"
+                    >
+                      <div className="w-full h-1 rounded-full bg-apple-ink/10 dark:bg-white/10 overflow-hidden">
+                        <motion.div
+                          className="h-full rounded-full bg-apple-blue"
+                          initial={{ width: '0%' }}
+                          animate={{ width: '94%' }}
+                          transition={{ duration: 1.55, ease: [0.4, 0, 0.2, 1] }}
+                        />
+                      </div>
+                      <span className="text-[6.5px] sm:text-[8px] font-medium text-apple-ink-muted flex items-center gap-1.5">
+                        <span className="w-1 h-1 rounded-full bg-apple-blue animate-pulse" />
+                        Receiving {scene === 'photo' ? 'photo…' : 'link…'}
+                      </span>
+                    </motion.div>
+                  ) : isReceiving ? (
                     <motion.div
                       key={`received-${scene}`}
                       initial={reduced ? { opacity: 1, y: 0 } : { opacity: 0, y: 10, scale: 0.94 }}

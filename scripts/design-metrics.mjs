@@ -229,7 +229,7 @@ try {
 
   // ---- join for real ----
   await B.locator('input[inputmode="numeric"]').fill(code);
-  await B.getByText(/Paste or type|Your private clipboard|End session/).first().waitFor({ timeout: 25000 });
+  await B.getByPlaceholder('Paste or type text…').waitFor({ timeout: 25000 });
   await sleep(2000);
   await shot(A, 'chat-empty');
 

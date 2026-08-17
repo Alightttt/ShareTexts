@@ -3,8 +3,9 @@ import { useSession } from '../lib/SessionContext';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Plus, Image as ImageIcon, Copy, Check, CheckCheck,
-  File as FileIcon, Play, Download, RefreshCw, AlertCircle, FileText, ChevronDown, ChevronUp, ArrowUp, Lock, ZoomIn, ShieldCheck, Terminal, Music
+  File as FileIcon, Play, Download, RefreshCw, AlertCircle, ChevronDown, ChevronUp, ArrowUp, Lock, ZoomIn, ShieldCheck, Terminal, Share2
 } from 'lucide-react';
+import { FileTypeIcon } from '../components/FileTypeIcon';
 import { cn, formatBytes } from '../lib/utils';
 import { ChatMessage, Attachment } from '../types';
 import { ShareTextLogo } from '../components/ShareTextLogo';
@@ -705,7 +706,7 @@ export function ChatView() {
                           </div>
                         ) : (
                           <div className="w-[88px] h-[88px] sm:w-[104px] sm:h-[104px] rounded-[14px] bg-apple-parchment dark:bg-surface-dark-2 border border-apple-divider dark:border-apple-tile-3 flex flex-col items-center justify-center gap-0.5 p-1.5">
-                            {a.type === 'video' ? <Play className="w-4 h-4 text-apple-ink dark:text-white" /> : a.type === 'audio' ? <Music className="w-4 h-4 text-apple-ink dark:text-white" /> : <FileIcon className="w-4 h-4 text-apple-ink dark:text-white" />}
+                            <FileTypeIcon name={a.name} mimeType={a.mimeType} size={15} />
                             <span className="text-[9.5px] font-medium text-apple-ink dark:text-white truncate max-w-full">{a.name}</span>
                             <span className="text-[9px] text-apple-ink-muted">{formatBytes(a.size)}</span>
                           </div>
@@ -929,6 +930,36 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
     document.body.removeChild(link);
   };
 
+  const [shared, setShared] = useState(false);
+  // One-click Share: native sheet when the platform supports it (with the
+  // actual file bytes attached), otherwise it degrades to a download — the
+  // button is never a dead end.
+  const handleShare = async () => {
+    if (!a?.url) return;
+    const name = a.name;
+    const mime = a.mimeType || 'application/octet-stream';
+    try {
+      if (typeof navigator.share === 'function') {
+        const blob = await (await fetch(a.url)).blob();
+        const file = new File([blob], name, { type: mime || blob.type });
+        const canSendFile = typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
+        if (canSendFile) {
+          await navigator.share({ files: [file], title: name });
+        } else {
+          await navigator.share({ title: 'ShareText', text: name, url: a.url });
+        }
+        setShared(true);
+        setTimeout(() => setShared(false), 2000);
+      } else {
+        handleDownload(a.url, name);
+      }
+    } catch (e) {
+      // AbortError = the user closed the sheet; anything else = the bytes
+      // were unavailable, so fall back to a plain download.
+      if ((e as Error)?.name !== 'AbortError') handleDownload(a.url, name);
+    }
+  };
+
   // Text-only message — a clean bubble with an in-bubble footer (no outer
   // sender label, no second action bar; that was the misaligned look).
   if (!a) {
@@ -1092,9 +1123,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
           {/* File / Audio */}
           {(a.type === 'file' || a.type === 'audio') && (
             <div className={cn("p-4 flex items-center gap-3.5", isMe ? "bg-white/10" : "bg-apple-canvas/50 dark:bg-black/20")}>
-              <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 relative", isMe ? "bg-white/20" : "bg-apple-blue/10")}>
-                {a.type === 'audio' ? <Play className={cn("w-5 h-5 ml-1", isMe ? "text-white" : "text-apple-blue")} /> : <FileText className={cn("w-5 h-5", isMe ? "text-white" : "text-apple-blue")} />}
-              </div>
+              <FileTypeIcon name={a.name} mimeType={a.mimeType} size={20} />
               <div className="flex flex-col flex-1 truncate min-w-0">
                 <span className={cn("text-[14.5px] font-semibold truncate", isMe ? "text-white" : "text-apple-ink dark:text-white")}>{a.name}</span>
                 <span className={cn("text-[12.5px] font-medium", isMe ? "text-white/70" : "text-apple-ink-muted")}>{formatBytes(a.size)}</span>
@@ -1143,6 +1172,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
                   {a.type === 'image' && (
                     <ActionButton icon={copied ? <Check /> : <Copy />} label={copied ? "Copied" : "Copy"} active={copied} onClick={() => handleCopy(a.url!)} onBlue={isMe} />
                   )}
+                  <ActionButton icon={<Share2 />} label={shared ? "Shared" : "Share"} active={shared} onClick={() => { void handleShare(); }} onBlue={isMe} />
                   <ActionButton icon={<Download />} label="Save" onClick={() => handleDownload(a.url!, a.name)} primary onBlue={isMe} />
                 </>
               )}
