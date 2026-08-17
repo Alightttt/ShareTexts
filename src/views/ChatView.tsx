@@ -909,6 +909,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
   const a = msg.attachment;
 
   const [copied, setCopied] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
 
@@ -959,6 +960,8 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
     link.href = url;
     link.download = filename;
     document.body.appendChild(link);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
     link.click();
     document.body.removeChild(link);
   };
@@ -1143,7 +1146,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
           {isVideo && (
             <div className="relative w-full aspect-video bg-black/90 flex items-center justify-center overflow-hidden">
               {complete ? (
-                <video src={a.url} controls className="w-full h-full object-contain" />
+                <video src={a.url} controls preload="metadata" className="w-full h-full object-contain bg-black" />
               ) : (
                 <div className="text-white/70 flex flex-col items-center">
                   <Play className="w-10 h-10 mb-3 opacity-50" />
@@ -1206,7 +1209,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
                     <ActionButton icon={copied ? <Check /> : <Copy />} label={copied ? "Copied" : "Copy"} active={copied} onClick={() => handleCopy(a.url!)} onBlue={isMe} />
                   )}
                   <ActionButton icon={<Share2 />} label={shared ? "Shared" : "Share"} active={shared} onClick={() => { void handleShare(); }} onBlue={isMe} />
-                  <ActionButton icon={<Download />} label="Save" onClick={() => handleDownload(a.url!, a.name)} primary onBlue={isMe} />
+                  <ActionButton icon={saved ? <Check /> : <Download />} label={saved ? "Saved" : "Save"} active={saved} onClick={() => handleDownload(a.url!, a.name)} primary onBlue={isMe} />
                 </>
               )}
               {(a.status === 'sending' || a.status === 'receiving' || a.status === 'interrupted' || a.status === 'resuming') && (

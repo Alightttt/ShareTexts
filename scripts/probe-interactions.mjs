@@ -35,7 +35,7 @@ try {
   const removeBtn = A.getByRole('button', { name: 'Remove attachment' });
   const hasRemove = await removeBtn.count();
   await removeBtn.click();
-  await sleep(400);
+  await sleep(800); // let the tile's exit animation fully unmount it
   const tileGone = await A.evaluate(() => ![...document.querySelectorAll('span')].some(s => s.textContent === 'notes.txt'));
   console.log('ATTACH: tile=' + tileShown + ' removeBtn=' + hasRemove + ' goneAfterRemove=' + tileGone);
 
