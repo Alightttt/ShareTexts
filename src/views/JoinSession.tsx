@@ -162,9 +162,9 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
               )}
               {activeTab === 'linkConfirm' && (
                 <div className="flex flex-col items-center p-8 bg-white dark:bg-surface-dark rounded-[24px] w-full text-center border border-apple-divider dark:border-apple-tile-3 shadow-sm">
-                  <h3 className="text-[21px] font-semibold text-apple-ink dark:text-white mb-2 tracking-tight">Join this room?</h3>
+                  <h3 className="text-[21px] font-semibold text-apple-ink dark:text-white mb-2 tracking-tight">Connect to this device?</h3>
                   <div className="mb-8">
-                    <p className="text-[15px] text-apple-ink-muted">You’re about to connect to a temporary room shared from another device.</p>
+                    <p className="text-[15px] text-apple-ink-muted">You’re about to connect to another device. It’s temporary — nothing is stored anywhere.</p>
                   </div>
                   
                   <button 

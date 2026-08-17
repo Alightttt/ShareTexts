@@ -153,7 +153,7 @@ export function RoomHub() {
           <div className="w-full mb-6 px-4 py-3 rounded-[14px] bg-status-warning/10 border border-status-warning/20 text-[14px] font-medium text-status-warning-ink dark:text-status-warning-ink-dark flex flex-col items-center gap-3">
             <span className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse shrink-0" />
-              Your other device disconnected. The room is still open — share the code again to rejoin.
+              Your other device disconnected. This page is still open — share the code again to connect it.
             </span>
             <button
               onPointerDown={() => { void requestReconnect(); }}
@@ -172,7 +172,7 @@ export function RoomHub() {
             Open ShareText on the other device and enter this code.
           </p>
           <p className="text-[12.5px] text-apple-ink-muted/80 dark:text-white/40 font-medium mb-6">
-            No app to install. No account. Two browsers, one link.
+            No app to install. No account. Any two devices with a browser.
           </p>
           <LiveCodeDisplay secret={session.secret} createdAt={session.createdAt} />
 
@@ -221,7 +221,7 @@ export function RoomHub() {
                     <QRCodeSVG value={qrValue} size={216} />
                   </div>
                   <p className="text-[12px] text-apple-ink-muted mb-1">
-                    Point the other device at this code — it stays in sync with the 40s timer.
+                    The code refreshes every 40 seconds — scan it while it's current.
                   </p>
                   <button
                     onPointerDown={() => setShowQR(false)}
@@ -255,7 +255,7 @@ export function RoomHub() {
           >
             <div className="flex items-center gap-3 text-[15px] font-medium text-apple-ink dark:text-white">
               {copiedLink ? <Check className="w-5 h-5 text-status-success" /> : (navigator.share ? <Share2 className="w-5 h-5 text-apple-ink-muted" /> : <Link2 className="w-5 h-5 text-apple-ink-muted" />)}
-              {copiedLink ? 'Copied Link' : (navigator.share ? 'Share Nearby' : 'Copy Link')}
+              {copiedLink ? 'Link copied' : (navigator.share ? 'Share link' : 'Copy link')}
             </div>
           </button>
         </div>
@@ -292,7 +292,7 @@ export function RoomHub() {
         </div>
 
         <p className="text-[13px] text-apple-ink-muted mt-2">
-          This room stays open for hours — you can rejoin anytime.
+          This connection stays open for hours — the other device can connect anytime.
         </p>
 
         {/* Agent push — "send from your computer" without a second browser.
@@ -375,7 +375,7 @@ export function RoomHub() {
           <div className="w-full mt-4 p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[14px] shadow-sm">
             <div className="flex items-center gap-2 mb-2.5">
               <Inbox className="w-4 h-4 text-apple-blue" />
-              <span className="text-[14px] font-semibold text-apple-ink dark:text-white">From your push link</span>
+              <span className="text-[14px] font-semibold text-apple-ink dark:text-white">Sent from your computer</span>
             </div>
             <div className="space-y-2">
               {session.messages.filter(m => m.source === 'push').slice(-3).map(m => (
@@ -399,7 +399,7 @@ export function RoomHub() {
               ))}
             </div>
             <p className="mt-2.5 text-[12px] text-apple-ink-muted leading-relaxed">
-              These live in the room — pair the other device to open the chat and see everything.
+              These are waiting here — connect the other device to see them.
             </p>
           </div>
         )}
@@ -421,7 +421,7 @@ export function RoomHub() {
               className="overflow-hidden w-full max-w-sm"
             >
               <div className="mt-3 p-4 bg-apple-parchment dark:bg-apple-tile-1 rounded-[14px] text-left text-[13px] text-apple-ink-muted leading-relaxed space-y-2">
-                <p>This room disappears automatically after a period of inactivity. Once it ends, the code stops working and the room can't be reopened.</p>
+                <p>This connection disappears automatically after a while. When it ends, the code stops working and it can't be reopened.</p>
                 <p>Text is encrypted between devices. When a direct connection isn't possible, an encrypted relay forwards your data — the relay never stores or logs your content.</p>
               </div>
             </motion.div>

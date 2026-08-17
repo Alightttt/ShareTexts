@@ -198,7 +198,7 @@ try {
     ['digit', 'span.font-mono'],
     ['copy-code', { text: 'Copy Code' }],
     ['show-qr', { text: 'Show QR Code' }],
-    ['share-nearby', { text: 'Share Nearby' }],
+    ['share-link', { text: 'Share link' }],
     ['device-name', 'button[title="Edit device name"]'],
   ]);
   await inventory(A, 'roomhub');

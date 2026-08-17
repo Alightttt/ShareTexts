@@ -23,7 +23,7 @@ async function main() {
   // Headless Chromium exposes navigator.share but it never settles — disable
   // it so the button's copy fallback runs (what desktop browsers do anyway).
   await A.evaluate(() => { Object.defineProperty(navigator, 'share', { value: undefined, configurable: true }); });
-  await A.getByRole('button', { name: /Share Nearby|Copy Link/ }).first().click();
+  await A.getByRole('button', { name: /Share link|Copy link/ }).first().click();
   await sleep(400);
   const copiedUrl = await A.evaluate(() => navigator.clipboard.readText().catch(() => ''));
   const shortMatch = copiedUrl ? copiedUrl.match(/\/s\/([0-9a-f]{8})/) : null;
@@ -33,7 +33,7 @@ async function main() {
   // --- Open the short URL on device B (fresh context) ---
   await B.goto(copiedUrl, { waitUntil: 'networkidle' });
   await sleep(1200);
-  const confirmVisible = await B.getByText('Join this room?').count();
+  const confirmVisible = await B.getByText('Connect to this device?').count();
   check('B sees the join-confirm screen from /s/ link', confirmVisible === 1);
   await B.getByRole('button', { name: 'Connect' }).click();
   await waitForChat(B, 'B');

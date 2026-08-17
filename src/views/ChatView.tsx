@@ -496,11 +496,11 @@ export function ChatView() {
               className="w-full max-w-sm bg-white dark:bg-surface-dark rounded-[20px] p-6 shadow-2xl text-center"
               role="dialog"
               aria-modal="true"
-              aria-label="Close this session?"
+              aria-label="End this session?"
             >
               <h3 className="text-[19px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">End this session?</h3>
               <p className="text-[15px] text-apple-ink-muted leading-relaxed mb-6">
-                Both devices will disconnect and this temporary room will be deleted.
+                Both devices will disconnect and this connection will be permanently closed.
               </p>
               <div className="flex flex-col gap-2">
                 <button

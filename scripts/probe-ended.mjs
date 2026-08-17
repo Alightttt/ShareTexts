@@ -33,18 +33,18 @@ async function main() {
   const checks = await A.evaluate(() => {
     const t = document.body.innerText;
     return {
-      showsSessionEnded: t.includes('Session ended'),
-      showsNewSessionBtn: !![...document.querySelectorAll('button')].find(b => (b.textContent || '').includes('Start New Session')),
+      showsEndedHeading: t.includes('That\u2019s it.'),
       showsHomeBtn: !![...document.querySelectorAll('button')].find(b => (b.textContent || '').includes('Back to Home')),
+      showsTransferBtn: !![...document.querySelectorAll('button')].find(b => (b.textContent || '').includes('Start a transfer')),
     };
   });
   console.log('A ended-screen:', JSON.stringify(checks));
 
-  // Click Start New Session — should land on a fresh RoomHub with LIVE CODE
-  await A.getByRole('button', { name: /Start New Session/ }).click();
+  // Click Start a transfer — should land on a fresh RoomHub with LIVE CODE
+  await A.getByRole('button', { name: /Start a transfer/ }).click();
   await sleep(2500);
   const aNew = await A.evaluate(() => document.body.innerText);
-  console.log('after Start New Session -> LIVE CODE:', aNew.includes('LIVE CODE'), '| connect copy:', aNew.includes('Connect your other device'));
+  console.log('after Start a transfer -> LIVE CODE:', aNew.includes('LIVE CODE'), '| connect copy:', aNew.includes('Connect your other device'));
 
   await browser.close();
 }

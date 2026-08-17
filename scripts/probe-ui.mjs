@@ -42,7 +42,7 @@ const hub = await page.evaluate(() => {
     timerShown: timer ? timer.textContent : null,
     refreshCopy: body.includes('Code refreshes in') || body.includes('New code in'),
     backArrow: !!document.querySelector('button[aria-label="Back to home"]'),
-    positioningLine: body.includes('Two browsers, one link'),
+    positioningLine: body.includes('Any two devices with a browser'),
     hasCopyCode: body.includes('Copy Code'),
   };
 });

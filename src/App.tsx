@@ -16,14 +16,17 @@ import { ConnectingVisual } from './components/ConnectingVisual';
 
 function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, onNewSession: () => void, onHome: () => void }) {
   // One honest line about what happened, then one clear action.
-  const copy = reason === 'expired'
-    ? "This room expired. Make a new one when you're ready."
+  const heading = reason === 'expired'
+    ? "Time's up."
     : reason === 'manual_close'
-      ? "You ended this session."
-      : "This room was closed.";
-  const sub = reason === 'expired'
-    ? "This room is gone for good. Nothing you sent was stored anywhere — it only lived on your devices."
-    : "This room is now permanently gone — no trace remains on any server. Everything you sent is already on your device.";
+      ? "That’s it."
+      : "Connection closed.";
+  const copy = reason === 'expired'
+    ? "This connection expired. Start a new one when you're ready."
+    : reason === 'manual_close'
+      ? "You closed this connection. Everything you sent is already on the other device."
+      : "The other device closed this connection.";
+  const sub = "Nothing you sent was stored anywhere — it only lived on your devices.";
 
   const [shared, setShared] = useState(false);
   const shareApp = async () => {
@@ -49,7 +52,7 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
         motion={reason === 'expired' ? undefined : 'complete'}
         className="text-apple-ink dark:text-white mb-7 opacity-80"
       />
-      <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">Session ended.</h2>
+      <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">{heading}</h2>
       <p className="text-[16px] text-apple-ink-muted dark:text-white/60 font-medium max-w-sm mb-1.5">{copy}</p>
       <p className="text-[13.5px] text-apple-ink-muted/80 dark:text-white/40 font-medium max-w-xs mb-9">{sub}</p>
 
@@ -58,7 +61,7 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
           onPointerDown={onNewSession}
           className="px-7 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] shadow-card hover:shadow-float min-h-[48px] flex items-center justify-center gap-2"
         >
-          <Send className="w-4 h-4" /> Start New Session
+          <Send className="w-4 h-4" /> Start a transfer
         </button>
         <button
           onPointerDown={onHome}
@@ -222,7 +225,7 @@ function AppContent() {
                     : "Connecting…"}
                 </h2>
                 {waitingForReconnect ? (
-                  <p className="text-[17px] text-apple-ink-muted">Your room is still open — you can rejoin anytime.</p>
+                  <p className="text-[17px] text-apple-ink-muted">This connection is still open — you can reconnect anytime.</p>
                 ) : (
                   <ConnectingWait key={waitKey} onRetry={() => { setWaitKey(k => k + 1); void requestReconnect(); }} />
                 )}
@@ -238,7 +241,7 @@ function AppContent() {
                   onPointerDown={leaveView}
                   className="mt-4 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors px-4 py-2 min-h-[44px]"
                 >
-                  Leave session
+                  Leave
                 </button>
               </div>
             </div>

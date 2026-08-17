@@ -16,7 +16,7 @@ async function main() {
   console.log('buttons:', JSON.stringify(buttons));
 
   // Try every likely copy button and read the clipboard after each.
-  for (const name of ['Copy Link', 'Share Nearby', 'Copy Code']) {
+  for (const name of ['Copy link', 'Share link', 'Copy Code']) {
     const btn = A.getByRole('button', { name: new RegExp(name) }).first();
     if (await btn.count()) {
       await btn.click();

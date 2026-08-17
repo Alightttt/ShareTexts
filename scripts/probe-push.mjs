@@ -48,7 +48,7 @@ try {
   );
 
   // The push inbox card on the connect screen should also list it.
-  const inbox = page.getByText('From your push link').first();
+  const inbox = page.getByText('Sent from your computer').first();
   check('push inbox card on connect screen', await inbox.isVisible().catch(() => false));
 
   // --- push a binary file (multi-chunk) ----------------------------------
