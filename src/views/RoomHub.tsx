@@ -84,7 +84,7 @@ export function RoomHub() {
   const shareLink = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'ShareText', text: 'Join my ShareText session', url: shareUrl });
+        await navigator.share({ title: 'ShareText', text: 'Join my ShareText room', url: shareUrl });
         return;
       } catch {
         // User cancelled or share failed — fall through to copy.

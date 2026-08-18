@@ -13,7 +13,7 @@ async function main() {
   await B.locator('input[inputmode="numeric"]').fill(code);
   await waitForChat(B, 'B'); await waitForChat(A, 'A');
   const geo = await A.evaluate(() => {
-    const header = Array.from(document.querySelectorAll('div')).find(d => d.textContent && d.textContent.includes('End session') && d.className.toString().includes('backdrop-blur-xl'));
+    const header = Array.from(document.querySelectorAll('div')).find(d => d.textContent && d.textContent.includes('End room') && d.className.toString().includes('backdrop-blur-xl'));
     if (!header) return null;
     const r = header.getBoundingClientRect();
     const overflow = document.documentElement.scrollWidth > document.documentElement.clientWidth;

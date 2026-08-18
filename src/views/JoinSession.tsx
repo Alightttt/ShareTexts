@@ -46,8 +46,8 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
       // machine-readable code (Cloudflare transport) and fall back to the
       // Node server's plain-string errors.
       const friendly =
-        res.code === 'ROOM_FULL' || res.error === 'This session already has two devices.'
-          ? 'This session already has two devices.'
+        res.code === 'ROOM_FULL' || res.error === 'This room already has two devices.'
+          ? 'This room already has two devices.'
           : res.code === 'RATE_LIMITED' || res.error === 'Too many attempts. Try again later.'
             ? res.error
             : res.error === "Couldn't reach ShareText."
@@ -68,8 +68,8 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
     const res = await joinWithLink(id);
     if (!res.success) {
       const friendly =
-        res.code === 'ROOM_FULL' || res.error === 'This session already has two devices.'
-          ? 'This session already has two devices.'
+        res.code === 'ROOM_FULL' || res.error === 'This room already has two devices.'
+          ? 'This room already has two devices.'
           : res.code === 'RATE_LIMITED' || res.error === 'Too many attempts. Try again later.'
             ? res.error
             : "This link isn't active anymore. Ask for a fresh code.";

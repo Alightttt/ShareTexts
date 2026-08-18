@@ -25,9 +25,9 @@ async function main() {
   await sleep(500);
 
   // A ends the session (header button opens the confirm modal, then confirm)
-  await A.getByRole('button', { name: 'End session' }).first().click();
+  await A.getByRole('button', { name: 'End room' }).first().click();
   await sleep(400);
-  await A.getByRole('button', { name: 'End session' }).last().click();
+  await A.getByRole('button', { name: 'End room' }).last().click();
   await sleep(1500);
 
   const checks = await A.evaluate(() => {

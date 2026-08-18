@@ -3,7 +3,7 @@ import { useSession } from '../lib/SessionContext';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Plus, Image as ImageIcon, Copy, Check, CheckCheck,
-  File as FileIcon, Play, Download, RefreshCw, AlertCircle, ChevronDown, ChevronUp, ArrowUp, Lock, ZoomIn, ShieldCheck, Terminal, Share2
+  File as FileIcon, Play, Download, RefreshCw, AlertCircle, ChevronDown, ChevronUp, ArrowUp, Lock, ZoomIn, ShieldCheck, Terminal, Share2, LogOut
 } from 'lucide-react';
 import { FileTypeIcon } from '../components/FileTypeIcon';
 import { cn, formatBytes } from '../lib/utils';
@@ -394,6 +394,8 @@ export function ChatView() {
     setInputText('');
     setAttachments([]);
     void clearDraft(session.roomId);
+    // On mobile, blur the textarea to dismiss the keyboard after sending.
+    textareaRef.current?.blur();
   };
 
   const inputBytes = useMemo(() => new TextEncoder().encode(inputText).length, [inputText]);
@@ -461,12 +463,12 @@ export function ChatView() {
           </button>
           <button
             onPointerDown={() => setConfirmClose(true)}
-            aria-label="End session"
-            title="End session"
+            aria-label="End room"
+            title="End room"
             className="flex items-center justify-center w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 rounded-full sm:rounded-[10px] text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-apple-tile-3/50 transition-colors active:scale-95 min-h-[44px] shrink-0"
           >
-            <X className="w-[18px] h-[18px] sm:hidden" />
-            <span className="hidden sm:inline text-[14px] font-medium">End session</span>
+            <LogOut className="w-[18px] h-[18px] sm:hidden" />
+            <span className="hidden sm:inline text-[14px] font-medium">End room</span>
           </button>
         </div>
 
@@ -537,9 +539,9 @@ export function ChatView() {
               className="w-full max-w-sm bg-white dark:bg-surface-dark rounded-[20px] p-6 shadow-2xl text-center"
               role="dialog"
               aria-modal="true"
-              aria-label="End this session?"
+              aria-label="End this room?"
             >
-              <h3 className="text-[19px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">End this session?</h3>
+              <h3 className="text-[19px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">End this room?</h3>
               <p className="text-[15px] text-apple-ink-muted leading-relaxed mb-6">
                 Both devices will disconnect and this connection will be permanently closed.
               </p>
@@ -549,13 +551,13 @@ export function ChatView() {
                   onPointerDown={() => setConfirmClose(false)}
                   className="w-full py-3.5 bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white rounded-[14px] text-[15px] font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
                 >
-                  Keep Session
+                  Keep Room
                 </button>
                 <button
                   onPointerDown={closeSession}
                   className="w-full py-3.5 bg-status-danger hover:bg-[#e0352b] text-white rounded-[14px] text-[15px] font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
                 >
-                  End session
+                  End room
                 </button>
               </div>
             </motion.div>
@@ -1195,7 +1197,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
               {complete ? (
                 <button
                   type="button"
-                  onPointerDown={() => setViewerOpen(true)}
+                  onClick={() => setViewerOpen(true)}
                   className="block w-full cursor-zoom-in group relative"
                   aria-label={`View ${a.name}`}
                 >

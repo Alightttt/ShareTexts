@@ -1,9 +1,9 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { motion, useMotionValue, useSpring } from 'motion/react';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { HeroDemo } from '../components/HeroDemo';
-import { Send, Inbox, ShieldCheck } from 'lucide-react';
+import { Send, Inbox } from 'lucide-react';
 import { LiveUsers } from '../components/LiveUsers';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { InstallPrompt } from '../components/InstallPrompt';
@@ -46,8 +46,6 @@ function PointerLight() {
   const sx = useSpring(x, { stiffness: 60, damping: 18, mass: 0.6 });
   const sy = useSpring(y, { stiffness: 60, damping: 18, mass: 0.6 });
 
-  // Listen on window so the light never blocks interaction — the layer below
-  // is pointer-events-none, but we still want the glow to follow the cursor.
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
       x.set(e.clientX);
@@ -68,10 +66,93 @@ function PointerLight() {
           top: sy,
           x: '-50%',
           y: '-50%',
-          background: 'radial-gradient(circle, rgba(46,139,255,0.05) 0%, transparent 62%)',
+          background: 'radial-gradient(circle, rgba(46,139,255,0.04) 0%, transparent 55%)',
         }}
       />
     </div>
+  );
+}
+
+/**
+ * Interactive dot grid — a canvas that renders dots across the page and
+ * makes nearby dots subtly larger when the cursor moves close. Purely
+ * decorative, fully pointer-events-none, respects reduced-motion.
+ */
+function DotGrid() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const reduced = usePrefersReducedMotion();
+  const mouseRef = useRef({ x: -1000, y: -1000 });
+  const rafRef = useRef(0);
+
+  useEffect(() => {
+    if (reduced) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const DOT_SPACING = 32;
+    const BASE_RADIUS = 1;
+    const MAX_RADIUS = 2.2;
+    const INFLUENCE_RADIUS = 120;
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = document.documentElement.scrollHeight * dpr;
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = document.documentElement.scrollHeight + 'px';
+      ctx.scale(dpr, dpr);
+    };
+    resize();
+
+    const onMove = (e: PointerEvent) => {
+      mouseRef.current = { x: e.clientX, y: e.clientY + window.scrollY };
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+
+    const draw = () => {
+      const w = window.innerWidth;
+      const h = document.documentElement.scrollHeight;
+      ctx.clearRect(0, 0, w, h);
+
+      const mx = mouseRef.current.x;
+      const my = mouseRef.current.y;
+      const isDark = document.documentElement.classList.contains('dark');
+      const baseColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(20,24,32,0.12)';
+      const activeColor = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,24,32,0.28)';
+
+      for (let x = DOT_SPACING / 2; x < w; x += DOT_SPACING) {
+        for (let y = DOT_SPACING / 2; y < h; y += DOT_SPACING) {
+          const dx = x - mx;
+          const dy = y - my;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const t = Math.max(0, 1 - dist / INFLUENCE_RADIUS);
+          const r = BASE_RADIUS + (MAX_RADIUS - BASE_RADIUS) * t * t;
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fillStyle = t > 0.01 ? activeColor : baseColor;
+          ctx.fill();
+        }
+      }
+      rafRef.current = requestAnimationFrame(draw);
+    };
+    rafRef.current = requestAnimationFrame(draw);
+
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener('pointermove', onMove);
+    };
+  }, [reduced]);
+
+  if (reduced) return null;
+
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden
+      className="pointer-events-none absolute inset-0 z-0"
+    />
   );
 }
 
@@ -82,23 +163,13 @@ function AmbientBackdrop() {
       {/* Azure glow — breathes slowly; static under reduced motion */}
       <div className="absolute -top-[18%] left-1/2 -translate-x-1/2 w-[120%] h-[52%]">
         <motion.div
-          className="w-full h-full bg-[radial-gradient(50%_60%_at_50%_0%,rgba(46,139,255,0.12),transparent_70%)]"
+          className="w-full h-full bg-[radial-gradient(50%_60%_at_50%_0%,rgba(46,139,255,0.10),transparent_70%)]"
           animate={reduced ? undefined : { opacity: [0.7, 1, 0.7] }}
           transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
         />
       </div>
       {/* Second, cooler tone lower on the page for depth */}
-      <div className="absolute top-[38%] right-[-10%] w-[55%] h-[45%] bg-[radial-gradient(60%_60%_at_50%_50%,rgba(120,80,220,0.06),transparent_70%)]" />
-      {/* Faint dot grid — barely-there texture */}
-      <div
-        className="absolute inset-0 opacity-[0.35] dark:opacity-40"
-        style={{
-          backgroundImage: 'radial-gradient(rgba(20,24,32,0.5) 1px, transparent 1px)',
-          backgroundSize: '34px 34px',
-          maskImage: 'radial-gradient(70% 50% at 50% 0%, black 0%, transparent 75%)',
-          WebkitMaskImage: 'radial-gradient(70% 50% at 50% 0%, black 0%, transparent 75%)',
-        }}
-      />
+      <div className="absolute top-[38%] right-[-10%] w-[55%] h-[45%] bg-[radial-gradient(60%_60%_at_50%_50%,rgba(120,80,220,0.05),transparent_70%)]" />
     </div>
   );
 }
@@ -130,25 +201,24 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
   return (
     <div className="min-h-screen relative bg-apple-canvas dark:bg-night-900 font-sans selection:bg-azure-500/20 flex flex-col overflow-x-clip">
       <AmbientBackdrop />
+      <DotGrid />
       <PointerLight />
 
       {/* ============ HEADER — logo only; nothing competes with the product ============ */}
       <header className="sticky top-0 z-40 bg-apple-canvas/85 dark:bg-night-900/85 backdrop-blur-md border-b border-apple-divider dark:border-white/[0.06]">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center gap-4">
-          <a href="/" className="flex items-center gap-2" aria-label="ShareText — share anything between two devices">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">
+          <a href="/" className="flex items-center gap-2 shrink-0" aria-label="ShareText — share anything between two devices">
             <ShareTextLogo size={21} className="text-apple-ink dark:text-white" />
             <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>
           </a>
-          {/* Quiet section navigation — desktop only; mobile keeps the
-              header minimal and scrolls naturally. Anchor links, no JS. */}
-          <nav className="hidden md:flex items-center gap-5 ml-4" aria-label="Page sections">
+          {/* Centered navigation on desktop — the nav links sit in the visual
+              center of the header, not left-aligned next to the logo. */}
+          <nav className="hidden md:flex items-center justify-center gap-6 flex-1" aria-label="Page sections">
             <a href="#how-it-works" className="text-[13.5px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">How it works</a>
             <a href="#private" className="text-[13.5px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Privacy</a>
             <a href="#faq" className="text-[13.5px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Questions</a>
           </nav>
-          {/* Live count + theme toggle — desktop; mobile gets the live count
-              in the hero below and keeps the theme switch in the header. */}
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             <LiveUsers className="hidden lg:inline-flex" />
             <ThemeToggle />
           </div>
@@ -194,17 +264,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 <Inbox className="w-4 h-4" /> Receive text
               </motion.button>
             </div>
-            {/* The trust strip — the promises that make ShareText shareable.
-                Each is true and each answers a first objection. */}
-            <div className="mt-6 flex flex-wrap items-center justify-center lg:justify-start gap-x-3.5 gap-y-2 text-[13px] font-medium text-apple-ink-muted dark:text-white/60">
-              <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-status-success" /> End-to-end encrypted</span>
-              <span className="w-1 h-1 rounded-full bg-apple-ink-muted/40" aria-hidden />
-              <span>No account</span>
-              <span className="w-1 h-1 rounded-full bg-apple-ink-muted/40" aria-hidden />
-              <span>Nothing stored</span>
-              <span className="w-1 h-1 rounded-full bg-apple-ink-muted/40" aria-hidden />
-              <span>Open source</span>
-            </div>
+
             {createError && (
               <p role="alert" className="mt-5 text-[14px] font-medium text-status-danger flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-status-danger" /> {createError}

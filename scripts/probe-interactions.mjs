@@ -39,14 +39,14 @@ try {
   const tileGone = await A.evaluate(() => ![...document.querySelectorAll('span')].some(s => s.textContent === 'notes.txt'));
   console.log('ATTACH: tile=' + tileShown + ' removeBtn=' + hasRemove + ' goneAfterRemove=' + tileGone);
 
-  // 3. End-session dialog: autofocus should land on Keep Session.
-  await A.getByRole('button', { name: 'End session' }).first().click();
+  // 3. End-room dialog: autofocus should land on Keep Room.
+  await A.getByRole('button', { name: 'End room' }).first().click();
   await sleep(500);
   const focused = await A.evaluate(() => document.activeElement?.textContent?.trim() || 'none');
   console.log('DIALOG focused:', JSON.stringify(focused));
   await A.keyboard.press('Escape');
   await sleep(700); // let the dialog's exit animation fully unmount it
-  const dialogClosed = await A.evaluate(() => ![...document.querySelectorAll('h3')].some(h => h.textContent === 'End this session?'));
+  const dialogClosed = await A.evaluate(() => ![...document.querySelectorAll('h3')].some(h => h.textContent === 'End this room?'));
   console.log('DIALOG escaped-close:', dialogClosed);
 
   // 4. Composer keyboard hint visible on desktop.
@@ -55,7 +55,7 @@ try {
 
   const parts = {
     sendDisabledEmpty: sendDisabled, sendEnabled, tileShown, hasRemoveOne: hasRemove === 1,
-    tileGone, focusedKeep: focused === 'Keep Session', dialogClosed, hint,
+    tileGone,    focusedKeep: focused === 'Keep Room', dialogClosed, hint,
   };
   const ok = Object.values(parts).every(Boolean);
   console.log('PARTS:', JSON.stringify(parts));

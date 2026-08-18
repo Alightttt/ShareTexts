@@ -119,7 +119,7 @@ try {
   // A reloads → its WebSocket is gone → it must resume_room against the
   // restarted worker. If the DO state survived, the room is still there.
   await A.reload({ waitUntil: 'domcontentloaded' });
-  await A.getByText('End session').first().waitFor({ timeout: 25000 });
+  await A.getByText('End room').first().waitFor({ timeout: 25000 });
   await sleep(5000); // re-offer handshake
 
   await send(B, 'after-restart');
@@ -155,7 +155,7 @@ try {
   // ---- Scenario 3: peer refresh ----
   console.log('--- scenario 3: peer refresh ---');
   await A.reload({ waitUntil: 'domcontentloaded' });
-  await A.getByText('End session').first().waitFor({ timeout: 20000 });
+  await A.getByText('End room').first().waitFor({ timeout: 20000 });
   await sleep(5000);
 
   await send(B, 'after-refresh');

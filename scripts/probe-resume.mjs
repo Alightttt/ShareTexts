@@ -122,7 +122,7 @@ try {
   const usedResume = Bdiag.includes('transfer.resuming') || Adiag.includes('transfer.resuming');
   report('resume path exercised', usedResume, usedResume ? 'resume from confirmed position' : 'completed via continuous fallback (still interrupted → complete)');
 
-  await A.getByRole('button', { name: 'End session' }).first().click({ timeout: 5000 }).catch(() => {});
+  await A.getByRole('button', { name: 'End room' }).first().click({ timeout: 5000 }).catch(() => {});
 } finally {
   await browser.close();
 }

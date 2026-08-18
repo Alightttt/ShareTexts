@@ -383,7 +383,7 @@ export function HeroDemo() {
         <ShareTextLogo size={18} className="text-apple-blue" />
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-10 sm:gap-0 px-2 sm:px-6 relative">
+      <div className="flex flex-col sm:flex-row items-center sm:justify-center gap-10 sm:gap-20 px-2 sm:px-6 relative">
         {/* ================= PHONE — the sender. ================= */}
         <div data-device="phone" className="flex flex-col items-center">
           <PhoneFrame className="w-[136px] sm:w-[182px] lg:w-[196px]">
@@ -632,12 +632,7 @@ export function HeroDemo() {
         )}
       </AnimatePresence>
 
-      {/* The invite line — the demo runs on its own, and you can jump in. */}
-      <div className="mt-6 sm:mt-7 text-center">
-        <p className="text-[12.5px] sm:text-[13.5px] font-medium text-apple-ink-muted dark:text-white/55">
-          Live demo — it runs on its own. <span className="hidden sm:inline">Type, paste, or tap a sample to jump in anytime.</span>
-        </p>
-      </div>
+
     </div>
   );
 }

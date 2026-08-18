@@ -87,9 +87,9 @@ try {
   const pwned = await B.evaluate(() => document.body.innerText.includes('PWNED'));
 
   // --- 4. Object URLs revoked on session end ---
-  await B.getByRole('button', { name: 'End session' }).first().click();
+  await B.getByRole('button', { name: 'End room' }).first().click();
   await sleep(400);
-  await B.getByRole('button', { name: 'End session' }).last().click();
+  await B.getByRole('button', { name: 'End room' }).last().click();
   await sleep(900);
   const revoked = await B.evaluate(() => window.__revoked);
 

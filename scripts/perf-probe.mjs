@@ -38,10 +38,10 @@ await B.getByRole('button', { name: 'Receive text' }).first().click();
 const digits = await A.locator('span').filter({ hasText: /^\d$/ }).allTextContents();
 const code = digits.slice(-6).join('');
 await B.locator('input[inputmode="numeric"]').fill(code);
-await B.getByText(/Paste or type|Your private clipboard|End session/).first().waitFor({ timeout: 25000 });
+await B.getByText(/Paste or type|Your private clipboard|End room/).first().waitFor({ timeout: 25000 });
 console.log('join (code entry → chat):', Date.now() - t1, 'ms');
 
-await A.getByText(/Paste or type|Your private clipboard|End session/).first().waitFor({ timeout: 10000 });
+await A.getByText(/Paste or type|Your private clipboard|End room/).first().waitFor({ timeout: 10000 });
 let t2 = Date.now();
 await A.locator('textarea').first().fill('latency check');
 await A.getByRole('button', { name: 'Send' }).click();

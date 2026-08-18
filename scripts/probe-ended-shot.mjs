@@ -18,9 +18,9 @@ async function main() {
     await B.locator('input[inputmode="numeric"]').fill(code);
     await A.locator('textarea[placeholder]').waitFor({ timeout: 15000 });
     await sleep(400);
-    await A.getByRole('button', { name: 'End session' }).first().click();
+    await A.getByRole('button', { name: 'End room' }).first().click();
     await sleep(400);
-    await A.getByRole('button', { name: 'End session' }).last().click();
+    await A.getByRole('button', { name: 'End room' }).last().click();
     await sleep(1500);
     await A.screenshot({ path: `.audit-shots/ended-${vp.name}.png` });
     console.log(`shot: ended-${vp.name}`);

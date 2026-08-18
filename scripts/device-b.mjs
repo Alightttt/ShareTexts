@@ -116,7 +116,7 @@ try {
   await page.goto(URL, { waitUntil: 'domcontentloaded' });
   await page.getByRole('button', { name: 'Receive text' }).first().click();
   await page.locator('input[inputmode="numeric"]').fill(code);
-  await page.getByText(/Paste or type|Your private clipboard|End session/).first().waitFor({ timeout: 25000 });
+  await page.getByText(/Paste or type|Your private clipboard|End room/).first().waitFor({ timeout: 25000 });
   console.log('MARK:CHAT_READY');
   await sleep(2500); // empty-chat screenshot window
 
