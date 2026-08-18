@@ -10,14 +10,20 @@ try {
   await page.goto(URL, { waitUntil: 'networkidle' });
   await page.locator('text=Move anything between your devices').first().waitFor({ timeout: 15000 });
 
-  // Wait until the composer is on screen (the auto-run hides it during flight).
-  let composerUp = false;
-  for (let i = 0; i < 80; i++) {
-    composerUp = await page.evaluate(() => !!document.querySelector('textarea[aria-label="Demo message"]'));
-    if (composerUp) break;
+  // Wait until the composer is on screen AND the auto-run is armed (ready to
+  // send). Without waiting for data-auto=on, we might type while the auto-run
+  // is mid-flight and our message never travels.
+  let ready = false;
+  for (let i = 0; i < 120; i++) {
+    ready = await page.evaluate(() => {
+      const ta = !!document.querySelector('textarea[aria-label="Demo message"]');
+      const auto = document.querySelector('[data-step]')?.getAttribute('data-auto') === 'on';
+      return ta && auto;
+    });
+    if (ready) break;
     await sleep(100);
   }
-  if (!composerUp) throw new Error('composer never appeared');
+  if (!ready) throw new Error('composer or auto-run never appeared');
 
   // Remove the pre-attached photo sample so the TEXT is what travels.
   await page.evaluate(() => document.querySelector('button[aria-label="Remove attachment"]')?.click());

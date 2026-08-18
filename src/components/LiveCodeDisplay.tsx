@@ -57,12 +57,12 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
             }}
           />
         </svg>
-        <span className={cn("absolute text-[12px] font-medium transition-colors duration-300", isUrgent ? "text-status-danger" : "text-apple-ink-muted")}>
+        <span className={cn("absolute text-[12px] font-medium transition-colors duration-300", isUrgent ? "text-status-danger dark:text-status-danger" : "text-apple-ink-muted dark:text-white/60")}>
           {Math.ceil(remaining)}
         </span>
       </div>
 
-      <p className="text-[12px] font-medium text-apple-ink-muted mb-8 tracking-widest uppercase">Live Code</p>
+      <p className="text-[12px] font-medium text-apple-ink-muted dark:text-white/60 mb-8 tracking-widest uppercase">Live Code</p>
 
       <div className="flex w-full max-w-[320px] sm:max-w-[400px] gap-1.5 sm:gap-2.5">
         {digits.map((digit, i) => (

@@ -13,7 +13,7 @@ try {
   const home = await b.newPage();
   await home.goto(URL, { waitUntil: 'networkidle' });
   const og = await home.evaluate(async () => {
-    const r = await fetch('/og-3.png');
+    const r = await fetch('/og-4.png');
     if (!r.ok) return { ok: false, status: r.status };
     const buf = new Uint8Array(await r.arrayBuffer());
     // PNG header: width (bytes 16-19) and height (bytes 20-23), big-endian.
@@ -29,7 +29,7 @@ try {
   }));
 
   console.log(JSON.stringify({ h2, hasHome, og, meta }, null, 2));
-  const ok = h2?.includes("doesn't exist") && hasHome >= 1 && og.ok && og.w === 1200 && og.h === 630 && meta.ogImage?.includes('og-3.png');
+  const ok = h2?.includes("doesn't exist") && hasHome >= 1 && og.ok && og.w === 1200 && og.h === 630 && meta.ogImage?.includes('og-4.png');
   console.log(ok ? 'SEO_OK' : 'SEO_FAIL');
 } finally {
   await b.close();

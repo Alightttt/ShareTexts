@@ -443,7 +443,7 @@ export function HeroDemo() {
                           <ObjectCard obj={attach} className="w-[58px] sm:w-[78px]" />
                           <button
                             type="button"
-                            onClick={() => setAttach(null)}
+                            onClick={() => { setAttach(null); touch(); }}
                             aria-label="Remove attachment"
                             tabIndex={-1}
                             className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-apple-ink/80 dark:bg-white/80 text-white dark:text-night-900 flex items-center justify-center shadow-sm active:scale-90 transition-transform"

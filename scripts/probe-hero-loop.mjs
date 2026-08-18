@@ -35,8 +35,13 @@ try {
     };
   });
 
-  // 1. Auto-run should be armed.
+  // 1. Auto-run should be armed (composer visible + data-auto=on).
   await waitComposer();
+  for (let i = 0; i < 60; i++) {
+    const a = await page.evaluate(() => document.querySelector('[data-step]')?.getAttribute('data-auto'));
+    if (a === 'on') break;
+    await sleep(100);
+  }
   const autoBefore = await page.evaluate(() => document.querySelector('[data-step]')?.getAttribute('data-auto'));
 
   // 2. Send the pre-attached photo sample (interrupts the auto-run).

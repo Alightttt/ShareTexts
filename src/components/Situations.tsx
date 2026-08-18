@@ -56,7 +56,7 @@ const FileCard = ({ className }: { className?: string }) => (
       </span>
       <span className="text-[7.5px] font-semibold text-apple-ink dark:text-white truncate">IMG_2041.jpeg</span>
     </div>
-    <span className="text-[6.5px] font-medium text-apple-ink-muted">Original · 4.2 MB</span>
+    <span className="text-[6.5px] font-medium text-apple-ink-muted dark:text-white/60">Original · 4.2 MB</span>
   </div>
 );
 
@@ -66,8 +66,8 @@ const CodeCard = ({ className }: { className?: string }) => (
     className
   )}>
     <span className="font-mono text-[7px] text-apple-ink dark:text-white whitespace-nowrap">const bridge = new Share();</span>
-    <span className="font-mono text-[7px] text-apple-ink-muted whitespace-nowrap">bridge.connect('827441');</span>
-    <span className="font-mono text-[7px] text-apple-ink-muted whitespace-nowrap">await bridge.transfer(thing);</span>
+    <span className="font-mono text-[7px] text-apple-ink-muted dark:text-white/60 whitespace-nowrap">bridge.connect('827441');</span>
+    <span className="font-mono text-[7px] text-apple-ink-muted dark:text-white/60 whitespace-nowrap">await bridge.transfer(thing);</span>
   </div>
 );
 

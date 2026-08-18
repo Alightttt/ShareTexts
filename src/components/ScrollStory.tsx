@@ -48,7 +48,7 @@ function DeviceHeader({ notch }: { notch?: boolean }) {
       </div>
       <div className="flex items-center gap-1">
         <span className="w-1 h-1 rounded-full bg-status-success" />
-        <span className="text-[6.5px] font-medium text-apple-ink-muted">Connected</span>
+        <span className="text-[6.5px] font-medium text-apple-ink-muted dark:text-white/60">Connected</span>
       </div>
     </div>
   );

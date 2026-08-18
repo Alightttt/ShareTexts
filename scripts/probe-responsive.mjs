@@ -24,7 +24,7 @@ try {
 
     const state = await A.evaluate(() => {
       const root = document.querySelector('#root > div');
-      const rail = [...document.querySelectorAll('div')].find(d => (d.textContent || '').includes('Pairing code') && d.className.includes('hidden xl:flex'));
+      const rail = [...document.querySelectorAll('div')].find(d => (d.textContent || '').includes('Direct connection') && d.className.includes('hidden xl:flex'));
       const railVisible = rail ? getComputedStyle(rail).display !== 'none' : false;
       return {
         rootH: Math.round(root?.getBoundingClientRect().height || 0),
