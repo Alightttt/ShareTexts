@@ -67,6 +67,28 @@ function saveStoredSession(s: StoredSession | null) {
   } catch { /* ignore */ }
 }
 
+/**
+ * Blob object URLs die with the page — they are page-lifetime artifacts, so
+ * they must NEVER be persisted. A restored session that keeps the old `blob:`
+ * URL renders a broken preview (and logs REQFAIL) after every reload. Strip
+ * the URL on the way out AND on the way in (for data stored before this fix),
+ * and mark partner files we received but no longer hold as 'restoring' — the
+ * peer is asked to re-send the bytes the moment the channel reopens.
+ */
+function sanitizeStoredMessages(msgs: ChatMessage[] | undefined): ChatMessage[] {
+  if (!msgs) return [];
+  return msgs.map(m => {
+    if (!m.attachment) return m;
+    const a = { ...m.attachment };
+    delete a.url;
+    if (m.sender === 'partner' && a.status === 'complete') {
+      a.status = 'restoring';
+      a.progress = 0;
+    }
+    return { ...m, attachment: a };
+  });
+}
+
 export function guessDeviceName(): string {
   const stored = localStorage.getItem(DEVICE_NAME_KEY);
   if (stored) return stored;
@@ -130,7 +152,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       partnerConnected: false,
       partnerConnecting: false,
       connectionType: 'connecting',
-      messages: stored?.messages ?? [],
+      messages: sanitizeStoredMessages(stored?.messages),
       deviceName: stored?.deviceName || guessDeviceName(),
       partnerName: stored?.partnerName ?? null
     };
@@ -200,7 +222,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         createdAt: session.createdAt,
         deviceName: session.deviceName,
         partnerName: session.partnerName,
-        messages: session.messages.slice(-100)
+        messages: sanitizeStoredMessages(session.messages.slice(-100))
       };
       try {
         const serialized = JSON.stringify(payload);
@@ -440,6 +462,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           // message is genuinely ON SCREEN — confirm seen too.
           pm.sendSeen(m.id);
         }
+        // Restored files we received but no longer hold bytes for: ask the
+        // peer to re-send them now that the channel is open.
+        if (m.sender === 'partner' && m.attachment?.status === 'restoring') {
+          try { void pm.send(JSON.stringify({ kind: 'resend_request', id: m.id })); } catch { /* channel closed */ }
+        }
       }
     };
 
@@ -458,6 +485,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     pm.onMessage = (dataStr) => {
       try {
         const parsed = JSON.parse(dataStr);
+        // Control packets: a peer that reloaded asks us to re-send a file it
+        // previously received (its bytes died with the page), or tells us it
+        // no longer holds the bytes so we can fail honestly instead of waiting.
+        if (parsed.kind === 'resend_request') { void handleResendRequest(parsed.id); return; }
+        if (parsed.kind === 'resend_unavailable') { updateMessageAttachment(parsed.id, { status: 'failed', note: 'resend-unavailable' }); return; }
         if (parsed.id && parsed.sender) {
           // New structured format. Dedupe by message id so a retried transfer
           // (metadata re-sent after a failure) doesn't create a duplicate
@@ -525,7 +557,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     };
 
     pm.onFileComplete = (transferId, blob) => {
-      const url = URL.createObjectURL(blob);
+      // The reassembled blob carries no MIME type — attach the one from the
+      // metadata so previews, downloads and clipboard copy get the correct
+      // type. Blob composition references the original bytes, so this stays
+      // cheap even for large disk-backed (OPFS) files.
+      const srcMsg = messagesRef.current.find(m => m.attachment?.id === transferId);
+      const mime = srcMsg?.attachment?.mimeType;
+      const finalBlob = mime && blob.type !== mime ? new Blob([blob], { type: mime }) : blob;
+      const url = URL.createObjectURL(finalBlob);
       setSession(s => ({
         ...s,
         messages: s.messages.map(m => {
@@ -889,12 +928,52 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
    * resumes from the position the peer confirmed — the receiver dedupes by
    * chunk sequence, so anything already stored is skipped, never duplicated.
    */
+  /**
+   * A peer that reloaded lost the bytes of a file we sent them and is asking
+   * us to re-send it. Works only while this tab still holds the File in
+   * memory; otherwise we tell them honestly it's gone (resend_unavailable) so
+   * their card fails cleanly instead of spinning forever.
+   */
+  const handleResendRequest = async (messageId: string) => {
+    const pm = peerManagerRef.current;
+    if (!pm) return;
+    const msg = messagesRef.current.find(m => m.id === messageId);
+    if (!msg?.attachment) return;
+    const file = pendingFilesRef.current.get(messageId);
+    if (!file) {
+      try { await pm.send(JSON.stringify({ kind: 'resend_unavailable', id: messageId })); } catch { /* channel gone */ }
+      return;
+    }
+    updateMessageAttachment(messageId, { status: 'resuming', progress: 0 });
+    const partnerMsg: ChatMessage = {
+      ...msg,
+      sender: 'partner',
+      attachment: { ...msg.attachment, status: 'sending', progress: 0 }
+    };
+    try {
+      await pm.resumeTransfer(JSON.stringify(partnerMsg), file, msg.attachment.id);
+      updateMessageAttachment(messageId, { status: 'complete', progress: 1 });
+    } catch (e) {
+      if (!(e instanceof TransferCancelledError)) {
+        try { await pm.send(JSON.stringify({ kind: 'resend_unavailable', id: messageId })); } catch { /* noop */ }
+      }
+    }
+  };
+
   const retryTransfer = async (messageId: string) => {
     const pm = peerManagerRef.current;
-    const file = pendingFilesRef.current.get(messageId);
-    if (!pm || !file) return;
+    if (!pm) return;
     const msg = session.messages.find(m => m.id === messageId);
     if (!msg?.attachment) return;
+    // Receiver-side recovery: the peer said it no longer holds the bytes, or
+    // we restored this file and never got it back — ask again now.
+    if (msg.sender === 'partner' && (msg.attachment.note === 'resend-unavailable' || msg.attachment.status === 'restoring')) {
+      updateMessageAttachment(messageId, { status: 'restoring', note: undefined });
+      try { await pm.send(JSON.stringify({ kind: 'resend_request', id: messageId })); } catch { /* channel gone */ }
+      return;
+    }
+    const file = pendingFilesRef.current.get(messageId);
+    if (!file) return;
 
     updateMessageAttachment(messageId, { status: 'resuming', progress: msg.attachment.progress || 0 });
     const partnerMsg: ChatMessage = {

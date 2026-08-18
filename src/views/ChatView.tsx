@@ -16,6 +16,32 @@ import { saveDraft, loadDraft, clearDraft, ComposerDraft } from '../lib/draftSto
 const LARGE_TEXT_THRESHOLD = 8000; // chars
 const LARGE_TEXT_PREVIEW = 1400;
 
+/**
+ * Prepare an image blob for clipboard byte-copy. Chromium's ClipboardItem
+ * accepts only 'image/png', so PNG passes through untouched and other raster
+ * formats (JPEG/WebP/GIF) are re-encoded via canvas. Non-raster images
+ * (e.g. SVG) return null — callers fall back to copying the filename.
+ */
+async function toPngClipboardBlob(blob: Blob): Promise<Blob | null> {
+  const mime = (blob.type || '').toLowerCase();
+  // Only images (an empty type means the WebRTC-received blob was created
+  // without one — still decodable, so let the canvas path handle it).
+  if (mime && !mime.startsWith('image/')) return null;
+  if (mime === 'image/svg+xml') return null;
+  if (mime === 'image/png') return blob;
+  try {
+    const bmp = await createImageBitmap(blob);
+    const canvas = document.createElement('canvas');
+    canvas.width = bmp.width;
+    canvas.height = bmp.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { bmp.close(); return null; }
+    ctx.drawImage(bmp, 0, 0);
+    bmp.close();
+    return await new Promise<Blob | null>(res => canvas.toBlob(b => res(b), 'image/png'));
+  } catch { return null; }
+}
+
 export function ChatView() {
   const { session, sendMessage, closeSession, cancelTransfer } = useSession();
   const [inputText, setInputText] = useState('');
@@ -955,6 +981,29 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Copy on a received image puts the actual image bytes on the clipboard so
+  // pasting into a chat or document works. If byte-copy isn't supported, fall
+  // back to the filename — never the raw blob: URL, which is dead outside this page.
+  const copyAttachment = async (a: Attachment) => {
+    try {
+      const blob = await (await fetch(a.url!)).blob();
+      // Chromium's ClipboardItem only accepts 'image/png' — hand it PNG
+      // directly and convert other raster formats (JPEG/WebP/GIF) via canvas,
+      // so Copy works for every received photo, not just PNGs.
+      const png = await toPngClipboardBlob(blob);
+      const ClipboardItemCtor = (window as unknown as { ClipboardItem?: typeof ClipboardItem }).ClipboardItem;
+      if (png && ClipboardItemCtor && navigator.clipboard?.write) {
+        await navigator.clipboard.write([new ClipboardItemCtor({ 'image/png': png })]);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        return;
+      }
+    } catch {
+      // Byte copy unavailable — fall through to the filename.
+    }
+    await handleCopy(a.name);
+  };
+
   const handleDownload = (url: string, filename: string) => {
     const link = document.createElement('a');
     link.href = url;
@@ -1093,6 +1142,10 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
   const isImage = a.type === 'image';
   const isVideo = a.type === 'video';
   const complete = a.status === 'complete' && a.url;
+  // Restored after a reload with no bytes: own sends keep 'complete' (the
+  // other device holds the file — "Sent" is truthful), partner files we
+  // received become 'restoring' (re-requested from the peer on reconnect).
+  const lost = a.status === 'complete' && !a.url;
 
   return (
     <motion.div
@@ -1119,7 +1172,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
           )}
 
           {/* Image — tap to view full quality */}
-          {isImage && (
+          {isImage && !lost && (
             <div className={cn("relative w-full overflow-hidden bg-black/5 dark:bg-white/5", msg.text && "border-t border-white/10 dark:border-apple-tile-3/50")}>
               {complete ? (
                 <button
@@ -1143,7 +1196,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
           )}
 
           {/* Video — plays inline */}
-          {isVideo && (
+          {isVideo && !lost && (
             <div className="relative w-full aspect-video bg-black/90 flex items-center justify-center overflow-hidden">
               {complete ? (
                 <video src={a.url} controls preload="metadata" className="w-full h-full object-contain bg-black" />
@@ -1156,8 +1209,9 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
             </div>
           )}
 
-          {/* File / Audio */}
-          {(a.type === 'file' || a.type === 'audio') && (
+          {/* File / Audio — and restored attachments whose bytes died with the
+              page render as the file row, never a broken preview. */}
+          {(a.type === 'file' || a.type === 'audio' || lost) && (
             <div className={cn("p-4 flex items-center gap-3.5", isMe ? "bg-white/10" : "bg-apple-canvas/50 dark:bg-black/20")}>
               <FileTypeIcon name={a.name} mimeType={a.mimeType} size={20} />
               <div className="flex flex-col flex-1 truncate min-w-0">
@@ -1189,12 +1243,13 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
                 </span>
               ) : (
                 <span className={cn("text-[12.5px] font-semibold", a.status === 'failed' ? (isMe ? "text-white" : "text-status-danger") : a.status === 'cancelled' || a.status === 'interrupted' ? (isMe ? "text-white/80" : "text-apple-ink-muted") : isMe ? "text-white" : "text-apple-blue")}>
-                  {a.status === 'failed' ? 'Couldn\u2019t send this file.' :
-                    a.status === 'cancelled' ? 'Cancelled' :
-                      a.status === 'interrupted' ? 'Connection interrupted — waiting to reconnect…' :
-                        a.status === 'resuming' ? `Resuming… ${Math.round((a.progress || 0) * 100)}%` :
-                          a.status === 'sending' ? `Sending… ${Math.round((a.progress || 0) * 100)}%` :
-                            `Receiving… ${Math.round((a.progress || 0) * 100)}%`}
+                  {a.status === 'failed' ? (a.note === 'resend-unavailable' ? 'The other device no longer has this file — ask them to send it again.' : 'Couldn\u2019t send this file.') :
+                    a.status === 'restoring' ? `Restoring file…${a.progress ? ` ${Math.round(a.progress * 100)}%` : ''}` :
+                      a.status === 'cancelled' ? 'Cancelled' :
+                        a.status === 'interrupted' ? 'Connection interrupted — waiting to reconnect…' :
+                          a.status === 'resuming' ? `Resuming… ${Math.round((a.progress || 0) * 100)}%` :
+                            a.status === 'sending' ? `Sending… ${Math.round((a.progress || 0) * 100)}%` :
+                              `Receiving… ${Math.round((a.progress || 0) * 100)}%`}
                 </span>
               )}
             </div>
@@ -1206,7 +1261,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
                     <ActionButton icon={<ArrowUp />} label="Send back" onClick={() => { void sendBack(); }} onBlue={isMe} />
                   )}
                   {a.type === 'image' && (
-                    <ActionButton icon={copied ? <Check /> : <Copy />} label={copied ? "Copied" : "Copy"} active={copied} onClick={() => handleCopy(a.url!)} onBlue={isMe} />
+                    <ActionButton icon={copied ? <Check /> : <Copy />} label={copied ? "Copied" : "Copy"} active={copied} onClick={() => { void copyAttachment(a); }} onBlue={isMe} />
                   )}
                   <ActionButton icon={<Share2 />} label={shared ? "Shared" : "Share"} active={shared} onClick={() => { void handleShare(); }} onBlue={isMe} />
                   <ActionButton icon={saved ? <Check /> : <Download />} label={saved ? "Saved" : "Save"} active={saved} onClick={() => handleDownload(a.url!, a.name)} primary onBlue={isMe} />
@@ -1238,9 +1293,10 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
 };
 
 function ProgressState({ attachment: a, isMe, onBlue }: { attachment: Attachment, isMe: boolean, onBlue?: boolean }) {
-  if (a.status === 'failed') return <span className={cn("font-medium", onBlue ? "text-white" : "text-status-danger")}>Couldn't send this file.</span>;
+  if (a.status === 'failed') return <span className={cn("font-medium", onBlue ? "text-white" : "text-status-danger")}>{a.note === 'resend-unavailable' ? "The other device no longer has this file — ask them to send it again." : "Couldn't send this file."}</span>;
   if (a.status === 'cancelled') return <span className={cn("font-medium", onBlue ? "text-white/80" : "text-apple-ink-muted")}>Cancelled</span>;
   if (a.status === 'complete') return null;
+  if (a.status === 'restoring') return <span className={cn("font-medium animate-pulse", onBlue ? "text-white" : "text-apple-ink-muted")}>Restoring file…</span>;
   if (a.status === 'interrupted') return <span className={cn("font-medium", onBlue ? "text-white" : "text-apple-ink-muted")}>Connection interrupted</span>;
   if (a.status === 'resuming') return <span className={cn("font-medium", onBlue ? "text-white" : "text-apple-blue")}>Resuming… {Math.round((a.progress || 0) * 100)}%</span>;
   return (
