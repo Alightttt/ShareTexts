@@ -1,9 +1,43 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { SessionState, ChatMessage, ConnectionType } from '../types';
 import { getSocket, devLog, signalingConfigIssue, resolveShortCode, refreshCode as refreshCodeRPC } from './socket';
-import { PeerManager, TransferCancelledError, hasSendProgress, clearAllTransferState, getPartialInfo } from './webrtc';
+import { PeerManager, TransferCancelledError, hasSendProgress, clearAllTransferState, clearTransferState, getPartialInfo } from './webrtc';
 import { humanizeError } from './errors';
 import { diag } from './diag';
+
+function toHex(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
+  return hex;
+}
+
+/**
+ * SHA-256 hex of a Blob/File with bounded memory at any size.
+ *
+ * Fast path: browsers that accept a Blob directly stream it natively. Some
+ * engines (older Chromium, some WebViews) reject Blob in digest() — the
+ * fallback then hashes per-64KB slice and combines the per-chunk digests
+ * into one final hash. Same corruption-detection power (any changed byte
+ * changes a chunk hash), but memory stays at 32 bytes per chunk (~1 MB for
+ * a 2 GB file) instead of the whole file.
+ */
+async function sha256Hex(blob: Blob): Promise<string> {
+  try {
+    return toHex(await crypto.subtle.digest('SHA-256', blob as unknown as BufferSource));
+  } catch {
+    // Fallback — chunk-combined digest.
+    const CH = 64 * 1024;
+    const n = Math.ceil(blob.size / CH);
+    const parts = new Uint8Array(n * 32);
+    for (let i = 0; i < n; i++) {
+      const slice = blob.slice(i * CH, Math.min(blob.size, (i + 1) * CH));
+      const d = new Uint8Array(await crypto.subtle.digest('SHA-256', await slice.arrayBuffer()));
+      parts.set(d, i * 32);
+    }
+    return toHex(await crypto.subtle.digest('SHA-256', parts));
+  }
+}
 
 interface SessionContextValue {
   session: SessionState;
@@ -563,6 +597,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // cheap even for large disk-backed (OPFS) files.
       const srcMsg = messagesRef.current.find(m => m.attachment?.id === transferId);
       const mime = srcMsg?.attachment?.mimeType;
+      const checksum = srcMsg?.attachment?.checksum;
       const finalBlob = mime && blob.type !== mime ? new Blob([blob], { type: mime }) : blob;
       const url = URL.createObjectURL(finalBlob);
       setSession(s => ({
@@ -590,6 +625,27 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         // The completed file card is on screen in the open room — confirm
         // seen too (same honesty rule as text: only after it's rendered).
         setTimeout(() => pm.sendSeen(msg.id), 450);
+      }
+
+      // Integrity: if the sender included a checksum, verify the bytes that
+      // actually arrived. The card stays usable (download works) while the
+      // background hash runs; a mismatch flips it to a clear failure with
+      // Retry instead of silently keeping corrupted data.
+      if (checksum && srcMsg) {
+        // updateMessageAttachment keys on the MESSAGE id — the transferId is
+        // the attachment id, so resolve the owning message first.
+        const msgId = srcMsg.id;
+        void sha256Hex(finalBlob)
+          .then((got) => {
+            const ok = got === checksum;
+            diag('transfer.checksum', ok, ok ? 'verified' : `mismatch expected ${checksum.slice(0, 12)}… got ${got.slice(0, 12)}…`);
+            updateMessageAttachment(msgId, ok
+              ? { verified: true }
+              : { status: 'failed', note: 'checksum-mismatch', progress: 1, verified: false });
+          })
+          .catch(() => { /* hashing failed (quota?) — leave complete, unverified */ });
+      } else {
+        diag('transfer.checksum_skipped', true, `${transferId.slice(0, 8)} no checksum`);
       }
     };
 
@@ -835,61 +891,81 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   };
 
   const sendMessage = async (text: string, attachment?: import('../types').Attachment, file?: File) => {
-    if (peerManagerRef.current) {
-      const msg: ChatMessage = {
-        id: crypto.randomUUID(),
-        sender: 'me',
-        text,
-        timestamp: Date.now(),
-        attachment: attachment ? { ...attachment, status: file ? 'sending' : 'complete' } : undefined
-      };
+    if (!peerManagerRef.current) return;
+    const msg: ChatMessage = {
+      id: crypto.randomUUID(),
+      sender: 'me',
+      text,
+      timestamp: Date.now(),
+      // Files start in 'preparing' — the sender hashes the bytes first so the
+      // receiver can verify integrity. The card shows Preparing… while that
+      // runs (perceived speed: the bubble appears the instant you hit send).
+      attachment: attachment ? { ...attachment, status: file ? 'preparing' : 'complete' } : undefined
+    };
 
-      if (file) {
-        pendingFilesRef.current.set(msg.id, file);
-        // Keep the map bounded — only recent transfers can be retried anyway.
-        if (pendingFilesRef.current.size > 20) {
-          const oldest = pendingFilesRef.current.keys().next().value;
-          if (oldest !== undefined) pendingFilesRef.current.delete(oldest);
-        }
+    if (file) {
+      pendingFilesRef.current.set(msg.id, file);
+      // Keep the map bounded — only recent transfers can be retried anyway.
+      if (pendingFilesRef.current.size > 20) {
+        const oldest = pendingFilesRef.current.keys().next().value;
+        if (oldest !== undefined) pendingFilesRef.current.delete(oldest);
       }
+    }
 
-      setSession(s => ({
-        ...s,
-        messages: [...s.messages, msg]
-      }));
+    setSession(s => ({
+      ...s,
+      messages: [...s.messages, msg]
+    }));
 
-      const partnerMsg = { ...msg, sender: 'partner' };
+    if (file && attachment) {
+      const localUrl = URL.createObjectURL(file);
+      updateMessageAttachment(msg.id, { url: localUrl });
+
+      // SHA-256 of the original bytes, streamed by the browser (bounded
+      // memory even for multi-GB files). Sent in the metadata so the receiver
+      // can verify what actually arrived.
+      let checksum: string | undefined;
+      try {
+        checksum = await sha256Hex(file);
+        diag('transfer.hash_ok', true, checksum.slice(0, 12));
+      } catch (e) {
+        diag('transfer.hash_failed', false, String(e));
+      }
+      updateMessageAttachment(msg.id, { status: 'sending', checksum });
+
+      const partnerMsg = { ...msg, sender: 'partner', attachment: { ...msg.attachment!, status: 'sending', checksum } };
       const payload = JSON.stringify(partnerMsg);
       try {
         await peerManagerRef.current.send(payload);
       } catch {
         // The channel dropped before the metadata left this device. Never
         // leave a bubble that claims "Sent".
-        if (file && attachment) {
-          updateMessageAttachment(msg.id, { status: 'failed' });
-        } else {
-          setSession(s => ({
-            ...s,
-            messages: s.messages.map(m => m.id === msg.id ? { ...m, delivery: 'failed' } : m)
-          }));
-        }
+        updateMessageAttachment(msg.id, { status: 'failed' });
         return;
       }
 
-      if (file && attachment) {
-        const localUrl = URL.createObjectURL(file);
-        updateMessageAttachment(msg.id, { url: localUrl });
-
-        try {
-          await peerManagerRef.current.sendFile(file, attachment.id);
-          updateMessageAttachment(msg.id, { status: 'complete', progress: 1 });
-        } catch (e) {
-          // A user cancel stops the loop cleanly — don't overwrite 'cancelled'.
-          if (!(e instanceof TransferCancelledError)) {
-            updateMessageAttachment(msg.id, { status: 'failed' });
-          }
+      try {
+        await peerManagerRef.current.sendFile(file, attachment.id);
+        updateMessageAttachment(msg.id, { status: 'complete', progress: 1 });
+      } catch (e) {
+        // A user cancel stops the loop cleanly — don't overwrite 'cancelled'.
+        if (!(e instanceof TransferCancelledError)) {
+          updateMessageAttachment(msg.id, { status: 'failed' });
         }
       }
+      return;
+    }
+
+    // Plain text: metadata (the text itself) goes immediately — no hash step.
+    const partnerMsg = { ...msg, sender: 'partner' };
+    const payload = JSON.stringify(partnerMsg);
+    try {
+      await peerManagerRef.current.send(payload);
+    } catch {
+      setSession(s => ({
+        ...s,
+        messages: s.messages.map(m => m.id === msg.id ? { ...m, delivery: 'failed' } : m)
+      }));
     }
   };
 
@@ -966,8 +1042,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const msg = session.messages.find(m => m.id === messageId);
     if (!msg?.attachment) return;
     // Receiver-side recovery: the peer said it no longer holds the bytes, or
-    // we restored this file and never got it back — ask again now.
-    if (msg.sender === 'partner' && (msg.attachment.note === 'resend-unavailable' || msg.attachment.status === 'restoring')) {
+    // we restored this file and never got it back — ask again now. For a
+    // checksum mismatch the partial receive must be discarded so the resend
+    // restarts from zero instead of the corrupted position.
+    if (msg.sender === 'partner' && (msg.attachment.note === 'resend-unavailable' || msg.attachment.status === 'restoring' || msg.attachment.note === 'checksum-mismatch')) {
+      if (msg.attachment.note === 'checksum-mismatch') {
+        clearTransferState(msg.attachment.id);
+        diag('transfer.restart', true, msg.attachment.name);
+      }
       updateMessageAttachment(messageId, { status: 'restoring', note: undefined });
       try { await pm.send(JSON.stringify({ kind: 'resend_request', id: messageId })); } catch { /* channel gone */ }
       return;

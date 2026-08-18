@@ -7,14 +7,22 @@ export interface Attachment {
   size: number;
   mimeType: string;
   encoding?: string; // 'utf-8' | 'binary' — protocol metadata (optional today)
-  checksum?: string; // optional digest — protocol metadata (future)
   url?: string; // object URL for preview/download
-  status?: 'draft' | 'sending' | 'receiving' | 'interrupted' | 'resuming' | 'complete' | 'failed' | 'cancelled' | 'restoring';
+  status?: 'draft' | 'preparing' | 'sending' | 'receiving' | 'interrupted' | 'resuming' | 'complete' | 'failed' | 'cancelled' | 'restoring';
   progress?: number;
-  /** Honest failure reason when a transfer can't complete. 'resend-unavailable'
-   *  = a restored file was re-requested but the peer no longer holds the bytes
-   *  (e.g. it also reloaded) — the user must ask the sender to send it again. */
-  note?: 'resend-unavailable';
+  /** SHA-256 hex of the original bytes, computed by the sender before the
+   *  transfer. The receiver hashes what arrived and compares — a mismatch is
+   *  surfaced as a failed transfer, never a silent corruption. */
+  checksum?: string;
+  /** Receiver-side: the received bytes hashed to the sender's checksum. */
+  verified?: boolean;
+  /** Honest failure reason when a transfer can't complete.
+   *  'resend-unavailable' = a restored file was re-requested but the peer no
+   *  longer holds the bytes (e.g. it also reloaded) — the user must ask the
+   *  sender to send it again.
+   *  'checksum-mismatch' = the bytes arrived but don't match the original
+   *  (corruption mid-flight) — retry restarts the transfer from zero. */
+  note?: 'resend-unavailable' | 'checksum-mismatch';
 }
 
 export interface ChatMessage {

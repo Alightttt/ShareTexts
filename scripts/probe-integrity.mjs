@@ -114,7 +114,9 @@ try {
   await A.locator('textarea').first().press('Enter');
 
   let bigOk = false;
-  for (let i = 0; i < 90; i++) {
+  // Headless WebRTC is slow (~1-2 min for 100MB) and the sender now hashes
+  // the file first — give the OPFS path a generous budget.
+  for (let i = 0; i < 160; i++) {
     await sleep(2000);
     const found = await B.evaluate(async (want) => {
       for (const rec of window.__blobs) {

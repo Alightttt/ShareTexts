@@ -168,7 +168,7 @@ function AppContent() {
             onClick={() => { window.location.href = '/'; }}
             className="px-7 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] shadow-card hover:shadow-float min-h-[48px] flex items-center justify-center gap-2"
           >
-            <Send className="w-4 h-4" /> Start a Session
+            <Send className="w-4 h-4" /> Start a transfer
           </button>
           <button
             onClick={() => { window.location.href = '/'; }}

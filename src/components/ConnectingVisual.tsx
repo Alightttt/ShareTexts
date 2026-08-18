@@ -22,9 +22,9 @@ export function ConnectingVisual({ className }: { className?: string }) {
           so its center sits at 24px from its edge — the beam starts/ends at
           24px, never short of the logo or overlapping the frame. */}
       <div className="absolute left-6 right-6 top-1/2 h-px bg-apple-ink/15 dark:bg-white/15" />
-      <div className="absolute left-6 right-6 top-1/2 h-px overflow-visible">
-        <span className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-azure-500 shadow-[0_0_12px_rgba(46,139,255,0.9)] animate-beam" />
-        <span className="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-azure-400 shadow-[0_0_10px_rgba(46,139,255,0.7)] animate-beam-delayed" />
+      <div className="absolute left-6 right-6 top-1/2 h-px overflow-visible" style={{ ['--travel' as string]: '176px' }}>
+        <span className="absolute left-0 top-1/2 w-2 h-2 rounded-full bg-azure-500 shadow-[0_0_12px_rgba(46,139,255,0.9)] animate-beam" />
+        <span className="absolute left-0 top-1/2 w-1.5 h-1.5 rounded-full bg-azure-400 shadow-[0_0_10px_rgba(46,139,255,0.7)] animate-beam-delayed" />
       </div>
 
       {/* Sending device — drifts up/down on a slow phase */}

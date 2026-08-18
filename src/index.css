@@ -198,12 +198,21 @@
   }
 }
 
-/* Hero demo: a data packet traveling along the connection beam */
+/* Hero demo: a data packet traveling along the connection beam.
+   Transform-only (never `left`/`top` — those force layout every frame on
+   low-end devices). The travel distance is injected as `--travel` (px) by
+   the components, which already measure the beam geometry. */
 @keyframes beam-travel {
-  from { left: 0; opacity: 0; }
+  from { transform: translateY(-50%) translateX(0); opacity: 0; }
   8% { opacity: 1; }
   92% { opacity: 1; }
-  to { left: calc(100% - 6px); opacity: 0; }
+  to { transform: translateY(-50%) translateX(var(--travel, 176px)); opacity: 0; }
+}
+@keyframes beam-travel-v {
+  from { transform: translateX(-50%) translateY(0); opacity: 0; }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  to { transform: translateX(-50%) translateY(var(--travel, 120px)); opacity: 0; }
 }
 .animate-beam {
   animation: beam-travel 1.6s linear infinite;

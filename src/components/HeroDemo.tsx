@@ -30,6 +30,8 @@ interface TransferObject {
   text?: string;
   name?: string;
   size?: string;
+  /** Stable identity for stream-list keys (index keys shift on trim). */
+  uid?: number;
 }
 
 const SAMPLES: { key: Exclude<Kind, 'text'>; label: string; Icon: typeof ImageIcon; object: TransferObject }[] = [
@@ -145,12 +147,18 @@ export function HeroDemo() {
   const composerRef = useRef<HTMLDivElement>(null);
   const laptopTargetRef = useRef<HTMLDivElement>(null);
 
-  const [from, setFrom] = useState({ x: 0, y: 0 });
-  const [to, setTo] = useState({ x: 0, y: 0 });
-  const [flyFrom, setFlyFrom] = useState({ x: 0, y: 0 });
-  const [flyTo, setFlyTo] = useState({ x: 0, y: 0 });
-  const [beam, setBeam] = useState<{ left: number; width: number; top: number; vertical: boolean; height?: number }>({ left: 0, width: 0, top: 0, vertical: false });
-  const [nodePos, setNodePos] = useState({ x: 0, y: 0 });
+  // All bridge geometry in ONE state object: measure() used to fire six
+  // separate setStates per resize/scene-change, and every one of them
+  // re-rendered the whole demo. One object + a skip-if-unchanged check keeps
+  // re-renders to exactly one per actual geometry change.
+  const [bridge, setBridge] = useState({
+    from: { x: 0, y: 0 },
+    to: { x: 0, y: 0 },
+    flyFrom: { x: 0, y: 0 },
+    flyTo: { x: 0, y: 0 },
+    beam: { left: 0, width: 0, top: 0, vertical: false, height: 0 },
+    nodePos: { x: 0, y: 0 },
+  });
 
   // Interactive state — a real composer. `attach` holds the object staged in
   // the composer (the auto-run sets it to each scene's sample; the visitor
@@ -160,6 +168,7 @@ export function HeroDemo() {
   const [pending, setPending] = useState<TransferObject | null>(null);
   const [landed, setLanded] = useState<TransferObject | null>(null);
   const [stream, setStream] = useState<TransferObject[]>([]);
+  const uidRef = useRef(1);
   const [step, setStep] = useState<Step>('ready');
 
   // The auto-run's timers + takeover bookkeeping. A visitor's send clears the
@@ -175,6 +184,7 @@ export function HeroDemo() {
   const userTouchedAt = useRef(0);
   const [autoArmed, setAutoArmed] = useState(false);
 
+  const lastMeasure = useRef('');
   const measure = useCallback(() => {
     const container = containerRef.current;
     const phone = phoneScreenRef.current;
@@ -188,28 +198,34 @@ export function HeroDemo() {
     const fromY = p.top - c.top + p.height / 2;
     const toX = l.left - c.left + l.width / 2;
     const toY = l.top - c.top + l.height / 2;
-    setFrom({ x: fromX, y: fromY });
-    setTo({ x: toX, y: toY });
 
     const comp = composerRef.current?.getBoundingClientRect();
     const target = laptopTargetRef.current?.getBoundingClientRect();
-    setFlyFrom(comp
+    const flyFrom = comp
       ? { x: comp.left - c.left + comp.width / 2, y: comp.top - c.top + comp.height / 2 }
-      : { x: fromX, y: fromY });
-    setFlyTo(target
+      : { x: fromX, y: fromY };
+    const flyTo = target
       ? { x: target.left - c.left + target.width / 2, y: target.top - c.top + target.height / 2 }
-      : { x: toX, y: toY });
+      : { x: toX, y: toY };
 
+    let beam;
+    let nodePos;
     if (vertical) {
       const top = p.bottom - c.top;
-      setBeam({ left: fromX, width: 0, top, vertical: true, height: Math.max(0, l.top - c.top - top) });
-      setNodePos({ x: fromX, y: top + Math.max(0, l.top - c.top - top) / 2 });
+      const height = Math.max(0, l.top - c.top - top);
+      beam = { left: fromX, width: 0, top, vertical: true, height };
+      nodePos = { x: fromX, y: top + height / 2 };
     } else {
       const left = p.left - c.left + p.width - 8;
       const width = Math.max(0, l.left - c.left - left + 16);
-      setBeam({ left, width, top: fromY, vertical: false });
-      setNodePos({ x: (p.left - c.left + p.width + l.left - c.left) / 2, y: fromY });
+      beam = { left, width, top: fromY, vertical: false, height: 0 };
+      nodePos = { x: (p.left - c.left + p.width + l.left - c.left) / 2, y: fromY };
     }
+
+    const sig = JSON.stringify({ from: { x: fromX, y: fromY }, to: { x: toX, y: toY }, flyFrom, flyTo, beam, nodePos });
+    if (sig === lastMeasure.current) return;
+    lastMeasure.current = sig;
+    setBridge(JSON.parse(sig));
   }, []);
 
   useEffect(() => {
@@ -236,7 +252,9 @@ export function HeroDemo() {
     setStep('sending');
     const finish = () => {
       setLanded(obj);
-      setStream(s => [...s.slice(-2), obj]);
+      // uid gives each stream entry a stable key — index-based keys shift
+      // when the array trims, re-animating old items on every send.
+      setStream(s => [...s.slice(-2), { ...obj, uid: uidRef.current++ }]);
       setStep('received');
       if (fromUser) {
         // Resume the auto-run from where it would have gone next.
@@ -314,8 +332,8 @@ export function HeroDemo() {
 
   const canSend = (draft.trim().length > 0 || attach != null) && step !== 'sending';
 
-  const dx = flyTo.x - flyFrom.x;
-  const dy = flyTo.y - flyFrom.y;
+  const dx = bridge.flyTo.x - bridge.flyFrom.x;
+  const dy = bridge.flyTo.y - bridge.flyFrom.y;
   const isSending = step === 'sending';
   const phoneStatus: 'connected' | 'sending' | 'sent' =
     isSending ? 'sending' : (stream.length > 0 || reduced) ? 'sent' : 'connected';
@@ -334,14 +352,20 @@ export function HeroDemo() {
       className="relative w-full max-w-[920px] mx-auto select-none min-h-[540px] sm:min-h-[480px] lg:min-h-[520px]"
       aria-hidden
     >
-      {/* Connection beam — horizontal on desktop, vertical when stacked. */}
+      {/* Connection beam — horizontal on desktop, vertical when stacked. The
+          packet travels via transform only (--travel injected from the
+          measured geometry) — never `left`/`top`, which would force layout
+          every frame. */}
       <div
         className="absolute"
-        style={beam.vertical ? { left: beam.left, top: beam.top, height: beam.height ?? 0, width: 0, transform: 'translateX(-50%)' } : { left: beam.left, width: beam.width, top: beam.top, transform: 'translateY(-50%)' }}
+        style={bridge.beam.vertical ? { left: bridge.beam.left, top: bridge.beam.top, height: bridge.beam.height, width: 0, transform: 'translateX(-50%)' } : { left: bridge.beam.left, width: bridge.beam.width, top: bridge.beam.top, transform: 'translateY(-50%)' }}
       >
-        <div className={beam.vertical ? "w-px h-full bg-apple-ink/10 dark:bg-white/10" : "h-px w-full bg-apple-ink/10 dark:bg-white/10"} />
+        <div className={bridge.beam.vertical ? "w-px h-full bg-apple-ink/10 dark:bg-white/10" : "h-px w-full bg-apple-ink/10 dark:bg-white/10"} />
         {!reduced && (
-          <div className={cn("absolute w-1.5 h-1.5 rounded-full animate-beam bg-apple-blue shadow-[0_0_8px_rgba(0,102,204,0.7)]", beam.vertical ? "top-0 left-1/2 -translate-x-1/2" : "top-1/2 -translate-y-1/2 left-0")} />
+          <div
+            className={cn("absolute left-0 w-1.5 h-1.5 rounded-full bg-apple-blue shadow-[0_0_8px_rgba(0,102,204,0.7)]", bridge.beam.vertical ? "top-0 animate-beam-v" : "top-1/2 animate-beam")}
+            style={{ ['--travel' as string]: `${bridge.beam.vertical ? bridge.beam.height : bridge.beam.width}px` }}
+          />
         )}
       </div>
 
@@ -349,10 +373,10 @@ export function HeroDemo() {
       <div
         className="absolute w-9 h-9 rounded-full shadow-card flex items-center justify-center bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 z-10"
         style={{
-          left: nodePos.x,
-          top: nodePos.y,
+          left: bridge.nodePos.x,
+          top: bridge.nodePos.y,
           transform: 'translate(-50%, -50%)',
-          opacity: nodePos.x || nodePos.y ? 1 : 0,
+          opacity: bridge.nodePos.x || bridge.nodePos.y ? 1 : 0,
           transition: 'opacity 0.3s ease',
         }}
       >
@@ -368,9 +392,9 @@ export function HeroDemo() {
               {/* Sent stream */}
               <div className="flex-1 flex flex-col justify-end gap-[5px] px-[7px] sm:px-2.5 pb-1.5 overflow-hidden">
                 <AnimatePresence initial={false}>
-                  {stream.map((obj, i) => (
+                  {stream.map((obj) => (
                     <motion.div
-                      key={`${obj.kind}-${i}`}
+                      key={obj.uid}
                       initial={reduced ? { opacity: 1 } : { opacity: 0, y: 8, scale: 0.96 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       transition={{ type: 'spring', bounce: 0.2, duration: 0.45 }}
@@ -404,8 +428,8 @@ export function HeroDemo() {
                       key={`composer-${step}`}
                       initial={reduced ? { opacity: 1 } : { opacity: 0, y: 8, scale: 0.97 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={reduced ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98 }}
-                      transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+                      exit={reduced ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98, transition: { duration: 0.16 } }}
+                      transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
                       className="bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 rounded-[12px] sm:rounded-[14px] shadow-card p-[6px] sm:p-2 flex flex-col gap-1.5"
                     >
                       {attach && (
@@ -513,10 +537,13 @@ export function HeroDemo() {
                       className="flex flex-col items-center gap-2 w-full max-w-[160px]"
                     >
                       <div className="w-full h-1 rounded-full bg-apple-ink/10 dark:bg-white/10 overflow-hidden">
+                        {/* scaleX with origin-left — animating `width` would
+                            force layout every frame; transform stays on the
+                            compositor. */}
                         <motion.div
-                          className="h-full rounded-full bg-apple-blue"
-                          initial={{ width: '0%' }}
-                          animate={{ width: '94%' }}
+                          className="h-full rounded-full bg-apple-blue origin-left"
+                          initial={{ scaleX: 0 }}
+                          animate={{ scaleX: 0.94 }}
                           transition={{ duration: FLIGHT_MS / 1000, ease: [0.4, 0, 0.2, 1] }}
                         />
                       </div>
@@ -587,20 +614,20 @@ export function HeroDemo() {
         {isSending && !reduced && pending && (
           <motion.div
             key={`fly-${pending.kind}-${stream.length}`}
-            className="absolute z-20 pointer-events-none"
-            style={{ left: flyFrom.x, top: flyFrom.y, transform: 'translate(-50%, -50%)' }}
-            initial={{ x: 0, y: 0, opacity: 0, scale: 0.88, rotate: -3 }}
+            className="absolute z-20 pointer-events-none will-change-transform"
+            style={{ left: bridge.flyFrom.x, top: bridge.flyFrom.y, transform: 'translate(-50%, -50%)' }}
+            initial={{ x: 0, y: 0, opacity: 0, scale: 0.88, rotate: -2 }}
             animate={
-              beam.vertical
-                ? { x: [0, 14, 0], y: [0, dy * 0.42, dy], opacity: [0, 1, 1, 1], scale: [0.88, 1.05, 1, 1.03], rotate: [-3, 1.5, 0] }
-                : { x: [0, dx * 0.34, dx * 0.72, dx], y: [0, -18, -10, 0], opacity: [0, 1, 1, 1], scale: [0.88, 1.05, 1, 1.03], rotate: [-3, 1.5, 0] }
+              bridge.beam.vertical
+                ? { x: [0, 14, 0], y: [0, dy * 0.42, dy], opacity: [0, 1, 1, 1], scale: [0.88, 1.04, 1, 1.02], rotate: [-2, 1, 0] }
+                : { x: [0, dx * 0.34, dx * 0.72, dx], y: [0, -16, -9, 0], opacity: [0, 1, 1, 1], scale: [0.88, 1.04, 1, 1.02], rotate: [-2, 1, 0] }
             }
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: FLIGHT_MS / 1000, times: [0, 0.18, 0.72, 1], ease: [0.32, 0.72, 0, 1] }}
           >
             {pending.kind === 'text'
               ? <div className="max-w-[140px]"><TextCard obj={pending} /></div>
-              : <ObjectCard obj={pending} className="w-[76px] sm:w-[112px]" />}
+              : <ObjectCard obj={pending} className="w-[76px] sm:w-[112px] shadow-none" />}
           </motion.div>
         )}
       </AnimatePresence>

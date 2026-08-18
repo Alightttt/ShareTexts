@@ -1239,17 +1239,19 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
                   {isMe ? <DeliveryTick delivered={msg.delivered} seen={msg.seen} onBlue /> : msg.source === 'push' ? (
                     <span className="font-semibold flex items-center gap-1"><Terminal className="w-3 h-3" /> Sent from your computer</span>
                   ) : <span className="font-semibold">Received</span>}
+                  {a.verified && <span className="flex items-center gap-0.5" title="The bytes were checked against the original — nothing was altered"><ShieldCheck className="w-3 h-3" /> Verified</span>}
                   {' • '}{formatBytes(a.size)}{' • '}{timeOf(msg.timestamp)}
                 </span>
               ) : (
                 <span className={cn("text-[12.5px] font-semibold", a.status === 'failed' ? (isMe ? "text-white" : "text-status-danger") : a.status === 'cancelled' || a.status === 'interrupted' ? (isMe ? "text-white/80" : "text-apple-ink-muted") : isMe ? "text-white" : "text-apple-blue")}>
-                  {a.status === 'failed' ? (a.note === 'resend-unavailable' ? 'The other device no longer has this file — ask them to send it again.' : 'Couldn\u2019t send this file.') :
-                    a.status === 'restoring' ? `Restoring file…${a.progress ? ` ${Math.round(a.progress * 100)}%` : ''}` :
-                      a.status === 'cancelled' ? 'Cancelled' :
-                        a.status === 'interrupted' ? 'Connection interrupted — waiting to reconnect…' :
-                          a.status === 'resuming' ? `Resuming… ${Math.round((a.progress || 0) * 100)}%` :
-                            a.status === 'sending' ? `Sending… ${Math.round((a.progress || 0) * 100)}%` :
-                              `Receiving… ${Math.round((a.progress || 0) * 100)}%`}
+                  {a.status === 'failed' ? (a.note === 'resend-unavailable' ? 'The other device no longer has this file — ask them to send it again.' : a.note === 'checksum-mismatch' ? "The file didn't arrive intact — send it again." : 'Couldn\u2019t send this file.') :
+                    a.status === 'preparing' ? 'Preparing…' :
+                      a.status === 'restoring' ? `Restoring file…${a.progress ? ` ${Math.round(a.progress * 100)}%` : ''}` :
+                        a.status === 'cancelled' ? 'Cancelled' :
+                          a.status === 'interrupted' ? 'Connection interrupted — waiting to reconnect…' :
+                            a.status === 'resuming' ? `Resuming… ${Math.round((a.progress || 0) * 100)}%` :
+                              a.status === 'sending' ? `Sending… ${Math.round((a.progress || 0) * 100)}%` :
+                                `Receiving… ${Math.round((a.progress || 0) * 100)}%`}
                 </span>
               )}
             </div>
@@ -1267,7 +1269,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
                   <ActionButton icon={saved ? <Check /> : <Download />} label={saved ? "Saved" : "Save"} active={saved} onClick={() => handleDownload(a.url!, a.name)} primary onBlue={isMe} />
                 </>
               )}
-              {(a.status === 'sending' || a.status === 'receiving' || a.status === 'interrupted' || a.status === 'resuming') && (
+              {(a.status === 'preparing' || a.status === 'sending' || a.status === 'receiving' || a.status === 'interrupted' || a.status === 'resuming') && (
                 <ActionButton icon={<X />} label="Cancel" onClick={() => { void cancelTransfer(msg.id); }} onBlue={isMe} />
               )}
               {(a.status === 'failed' || (a.status === 'cancelled' && isMe) || (a.status === 'interrupted' && isMe)) && (
@@ -1293,9 +1295,10 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
 };
 
 function ProgressState({ attachment: a, isMe, onBlue }: { attachment: Attachment, isMe: boolean, onBlue?: boolean }) {
-  if (a.status === 'failed') return <span className={cn("font-medium", onBlue ? "text-white" : "text-status-danger")}>{a.note === 'resend-unavailable' ? "The other device no longer has this file — ask them to send it again." : "Couldn't send this file."}</span>;
+  if (a.status === 'failed') return <span className={cn("font-medium", onBlue ? "text-white" : "text-status-danger")}>{a.note === 'resend-unavailable' ? "The other device no longer has this file — ask them to send it again." : a.note === 'checksum-mismatch' ? "The file didn't arrive intact — send it again." : "Couldn't send this file."}</span>;
   if (a.status === 'cancelled') return <span className={cn("font-medium", onBlue ? "text-white/80" : "text-apple-ink-muted")}>Cancelled</span>;
   if (a.status === 'complete') return null;
+  if (a.status === 'preparing') return <span className={cn("font-medium animate-pulse", onBlue ? "text-white" : "text-apple-ink-muted")}>Preparing…</span>;
   if (a.status === 'restoring') return <span className={cn("font-medium animate-pulse", onBlue ? "text-white" : "text-apple-ink-muted")}>Restoring file…</span>;
   if (a.status === 'interrupted') return <span className={cn("font-medium", onBlue ? "text-white" : "text-apple-ink-muted")}>Connection interrupted</span>;
   if (a.status === 'resuming') return <span className={cn("font-medium", onBlue ? "text-white" : "text-apple-blue")}>Resuming… {Math.round((a.progress || 0) * 100)}%</span>;
