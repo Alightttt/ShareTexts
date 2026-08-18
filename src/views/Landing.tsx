@@ -212,7 +212,13 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
       await createSession();
     } catch (e: any) {
       setIsCreating(false);
-      setCreateError(e.message || "Couldn't create a session.");
+      // Honest error: tell the user exactly what happened and what to do
+      const msg = e.message || "Couldn't start the connection.";
+      if (msg.includes('trouble connecting') || msg.includes('reach ShareText')) {
+        setCreateError("We couldn't reach the connection service. Nothing was sent. Check your connection and try again.");
+      } else {
+        setCreateError(msg + " Nothing was sent.");
+      }
     }
   };
 

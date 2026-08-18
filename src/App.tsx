@@ -23,10 +23,10 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
       ? "That’s it."
       : "Room closed.";
   const copy = reason === 'expired'
-    ? "This room expired. Start a new transfer when you're ready."
+    ? "The connection expired. For privacy, the room cannot be reopened. Start a new connection to continue."
     : reason === 'manual_close'
       ? "You closed this room. Everything you sent is already on the other device."
-      : "The other device closed this room.";
+      : "The other device closed this room. Nothing incomplete was saved.";
   const sub = "No account or transfer history. Payloads moved directly between your devices.";
 
   const [shared, setShared] = useState(false);
