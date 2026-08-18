@@ -13,8 +13,8 @@ for (const [w, h, label] of [[320, 700, '320'], [390, 844, '390'], [768, 1024, '
   const r = await page.evaluate(() => {
     const doc = document.documentElement;
     const demo = document.querySelector('[class*="max-w-[880px]"]');
-    const createBtn = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Send text'));
-    const joinBtn = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Receive text'));
+    const createBtn = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Send'));
+    const joinBtn = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Receive'));
     const createVisible = createBtn ? createBtn.getBoundingClientRect().height > 0 : false;
     const joinVisible = joinBtn ? joinBtn.getBoundingClientRect().height > 0 : false;
     const scrollHeight = doc.scrollHeight;

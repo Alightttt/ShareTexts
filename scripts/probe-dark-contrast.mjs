@@ -101,7 +101,7 @@ try {
   const landing = await audit();
   console.log('LANDING dark:', JSON.stringify(landing, null, 1));
 
-  await A.getByRole('button', { name: 'Send text' }).first().click();
+  await A.getByRole('button', { name: 'Send' }).first().click();
   await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   await sleep(500);
   const pairing = await audit();
@@ -111,7 +111,7 @@ try {
   const ctxB = await b.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: 'dark' });
   const B = await ctxB.newPage();
   await B.goto(URL, { waitUntil: 'networkidle' });
-  await B.getByRole('button', { name: 'Receive text' }).first().click();
+  await B.getByRole('button', { name: 'Receive' }).first().click();
   const code = await readLiveCode(A);
   await B.locator('input[inputmode="numeric"]').fill(code);
   await waitForChat(B, 'B');

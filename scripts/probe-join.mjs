@@ -25,7 +25,7 @@ B.on('pageerror', (e) => logs.push(`[B:pageerror] ${e.message}`));
 
 // A: create
 await A.goto(URL, { waitUntil: 'networkidle' });
-await A.getByRole('button', { name: 'Send text' }).first().click();
+await A.getByRole('button', { name: 'Send' }).first().click();
 await A.getByText('LIVE CODE').waitFor({ timeout: 15000 });
 const codeDigits = await A.locator('span').filter({ hasText: /^\d$/ }).allTextContents();
 const code = codeDigits.slice(-6).join('');
@@ -33,7 +33,7 @@ console.log('Code:', code);
 
 // B: join
 await B.goto(URL, { waitUntil: 'networkidle' });
-await B.getByRole('button', { name: 'Receive text' }).first().click();
+await B.getByRole('button', { name: 'Receive' }).first().click();
 await B.locator('input[inputmode="numeric"]').fill(code);
 await B.waitForTimeout(12000);
 

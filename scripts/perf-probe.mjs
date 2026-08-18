@@ -28,13 +28,13 @@ console.log('landing:', JSON.stringify(marks.nav));
 
 // --- interaction latencies (Node-side clocks) ---
 let t0 = Date.now();
-await A.getByRole('button', { name: 'Send text' }).first().click();
+await A.getByRole('button', { name: 'Send' }).first().click();
 await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
 console.log('create → live code:', Date.now() - t0, 'ms');
 
 await B.goto(URL, { waitUntil: 'domcontentloaded' });
 let t1 = Date.now();
-await B.getByRole('button', { name: 'Receive text' }).first().click();
+await B.getByRole('button', { name: 'Receive' }).first().click();
 const digits = await A.locator('span').filter({ hasText: /^\d$/ }).allTextContents();
 const code = digits.slice(-6).join('');
 await B.locator('input[inputmode="numeric"]').fill(code);

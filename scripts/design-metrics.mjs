@@ -171,8 +171,8 @@ try {
   await measure(A, 'LANDING (dark, desktop)', [
     ['h1', 'h1'],
     ['subtitle', 'header + section p'],
-    ['cta-primary', { text: 'Send text' }],
-    ['cta-secondary', { text: 'Receive text' }],
+    ['cta-primary', { text: 'Send' }],
+    ['cta-secondary', { text: 'Receive' }],
     ['kicker', { text: 'No account required', tag: 'p' }],
     ['header', 'header'],
   ]);
@@ -187,7 +187,7 @@ try {
   await ctxL.close();
 
   // ---- room hub ----
-  await A.getByRole('button', { name: 'Send text' }).first().click();
+  await A.getByRole('button', { name: 'Send' }).first().click();
   await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   const digits = await A.locator('span').filter({ hasText: /^\d$/ }).allTextContents();
   const code = digits.slice(-6).join('');
@@ -213,7 +213,7 @@ try {
 
   // ---- join screen ----
   await B.goto(URL, { waitUntil: 'networkidle' });
-  await B.getByRole('button', { name: 'Receive text' }).first().click();
+  await B.getByRole('button', { name: 'Receive' }).first().click();
   await sleep(600);
   await measure(B, 'JOIN (mobile)', [
     ['heading', 'h1'],

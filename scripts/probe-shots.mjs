@@ -10,7 +10,7 @@ async function main() {
 
   // A: create session → connect screen
   await A.goto(URL, { waitUntil: 'networkidle' });
-  await A.getByRole('button', { name: 'Send text' }).first().click();
+  await A.getByRole('button', { name: 'Send' }).first().click();
   await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   await sleep(800);
   await A.screenshot({ path: '.audit-shots/mobile-connect.png' });
@@ -18,7 +18,7 @@ async function main() {
 
   // B: join screen (code entry)
   await B.goto(URL, { waitUntil: 'networkidle' });
-  await B.getByRole('button', { name: 'Receive text' }).first().click();
+  await B.getByRole('button', { name: 'Receive' }).first().click();
   await sleep(800);
   await B.screenshot({ path: '.audit-shots/mobile-join.png' });
   console.log('shot: join screen');

@@ -797,6 +797,7 @@ export function ChatView() {
             <div className="flex items-end gap-0.5 p-1 relative">
               <button
                 type="button"
+                data-testid="add-attachment"
                 onPointerDown={() => setShowAttachmentMenu(!showAttachmentMenu)}
                 aria-label="Add attachment"
                 aria-expanded={showAttachmentMenu}
@@ -810,6 +811,7 @@ export function ChatView() {
 
               <textarea
                 ref={textareaRef}
+                data-testid="composer"
                 value={inputText}
                 rows={1}
                 onChange={(e) => setInputText(e.target.value)}
@@ -827,6 +829,7 @@ export function ChatView() {
 
               <button
                 type="button"
+                data-testid="send"
                 onPointerDown={handleSend}
                 disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
                 aria-label="Send"

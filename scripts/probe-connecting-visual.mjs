@@ -19,12 +19,12 @@ await B.addInitScript(() => {
 });
 
 await A.goto(URL, { waitUntil: 'networkidle' });
-await A.getByRole('button', { name: 'Send text' }).first().click();
+await A.getByRole('button', { name: 'Send' }).first().click();
 await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
 const code = await readLiveCode(A);
 
 await B.goto(URL, { waitUntil: 'networkidle' });
-await B.getByRole('button', { name: 'Receive text' }).first().click();
+await B.getByRole('button', { name: 'Receive' }).first().click();
 await B.locator('input[aria-label="Six-digit pairing code"]').fill(code);
 await sleep(2500);
 

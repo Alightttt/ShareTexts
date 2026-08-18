@@ -18,7 +18,7 @@ async function main() {
   await sleep(1200);
 
   // --- Create + find the short share link on the connect screen ---
-  await A.getByRole('button', { name: 'Send text' }).first().click();
+  await A.getByRole('button', { name: 'Send' }).first().click();
   await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   // Headless Chromium exposes navigator.share but it never settles — disable
   // it so the button's copy fallback runs (what desktop browsers do anyway).

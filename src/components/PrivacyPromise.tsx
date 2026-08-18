@@ -26,8 +26,8 @@ const PROMISES = [
   },
   {
     icon: RotateCcw,
-    title: 'It picks up where it stopped',
-    body: 'If the connection drops mid-transfer, it pauses instead of failing and resumes when both devices are back.',
+    title: 'Transfer integrity',
+    body: 'Every file is verified with SHA-256. What you send is exactly what arrives.',
   },
 ];
 

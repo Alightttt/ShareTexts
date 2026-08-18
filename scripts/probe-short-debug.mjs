@@ -6,7 +6,7 @@ async function main() {
   const A = await ctxA.newPage();
   await A.goto(URL, { waitUntil: 'networkidle' });
   await sleep(1200);
-  await A.getByRole('button', { name: 'Send text' }).first().click();
+  await A.getByRole('button', { name: 'Send' }).first().click();
   await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   await sleep(600);
 

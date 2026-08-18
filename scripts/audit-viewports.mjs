@@ -42,7 +42,7 @@ for (const vp of VIEWPORTS) {
           const r = el.getBoundingClientRect();
           return r.width > 0 && r.height > 0 && r.bottom <= window.innerHeight + 1 && r.top >= -1;
         };
-        const sendBtn = [...document.querySelectorAll('button')].find(b => (b.textContent || '').trim() === 'Send text');
+        const sendBtn = [...document.querySelectorAll('button')].find(b => (b.textContent || '').trim() === 'Send');
         const hero = inViewport(sendBtn);
         // Sticky/fixed bars
         // Sticky/fixed bars that could cover content. Transparent decorative

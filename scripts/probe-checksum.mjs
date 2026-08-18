@@ -14,10 +14,10 @@ try {
   await A.goto(URL, { waitUntil: 'networkidle' });
   await B.goto(URL, { waitUntil: 'networkidle' });
 
-  await A.getByRole('button', { name: 'Send text' }).first().click();
+  await A.getByRole('button', { name: 'Send' }).first().click();
   await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   const code = await readLiveCode(A);
-  await B.getByRole('button', { name: 'Receive text' }).first().click();
+  await B.getByRole('button', { name: 'Receive' }).first().click();
   await B.locator('input[inputmode="numeric"]').fill(code);
   await waitForChat(B, 'B');
   await waitForChat(A, 'A');

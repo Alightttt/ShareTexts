@@ -27,7 +27,7 @@ const QA = [
   },
   {
     q: 'What if my internet drops mid-transfer?',
-    a: 'The transfer pauses instead of failing. When both devices are back online, it picks up where it stopped.',
+    a: 'If the connection is interrupted, ShareTexts will tell you whether this transfer can be retried. For large files, we recommend a stable connection.',
   },
   {
     q: 'How long does the pairing code last?',
@@ -35,7 +35,7 @@ const QA = [
   },
   {
     q: 'Can a script or AI agent send text into my room?',
-    a: 'Yes — the connect screen offers a “Send from your computer” command. Paste it in any terminal, or hand it to an AI agent, and text (or a file) lands on your device instantly, even before the second device joins.',
+    a: 'Yes — the connect screen offers a temporary send permission for trusted tools. It expires automatically and can be revoked anytime.',
   },
 ];
 

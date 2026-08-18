@@ -23,7 +23,7 @@ page.on('console', (m) => logs.push(`[${m.type()}] ${m.text()}`));
 page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
 
 await page.goto(URL, { waitUntil: 'networkidle' });
-await page.getByRole('button', { name: 'Send text' }).first().click();
+await page.getByRole('button', { name: 'Send' }).first().click();
 await page.waitForTimeout(15000);
 
 const body = await page.locator('body').innerText();

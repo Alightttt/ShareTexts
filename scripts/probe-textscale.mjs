@@ -17,7 +17,7 @@ try {
       return { overflow: doc.scrollWidth > window.innerWidth + 1, scrollW: doc.scrollWidth, winW: window.innerWidth };
     });
     // RoomHub
-    await page.getByRole('button', { name: 'Send text' }).first().click();
+    await page.getByRole('button', { name: 'Send' }).first().click();
     await page.getByText('LIVE CODE').waitFor({ timeout: 10000 });
     await sleep(400);
     const hub = await page.evaluate(() => {

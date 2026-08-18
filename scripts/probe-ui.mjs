@@ -1,4 +1,4 @@
-// Checks the landing CTAs (Send text / Receive text), the back arrow +
+// Checks the landing CTAs (Send / Receive), the back arrow +
 // positioning line on RoomHub, and the 40s timer UI.
 import { chromium } from 'playwright';
 import fs from 'fs';
@@ -22,8 +22,8 @@ await page.goto(URL, { waitUntil: 'networkidle' });
 const landing = await page.evaluate(() => {
   const btns = [...document.querySelectorAll('button')].map(b => b.textContent.trim().replace(/\s+/g, ' '));
   return {
-    hasSendText: btns.some(t => t.includes('Send text')),
-    hasReceiveText: btns.some(t => t.includes('Receive text')),
+    hasSendText: btns.some(t => t.includes('Send')),
+    hasReceiveText: btns.some(t => t.includes('Receive')),
     hasOldCreate: btns.some(t => t.includes('Create Session')),
     hasOldJoin: btns.some(t => t.includes('Join Session')),
     heroCopy: document.querySelector('section p')?.textContent?.slice(0, 120) ?? '',
@@ -33,7 +33,7 @@ const landing = await page.evaluate(() => {
 console.log('LANDING:', JSON.stringify(landing, null, 1));
 
 // 2. Create session → RoomHub
-await page.getByRole('button', { name: 'Send text' }).first().click();
+await page.getByRole('button', { name: 'Send' }).first().click();
 await page.getByText('LIVE CODE').waitFor({ timeout: 10000 });
 const hub = await page.evaluate(() => {
   const body = document.body.innerText;

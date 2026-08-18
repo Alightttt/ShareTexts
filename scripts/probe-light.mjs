@@ -14,7 +14,7 @@ async function main() {
   const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: 'light' });
   const p2 = await ctx2.newPage();
   await p2.goto(URL, { waitUntil: 'networkidle' });
-  await p2.getByRole('button', { name: 'Send text' }).first().click();
+  await p2.getByRole('button', { name: 'Send' }).first().click();
   await p2.getByText('LIVE CODE').waitFor({ timeout: 10000 });
   await sleep(600);
   await p2.screenshot({ path: '.audit-shots/connect-light-mobile.png' });
@@ -25,7 +25,7 @@ async function main() {
   const ctx3 = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: 'light' });
   const p3 = await ctx3.newPage();
   await p3.goto(URL, { waitUntil: 'networkidle' });
-  await p3.getByRole('button', { name: 'Receive text' }).first().click();
+  await p3.getByRole('button', { name: 'Receive' }).first().click();
   await sleep(800);
   await p3.screenshot({ path: '.audit-shots/join-light-mobile.png' });
   console.log('shot: join-light-mobile');

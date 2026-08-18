@@ -8,10 +8,10 @@ try {
   await A.goto(URL, { waitUntil: 'networkidle' });
   await A.locator('text=Move anything between your devices').first().waitFor({ timeout: 15000 });
 
-  // Landing button colors (light mode): Send text = blue, Receive text = ink.
+  // Landing button colors (light mode): Send = blue, Receive = ink.
   const colors = await A.evaluate(() => {
     const btn = (t) => [...document.querySelectorAll('button')].find(b => b.textContent.trim() === t);
-    const s = btn('Send text'), r = btn('Receive text');
+    const s = btn('Send'), r = btn('Receive');
     const cs = getComputedStyle(s), cr = getComputedStyle(r);
     return { sendBg: cs.backgroundColor, recvBg: cr.backgroundColor };
   });
@@ -50,7 +50,7 @@ try {
   await D.locator('text=Move anything between your devices').first().waitFor({ timeout: 15000 });
   const dark = await D.evaluate(() => {
     const btn = (t) => [...document.querySelectorAll('button')].find(b => b.textContent.trim() === t);
-    const s = btn('Send text'), r = btn('Receive text');
+    const s = btn('Send'), r = btn('Receive');
     return { sendBg: getComputedStyle(s).backgroundColor, recvBg: getComputedStyle(r).backgroundColor, recvColor: getComputedStyle(r).color };
   });
   console.log('DARK button colors:', JSON.stringify(dark));

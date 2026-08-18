@@ -292,7 +292,7 @@ export function RoomHub() {
         </div>
 
         <p className="text-[13px] text-apple-ink-muted mt-2">
-          This connection stays open for hours — the other device can connect anytime.
+          This temporary connection stays open until the other device joins or you leave.
         </p>
 
         {/* Agent push — "send from your computer" without a second browser.

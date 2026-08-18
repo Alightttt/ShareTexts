@@ -241,27 +241,29 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               Move anything between your devices.
             </h1>
             <p className="mt-5 text-[15.5px] sm:text-[17px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[46ch]">
-              Text, links, photos, videos, files — straight from one screen to the other. No app to install, no account to make, nothing kept in between.
+              Open ShareTexts on both devices. No app. No account. Just pair and send.
             </p>
             {/* Live count near the top on smaller devices (header pill is desktop-only). */}
             <LiveUsers className="mt-5 lg:hidden" />
             <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
               <motion.button
+                data-testid="create-session"
                 onPointerDown={handleCreate}
                 disabled={isCreating}
                 whileTap={{ scale: 0.97 }}
                 className="group px-7 py-3.5 bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float"
               >
                 {isCreating ? 'Creating…' : createError ? 'Try Again' : (
-                  <><Send className="w-4 h-4" /> Send text</>
+                  <><Send className="w-4 h-4" /> Send</>
                 )}
               </motion.button>
               <motion.button
+                data-testid="join-session"
                 onPointerDown={onJoinClick}
                 whileTap={{ scale: 0.97 }}
                 className="group px-7 py-3.5 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float"
               >
-                <Inbox className="w-4 h-4" /> Receive text
+                <Inbox className="w-4 h-4" /> Receive
               </motion.button>
             </div>
 
@@ -320,24 +322,25 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           <p className="mt-4 text-[16px] sm:text-[17px] text-apple-ink-muted dark:text-white/60 font-medium">
             One page, two screens. No app, no account, nothing kept in between.
           </p>
-          <div className="mt-9 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
-            <motion.button
-              onPointerDown={handleCreate}
-              disabled={isCreating}
-              whileTap={{ scale: 0.97 }}
-              className="group px-9 py-4 bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[16px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float min-h-[52px]"
-            >
-              {isCreating ? 'Creating…' : createError ? 'Try Again' : (
-                <><Send className="w-4 h-4" /> Send text</>
-              )}
-            </motion.button>
-            <motion.button
-              onPointerDown={onJoinClick}
-              whileTap={{ scale: 0.97 }}
-              className="px-8 py-4 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[12px] text-[16px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float min-h-[52px]"
-            >
-              <Inbox className="w-4 h-4" /> Receive text
-            </motion.button>
+          <div className="mt-9 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">              <motion.button
+                data-testid="create-session"
+                onPointerDown={handleCreate}
+                disabled={isCreating}
+                whileTap={{ scale: 0.97 }}
+                className="group px-9 py-4 bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[16px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float min-h-[52px]"
+              >
+                {isCreating ? 'Creating…' : createError ? 'Try Again' : (
+                  <><Send className="w-4 h-4" /> Send</>
+                )}
+              </motion.button>
+              <motion.button
+                data-testid="join-session"
+                onPointerDown={onJoinClick}
+                whileTap={{ scale: 0.97 }}
+                className="px-8 py-4 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[12px] text-[16px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float min-h-[52px]"
+              >
+                <Inbox className="w-4 h-4" /> Receive
+              </motion.button>
           </div>
           <p className="mt-6 text-[15px] text-apple-ink-muted dark:text-white/55 font-medium">
             Open it on the other device and connect.
@@ -367,7 +370,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             <span className="w-1 h-1 rounded-full bg-apple-hairline dark:bg-white/20" />
             <span>No account</span>
             <span className="w-1 h-1 rounded-full bg-apple-hairline dark:bg-white/20" />
-            <span>No tracking</span>
+            <span>Temporary by design</span>
           </div>
         </div>
       </footer>
