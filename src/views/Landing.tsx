@@ -303,10 +303,21 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               </motion.button>
             </div>
 
-            {/* Meta — works in your browser, temporary by design */}
-            <p className="mt-5 text-[13px] sm:text-[14px] text-apple-ink-muted/70 dark:text-white/40 font-medium">
-              Works in your browser · Temporary by design
-            </p>
+            {/* Trust row — concrete, not decorative */}
+            <div className="mt-5 flex flex-wrap items-center justify-center lg:justify-start gap-x-4 gap-y-2 text-[12px] sm:text-[13px] font-medium text-apple-ink-muted/70 dark:text-white/40">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#1C9A61] dark:bg-[#55D18C]" />
+                Encrypted in your browser
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0A66F0] dark:bg-[#4B8DFF]" />
+                Nothing kept after the session
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#B26A00] dark:bg-[#F3B44C]" />
+                No app · No account
+              </span>
+            </div>
 
             {createError && (
               <p role="alert" className="mt-5 text-[14px] font-medium text-status-danger flex items-center gap-2">
