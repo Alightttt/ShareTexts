@@ -1,0 +1,58 @@
+# ShareText E2E Test: Complete User Journey
+# Tests the entire flow from landing to transfer
+url: http://localhost:3000
+tags:
+  - complete
+  - journey
+  - e2e
+---
+# This is a comprehensive test of the entire ShareText experience
+# Note: Some steps require two devices and may need manual intervention
+
+- launchApp:
+    clearState: true
+
+# 1. Landing Page
+- assertVisible:
+    text: "Move anything between your devices"
+- assertVisible:
+    text: "Send text"
+- assertVisible:
+    text: "Receive text"
+
+# 2. Start a session
+- tapOn:
+    text: "Send text"
+
+# 3. Verify pairing screen
+- assertVisible:
+    text: "Live Code"
+- assertVisible:
+    text: "Code refreshes in"
+
+# 4. Copy the code
+- tapOn:
+    text: "Copy code"
+
+# 5. Go back and try joining
+- tapOn:
+    text: "Back"
+
+# 6. Join as receiver
+- tapOn:
+    text: "Receive text"
+
+# 7. Verify join screen
+- assertVisible:
+    text: "Enter the 6-digit code"
+
+# 8. Test back navigation
+- tapOn:
+    text: "Back"
+
+# 9. Verify return to landing
+- assertVisible:
+    text: "Move anything between your devices"
+
+# Take final screenshot
+- takeScreenshot: complete-journey

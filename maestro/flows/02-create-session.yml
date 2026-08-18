@@ -1,0 +1,45 @@
+# ShareText E2E Test: Create Session
+# Tests the session creation flow from landing page
+url: http://localhost:3000
+tags:
+  - session
+  - create
+  - smoke
+---
+- launchApp:
+    clearState: true
+
+# Click "Send text" to start a session
+- tapOn:
+    text: "Send text"
+
+# Should see the pairing screen
+- assertVisible:
+    text: "Your private clipboard"
+
+# Should see a 6-digit code (Live Code display)
+- assertVisible:
+    text: "Live Code"
+
+# Should see code refresh timer
+- assertVisible:
+    text: "Code refreshes in"
+
+# Should see back button
+- assertVisible:
+    text: "Back"
+
+# Copy code button should exist
+- assertVisible:
+    text: "Copy code"
+
+# QR code button should exist
+- assertVisible:
+    text: "Show QR Code"
+
+# Link sharing should exist
+- assertVisible:
+    text: "Share link"
+
+# Take screenshot
+- takeScreenshot: session-created

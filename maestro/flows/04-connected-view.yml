@@ -1,0 +1,38 @@
+# ShareText E2E Test: Connected View
+# Tests the connected session UI elements
+# NOTE: This flow assumes a session is already active
+url: http://localhost:3000
+tags:
+  - connected
+  - ui
+---
+- launchApp:
+    clearState: true
+
+# Navigate to an existing session (simulated)
+# In real testing, this would be preceded by create + join flows
+
+# Composer should be visible
+- assertVisible:
+    text: "Paste or type something…"
+
+# Keyboard hints should be visible (desktop)
+- assertVisible:
+    text: "Enter"
+- assertVisible:
+    text: "to send"
+
+# Attachment menu should exist
+- assertVisible:
+    text: "+"
+
+# Connection indicator should show
+- assertVisible:
+    text: "Connected"
+
+# End session button should exist
+- assertVisible:
+    text: "End session"
+
+# Take screenshot
+- takeScreenshot: connected-view

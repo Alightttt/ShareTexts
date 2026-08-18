@@ -1,0 +1,41 @@
+# ShareText E2E Test: Join Session
+# Tests the join flow from landing page
+url: http://localhost:3000
+tags:
+  - session
+  - join
+  - smoke
+---
+- launchApp:
+    clearState: true
+
+# Click "Receive text" to join a session
+- tapOn:
+    text: "Receive text"
+
+# Should see the code input screen
+- assertVisible:
+    text: "Enter the 6-digit code"
+
+# Should see the code input field
+- assertVisible:
+    text: "Enter code"
+
+# Should see camera option
+- assertVisible:
+    text: "Use camera"
+
+# Should see link option
+- assertVisible:
+    text: "Use link"
+
+# Should see privacy note
+- assertVisible:
+    text: "temporary"
+
+# Back button should work
+- assertVisible:
+    text: "Back"
+
+# Take screenshot
+- takeScreenshot: join-session

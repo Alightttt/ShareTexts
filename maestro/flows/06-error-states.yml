@@ -1,0 +1,29 @@
+# ShareText E2E Test: Error States
+# Tests various error conditions
+url: http://localhost:3000
+tags:
+  - error
+  - edge-case
+---
+- launchApp:
+    clearState: true
+
+# Test invalid code entry
+- tapOn:
+    text: "Receive text"
+
+# Enter an invalid code
+- tapOn:
+    text: "Enter code"
+- inputText: "000000"
+
+# Should show error message
+- assertVisible:
+    text: "doesn't seem to work"
+
+# Should show retry option
+- assertVisible:
+    text: "Try again"
+
+# Take screenshot
+- takeScreenshot: invalid-code-error

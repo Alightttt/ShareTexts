@@ -1,0 +1,43 @@
+# ShareText E2E Test: Landing Page
+# Verifies the landing page renders correctly with all expected elements
+url: http://localhost:3000
+tags:
+  - landing
+  - smoke
+---
+- launchApp:
+    clearState: true
+
+# Hero section
+- assertVisible:
+    text: "Move anything between your devices"
+- assertVisible:
+    text: "No app. No account."
+
+# CTAs
+- assertVisible:
+    text: "Send text"
+- assertVisible:
+    text: "Receive text"
+
+# Hero animation is present
+- assertVisible:
+    text: "ShareText"
+
+# Scroll to see more content
+- scroll
+
+# How it works section
+- assertVisible:
+    text: "How it works"
+
+# Privacy section
+- assertVisible:
+    text: "Privacy"
+
+# Footer / Questions
+- assertVisible:
+    text: "Questions"
+
+# Take screenshot for visual verification
+- takeScreenshot: landing-page

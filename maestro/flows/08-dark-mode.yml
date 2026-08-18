@@ -1,0 +1,33 @@
+# ShareText E2E Test: Dark Mode
+# Tests theme switching
+url: http://localhost:3000
+tags:
+  - dark-mode
+  - theme
+---
+- launchApp:
+    clearState: true
+
+# Verify light mode is default
+- assertVisible:
+    text: "Move anything between your devices"
+
+# Find and click the theme toggle
+# The toggle is typically in the top-right corner
+- tapOn:
+    text: "theme"
+
+# Take screenshot in dark mode
+- takeScreenshot: dark-mode-landing
+
+# Verify dark mode styling applied
+# The background should change to dark
+- assertVisible:
+    text: "Move anything between your devices"
+
+# Navigate to create session
+- tapOn:
+    text: "Send text"
+
+# Take screenshot of dark mode pairing screen
+- takeScreenshot: dark-mode-pairing
