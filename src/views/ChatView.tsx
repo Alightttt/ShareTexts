@@ -124,7 +124,10 @@ export function ChatView() {
   const previewUrls = useMemo(() => {
     const map = new Map<string, string>();
     for (const a of attachments) {
-      if (a.type === 'image' && a.file) map.set(a.id, URL.createObjectURL(a.file));
+      // Images preview as a thumbnail; videos get a metadata frame (the
+      // browser decodes the first frame without loading the whole file) so
+      // the composer shows what you're about to send, not a generic tile.
+      if ((a.type === 'image' || a.type === 'video') && a.file) map.set(a.id, URL.createObjectURL(a.file));
     }
     return map;
   }, [attachments]);
@@ -757,7 +760,16 @@ export function ChatView() {
                           exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.18 } }}
                           className="relative shrink-0"
                         >
-                          {a.type === 'image' && a.file && previewUrls.has(a.id) ? (
+                          {a.type === 'video' && a.file && previewUrls.has(a.id) ? (
+                            <div className="relative w-[88px] h-[88px] sm:w-[104px] sm:h-[104px] rounded-[14px] overflow-hidden bg-black border border-apple-divider dark:border-apple-tile-3 shadow-sm">
+                              <video src={previewUrls.get(a.id)} muted playsInline preload="metadata" className="w-full h-full object-cover" />
+                              <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <span className="w-6 h-6 rounded-full bg-black/55 backdrop-blur flex items-center justify-center">
+                                  <Play className="w-3 h-3 text-white ml-0.5" />
+                                </span>
+                              </span>
+                            </div>
+                          ) : a.type === 'image' && a.file && previewUrls.has(a.id) ? (
                             <div className="w-[88px] h-[88px] sm:w-[104px] sm:h-[104px] rounded-[14px] overflow-hidden bg-apple-canvas dark:bg-black border border-apple-divider dark:border-apple-tile-3 shadow-sm">
                               <img src={previewUrls.get(a.id)} alt={a.name} className="w-full h-full object-cover" />
                             </div>
@@ -805,7 +817,7 @@ export function ChatView() {
                     handleSend(e);
                   }
                 }}
-                placeholder="Paste or type text…"
+                placeholder="Paste or type something…"
                 aria-label="Message"
                 title="Enter to send · Shift+Enter for a new line"
                 className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[9px] pl-0.5 pr-0.5 text-apple-ink dark:text-white placeholder:text-apple-ink-muted focus:outline-none text-[16px] leading-[26px]"
@@ -1139,8 +1151,14 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
   }
 
   // Attachment message — image/video/file card.
-  const isImage = a.type === 'image';
-  const isVideo = a.type === 'video';
+  // Defense-in-depth: a received file claiming image/video/audio but carrying
+  // an active-content MIME (HTML/SVG/XML/JS) is NEVER rendered inline — it
+  // falls through to the file row (icon + name + size + Download). Media
+  // elements with blob URLs are already script-safe, but the pass rule is:
+  // prefer download over inline for anything that could be active content.
+  const unsafePreview = !!a.mimeType && /^(text\/html|application\/xhtml\+xml|image\/svg\+xml|text\/xml|application\/xml|text\/javascript|application\/javascript)/i.test(a.mimeType);
+  const isImage = a.type === 'image' && !unsafePreview;
+  const isVideo = a.type === 'video' && !unsafePreview;
   const complete = a.status === 'complete' && a.url;
   // Restored after a reload with no bytes: own sends keep 'complete' (the
   // other device holds the file — "Sent" is truthful), partner files we
@@ -1209,9 +1227,10 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
             </div>
           )}
 
-          {/* File / Audio — and restored attachments whose bytes died with the
-              page render as the file row, never a broken preview. */}
-          {(a.type === 'file' || a.type === 'audio' || lost) && (
+          {/* File / Audio — plus active-content MIME (HTML/SVG/XML/JS) and
+              restored attachments whose bytes died with the page: all render
+              as the file row, never a broken or inline preview. */}
+          {(a.type === 'file' || a.type === 'audio' || unsafePreview || lost) && (
             <div className={cn("p-4 flex items-center gap-3.5", isMe ? "bg-white/10" : "bg-apple-canvas/50 dark:bg-black/20")}>
               <FileTypeIcon name={a.name} mimeType={a.mimeType} size={20} />
               <div className="flex flex-col flex-1 truncate min-w-0">

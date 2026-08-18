@@ -41,7 +41,7 @@ async function main() {
   check('both devices connected via short link', true);
 
   // --- Send back: B receives a text, sends it straight back ---
-  await A.getByPlaceholder('Paste or type text…').fill('round trip test');
+  await A.getByPlaceholder('Paste or type something…').fill('round trip test');
   await A.getByRole('button', { name: 'Send' }).click();
   await sleep(1500);
   const sendBackBtn = await B.getByRole('button', { name: 'Send back' }).count();

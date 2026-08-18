@@ -80,7 +80,7 @@ async function main() {
   check('header name+status on one line', !!header && header.sameLine && header.chipH < 28, header ? `"${header.text}" nameY=${header.nameY} chipY=${header.chipY} chipH=${header.chipH}` : 'not found');
 
   // --- Delivery receipt ---
-  await A.getByPlaceholder('Paste or type text…').fill('hello receipt test');
+  await A.getByPlaceholder('Paste or type something…').fill('hello receipt test');
   await A.getByRole('button', { name: 'Send', exact: true }).click();
   await sleep(1500);
 
@@ -93,8 +93,10 @@ async function main() {
 
   const sentState = await bubbleText(A);
   check('sender bubble exists', !!sentState, sentState || 'missing');
-  check('sender shows Delivered after receipt', !!(sentState && sentState.includes('Delivered')), sentState || '');
-  check('sender does NOT show bare Sent', !!(sentState && !/Sent$|Sent •/.test(sentState.replace('Delivered', ''))), sentState || '');
+  // The receipt flips the tick Delivered → Seen (mutually exclusive labels),
+  // so accept either — both prove the peer confirmed arrival.
+  check('sender shows Delivered/Seen after receipt', !!(sentState && (sentState.includes('Delivered') || sentState.includes('Seen'))), sentState || '');
+  check('sender does NOT show bare Sent', !!(sentState && !/Sent$|Sent •/.test(sentState.replace('Delivered', '').replace('Seen', ''))), sentState || '');
 
   // Debug hook: confirm the receipt really flipped state.
   const deliveredFlag = await A.evaluate(() => {

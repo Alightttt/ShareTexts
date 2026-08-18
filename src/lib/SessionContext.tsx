@@ -1191,8 +1191,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     progressRef.current.clear();
     pushBuffersRef.current.clear();
     // The room is gone — partial receives and send progress can't resume,
-    // so release the memory.
+    // so release the memory. Object URLs for every transferred file are
+    // page-lifetime artifacts: once the session is torn down they're dead
+    // anyway, so revoke them and free the backing blobs (never accumulate
+    // them across sessions).
     clearAllTransferState();
+    for (const m of messagesRef.current) {
+      if (m.attachment?.url) {
+        try { URL.revokeObjectURL(m.attachment.url); } catch { /* noop */ }
+      }
+    }
     saveStoredSession(null);
     setSession(s => ({
       roomId: null,
