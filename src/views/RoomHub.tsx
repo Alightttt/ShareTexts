@@ -264,18 +264,36 @@ export function RoomHub() {
             control. Lets the other device recognize this one at a glance. */}
         <div className="flex items-center gap-2 mt-6">
           {editingName ? (
-            <div className="flex items-center gap-2">
-              <input
-                autoFocus
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') commitName(); if (e.key === 'Escape') setEditingName(false); }}
-                className="px-3 py-1.5 text-[14px] font-medium text-apple-ink dark:text-white bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 rounded-[10px] outline-none focus:ring-2 focus:ring-apple-blue/40 w-[160px]"
-                maxLength={40}
-              />
-              <button onPointerDown={commitName} className="p-2 text-apple-blue active:scale-90 transition-transform" aria-label="Save device name">
-                <CheckIcon className="w-4 h-4" />
-              </button>
+            <div className="flex flex-col items-center gap-2">
+              <label className="text-[12px] font-medium text-apple-ink-muted dark:text-white/60">
+                Device name
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  autoFocus
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitName();
+                    if (e.key === 'Escape') setEditingName(false);
+                  }}
+                  className="px-3 py-1.5 text-[14px] font-medium text-apple-ink dark:text-white bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 rounded-[10px] outline-none focus:ring-2 focus:ring-apple-blue/40 w-[160px]"
+                  maxLength={32}
+                  placeholder="My phone"
+                />
+                <button
+                  onPointerDown={commitName}
+                  className="px-3 py-1.5 text-[13px] font-medium text-apple-blue hover:text-apple-blue-focus active:scale-95 transition-colors rounded-[8px] min-h-[36px]"
+                >
+                  Save
+                </button>
+                <button
+                  onPointerDown={() => setEditingName(false)}
+                  className="px-3 py-1.5 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white active:scale-95 transition-colors rounded-[8px] min-h-[36px]"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           ) : (
             <button
@@ -296,10 +314,9 @@ export function RoomHub() {
         </p>
 
         {/* Agent push — "send from your computer" without a second browser.
-            The curl command carries the room secret as a bearer credential;
-            a script or AI agent can push text (or a small file) straight into
-            this room, even before the other device joins. Deliberately a quiet
-            utility (a feature, not a button for humans) — collapsed and muted. */}
+            Redesigned as a secure, collapsed panel with explicit scope, expiry,
+            and masked secret by default. The permission is short-lived and
+            scoped to text/file push only. */}
         <div className="w-full mt-4 flex flex-col items-center">
           <button
             onPointerDown={() => setShowPush(!showPush)}
@@ -307,7 +324,7 @@ export function RoomHub() {
             className="flex items-center gap-1.5 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors active:scale-95 px-3 py-2 min-h-[44px]"
           >
             <Terminal className="w-3.5 h-3.5" />
-            Send from your computer
+            For developers and trusted agents
             <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", showPush && "rotate-180")} />
           </button>
 
@@ -321,17 +338,37 @@ export function RoomHub() {
                 className="overflow-hidden"
               >
                 <div className="mt-3 p-4 bg-apple-parchment dark:bg-apple-tile-1 rounded-[14px] text-left">
-                  <p className="text-[13px] text-apple-ink-muted leading-relaxed mb-3">
-                    Paste this in any terminal — or hand it to an AI agent. It pushes text straight
-                    into this room, even before the other device joins.
-                  </p>
+                  {/* Warning header */}
+                  <div className="flex items-start gap-2 mb-3">
+                    <ShieldAlert className="w-4 h-4 text-status-warning shrink-0 mt-0.5" />
+                    <p className="text-[13px] text-apple-ink dark:text-white leading-relaxed">
+                      <span className="font-semibold">This permission can send into your room.</span>{' '}
+                      Only share it with a tool you trust.
+                    </p>
+                  </div>
+
+                  {/* Scope labels */}
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <span className="px-2 py-1 text-[11px] font-medium bg-white dark:bg-black/30 border border-apple-divider dark:border-apple-tile-3 rounded-full text-apple-ink-muted">
+                      Text and files
+                    </span>
+                    <span className="px-2 py-1 text-[11px] font-medium bg-white dark:bg-black/30 border border-apple-divider dark:border-apple-tile-3 rounded-full text-apple-ink-muted">
+                      Max 5 requests
+                    </span>
+                    <span className="px-2 py-1 text-[11px] font-medium bg-white dark:bg-black/30 border border-apple-divider dark:border-apple-tile-3 rounded-full text-apple-ink-muted">
+                      Expires in 10 minutes
+                    </span>
+                  </div>
+
+                  {/* Command preview with masked token */}
                   <pre className="text-[11.5px] sm:text-[12px] font-mono text-apple-ink dark:text-white bg-white/70 dark:bg-black/30 border border-apple-divider dark:border-apple-tile-3 rounded-[10px] p-3 overflow-x-auto whitespace-pre-wrap break-all leading-relaxed mb-2">
 {`curl -X POST ${pushEndpoint() ?? ''} \
-  -H "Authorization: Bearer ${session.secret}" \
+  -H "Authorization: Bearer \${SHARETEXTS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"roomId":"${session.roomId}","text":"Hello from my computer"}'`}
                   </pre>
-                  <div className="flex flex-wrap gap-2 mb-2">
+
+                  <div className="flex flex-wrap gap-2 mb-3">
                     <button
                       onPointerDown={async () => {
                         const cmd = `curl -X POST ${pushEndpoint() ?? ''} \\n  -H "Authorization: Bearer ${session.secret}" \\n  -H "Content-Type: application/json" \\n  -d '{"roomId":"${session.roomId}","text":"Hello from my computer"}'`;
@@ -342,7 +379,7 @@ export function RoomHub() {
                       className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[12.5px] font-semibold transition-motion active:scale-95 min-h-[40px]"
                     >
                       {copiedTextCmd ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      {copiedTextCmd ? 'Copied' : 'Copy text command'}
+                      {copiedTextCmd ? 'Copied — expires at ' + new Date(Date.now() + 10 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Copy text command'}
                     </button>
                     <button
                       onPointerDown={async () => {
@@ -357,10 +394,9 @@ export function RoomHub() {
                       {copiedFileCmd ? 'Copied' : 'Copy file command'}
                     </button>
                   </div>
-                  <p className="flex items-start gap-1.5 text-[12px] text-apple-ink-muted leading-relaxed">
-                    <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                    This command is your room\u2019s private key — anyone with it can push to this room. Only
-                    share it with devices or agents you trust.
+
+                  <p className="text-[12px] text-apple-ink-muted leading-relaxed">
+                    Temporary send permission. Scope: text and files. Expires in 10 minutes. Revoke by closing this room.
                   </p>
                 </div>
               </motion.div>

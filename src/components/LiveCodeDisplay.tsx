@@ -33,7 +33,15 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
   }, [secret, createdAt]);
 
   const digits = code.split('');
-  const isUrgent = remaining <= 3;
+  // Clear, atomic status states — never ambiguous
+  const isUrgent = remaining <= 5;
+  const isCritical = remaining <= 2;
+
+  const statusText = isCritical
+    ? 'Refreshing code…'
+    : isUrgent
+      ? `Code refreshes soon · ${Math.ceil(remaining)}s`
+      : `Code active · valid for ${Math.ceil(remaining)}s`;
 
   return (
     <div className="flex flex-col items-center justify-center p-10 bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 rounded-(--radius-xl) relative overflow-hidden shadow-card">
@@ -45,7 +53,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
             fill="transparent"
             stroke="currentColor"
             strokeWidth="3"
-            className={cn(isUrgent ? "text-status-danger" : "text-azure-500")}
+            className={cn(isCritical ? "text-status-danger" : isUrgent ? "text-status-warning" : "text-azure-500")}
             strokeDasharray={113.097}
             strokeDashoffset={113.097 - (progress * 113.097)}
             strokeLinecap="round"
@@ -57,7 +65,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
             }}
           />
         </svg>
-        <span className={cn("absolute text-[12px] font-medium transition-colors duration-300", isUrgent ? "text-status-danger dark:text-status-danger" : "text-apple-ink-muted dark:text-white/60")}>
+        <span className={cn("absolute text-[12px] font-medium transition-colors duration-300", isCritical ? "text-status-danger dark:text-status-danger" : isUrgent ? "text-status-warning dark:text-status-warning-ink-dark" : "text-apple-ink-muted dark:text-white/60")}>
           {Math.ceil(remaining)}
         </span>
       </div>
@@ -90,10 +98,10 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
         aria-live="polite"
         className={cn(
           "text-[13px] mt-8 text-center font-medium transition-colors duration-300",
-          isUrgent ? "text-status-danger dark:text-status-danger" : "text-apple-ink-muted dark:text-white/60"
+          isCritical ? "text-status-danger dark:text-status-danger" : isUrgent ? "text-status-warning dark:text-status-warning-ink-dark" : "text-apple-ink-muted dark:text-white/60"
         )}
       >
-        {isUrgent ? `New code in ${Math.max(1, Math.ceil(remaining))}s` : `Code refreshes in ${Math.ceil(remaining)}s`}
+        {statusText}
       </p>
     </div>
   );

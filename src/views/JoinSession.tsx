@@ -40,24 +40,25 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
   const handleCodeComplete = async (code: string) => {
     setIsJoining(true);
     setError(null);
-    // Safety timeout: if verification takes >12s, reset the state so the
-    // user is not stuck on "Verifying code…" forever.
+    // Safety timeout: 8s bounded verification. The user must never be stuck
+    // on "Verifying code…" — invalid, expired, or network-error all resolve
+    // within this window.
     const safetyTimer = setTimeout(() => {
       setIsJoining(false);
-      setError("Verification is taking longer than expected. Try again.");
-    }, 12000);
+      setError("This is taking longer than expected. Check your connection or try the latest code.");
+    }, 8000);
     try {
       const res = await joinWithCode(code);
       clearTimeout(safetyTimer);
       if (!res.success) {
         const friendly =
           res.code === 'ROOM_FULL' || res.error === 'This room already has two devices.'
-            ? 'This room already has two devices.'
+            ? 'This room already has two devices. Only two can connect at once.'
             : res.code === 'RATE_LIMITED' || res.error === 'Too many attempts. Try again later.'
-              ? res.error
+              ? 'Too many attempts. Wait a moment and try again.'
               : res.error === "Couldn't reach ShareText."
                 ? "Couldn't reach ShareText. Check your connection and try again."
-                : "That code isn't active. Check the other device and try the latest code.";
+                : "That code isn't active. Check the other device and enter its latest six-digit code.";
         setError(friendly);
         setIsJoining(false);
       }
@@ -73,8 +74,8 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
     setError(null);
     const safetyTimer = setTimeout(() => {
       setIsJoining(false);
-      setError("Verification is taking longer than expected. Try again.");
-    }, 12000);
+      setError("This is taking longer than expected. Check your connection or try again.");
+    }, 8000);
     let id = idToJoin;
     if (id.includes('?join=')) {
       id = id.split('?join=')[1];
@@ -106,8 +107,8 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
     setError(null);
     const safetyTimer = setTimeout(() => {
       setIsJoining(false);
-      setError("Verification is taking longer than expected. Try again.");
-    }, 12000);
+      setError("This is taking longer than expected. Check your connection or try again.");
+    }, 8000);
     try {
       const res = await joinWithShortCode(code);
       clearTimeout(safetyTimer);
