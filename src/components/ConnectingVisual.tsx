@@ -25,12 +25,13 @@ export function ConnectingVisual({ className }: { className?: string }) {
         <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-azure-400 shadow-[0_0_10px_rgba(46,139,255,0.7)] animate-beam-delayed" />
       </div>
 
-      {/* Sending device — vertically centered, left edge */}
-      <div className="absolute top-1/2 left-0 w-12 h-12 -translate-y-1/2 rounded-[16px] bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 shadow-card flex items-center justify-center animate-float-soft">
+      {/* Sending device — vertically centered, left edge. No float animation
+          to prevent misalignment; the beam packets provide the motion. */}
+      <div className="absolute top-1/2 left-0 w-12 h-12 -translate-y-1/2 rounded-[16px] bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 shadow-card flex items-center justify-center">
         <ShareTextLogo size={20} className="text-apple-ink dark:text-white" />
       </div>
       {/* Receiving device — vertically centered, right edge */}
-      <div className="absolute top-1/2 right-0 w-12 h-12 -translate-y-1/2 rounded-[16px] bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 shadow-card flex items-center justify-center animate-float-soft-delayed">
+      <div className="absolute top-1/2 right-0 w-12 h-12 -translate-y-1/2 rounded-[16px] bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 shadow-card flex items-center justify-center">
         <ShareTextLogo size={20} className="text-apple-ink dark:text-white" />
       </div>
 

@@ -40,20 +40,30 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
   const handleCodeComplete = async (code: string) => {
     setIsJoining(true);
     setError(null);
-    const res = await joinWithCode(code);
-    if (!res.success) {
-      // Connectivity problems must not read as a wrong code. Prefer the
-      // machine-readable code (Cloudflare transport) and fall back to the
-      // Node server's plain-string errors.
-      const friendly =
-        res.code === 'ROOM_FULL' || res.error === 'This room already has two devices.'
-          ? 'This room already has two devices.'
-          : res.code === 'RATE_LIMITED' || res.error === 'Too many attempts. Try again later.'
-            ? res.error
-            : res.error === "Couldn't reach ShareText."
-              ? "Couldn't reach ShareText. Check your connection and try again."
-              : "That code isn't active. Check the other device and try the latest code.";
-      setError(friendly);
+    // Safety timeout: if verification takes >12s, reset the state so the
+    // user is not stuck on "Verifying code…" forever.
+    const safetyTimer = setTimeout(() => {
+      setIsJoining(false);
+      setError("Verification is taking longer than expected. Try again.");
+    }, 12000);
+    try {
+      const res = await joinWithCode(code);
+      clearTimeout(safetyTimer);
+      if (!res.success) {
+        const friendly =
+          res.code === 'ROOM_FULL' || res.error === 'This room already has two devices.'
+            ? 'This room already has two devices.'
+            : res.code === 'RATE_LIMITED' || res.error === 'Too many attempts. Try again later.'
+              ? res.error
+              : res.error === "Couldn't reach ShareText."
+                ? "Couldn't reach ShareText. Check your connection and try again."
+                : "That code isn't active. Check the other device and try the latest code.";
+        setError(friendly);
+        setIsJoining(false);
+      }
+    } catch {
+      clearTimeout(safetyTimer);
+      setError("Couldn't reach ShareText. Check your connection and try again.");
       setIsJoining(false);
     }
   };
@@ -61,21 +71,32 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
   const handleLinkJoin = async (idToJoin: string) => {
     setIsJoining(true);
     setError(null);
+    const safetyTimer = setTimeout(() => {
+      setIsJoining(false);
+      setError("Verification is taking longer than expected. Try again.");
+    }, 12000);
     let id = idToJoin;
     if (id.includes('?join=')) {
       id = id.split('?join=')[1];
     }
-    const res = await joinWithLink(id);
-    if (!res.success) {
-      const friendly =
-        res.code === 'ROOM_FULL' || res.error === 'This room already has two devices.'
-          ? 'This room already has two devices.'
-          : res.code === 'RATE_LIMITED' || res.error === 'Too many attempts. Try again later.'
-            ? res.error
-            : "This link isn't active anymore. Ask for a fresh code.";
-      setError(friendly);
+    try {
+      const res = await joinWithLink(id);
+      clearTimeout(safetyTimer);
+      if (!res.success) {
+        const friendly =
+          res.code === 'ROOM_FULL' || res.error === 'This room already has two devices.'
+            ? 'This room already has two devices.'
+            : res.code === 'RATE_LIMITED' || res.error === 'Too many attempts. Try again later.'
+              ? res.error
+              : "This link isn't active anymore. Ask for a fresh code.";
+        setError(friendly);
+        setIsJoining(false);
+        setActiveTab('code'); // fallback
+      }
+    } catch {
+      clearTimeout(safetyTimer);
+      setError("Couldn't reach ShareText. Check your connection and try again.");
       setIsJoining(false);
-      setActiveTab('code'); // fallback
     }
   };
 
@@ -83,11 +104,22 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
   const handleShortJoin = async (code: string) => {
     setIsJoining(true);
     setError(null);
-    const res = await joinWithShortCode(code);
-    if (!res.success) {
-      setError(res.error || "This link isn't active anymore. Ask for a fresh code.");
+    const safetyTimer = setTimeout(() => {
       setIsJoining(false);
-      setActiveTab('code'); // fallback
+      setError("Verification is taking longer than expected. Try again.");
+    }, 12000);
+    try {
+      const res = await joinWithShortCode(code);
+      clearTimeout(safetyTimer);
+      if (!res.success) {
+        setError(res.error || "This link isn't active anymore. Ask for a fresh code.");
+        setIsJoining(false);
+        setActiveTab('code'); // fallback
+      }
+    } catch {
+      clearTimeout(safetyTimer);
+      setError("Couldn't reach ShareText. Check your connection and try again.");
+      setIsJoining(false);
     }
   };
 

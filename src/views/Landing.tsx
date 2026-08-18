@@ -110,6 +110,9 @@ function DotGrid() {
       mouseRef.current = { x: e.clientX, y: e.clientY + window.scrollY };
     };
     window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('touchmove', (e: TouchEvent) => {
+      if (e.touches[0]) mouseRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY + window.scrollY };
+    }, { passive: true });
 
     const draw = () => {
       const w = window.innerWidth;
@@ -200,8 +203,10 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
 
   return (
     <div className="min-h-screen relative bg-apple-canvas dark:bg-night-900 font-sans selection:bg-azure-500/20 flex flex-col overflow-x-clip">
+      <div className="absolute inset-0 z-0" aria-hidden>
+        <DotGrid />
+      </div>
       <AmbientBackdrop />
-      <DotGrid />
       <PointerLight />
 
       {/* ============ HEADER — logo only; nothing competes with the product ============ */}
@@ -218,7 +223,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             <a href="#private" className="text-[13.5px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Privacy</a>
             <a href="#faq" className="text-[13.5px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Questions</a>
           </nav>
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
             <LiveUsers className="hidden lg:inline-flex" />
             <ThemeToggle />
           </div>
@@ -229,7 +234,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           and the live demo — the actual product in miniature — sits beside it.
           No centered stack: one quiet idea, then the working proof, side by
           side on desktop, stacked on mobile. ============ */}
-      <section className="px-6 pt-14 sm:pt-20 pb-16 sm:pb-20">
+      <section className="px-6 pt-14 sm:pt-20 pb-16 sm:pb-20 relative z-10">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-10 items-center">
           <motion.div
             initial={{ opacity: 0, y: 18 }}
@@ -248,7 +253,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
               <motion.button
                 data-testid="create-session"
-                onPointerDown={handleCreate}
+                onClick={handleCreate}
                 disabled={isCreating}
                 whileTap={{ scale: 0.97 }}
                 className="group px-7 py-3.5 bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float"
@@ -259,7 +264,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               </motion.button>
               <motion.button
                 data-testid="join-session"
-                onPointerDown={onJoinClick}
+                onClick={onJoinClick}
                 whileTap={{ scale: 0.97 }}
                 className="group px-7 py-3.5 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float"
               >
@@ -324,7 +329,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           </p>
           <div className="mt-9 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">              <motion.button
                 data-testid="create-session"
-                onPointerDown={handleCreate}
+                onClick={handleCreate}
                 disabled={isCreating}
                 whileTap={{ scale: 0.97 }}
                 className="group px-9 py-4 bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[16px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float min-h-[52px]"
@@ -335,7 +340,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               </motion.button>
               <motion.button
                 data-testid="join-session"
-                onPointerDown={onJoinClick}
+                onClick={onJoinClick}
                 whileTap={{ scale: 0.97 }}
                 className="px-8 py-4 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[12px] text-[16px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float min-h-[52px]"
               >
