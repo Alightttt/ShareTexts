@@ -400,7 +400,7 @@ io.on('connection', (socket) => {
 
       // Room-anchored window: counter = (now - createdAt) / 40s, so the
       // first code is always a full 40s and both devices agree on it.
-      const delta = totp.validate({ token: code, window: 1, timestamp: Date.now() - room.codeAnchor });
+      const delta = totp.validate({ token: code, window: 2, timestamp: Date.now() - room.codeAnchor });
       if (delta !== null) {
         matchedRoom = room;
         break;

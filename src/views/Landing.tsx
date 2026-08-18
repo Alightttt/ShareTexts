@@ -98,13 +98,16 @@ function DotGrid() {
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = document.documentElement.scrollHeight * dpr;
-      canvas.style.width = window.innerWidth + 'px';
-      canvas.style.height = document.documentElement.scrollHeight + 'px';
+      const w = window.innerWidth;
+      const h = Math.max(document.documentElement.scrollHeight, window.innerHeight);
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
       ctx.scale(dpr, dpr);
     };
     resize();
+    window.addEventListener('resize', resize);
 
     const onMove = (e: PointerEvent) => {
       mouseRef.current = { x: e.clientX, y: e.clientY + window.scrollY };
@@ -114,16 +117,27 @@ function DotGrid() {
       if (e.touches[0]) mouseRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY + window.scrollY };
     }, { passive: true });
 
-    const draw = () => {
+    let lastFrame = 0;
+    const draw = (timestamp: number) => {
+      // Throttle to ~30fps for performance on mobile
+      if (timestamp - lastFrame < 33) {
+        rafRef.current = requestAnimationFrame(draw);
+        return;
+      }
+      lastFrame = timestamp;
+
       const w = window.innerWidth;
-      const h = document.documentElement.scrollHeight;
+      const h = Math.max(document.documentElement.scrollHeight, window.innerHeight);
       ctx.clearRect(0, 0, w, h);
 
       const mx = mouseRef.current.x;
       const my = mouseRef.current.y;
       const isDark = document.documentElement.classList.contains('dark');
-      const baseColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(20,24,32,0.12)';
-      const activeColor = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(20,24,32,0.28)';
+      const isMobile = w < 640;
+      const baseRadius = isMobile ? 1.2 : 1;
+      const maxRadius = isMobile ? 2.5 : 2.2;
+      const baseColor = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(20,24,32,0.15)';
+      const activeColor = isDark ? 'rgba(255,255,255,0.28)' : 'rgba(20,24,32,0.35)';
 
       for (let x = DOT_SPACING / 2; x < w; x += DOT_SPACING) {
         for (let y = DOT_SPACING / 2; y < h; y += DOT_SPACING) {
@@ -131,7 +145,7 @@ function DotGrid() {
           const dy = y - my;
           const dist = Math.sqrt(dx * dx + dy * dy);
           const t = Math.max(0, 1 - dist / INFLUENCE_RADIUS);
-          const r = BASE_RADIUS + (MAX_RADIUS - BASE_RADIUS) * t * t;
+          const r = baseRadius + (maxRadius - baseRadius) * t * t;
           ctx.beginPath();
           ctx.arc(x, y, r, 0, Math.PI * 2);
           ctx.fillStyle = t > 0.01 ? activeColor : baseColor;
@@ -145,6 +159,7 @@ function DotGrid() {
     return () => {
       cancelAnimationFrame(rafRef.current);
       window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('resize', resize);
     };
   }, [reduced]);
 
@@ -223,7 +238,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             <a href="#private" className="text-[13.5px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Privacy</a>
             <a href="#faq" className="text-[13.5px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Questions</a>
           </nav>
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-4 ml-auto shrink-0">
             <LiveUsers className="hidden lg:inline-flex" />
             <ThemeToggle />
           </div>
@@ -313,7 +328,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
       </Suspense>
 
       {/* ============ ENDING ============ */}
-      <section className="px-6 pb-28 sm:pb-36 pt-24 sm:pt-28 bg-apple-parchment dark:bg-night-950">
+      <section className="px-6 pb-28 sm:pb-36 pt-24 sm:pt-28 bg-apple-parchment dark:bg-night-950 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}

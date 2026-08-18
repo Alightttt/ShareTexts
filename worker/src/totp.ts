@@ -88,7 +88,7 @@ export async function generateTOTP(secret: string, epoch = 0): Promise<string> {
 }
 
 /** Validate a code within ±`window` steps of the current counter. */
-export async function validateTOTP(secret: string, code: string, epoch = 0, window = 1): Promise<boolean> {
+export async function validateTOTP(secret: string, code: string, epoch = 0, window = 2): Promise<boolean> {
   if (typeof code !== 'string' || !/^\d{6}$/.test(code)) return false;
   const cur = Math.floor((Date.now() - epoch) / 1000 / TOTP_PERIOD);
   for (let d = -window; d <= window; d++) {
