@@ -122,7 +122,7 @@ export function RoomHub() {
   const waitingForReconnect = session.connectionType === 'disconnected' && !session.partnerConnecting;
 
   return (
-    <div className="min-h-screen flex flex-col bg-apple-canvas dark:bg-black relative overflow-hidden">
+    <div data-testid="room-shell" className="min-h-screen flex flex-col bg-apple-canvas dark:bg-black relative overflow-hidden">
       {/* Brand warmth — a soft azure glow behind the pairing card */}
       <div className="absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(70%_90%_at_50%_-10%,rgba(46,139,255,0.10),transparent_65%)] pointer-events-none" aria-hidden />
 
@@ -174,7 +174,9 @@ export function RoomHub() {
           <p className="text-[12.5px] text-apple-ink-muted/80 dark:text-white/40 font-medium mb-6">
             No app to install. No account. Any two devices with a browser.
           </p>
-          <LiveCodeDisplay secret={session.secret} createdAt={session.createdAt} />
+          <div data-testid="pairing-code">
+            <LiveCodeDisplay secret={session.secret} createdAt={session.createdAt} />
+          </div>
 
           {/* The joiner arrived — the same connecting animation the joiner's
               own screen shows, so both devices tell the same story while the
@@ -198,6 +200,7 @@ export function RoomHub() {
         </div>
 
         <button
+          data-testid="room-copy-code"
           onPointerDown={copyCode}
           className="mt-2 w-full flex items-center justify-center gap-2 px-5 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] min-h-[48px] shadow-card hover:shadow-float"
         >
@@ -237,8 +240,9 @@ export function RoomHub() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                onPointerDown={() => setShowQR(true)}
-                aria-expanded={showQR}
+              data-testid="room-show-qr"
+              onPointerDown={() => setShowQR(true)}
+              aria-expanded={showQR}
                 className="w-full flex items-center justify-between p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-surface-dark-2 rounded-[14px] transition-colors active:scale-[0.98] shadow-sm"
               >
                 <div className="flex items-center gap-3 text-[15px] font-medium text-apple-ink dark:text-white">
@@ -269,10 +273,11 @@ export function RoomHub() {
                 Device name
               </label>
               <div className="flex items-center gap-2">
-                <input
-                  autoFocus
-                  value={nameDraft}
-                  onChange={(e) => setNameDraft(e.target.value)}
+              <input
+                data-testid="device-name-input"
+                autoFocus
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') commitName();
                     if (e.key === 'Escape') setEditingName(false);
@@ -282,6 +287,7 @@ export function RoomHub() {
                   placeholder="My phone"
                 />
                 <button
+                  data-testid="device-name-save"
                   onPointerDown={commitName}
                   className="px-3 py-1.5 text-[13px] font-medium text-apple-blue hover:text-apple-blue-focus active:scale-95 transition-colors rounded-[8px] min-h-[36px]"
                 >
@@ -319,6 +325,7 @@ export function RoomHub() {
             scoped to text/file push only. */}
         <div className="w-full mt-4 flex flex-col items-center">
           <button
+            data-testid="open-advanced-agent"
             onPointerDown={() => setShowPush(!showPush)}
             aria-expanded={showPush}
             className="flex items-center gap-1.5 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors active:scale-95 px-3 py-2 min-h-[44px]"
