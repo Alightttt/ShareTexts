@@ -99,7 +99,7 @@ function DotGrid() {
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
       const w = window.innerWidth;
-      const h = Math.max(document.documentElement.scrollHeight, window.innerHeight);
+      const h = window.innerHeight;
       canvas.width = w * dpr;
       canvas.height = h * dpr;
       canvas.style.width = w + 'px';
@@ -127,7 +127,7 @@ function DotGrid() {
       lastFrame = timestamp;
 
       const w = window.innerWidth;
-      const h = Math.max(document.documentElement.scrollHeight, window.innerHeight);
+      const h = window.innerHeight;
       ctx.clearRect(0, 0, w, h);
 
       const mx = mouseRef.current.x;
@@ -169,7 +169,7 @@ function DotGrid() {
     <canvas
       ref={canvasRef}
       aria-hidden
-      className="pointer-events-none absolute inset-0 z-0"
+      className="pointer-events-none fixed inset-0 z-0"
     />
   );
 }
@@ -218,9 +218,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
 
   return (
     <div className="min-h-screen relative bg-apple-canvas dark:bg-night-900 font-sans selection:bg-azure-500/20 flex flex-col overflow-x-clip">
-      <div className="absolute inset-0 z-0" aria-hidden>
-        <DotGrid />
-      </div>
+      <DotGrid />
       <AmbientBackdrop />
       <PointerLight />
 

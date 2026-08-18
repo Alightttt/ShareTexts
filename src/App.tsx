@@ -13,6 +13,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { WifiOff, Send, Home, Share2, Check } from 'lucide-react';
 import { ShareTextLogo } from './components/ShareTextLogo';
 import { ConnectingVisual } from './components/ConnectingVisual';
+import { Docs } from './views/Docs';
 
 function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, onNewSession: () => void, onHome: () => void }) {
   // One honest line about what happened, then one clear action.
@@ -144,6 +145,10 @@ function AppContent() {
         <p className="text-[17px] text-apple-ink-muted max-w-sm">ShareText requires WebRTC to connect devices directly. Please update your browser or try a different one.</p>
       </div>
     );
+  }
+
+  if (typeof window !== 'undefined' && window.location.pathname === '/docs') {
+    return <Docs />;
   }
 
   if (typeof window !== 'undefined' && !/^(\/|\/s\/[0-9a-f]{8})$/i.test(window.location.pathname)) {
