@@ -172,13 +172,31 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
             >
               {activeTab === 'code' && (
                 <div className="w-full flex flex-col items-center">
-                  <h1 className="text-[24px] sm:text-[28px] font-semibold text-apple-ink dark:text-white tracking-[-0.025em] mb-2.5">
-                    Enter the code
-                  </h1>
-                  <p className="text-[14px] text-apple-ink-muted dark:text-white/55 font-medium mb-10">
-                    It changes every 40 seconds — use the latest one.
-                  </p>
-                  <LiveCodeInput onComplete={handleCodeComplete} isJoining={isJoining} error={error} />
+                  {/* Task-first card with clear hierarchy */}
+                  <div className="w-full p-6 sm:p-8 bg-white dark:bg-[#13161B] border border-[#E3E5E8] dark:border-[#272D36] rounded-[22px] shadow-[0_16px_48px_rgba(18,31,53,0.10)] dark:shadow-[0_20px_64px_rgba(0,0,0,0.28)]">
+                    {/* Header */}
+                    <h1 className="text-[22px] sm:text-[26px] font-semibold text-[#17191D] dark:text-[#F4F6F8] tracking-[-0.025em] mb-2 text-center">
+                      Join a ShareTexts room
+                    </h1>
+                    <p className="text-[14px] text-[#6E737B] dark:text-[#9BA3AE] font-medium mb-8 text-center">
+                      Enter the six-digit code shown on the other device.
+                    </p>
+                    
+                    {/* Code input */}
+                    <LiveCodeInput onComplete={handleCodeComplete} isJoining={isJoining} error={error} />
+                    
+                    {/* Trust cues */}
+                    <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[12px] font-medium text-[#6E737B] dark:text-[#9BA3AE]">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#1C9A61] dark:bg-[#55D18C]" />
+                        Encrypted connection
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#0A66F0] dark:bg-[#4B8DFF]" />
+                        No account needed
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
               {activeTab === 'qr' && (
