@@ -13,10 +13,30 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
   const { resolved, toggle } = useTheme();
   const isDark = resolved === 'dark';
 
+  const handleToggle = () => {
+    // Add transition class for smooth theme switch
+    document.documentElement.classList.add('theme-transitioning');
+    
+    // Create flash overlay
+    const flash = document.createElement('div');
+    flash.className = 'theme-flash';
+    flash.style.backgroundColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+    document.body.appendChild(flash);
+    
+    // Toggle theme
+    toggle();
+    
+    // Clean up transition class after animation completes
+    setTimeout(() => {
+      document.documentElement.classList.remove('theme-transitioning');
+      flash.remove();
+    }, 350);
+  };
+
   return (
     <button
       type="button"
-      onPointerDown={toggle}
+      onPointerDown={handleToggle}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       className={cn(

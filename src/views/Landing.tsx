@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { motion, useMotionValue, useSpring } from 'motion/react';
 import { ShareTextLogo } from '../components/ShareTextLogo';
-import { HeroDemo } from '../components/HeroDemo';
+import { LiveBridgeDemo } from '../components/LiveBridgeDemo';
 import { Send, Inbox } from 'lucide-react';
 import { LiveUsers } from '../components/LiveUsers';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -235,6 +235,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             <a href="#how-it-works" className="text-[13.5px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">How it works</a>
             <a href="#private" className="text-[13.5px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Privacy</a>
             <a href="#faq" className="text-[13.5px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Questions</a>
+            <a href="/docs" className="text-[13.5px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Docs</a>
           </nav>
           <div className="flex items-center gap-4 ml-auto shrink-0">
             <LiveUsers className="hidden lg:inline-flex" />
@@ -247,7 +248,10 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           and the live demo — the actual product in miniature — sits beside it.
           No centered stack: one quiet idea, then the working proof, side by
           side on desktop, stacked on mobile. ============ */}
-      <section className="px-6 pt-14 sm:pt-20 pb-16 sm:pb-20 relative z-10">
+      <section
+        className="px-6 pt-14 sm:pt-20 pb-16 sm:pb-20 relative z-10"
+        aria-labelledby="hero-title"
+      >
         <div className="max-w-6xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-10 items-center">
           <motion.div
             initial={{ opacity: 0, y: 18 }}
@@ -255,35 +259,54 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             transition={{ duration: 0.7, ease: EASE }}
             className="text-center lg:text-left flex flex-col items-center lg:items-start"
           >
-            <h1 className="text-[36px] sm:text-[46px] lg:text-[52px] font-semibold text-apple-ink dark:text-white tracking-[-0.035em] leading-[1.06] max-w-[13ch]">
+            {/* Eyebrow */}
+            <p className="text-[11px] sm:text-[12px] font-semibold tracking-widest uppercase text-apple-blue dark:text-apple-blue-light mb-3">
+              Temporary device-to-device transfer
+            </p>
+            
+            {/* Hero headline — premium, editorial, device-first */}
+            <h1
+              id="hero-title"
+              className="text-[36px] sm:text-[46px] lg:text-[52px] font-semibold text-apple-ink dark:text-white tracking-[-0.035em] leading-[1.06] max-w-[13ch]"
+            >
               Move anything between your devices.
             </h1>
+            
+            {/* Subtitle — clear, human, no jargon */}
             <p className="mt-5 text-[15.5px] sm:text-[17px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[46ch]">
-              Open ShareTexts on both devices. No app. No account. Just pair and send.
+              Open ShareTexts on both devices. No app. No account. Just connect and send.
             </p>
+            
             {/* Live count near the top on smaller devices (header pill is desktop-only). */}
             <LiveUsers className="mt-5 lg:hidden" />
+            
+            {/* Primary actions */}
             <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
               <motion.button
-                data-testid="create-session"
+                data-testid="hero-send"
                 onClick={handleCreate}
                 disabled={isCreating}
                 whileTap={{ scale: 0.97 }}
                 className="group px-7 py-3.5 bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float"
               >
                 {isCreating ? 'Creating…' : createError ? 'Try Again' : (
-                  <><Send className="w-4 h-4" /> Send</>
+                  <><Send className="w-4 h-4" /> Send something</>
                 )}
               </motion.button>
               <motion.button
-                data-testid="join-session"
+                data-testid="hero-receive"
                 onClick={onJoinClick}
                 whileTap={{ scale: 0.97 }}
                 className="group px-7 py-3.5 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float"
               >
-                <Inbox className="w-4 h-4" /> Receive
+                <Inbox className="w-4 h-4" /> Receive something
               </motion.button>
             </div>
+
+            {/* Meta — works in your browser, temporary by design */}
+            <p className="mt-5 text-[13px] sm:text-[14px] text-apple-ink-muted/70 dark:text-white/40 font-medium">
+              Works in your browser · Temporary by design
+            </p>
 
             {createError && (
               <p role="alert" className="mt-5 text-[14px] font-medium text-status-danger flex items-center gap-2">
@@ -298,7 +321,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             transition={{ duration: 0.9, delay: 0.15, ease: EASE }}
             className="mt-12 lg:mt-0 w-full flex justify-center"
           >
-            <HeroDemo />
+            <LiveBridgeDemo />
           </motion.div>
         </div>
       </section>
@@ -340,25 +363,26 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           <p className="mt-4 text-[16px] sm:text-[17px] text-apple-ink-muted dark:text-white/60 font-medium">
             One page, two screens. No app, no account, nothing kept in between.
           </p>
-          <div className="mt-9 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">              <motion.button
-                data-testid="create-session"
-                onClick={handleCreate}
-                disabled={isCreating}
-                whileTap={{ scale: 0.97 }}
-                className="group px-9 py-4 bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[16px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float min-h-[52px]"
-              >
-                {isCreating ? 'Creating…' : createError ? 'Try Again' : (
-                  <><Send className="w-4 h-4" /> Send</>
-                )}
-              </motion.button>
-              <motion.button
-                data-testid="join-session"
-                onClick={onJoinClick}
-                whileTap={{ scale: 0.97 }}
-                className="px-8 py-4 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[12px] text-[16px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float min-h-[52px]"
-              >
-                <Inbox className="w-4 h-4" /> Receive
-              </motion.button>
+          <div className="mt-9 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
+            <motion.button
+              data-testid="create-session"
+              onClick={handleCreate}
+              disabled={isCreating}
+              whileTap={{ scale: 0.97 }}
+              className="group px-9 py-4 bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[16px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float min-h-[52px]"
+            >
+              {isCreating ? 'Creating…' : createError ? 'Try Again' : (
+                <><Send className="w-4 h-4" /> Send something</>
+              )}
+            </motion.button>
+            <motion.button
+              data-testid="join-session"
+              onClick={onJoinClick}
+              whileTap={{ scale: 0.97 }}
+              className="px-8 py-4 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[12px] text-[16px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float min-h-[52px]"
+            >
+              <Inbox className="w-4 h-4" /> Receive something
+            </motion.button>
           </div>
           <p className="mt-6 text-[15px] text-apple-ink-muted dark:text-white/55 font-medium">
             Open it on the other device and connect.

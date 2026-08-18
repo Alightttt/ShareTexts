@@ -1,75 +1,116 @@
 import { launchBrowser, URL, sleep } from './lib.mjs';
 
-// Verify the interactive hero's full state story: type a message → click send
-// → Sending…/Receiving… with progress bar → Sent ✓ on the phone, the exact
-// text received on the laptop. The demo also runs on its own, so the probe
-// waits for the composer (visible in the ready phase) before typing.
+// Verify the interactive hero's full state story: click Play → scenario chips →
+// progress rail → pause/play → replay. The new LiveBridgeDemo is a state machine
+// with Play/Pause/Replay controls and scenario selection.
 const b = await launchBrowser();
 try {
   const page = await b.newPage({ viewport: { width: 1280, height: 900 } });
   await page.goto(URL, { waitUntil: 'networkidle' });
   await page.locator('text=Move anything between your devices').first().waitFor({ timeout: 15000 });
 
-  // Wait until the composer is on screen AND the auto-run is armed (ready to
-  // send). Without waiting for data-auto=on, we might type while the auto-run
-  // is mid-flight and our message never travels.
+  // Wait for the LiveBridgeDemo to appear
   let ready = false;
-  for (let i = 0; i < 120; i++) {
+  for (let i = 0; i < 30; i++) {
     ready = await page.evaluate(() => {
-      const ta = !!document.querySelector('textarea[aria-label="Demo message"]');
-      const auto = document.querySelector('[data-step]')?.getAttribute('data-auto') === 'on';
-      return ta && auto;
+      const demo = document.querySelector('[data-testid="hero-demo"]');
+      const playBtn = document.querySelector('[data-testid="hero-demo-play"]');
+      return !!demo && !!playBtn;
     });
     if (ready) break;
-    await sleep(100);
+    await sleep(200);
   }
-  if (!ready) throw new Error('composer or auto-run never appeared');
+  if (!ready) throw new Error('LiveBridgeDemo never appeared');
 
-  // Remove the pre-attached photo sample so the TEXT is what travels.
-  await page.evaluate(() => document.querySelector('button[aria-label="Remove attachment"]')?.click());
-  await sleep(200);
-  // Type a real message (React tracks the value via its prototype setter).
-  await page.evaluate(() => {
-    const ta = document.querySelector('textarea[aria-label="Demo message"]');
-    const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
-    setter.call(ta, 'hello from the demo ✨');
-    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  // Check that scenario chips exist
+  const scenarios = await page.evaluate(() => {
+    const chips = ['note', 'link', 'photo', 'file'];
+    return chips.every(key => !!document.querySelector(`[data-testid="hero-scenario-${key}"]`));
   });
-  await sleep(200);
+  console.log('Scenario chips:', scenarios ? 'OK' : 'FAIL');
 
-  await page.evaluate(() => {
-    const btn = document.querySelector('button[aria-label="Send demo"]');
-    btn?.click();
+  // Check that progress rail exists
+  const progressRail = await page.evaluate(() => {
+    return !!document.querySelector('[aria-label="Go to Pair step"]');
   });
+  console.log('Progress rail:', progressRail ? 'OK' : 'FAIL');
 
-  // Sending frame (~0.8s after click): phone Sending…, laptop Receiving… + bar
-  await sleep(750);
-  const sending = await page.evaluate(() => {
-    const texts = [...document.querySelectorAll('span')].map(s => s.textContent);
+  // Click Play button
+  await page.click('[data-testid="hero-demo-play"]');
+  await sleep(500);
+
+  // Check that Pause button appears
+  const hasPause = await page.evaluate(() => {
+    return !!document.querySelector('[data-testid="hero-demo-pause"]');
+  });
+  console.log('Play/Pause:', hasPause ? 'OK' : 'FAIL');
+
+  // Wait for some progress
+  await sleep(2000);
+
+  // Check status text
+  const statusText = await page.evaluate(() => {
+    return document.querySelector('[data-testid="hero-status"]')?.textContent || '';
+  });
+  console.log('Status text:', statusText);
+
+  // Click Pause
+  const pauseBtn = await page.$('[data-testid="hero-demo-pause"]');
+  if (pauseBtn) {
+    await pauseBtn.click();
+    await sleep(300);
+    const hasPlay = await page.evaluate(() => {
+      return !!document.querySelector('[data-testid="hero-demo-play"]');
+    });
+    console.log('Pause/Play:', hasPlay ? 'OK' : 'FAIL');
+  }
+
+  // Click a scenario chip (File)
+  await page.click('[data-testid="hero-scenario-file"]');
+  await sleep(300);
+
+  // Check that file scenario is selected
+  const fileSelected = await page.evaluate(() => {
+    const btn = document.querySelector('[data-testid="hero-scenario-file"]');
+    return btn?.getAttribute('aria-checked') === 'true';
+  });
+  console.log('Scenario selection:', fileSelected ? 'OK' : 'FAIL');
+
+  // Click Replay
+  const replayBtn = await page.$('[data-testid="hero-demo-replay"]');
+  if (replayBtn) {
+    await replayBtn.click();
+    await sleep(500);
+    const hasPlay = await page.evaluate(() => {
+      return !!document.querySelector('[data-testid="hero-demo-play"]');
+    });
+    console.log('Replay:', hasPlay ? 'OK' : 'FAIL');
+  }
+
+  // Check accessibility
+  const a11y = await page.evaluate(() => {
+    const region = document.querySelector('[role="region"][aria-label="Interactive product demonstration"]');
+    const liveRegion = document.querySelector('[aria-live="polite"]');
     return {
-      phone: texts.includes('Sending…'),
-      recv: texts.includes('Receiving…'),
-      progressBar: [...document.querySelectorAll('div')].some(d => d.className?.includes?.('overflow-hidden') && d.querySelector('div[class*="bg-apple-blue"]')),
+      hasRegion: !!region,
+      hasLiveRegion: !!liveRegion,
     };
   });
+  console.log('Accessibility:', a11y.hasRegion && a11y.hasLiveRegion ? 'OK' : 'FAIL');
 
-  // Received frame (~1.6s later): phone Sent, laptop Received, exact text landed
-  await sleep(1500);
-  const received = await page.evaluate(() => {
-    const root = document.querySelector('[data-step]');
-    const texts = [...document.querySelectorAll('span')].map(s => s.textContent);
-    return {
-      sent: texts.includes('Sent'),
-      got: texts.includes('Received'),
-      landedText: root?.getAttribute('data-landed-text') || '',
-      laptopShowsText: [...document.querySelectorAll('p')].some(p => p.textContent?.includes('hello from the demo ✨')),
-    };
+  // Check data-testid attributes
+  const testIds = await page.evaluate(() => {
+    const ids = [
+      'hero-demo', 'hero-status', 'hero-sender-device', 'hero-receiver-device',
+      'hero-demo-play', 'hero-demo-pause', 'hero-demo-replay',
+      'hero-scenario-note', 'hero-scenario-link', 'hero-scenario-photo', 'hero-scenario-file',
+    ];
+    return ids.every(id => !!document.querySelector(`[data-testid="${id}"]`));
   });
+  console.log('Test IDs:', testIds ? 'OK' : 'FAIL');
 
-  console.log(JSON.stringify({ sending, received }, null, 2));
-  const ok = sending.phone && sending.recv && sending.progressBar && received.sent && received.got
-    && received.landedText === 'hello from the demo ✨' && received.laptopShowsText;
-  console.log(ok ? 'HERO_STORY_OK' : 'HERO_STORY_FAIL');
+  const allOk = scenarios && progressRail && hasPause && fileSelected && a11y.hasRegion && a11y.hasLiveRegion && testIds;
+  console.log(allOk ? 'HERO_STORY_OK' : 'HERO_STORY_FAIL');
 } finally {
   await b.close();
 }

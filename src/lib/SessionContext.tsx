@@ -549,8 +549,23 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             // here), so once the bubble has rendered it's genuinely seen.
             // The short delay keeps the receipt honest: we only claim seen
             // after the message is actually on screen, not the instant it
-            // lands in state.
-            setTimeout(() => pm.sendSeen(parsed.id), 450);
+            // lands in state. Also only claim seen if the page is actually
+            // visible — don't fake it when the browser is minimized.
+            const sendSeenIfVisible = () => {
+              if (document.visibilityState === 'visible') {
+                pm.sendSeen(parsed.id);
+              } else {
+                // Page not visible — wait for it to become visible, then send seen
+                const onVis = () => {
+                  if (document.visibilityState === 'visible') {
+                    document.removeEventListener('visibilitychange', onVis);
+                    pm.sendSeen(parsed.id);
+                  }
+                };
+                document.addEventListener('visibilitychange', onVis);
+              }
+            };
+            setTimeout(sendSeenIfVisible, 450);
           }
           return;
         }
@@ -624,7 +639,21 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         pm.sendReceipt(msg.id);
         // The completed file card is on screen in the open room — confirm
         // seen too (same honesty rule as text: only after it's rendered).
-        setTimeout(() => pm.sendSeen(msg.id), 450);
+        // Only claim seen if the page is actually visible.
+        const sendSeenIfVisible = () => {
+          if (document.visibilityState === 'visible') {
+            pm.sendSeen(msg.id);
+          } else {
+            const onVis = () => {
+              if (document.visibilityState === 'visible') {
+                document.removeEventListener('visibilitychange', onVis);
+                pm.sendSeen(msg.id);
+              }
+            };
+            document.addEventListener('visibilitychange', onVis);
+          }
+        };
+        setTimeout(sendSeenIfVisible, 450);
       }
 
       // Integrity: if the sender included a checksum, verify the bytes that

@@ -198,6 +198,29 @@
   }
 }
 
+/* Smooth theme transition — when toggling light/dark, a subtle flash of
+   color washes across the viewport to make the change feel intentional
+   rather than jarring. Applied via a temporary class on <html>. */
+.theme-transitioning,
+.theme-transitioning *,
+.theme-transitioning *::before,
+.theme-transitioning *::after {
+  transition: background-color 0.3s ease, color 0.2s ease, border-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+/* Theme switch overlay — a brief flash that masks the color transition */
+@keyframes theme-flash {
+  0% { opacity: 0.3; }
+  100% { opacity: 0; }
+}
+.theme-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  animation: theme-flash 0.35s ease-out forwards;
+}
+
 /* Hero demo: a data packet traveling along the connection beam.
    Transform-only (never `left`/`top` — those force layout every frame on
    low-end devices). The travel distance is injected as `--travel` (px) by
