@@ -23,3 +23,47 @@ export function formatBytes(bytes: number, decimals = 1) {
 export function shortCodeOf(roomId: string): string {
   return roomId.replace(/-/g, '').slice(0, 8).toLowerCase();
 }
+
+/**
+ * Sanitize a URL for safe rendering. Only allows http/https schemes.
+ * Blocks javascript:, data:, vbscript:, and custom schemes.
+ * Returns null for invalid or dangerous URLs.
+ */
+export function sanitizeUrl(raw: string): string | null {
+  try {
+    const url = new URL(raw);
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
+      return url.href;
+    }
+  } catch {
+    // Not a valid URL — treat as plain text
+  }
+  return null;
+}
+
+/**
+ * Sanitize a filename for safe display and download.
+ * Strips path separators, null bytes, and control characters.
+ * Returns a safe basename.
+ */
+export function sanitizeFilename(name: string): string {
+  return name
+    .replace(/[\x00-\x1F\x7F]/g, '') // control chars
+    .replace(/[/\\]/g, '') // path separators
+    .replace(/^\./, '') // leading dots (hidden files)
+    .slice(0, 255) // max filename length
+    || 'unnamed';
+}
+
+/**
+ * Sanitize a device name for safe display.
+ * Strips control characters and limits length.
+ */
+export function sanitizeDeviceName(name: string): string {
+  return name
+    .replace(/[\x00-\x1F\x7F]/g, '') // control chars
+    .trim()
+    .replace(/\s+/g, ' ') // collapse whitespace
+    .slice(0, 32)
+    || 'Unnamed device';
+}

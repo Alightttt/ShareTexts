@@ -415,6 +415,7 @@ export function ChatView() {
 
   return (
     <div
+      data-app-state="connected"
       className="relative flex flex-col h-dvh bg-apple-canvas dark:bg-night-950 font-sans"
       style={visualHeight ? { height: `${visualHeight}px` } : undefined}
     >
@@ -447,7 +448,7 @@ export function ChatView() {
               )} />
               {disconnected ? 'Offline' : 'Connected'}
             </span>
-            <Lock className="w-3.5 h-3.5 text-apple-ink-muted/70 shrink-0" aria-label="End-to-end encrypted" />
+            <Lock className="w-3.5 h-3.5 text-apple-ink-muted/70 shrink-0" aria-label="Encrypted between devices" />
           </span>
         </button>
 
@@ -483,7 +484,7 @@ export function ChatView() {
             >
               <div className="flex items-center gap-2 text-[13.5px] font-semibold text-apple-ink dark:text-white mb-1.5">
                 <ShieldCheck className="w-4 h-4 text-status-success" />
-                End-to-end encrypted
+                Encrypted between devices
               </div>
               <div className="text-[13px] text-apple-ink-muted leading-relaxed">
                 {session.connectionType === 'relay' ? 'Connected securely through an encrypted relay — a direct connection wasn\u2019t available.' :
@@ -492,7 +493,7 @@ export function ChatView() {
                       'Connecting…'}
               </div>
               <div className="text-[13px] text-apple-ink-muted mt-2 pt-2 border-t border-apple-divider/50 dark:border-apple-tile-3">
-                Only your two devices can read what\u2019s sent here. Nothing is stored.
+                Content is encrypted between devices. Rooms close automatically — nothing is stored as a product design choice.
               </div>
               {/* The pairing code lives here now, not on screen: it\u2019s only
                   needed if the other device drops and has to rejoin, so it\u2019s

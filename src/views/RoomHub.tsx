@@ -30,6 +30,7 @@ export function RoomHub() {
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [copiedTextCmd, setCopiedTextCmd] = useState(false);
   const [copiedFileCmd, setCopiedFileCmd] = useState(false);
+  const [tokenRevealed, setTokenRevealed] = useState(false);
   // QR re-renders on every pairing-code boundary so the scannable code is
   // always the CURRENT one (the short link inside stays stable — the code
   // query param just rotates with the 40s window).
@@ -135,7 +136,7 @@ export function RoomHub() {
   const waitingForReconnect = session.connectionType === 'disconnected' && !session.partnerConnecting;
 
   return (
-    <div data-testid="room-shell" className="min-h-screen flex flex-col bg-apple-canvas dark:bg-black relative overflow-hidden">
+    <div data-testid="room-shell" data-app-state="sender-waiting" className="min-h-screen flex flex-col bg-apple-canvas dark:bg-black relative overflow-hidden">
       {/* Brand warmth — a soft azure glow behind the pairing card */}
       <div className="absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(70%_90%_at_50%_-10%,rgba(46,139,255,0.10),transparent_65%)] pointer-events-none" aria-hidden />
 
@@ -396,15 +397,33 @@ export function RoomHub() {
                     </span>
                   </div>
 
-                  {/* Command preview with masked token */}
+                  {/* Command preview — token masked by default */}
                   <pre className="text-[11.5px] sm:text-[12px] font-mono text-apple-ink dark:text-white bg-white/70 dark:bg-black/30 border border-apple-divider dark:border-apple-tile-3 rounded-[10px] p-3 overflow-x-auto whitespace-pre-wrap break-all leading-relaxed mb-2">
-{`curl -X POST ${pushEndpoint() ?? ''} \
+{tokenRevealed
+  ? `curl -X POST ${pushEndpoint() ?? ''} \
+  -H "Authorization: Bearer ${session.secret}" \
+  -H "Content-Type: application/json" \
+  -d '{"roomId":"${session.roomId}","text":"Hello from my computer"}'`
+  : `curl -X POST ${pushEndpoint() ?? ''} \
   -H "Authorization: Bearer \${SHARETEXTS_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"roomId":"${session.roomId}","text":"Hello from my computer"}'`}
                   </pre>
 
                   <div className="flex flex-wrap gap-2 mb-3">
+                    <button
+                      onPointerDown={() => {
+                        if (tokenRevealed) {
+                          setTokenRevealed(false);
+                        } else {
+                          setTokenRevealed(true);
+                          setTimeout(() => setTokenRevealed(false), 10000);
+                        }
+                      }}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-apple-divider dark:border-apple-tile-3 text-apple-ink dark:text-white text-[12.5px] font-semibold transition-motion active:scale-95 min-h-[40px]"
+                    >
+                      {tokenRevealed ? 'Hide token' : 'Reveal token (10s)'}
+                    </button>
                     <button
                       onPointerDown={async () => {
                         const cmd = `curl -X POST ${pushEndpoint() ?? ''} \\n  -H "Authorization: Bearer ${session.secret}" \\n  -H "Content-Type: application/json" \\n  -d '{"roomId":"${session.roomId}","text":"Hello from my computer"}'`;
@@ -416,25 +435,12 @@ export function RoomHub() {
                       className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[12.5px] font-semibold transition-motion active:scale-95 min-h-[40px]"
                     >
                       {copiedTextCmd ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      {copiedTextCmd ? 'Copied — expires at ' + new Date(Date.now() + 10 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Copy text command'}
-                    </button>
-                    <button
-                      onPointerDown={async () => {
-                        const cmd = `# File (any type, up to 8 MB):\ncurl -X POST ${pushEndpoint() ?? ''}?roomId=${session.roomId} \\n  -H "Authorization: Bearer ${session.secret}" \\n  -H "Content-Type: application/octet-stream" \\n  -H "X-File-Name: notes.txt" \\n  --data-binary @notes.txt`;
-                        try { await navigator.clipboard.writeText(cmd); } catch { /* ignore */ }
-                        setCopiedFileCmd(true);
-                        setCopyStatus('File command copied to clipboard');
-                        setTimeout(() => { setCopiedFileCmd(false); setCopyStatus(null); }, 2000);
-                      }}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-apple-divider dark:border-apple-tile-3 text-apple-ink dark:text-white text-[12.5px] font-semibold transition-motion active:scale-95 min-h-[40px]"
-                    >
-                      {copiedFileCmd ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      {copiedFileCmd ? 'Copied' : 'Copy file command'}
+                      {copiedTextCmd ? 'Copied — expires at ' + new Date(Date.now() + 10 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Copy command'}
                     </button>
                   </div>
 
                   <p className="text-[12px] text-apple-ink-muted leading-relaxed">
-                    Temporary send permission. Scope: text and files. Expires in 10 minutes. Revoke by closing this room.
+                    Temporary send permission. Push-only — cannot read, close, or resume this room. Expires in 10 minutes. Revoke by closing this room.
                   </p>
                 </div>
               </motion.div>
@@ -497,7 +503,7 @@ export function RoomHub() {
             >
               <div className="mt-3 p-4 bg-apple-parchment dark:bg-apple-tile-1 rounded-[14px] text-left text-[13px] text-apple-ink-muted leading-relaxed space-y-2">
                 <p>This connection disappears automatically after a while. When it ends, the code stops working and it can't be reopened.</p>
-                <p>Text is encrypted between devices. When a direct connection isn't possible, an encrypted relay forwards your data — the relay never stores or logs your content.</p>
+                <p>Content is encrypted between devices using WebRTC. When a direct connection isn't possible, a relay forwards encrypted data. Rooms expire automatically — nothing is stored as a product design choice.</p>
               </div>
             </motion.div>
           )}

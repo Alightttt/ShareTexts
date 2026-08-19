@@ -138,7 +138,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-apple-canvas dark:bg-night-950 p-6 relative selection:bg-apple-blue/20 sm:justify-center overflow-hidden">
+    <div data-app-state="receiver-entering-code" className="flex flex-col min-h-screen bg-apple-canvas dark:bg-night-950 p-6 relative selection:bg-apple-blue/20 sm:justify-center overflow-hidden">
       {/* Ambient azure warmth at the top — the same soft glow as the connect screen */}
       <div className="absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(70%_90%_at_50%_-10%,rgba(46,139,255,0.10),transparent_65%)] pointer-events-none" aria-hidden />
       <div className="absolute top-6 left-6 flex items-center">
