@@ -1,10 +1,38 @@
 {
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ],
+  "rewrites": {
+    "beforeFiles": [
+      {
+        "source": "/api/(.*)",
+        "destination": "/api-not-found.json"
+      },
+      {
+        "source": "/lookup",
+        "destination": "/api-not-found.json"
+      },
+      {
+        "source": "/resolve-short",
+        "destination": "/api-not-found.json"
+      },
+      {
+        "source": "/health",
+        "destination": "/api-not-found.json"
+      },
+      {
+        "source": "/stats",
+        "destination": "/api-not-found.json"
+      },
+      {
+        "source": "/metrics",
+        "destination": "/api-not-found.json"
+      }
+    ],
+    "fallback": [
+      {
+        "source": "/(.*)",
+        "destination": "/index.html"
+      }
+    ]
+  },
   "headers": [
     {
       "source": "/(.*)",

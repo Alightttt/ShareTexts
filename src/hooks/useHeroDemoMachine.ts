@@ -294,7 +294,10 @@ export function useHeroDemoMachine(): UseHeroDemoMachine {
     timerRef.current = setTimeout(advance, duration);
   }, [advance, startProgress]);
   
-  // Auto-start on mount (unless reduced motion)
+  // Auto-start on mount (unless reduced motion). Use a ref for play to
+  // avoid re-firing this effect when the play callback identity changes.
+  const playRef = useRef(play);
+  playRef.current = play;
   useEffect(() => {
     if (isReducedMotion) {
       setState('ready');
@@ -302,11 +305,11 @@ export function useHeroDemoMachine(): UseHeroDemoMachine {
     }
     
     const timer = setTimeout(() => {
-      play();
+      playRef.current();
     }, 1000);
     
     return () => clearTimeout(timer);
-  }, [isReducedMotion, play]);
+  }, [isReducedMotion]);
   
   // Pause on hover/focus for accessibility
   useEffect(() => {

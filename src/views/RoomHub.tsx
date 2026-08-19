@@ -26,6 +26,8 @@ export function RoomHub() {
   const [showQR, setShowQR] = useState(false);
   const [showHow, setShowHow] = useState(false);
   const [showPush, setShowPush] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [copiedTextCmd, setCopiedTextCmd] = useState(false);
   const [copiedFileCmd, setCopiedFileCmd] = useState(false);
   // QR re-renders on every pairing-code boundary so the scannable code is
@@ -78,7 +80,8 @@ export function RoomHub() {
       document.body.removeChild(ta);
     }
     setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
+    setCopyStatus('Link copied to clipboard');
+    setTimeout(() => { setCopiedLink(false); setCopyStatus(null); }, 2000);
   };
 
   const shareLink = async () => {
@@ -106,12 +109,22 @@ export function RoomHub() {
       document.body.removeChild(ta);
     }
     setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 2000);
+    setCopyStatus('Code copied to clipboard');
+    setTimeout(() => { setCopiedCode(false); setCopyStatus(null); }, 2000);
   };
 
   const commitName = () => {
-    const trimmed = nameDraft.trim();
-    if (trimmed) setDeviceName(trimmed.slice(0, 40));
+    const trimmed = nameDraft.trim().replace(/\s+/g, ' ');
+    if (!trimmed || trimmed.length === 0) {
+      setNameError('Enter a device name');
+      return;
+    }
+    if (/^[\u0000-\u001F\u007F]/.test(trimmed)) {
+      setNameError('Name contains invalid characters');
+      return;
+    }
+    setNameError(null);
+    setDeviceName(trimmed.slice(0, 32));
     setEditingName(false);
   };
 
@@ -254,6 +267,7 @@ export function RoomHub() {
           </AnimatePresence>
 
           <button
+            data-testid="room-share-link"
             onPointerDown={shareLink}
             className="w-full flex items-center justify-between p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-surface-dark-2 rounded-[14px] transition-colors active:scale-[0.98] shadow-sm"
           >
@@ -277,14 +291,18 @@ export function RoomHub() {
                 data-testid="device-name-input"
                 autoFocus
                 value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
+                onChange={(e) => { setNameDraft(e.target.value); setNameError(null); }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') commitName();
-                    if (e.key === 'Escape') setEditingName(false);
+                    if (e.key === 'Escape') { setEditingName(false); setNameError(null); }
                   }}
-                  className="px-3 py-1.5 text-[14px] font-medium text-apple-ink dark:text-white bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 rounded-[10px] outline-none focus:ring-2 focus:ring-apple-blue/40 w-[160px]"
+                  className={cn("px-3 py-1.5 text-[14px] font-medium text-apple-ink dark:text-white bg-white dark:bg-apple-tile-1 border rounded-[10px] outline-none focus:ring-2 w-[160px]",
+                    nameError ? 'border-status-error focus:ring-status-error/40' : 'border-apple-divider dark:border-apple-tile-3 focus:ring-apple-blue/40'
+                  )}
                   maxLength={32}
                   placeholder="My phone"
+                  aria-invalid={!!nameError}
+                  aria-describedby={nameError ? 'device-name-error' : undefined}
                 />
                 <button
                   data-testid="device-name-save"
@@ -294,16 +312,22 @@ export function RoomHub() {
                   Save
                 </button>
                 <button
-                  onPointerDown={() => setEditingName(false)}
+                  onPointerDown={() => { setEditingName(false); setNameError(null); }}
                   className="px-3 py-1.5 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white active:scale-95 transition-colors rounded-[8px] min-h-[36px]"
                 >
                   Cancel
                 </button>
               </div>
+              {nameError && (
+                <p id="device-name-error" data-testid="device-name-error" role="alert" className="text-[12px] font-medium text-status-error mt-1">
+                  {nameError}
+                </p>
+              )}
             </div>
           ) : (
             <button
               onPointerDown={() => { setNameDraft(session.deviceName); setEditingName(true); }}
+              data-testid="edit-device-name"
               className="flex items-center gap-1.5 text-[13px] font-medium text-apple-ink-muted/90 hover:text-apple-ink dark:hover:text-white transition-colors active:scale-95 px-2 py-2 -my-1 -mx-2 min-h-[44px]"
               title="Edit device name"
             >
@@ -319,6 +343,11 @@ export function RoomHub() {
           This temporary connection stays open until the other device joins or you leave.
         </p>
 
+        {/* Live region for copy feedback — announces to screen readers without stealing focus */}
+        <div aria-live="polite" aria-atomic="true" className="sr-only">
+          {copyStatus}
+        </div>
+
         {/* Agent push — "send from your computer" without a second browser.
             Redesigned as a secure, collapsed panel with explicit scope, expiry,
             and masked secret by default. The permission is short-lived and
@@ -326,7 +355,7 @@ export function RoomHub() {
         <div className="w-full mt-4 flex flex-col items-center">
           <button
             data-testid="open-advanced-agent"
-            onPointerDown={() => setShowPush(!showPush)}
+            onPointerDown={() => { const next = !showPush; setShowPush(next); if (next) setShowHow(false); }}
             aria-expanded={showPush}
             className="flex items-center gap-1.5 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors active:scale-95 px-3 py-2 min-h-[44px]"
           >
@@ -381,7 +410,8 @@ export function RoomHub() {
                         const cmd = `curl -X POST ${pushEndpoint() ?? ''} \\n  -H "Authorization: Bearer ${session.secret}" \\n  -H "Content-Type: application/json" \\n  -d '{"roomId":"${session.roomId}","text":"Hello from my computer"}'`;
                         try { await navigator.clipboard.writeText(cmd); } catch { /* ignore */ }
                         setCopiedTextCmd(true);
-                        setTimeout(() => setCopiedTextCmd(false), 2000);
+                        setCopyStatus('Temporary send permission copied — expires in 10 minutes');
+                        setTimeout(() => { setCopiedTextCmd(false); setCopyStatus(null); }, 2000);
                       }}
                       className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[12.5px] font-semibold transition-motion active:scale-95 min-h-[40px]"
                     >
@@ -393,7 +423,8 @@ export function RoomHub() {
                         const cmd = `# File (any type, up to 8 MB):\ncurl -X POST ${pushEndpoint() ?? ''}?roomId=${session.roomId} \\n  -H "Authorization: Bearer ${session.secret}" \\n  -H "Content-Type: application/octet-stream" \\n  -H "X-File-Name: notes.txt" \\n  --data-binary @notes.txt`;
                         try { await navigator.clipboard.writeText(cmd); } catch { /* ignore */ }
                         setCopiedFileCmd(true);
-                        setTimeout(() => setCopiedFileCmd(false), 2000);
+                        setCopyStatus('File command copied to clipboard');
+                        setTimeout(() => { setCopiedFileCmd(false); setCopyStatus(null); }, 2000);
                       }}
                       className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-apple-divider dark:border-apple-tile-3 text-apple-ink dark:text-white text-[12.5px] font-semibold transition-motion active:scale-95 min-h-[40px]"
                     >
@@ -448,7 +479,8 @@ export function RoomHub() {
         )}
 
         <button
-          onPointerDown={() => setShowHow(!showHow)}
+          data-testid="room-how-this-works"
+          onPointerDown={() => { const next = !showHow; setShowHow(next); if (next) setShowPush(false); }}
           aria-expanded={showHow}
           className="flex items-center gap-1 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors mt-2 active:scale-95 px-3 py-2 min-h-[44px]"
         >

@@ -287,14 +287,6 @@ function ScenarioPicker({
 export function LiveBridgeDemo() {
   const machine = useHeroDemoMachine();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [isHovered, setIsHovered] = useState(false);
-  
-  // Pause on hover/focus
-  useEffect(() => {
-    if (isHovered && machine.isPlaying) {
-      machine.pause();
-    }
-  }, [isHovered, machine]);
   
   // Get status text for screen readers
   const getStatusText = () => {
@@ -328,10 +320,6 @@ export function LiveBridgeDemo() {
       ref={containerRef}
       data-testid="hero-demo"
       className="relative w-full max-w-[920px] mx-auto select-none"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      onFocus={() => setIsHovered(true)}
-      onBlur={() => setIsHovered(false)}
       role="region"
       aria-label="Interactive product demonstration"
       data-phase={machine.state}
@@ -341,12 +329,7 @@ export function LiveBridgeDemo() {
         {getStatusText()}
       </div>
       
-      {/* Scene label */}
-      <div className="text-center mb-4">
-        <span className={cn('text-[11px] sm:text-[12px] font-semibold tracking-wide uppercase', TOKENS.inkMuted)}>
-          Temporary room · 2 devices
-        </span>
-      </div>
+
 
       {/* === DEVICE STAGE === */}
       <div className="flex flex-col sm:flex-row items-center sm:items-start justify-center gap-6 sm:gap-8 lg:gap-12 px-2 sm:px-4">
@@ -545,17 +528,11 @@ export function LiveBridgeDemo() {
       </div>
       
       {/* === CONTROLS === */}
-      <div className="mt-6 sm:mt-8 flex flex-col items-center gap-4">
-        {/* Scenario picker */}
+      <div className="mt-5 sm:mt-6 flex flex-col items-center gap-3">
+        {/* Compact scenario picker — only Photo default, others tucked away */}
         <ScenarioPicker
           selected={machine.scenario}
           onSelect={machine.chooseScenario}
-        />
-        
-        {/* Progress rail */}
-        <ProgressRail
-          currentStep={machine.step}
-          onStepClick={machine.goToStep}
         />
         
         {/* Play/Pause/Replay controls */}
