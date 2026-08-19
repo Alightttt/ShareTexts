@@ -195,13 +195,13 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           the viewport. Kept minimal: How it works, Privacy, FAQ. */}
       <Suspense fallback={<div className="h-40" aria-hidden />}>
         {/* ============ HOW IT WORKS — three plain steps ============ */}
-        <section id="how-it-works" aria-label="How it works" tabIndex={-1}><HowItWorks /></section>
+        <div id="how-it-works" tabIndex={-1}><HowItWorks /></div>
 
         {/* ============ PRIVATE BY DESIGN — the trust wedge ============ */}
-        <section id="private" aria-label="Privacy" tabIndex={-1}><PrivacyPromise /></section>
+        <div id="private" tabIndex={-1}><PrivacyPromise /></div>
 
         {/* ============ QUESTIONS PEOPLE ACTUALLY ASK ============ */}
-        <section id="faq" aria-label="Questions" tabIndex={-1}><Faq /></section>
+        <div id="faq" tabIndex={-1}><Faq /></div>
       </Suspense>
 
       {/* ============ ENDING — one final CTA, no redundant copy ============ */}

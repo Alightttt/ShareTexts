@@ -464,7 +464,7 @@ function FAQSection() {
     },
     {
       q: 'Is there a file size limit?',
-      a: 'ShareText supports files up to 4 GB. For very large files, a stable connection is recommended.'
+      a: 'ShareText has been tested with large files. Actual limits depend on your browser, device memory, and network stability. For very large files, a stable connection is recommended.'
     },
     {
       q: 'Does it work on mobile?',

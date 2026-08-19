@@ -316,7 +316,7 @@ export function ChatView() {
         continue;
       }
       if (file.size > 4 * 1024 * 1024 * 1024) {
-        setErrorMsg(`${file.name} is larger than 4 GB — the largest ShareText can move.`);
+        setErrorMsg(`${file.name} is too large. ShareText works best with files under a few hundred MB. Try a smaller file or a different method.`);
         continue;
       }
       accepted.push({

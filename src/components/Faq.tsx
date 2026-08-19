@@ -52,7 +52,7 @@ export function Faq() {
           <p className="font-mono text-[12px] text-apple-ink-muted dark:text-white/60 uppercase tracking-[0.14em] mb-3">
             Questions
           </p>
-          <h2 className="text-[30px] sm:text-[40px] font-semibold text-apple-ink dark:text-white tracking-[-0.03em] leading-[1.08]">
+          <h2 id="faq-heading" className="text-[30px] sm:text-[40px] font-semibold text-apple-ink dark:text-white tracking-[-0.03em] leading-[1.08]">
             Questions people actually ask.
           </h2>
         </motion.div>

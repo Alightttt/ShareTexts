@@ -5,38 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
     <!-- Primary -->
-    <title>ShareText — AirDrop for every device. No app. No account.</title>
-    <meta name="description" content="Share anything between two devices — text, photos, videos, files up to 4 GB. No app, no account, nothing stored. Open ShareText on both devices, connect with a code or link, done. iPhone to Windows included." />
+    <title>ShareTexts — Transfer text and files between devices in your browser</title>
+    <meta name="description" content="Move text, links, photos, and files between two devices. No app or account needed. Pair with a short code and transfer through a temporary browser session." />
     <meta name="robots" content="index, follow" />
-    <meta name="author" content="ShareText" />
-    <meta name="application-name" content="ShareText" />
+    <meta name="author" content="ShareTexts" />
+    <meta name="application-name" content="ShareTexts" />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#060a13" media="(prefers-color-scheme: dark)" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="ShareText" />
+    <meta name="apple-mobile-web-app-title" content="ShareTexts" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="ShareText" />
-    <meta property="og:title" content="ShareText — Move anything between your devices" />
-    <meta property="og:description" content="No app. No account. Nothing stored. Text, photos, videos and files up to 4 GB — straight from one screen to the other, iPhone to Windows." />
+    <meta property="og:site_name" content="ShareTexts" />
+    <meta property="og:title" content="ShareTexts — Transfer text and files between devices in your browser" />
+    <meta property="og:description" content="Move text, links, photos, and files between two devices. No app or account. Pair with a short code and transfer through a temporary browser session." />
     <meta property="og:url" content="https://share-texts.vercel.app/" />
-    <!-- Fresh OG image (og.svg) — SVG renders crisply at any resolution.
-         Social crawlers cache cards by URL; a new path forces a fresh crawl. -->
     <meta property="og:image" content="https://share-texts.vercel.app/og.svg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:type" content="image/svg+xml" />
-    <meta property="og:image:alt" content="ShareText — a phone sends a photo, a laptop receives it. No app, no account." />
+    <meta property="og:image:alt" content="ShareTexts — transfer a photo from a phone to a laptop in the browser. No app, no account." />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="ShareText — Move anything between your devices" />
-    <meta name="twitter:description" content="No app. No account. Nothing stored. Text, photos, videos, files up to 4 GB — iPhone to Windows, phone to laptop, in seconds." />
+    <meta name="twitter:title" content="ShareTexts — Transfer text and files between devices in your browser" />
+    <meta name="twitter:description" content="Move text, links, photos, and files between two devices. No app or account. Pair with a short code and transfer through a temporary browser session." />
     <meta name="twitter:image" content="https://share-texts.vercel.app/og.svg" />
-    <meta name="twitter:image:alt" content="ShareText — a phone sends a photo, a laptop receives it. No app, no account." />
+    <meta name="twitter:image:alt" content="ShareTexts — transfer a photo from a phone to a laptop in the browser. No app, no account." />
 
     <link rel="canonical" href="https://share-texts.vercel.app/" />
 
@@ -49,20 +47,47 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    <!-- Structured data -->
+    <!-- Structured data: Organization + WebApplication graph -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "ShareText",
-      "url": "https://share-texts.vercel.app/",
-      "description": "Share anything between two devices — no app, no account, nothing stored.",
-      "applicationCategory": "UtilityApplication",
-      "operatingSystem": "Any (browser with WebRTC)",
-      "browserRequirements": "Requires WebRTC",
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://share-texts.vercel.app/#organization",
+          "name": "ShareTexts",
+          "url": "https://share-texts.vercel.app/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://share-texts.vercel.app/icon-512.png",
+            "width": 512,
+            "height": 512
+          }
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://share-texts.vercel.app/#application",
+          "name": "ShareTexts",
+          "url": "https://share-texts.vercel.app/",
+          "description": "A browser-based way to transfer text, links, photos, and files between two devices. No app or account needed.",
+          "applicationCategory": "UtilitiesApplication",
+          "operatingSystem": "Any modern browser with WebRTC support",
+          "browserRequirements": "Requires a supported browser and an internet connection",
+          "isAccessibleForFree": true,
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "publisher": {
+            "@id": "https://share-texts.vercel.app/#organization"
+          }
+        }
+      ]
     }
     </script>
+    <!-- FAQPage markup — kept for content clarity; Google limits rich results to
+         authoritative government/health sites, so this is not a ranking lever. -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -70,10 +95,10 @@
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "How do I move text between two devices with ShareText?",
+          "name": "How do I move text between two devices with ShareTexts?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Open ShareText on both devices. On the first device tap Send text and share the six-digit code (or a link). Enter the code on the second device, then paste or type anything — it appears on the other device, encrypted."
+            "text": "Open ShareTexts on both devices. On the first device tap Send something and share the six-digit code or a link. Enter the code on the second device, then paste or type anything — it appears on the other device, encrypted."
           }
         },
         {
@@ -81,7 +106,7 @@
           "name": "Do I need to install an app or create an account?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. ShareText runs in the browser — no app, no account, no installation. It works between an iPhone and a Windows PC, or any two devices with a browser."
+            "text": "No. ShareTexts runs in the browser — no app, no account, no installation. It works between an iPhone and a Windows PC, or any two devices with a browser."
           }
         },
         {
@@ -89,15 +114,15 @@
           "name": "Can I send photos and files, not just text?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes. ShareText transfers text, links, photos, videos, audio, and files up to 4 GB directly between your devices, in original quality."
+            "text": "Yes. ShareTexts transfers text, links, photos, videos, audio, and files between your devices. Tested transfer sizes vary by browser and connection."
           }
         },
         {
           "@type": "Question",
-          "name": "Is ShareText private?",
+          "name": "Is ShareTexts private?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Transfers are encrypted between devices. ShareText keeps no account, no permanent chat history, and no copies of your content — temporary rooms close automatically."
+            "text": "Transfers are encrypted between devices. ShareTexts keeps no account, no permanent chat history, and no copies of your content. Temporary rooms close automatically."
           }
         }
       ]

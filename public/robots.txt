@@ -1,4 +1,9 @@
 User-agent: *
 Allow: /
+Allow: /docs
+Disallow: /api/
+Disallow: /room/
+Disallow: /connect/
+Disallow: /s/
 
 Sitemap: https://share-texts.vercel.app/sitemap.xml
