@@ -240,6 +240,9 @@
 .animate-beam {
   animation: beam-travel 1.6s linear infinite;
 }
+.animate-beam-v {
+  animation: beam-travel-v 1.6s linear infinite;
+}
 
 /* Second packet, half a cycle behind — the connection reads as a steady
    stream instead of one dot sliding. Frozen by reduced-motion. */
@@ -293,6 +296,17 @@
   background: var(--color-status-success);
   animation: live-dot-pulse 2.4s ease-in-out infinite;
 }
+/* Dot grid background — subtle technical texture for the landing canvas.
+   Radial-gradient dot field at 16px spacing, 0.06 opacity light / 0.04 dark. */
+.dot-grid-bg {
+  background-image: radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.dark .dot-grid-bg {
+  background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
     animation-duration: 0.01ms !important;

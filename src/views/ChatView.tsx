@@ -613,7 +613,7 @@ export function ChatView() {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <div className="max-w-3xl mx-auto flex flex-col space-y-3">
+        <div        className="max-w-3xl mx-auto flex flex-col">
           {session.messages.length === 0 ? (
             <div className="h-full min-h-[40vh] flex flex-col items-center justify-center text-center space-y-3 opacity-80">
               <div className="w-14 h-14 rounded-[20px] bg-apple-parchment dark:bg-apple-tile-2 flex items-center justify-center mb-1">
@@ -654,8 +654,14 @@ export function ChatView() {
                 </div>
               )}
               <AnimatePresence initial={false}>
-                {session.messages.map((msg) => (
-                  <MessageCard key={msg.id} msg={msg} partnerName={session.partnerName} />
+                {session.messages.map((msg, idx) => (
+                  <MessageCard
+                    key={msg.id}
+                    msg={msg}
+                    partnerName={session.partnerName}
+                    isGroupStart={idx === 0 || session.messages[idx - 1].sender !== msg.sender}
+                    isGroupEnd={idx === session.messages.length - 1 || session.messages[idx + 1].sender !== msg.sender}
+                  />
                 ))}
               </AnimatePresence>
             </>
@@ -947,7 +953,7 @@ function DeliveryTick({ delivered, seen, onBlue }: { delivered?: boolean; seen?:
   );
 }
 
-const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg, partnerName }) => {
+const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupStart?: boolean; isGroupEnd?: boolean }> = ({ msg, partnerName, isGroupStart = true, isGroupEnd = true }) => {
   const { retryTransfer, retryText, cancelTransfer, sendMessage } = useSession();
   const isMe = msg.sender === 'me';
   const a = msg.attachment;
@@ -1068,16 +1074,23 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
   if (!a) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 15, scale: 0.98 }}
+        initial={{ opacity: 0, y: 12, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: 'spring', bounce: 0.3, duration: 0.5 }}
-        className={cn("flex w-full", isMe ? "justify-end" : "justify-start")}
+        transition={{ type: 'spring', bounce: 0.25, duration: 0.45 }}
+        className={cn(
+          "flex w-full",
+          isMe ? "justify-end" : "justify-start",
+          // Tighter gap between consecutive messages from same sender
+          isGroupStart ? "mt-3" : "mt-0.5",
+        )}
       >
         <div className={cn(
-          "max-w-[88%] sm:max-w-[70%] px-4 py-2.5 rounded-[18px] shadow-sm border",
-          isMe
-            ? "bg-azure-600 text-white rounded-br-[6px] border-transparent"
-            : "bg-white dark:bg-surface-dark text-apple-ink dark:text-white rounded-bl-[6px] border-apple-divider/50 dark:border-apple-tile-3"
+          "max-w-[88%] sm:max-w-[68%] px-4 py-3 rounded-[20px] shadow-sm border",
+          isMe ? "bg-azure-600 text-white border-transparent" : "bg-white dark:bg-surface-dark text-apple-ink dark:text-white border-apple-divider/50 dark:border-apple-tile-3",
+          isMe && isGroupEnd && "rounded-br-[6px]",
+          !isMe && isGroupEnd && "rounded-bl-[6px]",
+          isMe && !isGroupEnd && "rounded-br-[14px]",
+          !isMe && !isGroupEnd && "rounded-bl-[14px]",
         )}>
           <div className="text-[15.5px] whitespace-pre-wrap leading-relaxed break-words">
             {preview}
@@ -1173,20 +1186,26 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string }> = ({ msg
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 15, scale: 0.98 }}
+      initial={{ opacity: 0, y: 12, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: 'spring', bounce: 0.3, duration: 0.5 }}
-      className={cn("flex w-full", isMe ? "justify-end" : "justify-start")}
+      transition={{ type: 'spring', bounce: 0.25, duration: 0.45 }}
+      className={cn(
+        "flex w-full",
+        isMe ? "justify-end" : "justify-start",
+        isGroupStart ? "mt-3" : "mt-0.5",
+      )}
     >
       <div className={cn(
-        "flex flex-col gap-2 max-w-[88%] sm:max-w-[70%] w-full",
+        "flex flex-col gap-2 max-w-[88%] sm:max-w-[68%] w-full",
         isMe ? "items-end" : "items-start"
       )}>
         <div className={cn(
           "flex flex-col w-full overflow-hidden rounded-[20px] shadow-sm border",
-          isMe
-            ? "bg-azure-600 text-white rounded-br-[6px] border-transparent"
-            : "bg-white dark:bg-surface-dark border-apple-divider/50 dark:border-apple-tile-3 rounded-bl-[6px]"
+          isMe ? "bg-azure-600 text-white border-transparent" : "bg-white dark:bg-surface-dark border-apple-divider/50 dark:border-apple-tile-3",
+          isMe && isGroupEnd && "rounded-br-[6px]",
+          !isMe && isGroupEnd && "rounded-bl-[6px]",
+          isMe && !isGroupEnd && "rounded-br-[14px]",
+          !isMe && !isGroupEnd && "rounded-bl-[14px]",
         )}>
           {/* Text caption (if any) */}
           {msg.text && (

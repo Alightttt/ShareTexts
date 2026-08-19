@@ -2,7 +2,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { motion } from 'motion/react';
 import { ShareTextLogo } from '../components/ShareTextLogo';
-import { LiveBridgeDemo } from '../components/LiveBridgeDemo';
+import { HeroDemo } from '../components/HeroDemo';
 import { Send, Inbox } from 'lucide-react';
 import { LiveUsers } from '../components/LiveUsers';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -77,28 +77,22 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
   };
 
   return (
-    <div className="min-h-screen relative bg-apple-canvas dark:bg-night-900 font-sans selection:bg-azure-500/20 flex flex-col overflow-x-clip">
+    <div className="min-h-screen relative bg-apple-canvas dark:bg-night-900 font-sans selection:bg-azure-500/20 flex flex-col overflow-x-clip dot-grid-bg">
       <AmbientGlow />
 
-      {/* ============ HEADER — logo + compact nav ============ */}
+      {/* ============ HEADER — logo + desktop-only nav ============ */}
       <header className="sticky top-0 z-40 bg-apple-canvas/85 dark:bg-night-900/85 backdrop-blur-md border-b border-apple-divider dark:border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-12 sm:h-14 flex items-center">
           <a href="/" className="flex items-center gap-2 shrink-0" aria-label="ShareText — share anything between two devices">
             <ShareTextLogo size={20} className="text-apple-ink dark:text-white" />
             <span className="font-semibold tracking-tight text-[14px] sm:text-[15px] text-apple-ink dark:text-white">ShareText</span>
           </a>
-          {/* Desktop: centered nav; Mobile: compact right-aligned links */}
+          {/* Desktop only — mobile nav lives in the footer */}
           <nav className="hidden md:flex items-center justify-center gap-5 flex-1" aria-label="Page sections">
             <a href="#how-it-works" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">How it works</a>
             <a href="#private" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Privacy</a>
             <a href="#faq" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Questions</a>
             <a href="/docs" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Docs</a>
-          </nav>
-          {/* Mobile: compact right-aligned nav links */}
-          <nav className="flex md:hidden items-center gap-3" aria-label="Page sections">
-            <a href="#how-it-works" className="text-[12px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">How</a>
-            <a href="#faq" className="text-[12px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">FAQ</a>
-            <a href="/docs" className="text-[12px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Docs</a>
           </nav>
           <div className="flex items-center gap-3 sm:gap-4 ml-auto shrink-0">
             <LiveUsers className="hidden lg:inline-flex" />
@@ -186,7 +180,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             transition={{ duration: 0.9, delay: 0.15, ease: EASE }}
             className="mt-10 lg:mt-0 w-full flex justify-center"
           >
-            <LiveBridgeDemo />
+            <HeroDemo />
           </motion.div>
         </div>
       </section>
