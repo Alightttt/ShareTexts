@@ -148,7 +148,7 @@ export function guessDeviceName(): string {
  * of intermittent "Couldn't reach ShareText." on flaky networks: the first
  * failed WS attempt failed the whole create/join instantly.
  */
-function ensureSocketConnected(timeoutMs = 12000): Promise<void> {
+function ensureSocketConnected(timeoutMs = 15000): Promise<void> {
   const socket = getSocket();
   if (socket.connected) return Promise.resolve();
   return new Promise((resolve, reject) => {
@@ -172,6 +172,25 @@ function ensureSocketConnected(timeoutMs = 12000): Promise<void> {
 /** In production with no signaling URL baked into the bundle, say so. */
 function configIssueMessage(): string | null {
   return signalingConfigIssue();
+}
+
+/**
+ * Friendly, actionable error messages based on the failure code.
+ * Users should always know WHAT went wrong and WHAT to try next.
+ */
+function humanJoinError(code: string | undefined, fallback: string): string {
+  switch (code) {
+    case 'INVALID_CODE':
+      return "That code isn't active. Check the other device and enter its latest six-digit code.";
+    case 'ROOM_FULL':
+      return "This room already has two devices. Only two can connect at once.";
+    case 'RATE_LIMITED':
+      return "Too many attempts. Wait a moment and try again.";
+    case 'SESSION_EXPIRED':
+      return "This session expired. Ask the other device to create a new room.";
+    default:
+      return fallback;
+  }
 }
 
 
@@ -860,7 +879,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         if (res.success) {
           setupJoiner(res.roomId!, res.secret!, res.createdAt);
         }
-        resolve({ ...res, error: humanizeError(res.code, res.error || "Couldn't reach ShareText.") });
+        resolve({ ...res, error: humanJoinError(res.code, humanizeError(res.code, res.error || "Couldn't reach ShareText. Check your connection and try again.")) });
       });
     });
   };
@@ -877,7 +896,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         if (res.success) {
           setupJoiner(res.roomId!, res.secret!, res.createdAt);
         }
-        resolve({ ...res, error: humanizeError(res.code, res.error || "Couldn't reach ShareText.") });
+        resolve({ ...res, error: humanJoinError(res.code, humanizeError(res.code, res.error || "Couldn't reach ShareText. Check your connection and try again.")) });
       });
     });
   };

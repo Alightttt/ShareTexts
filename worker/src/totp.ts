@@ -1,7 +1,7 @@
 /**
  * RFC 6238 TOTP implemented on Web Crypto — no dependencies, so it runs on
  * Cloudflare Workers. Must match the client's `otpauth` settings exactly:
- * HMAC-SHA1, 6 digits, 40s period, validation window ±1 step.
+ * HMAC-SHA1, 6 digits, 90s period, validation window ±2 steps.
  *
  * The counter is anchored to the room's creation time (epoch), so a code
  * window is [createdAt + N·40s, createdAt + (N+1)·40s) instead of a wall-
@@ -10,7 +10,7 @@
  */
 
 /** Seconds per code window. Must equal TOTP_PERIOD in src/lib/totp.ts. */
-export const TOTP_PERIOD = 40;
+export const TOTP_PERIOD = 90;
 
 const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 

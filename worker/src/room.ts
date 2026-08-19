@@ -16,8 +16,8 @@ import { json, dayKey, type Env } from './types';
  * backend stores no message history, files, or transfer contents.
  */
 
-export const ROOM_TTL = 12 * 60 * 60 * 1000;       // idle rooms expire after 12h
-export const ROOM_EMPTY_TTL = 4 * 60 * 60 * 1000;  // rejoinable 4h after both peers leave
+export const ROOM_TTL = 5 * 60 * 60 * 1000;       // idle rooms expire after 5h (resets on any activity)
+export const ROOM_EMPTY_TTL = 5 * 60 * 60 * 1000;  // rejoinable while within the 5h idle window
 const SIGNAL_MAX = 64 * 1024;                      // SDP offers/answers are a few KB
 const RELAY_TEXT_MAX = 512 * 1024;
 const RELAY_BIN_MAX = 128 * 1024;

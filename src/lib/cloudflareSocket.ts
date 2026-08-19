@@ -24,7 +24,7 @@ const PROTOCOL_VERSION = 1;
 
 type Handler = (...args: any[]) => void;
 
-const WS_OPEN_TIMEOUT = 8000;
+const WS_OPEN_TIMEOUT = 15000;
 
 function uuid(): string {
   return crypto.randomUUID();
@@ -64,7 +64,27 @@ export class CloudflareSocket implements SignalingSocket {
     // opened. Failures surface via connect_error / ack timeouts.
     this.connected = true;
     queueMicrotask(() => this.emitLocal('connect'));
+
+    // Auto-reconnect when the user returns to the tab. Mobile browsers and
+    // Firefox aggressively suspend background tabs, killing the WS without
+    // firing onclose promptly. This handler catches the common case where
+    // the socket died while the user was away and transparently resumes.
+    if (typeof document !== 'undefined') {
+      this._onVisibility = () => {
+        if (document.visibilityState === 'visible' && this.currentRoom && !this.stopped) {
+          // Only reconnect if the WS is actually dead — a quick readyState
+          // check avoids unnecessary re-opens during normal flow.
+          if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            devLog('CloudflareSocket: tab visible but WS closed — reconnecting');
+            void this.openRoom(this.currentRoom).catch(() => { /* scheduleReconnect handles failure */ });
+          }
+        }
+      };
+      document.addEventListener('visibilitychange', this._onVisibility);
+    }
   }
+
+  private _onVisibility: (() => void) | null = null;
 
   // ---- SignalingSocket surface -------------------------------------------
 
@@ -398,6 +418,10 @@ export class CloudflareSocket implements SignalingSocket {
   destroy() {
     this.stopped = true;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    if (this._onVisibility && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this._onVisibility);
+      this._onVisibility = null;
+    }
     this.closeWs();
   }
 }

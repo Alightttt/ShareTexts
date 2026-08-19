@@ -5,7 +5,7 @@ import { motion } from 'motion/react';
  * The questions people actually ask — answered in plain language, all
  * visible (no accordion, no hidden content). Every answer is a true claim
  * about the app: cross-device browsers, nothing to install, E2E encryption,
- * resumable transfers, 40-second pairing codes. This is the section a
+ * resumable transfers, 90-second pairing codes. This is the section a
  * hesitant first-time user — or someone helping their parents — reads
  * before they press a button.
  */
@@ -30,8 +30,7 @@ const QA = [
     a: 'If the connection is interrupted, ShareTexts will tell you whether this transfer can be retried. For large files, we recommend a stable connection.',
   },
   {
-    q: 'How long does the pairing code last?',
-    a: 'It\u2019s fresh for 40 seconds on screen. If it runs out, the app shows a new one.',
+    q: 'How long does the pairing code last?',     a: "It's fresh for 90 seconds on screen. If it runs out, the app shows a new one.",
   },
   {
     q: 'Can a script or AI agent send text into my room?',

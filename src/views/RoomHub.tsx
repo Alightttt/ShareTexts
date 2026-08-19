@@ -38,16 +38,12 @@ export function RoomHub() {
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(session.deviceName);
 
-  // Fresh-code rule: the timer always starts when the creator arrives at this
-  // screen. A fresh create already anchors at ~40s; a refresh mid-window or a
-  // resume of a stale room re-anchors now, so the countdown restarts at ~40s
-  // with a newly-made code instead of rotating seconds later. Safe: the
-  // previous code stays valid for one more window (±1 TOTP validation), so a
-  // joiner who already typed it still connects. Runs once per arrival.
+  // NOTE: refreshCode() is NOT called on mount. The code was already anchored
+  // at room creation — re-anchoring on mount re-rolls the code unnecessarily
+  // and can confuse a joiner mid-typing. Only manual refresh (user clicking a
+  // button) should re-anchor.
   useEffect(() => {
-    if (session.isCreator && session.roomId && session.secret) {
-      void refreshCode();
-    }
+    // Intentionally empty — code stays anchored from creation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -186,7 +182,7 @@ export function RoomHub() {
             Open ShareText on the other device and enter this code.
           </p>
           <p className="text-[12.5px] text-apple-ink-muted/80 dark:text-white/40 font-medium mb-6">
-            No app to install. No account. Any two devices with a browser.
+            No app to install. No account. Room stays open while in use.
           </p>
           <div data-testid="pairing-code">
             <LiveCodeDisplay secret={session.secret} createdAt={session.createdAt} />
@@ -238,7 +234,7 @@ export function RoomHub() {
                     <QRCodeSVG value={qrValue} size={216} />
                   </div>
                   <p className="text-[12px] text-apple-ink-muted mb-1">
-                    The code refreshes every 40 seconds — scan it while it's current.
+                    The code refreshes every 90 seconds — scan it while it's current.
                   </p>
                   <button
                     onPointerDown={() => setShowQR(false)}

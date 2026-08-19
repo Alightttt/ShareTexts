@@ -5,7 +5,7 @@ import { ThemeToggle } from '../components/ThemeToggle';
 import {
   Send, Inbox, Copy, Download, Share2, QrCode, Link2,
   Shield, Zap, Monitor, Smartphone, ChevronRight, ChevronDown,
-  Terminal, Key, Clock, RefreshCw, AlertCircle, Check, Lock
+  Terminal, Key, Clock, RefreshCw, AlertCircle, Check, Lock, ArrowLeft
 } from 'lucide-react';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -451,8 +451,7 @@ function FAQSection() {
       a: 'If the connection is interrupted, ShareText will tell you whether the transfer can be retried. For large files, we recommend a stable connection.'
     },
     {
-      q: 'How long does the pairing code last?',
-      a: 'The code refreshes every 40 seconds. If it expires, a new one appears automatically.'
+      q: 'How long does the pairing code last?',       a: 'The code refreshes every 90 seconds. If it expires, a new one appears automatically.'
     },
     {
       q: 'Can an AI agent send text into my room?',
@@ -539,6 +538,7 @@ export function Docs() {
       <header className="sticky top-0 z-40 bg-apple-canvas/85 dark:bg-night-900/85 backdrop-blur-md border-b border-apple-divider dark:border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">
           <a href="/" className="flex items-center gap-2 shrink-0" aria-label="ShareText — back to home">
+            <ArrowLeft className="w-4 h-4 text-apple-ink-muted dark:text-white/60" />
             <ShareTextLogo size={21} className="text-apple-ink dark:text-white" />
             <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>
           </a>

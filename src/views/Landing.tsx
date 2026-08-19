@@ -23,7 +23,7 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 function AmbientGlow() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[400px] overflow-hidden z-0">
-      <div className="absolute -top-[18%] left-1/2 -translate-x-1/2 w-[120%] h-full bg-[radial-gradient(50%_60%_at_50%_0%,rgba(46,139,255,0.08),transparent_70%)]" />
+      <div className="absolute -top-[18%] left-1/2 -translate-x-1/2 w-[120%] h-full bg-[radial-gradient(50%_60%_at_50%_0%,rgba(46,139,255,0.04),transparent_70%)]" />
     </div>
   );
 }
