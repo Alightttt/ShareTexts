@@ -176,7 +176,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
                   <div className="w-full p-6 sm:p-8 bg-white dark:bg-[#13161B] border border-[#E3E5E8] dark:border-[#272D36] rounded-[22px] shadow-[0_16px_48px_rgba(18,31,53,0.10)] dark:shadow-[0_20px_64px_rgba(0,0,0,0.28)]">
                     {/* Header */}
                     <h1 className="text-[22px] sm:text-[26px] font-semibold text-[#17191D] dark:text-[#F4F6F8] tracking-[-0.025em] mb-2 text-center">
-                      Join a ShareTexts room
+                      Join a ShareText room
                     </h1>
                     <p className="text-[14px] text-[#6E737B] dark:text-[#9BA3AE] font-medium mb-8 text-center">
                       Enter the six-digit code shown on the other device.
@@ -215,7 +215,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
                 <div className="flex flex-col items-center p-8 bg-white dark:bg-surface-dark rounded-[24px] w-full text-center border border-apple-divider dark:border-apple-tile-3 shadow-sm">
                   <h3 className="text-[21px] font-semibold text-apple-ink dark:text-white mb-2 tracking-tight">Connect to this device?</h3>
                   <div className="mb-8">
-                    <p className="text-[15px] text-apple-ink-muted">You’re about to connect to another device. It’s temporary — nothing is stored anywhere.</p>
+                    <p className="text-[15px] text-apple-ink-muted">You’re about to connect to another device. The session is temporary — a handoff, not a history.</p>
                   </div>
                   
                   <button 

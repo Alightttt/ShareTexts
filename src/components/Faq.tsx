@@ -23,11 +23,11 @@ const QA = [
   },
   {
     q: 'Is it private?',
-    a: 'Yes. The transfer is encrypted between the two devices, and nothing is stored anywhere. When the session ends, it\u2019s gone.',
+    a: 'Yes. The transfer is encrypted between the two devices. ShareText is designed for temporary handoffs — when the session ends, the room closes automatically.',
   },
   {
     q: 'What if my internet drops mid-transfer?',
-    a: 'If the connection is interrupted, ShareTexts will tell you whether this transfer can be retried. For large files, we recommend a stable connection.',
+    a: 'If the connection is interrupted, ShareText will tell you whether this transfer can be retried. For large files, we recommend a stable connection.',
   },
   {
     q: 'How long does the pairing code last?',     a: "It's fresh for 90 seconds on screen. If it runs out, the app shows a new one.",

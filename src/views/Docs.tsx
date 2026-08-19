@@ -72,7 +72,7 @@ function OverviewSection() {
         </h2>
         <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-2xl">
           ShareText is a temporary bridge between two devices. Move text, links, photos, videos, and files
-          directly from one screen to another. No app to install. No account to make. Nothing kept in between.
+          directly from one screen to another. No app to install. No account to make. Temporary by design.
         </p>
       </div>
 
@@ -364,13 +364,12 @@ function SecuritySection() {
       </div>
 
       <div className="space-y-4">
-        <div className="p-5 rounded-[16px] bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3">
-          <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-2 flex items-center gap-2">
+        <div className="p-5 rounded-[16px] bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3">            <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-2 flex items-center gap-2">
             <Lock className="w-4 h-4 text-status-success" />
-            End-to-End Encryption
+            Encrypted in the browser
           </h3>
           <p className="text-[14px] text-apple-ink-muted dark:text-white/60">
-            All data transfers are encrypted using WebRTC's DTLS encryption. The server never sees your file contents.
+            Transfer content is encrypted between devices. ShareText is designed for temporary handoffs, not permanent storage.
           </p>
         </div>
 

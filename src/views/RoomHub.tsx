@@ -499,7 +499,7 @@ export function RoomHub() {
             >
               <div className="mt-3 p-4 bg-apple-parchment dark:bg-apple-tile-1 rounded-[14px] text-left text-[13px] text-apple-ink-muted leading-relaxed space-y-2">
                 <p>This connection disappears automatically after a while. When it ends, the code stops working and it can't be reopened.</p>
-                <p>Content is encrypted between devices using WebRTC. When a direct connection isn't possible, a relay forwards encrypted data. Rooms expire automatically — nothing is stored as a product design choice.</p>
+                <p>Content is encrypted between devices using WebRTC. When a direct connection isn't possible, a relay forwards encrypted data. Rooms expire automatically — temporary by design.</p>
               </div>
             </motion.div>
           )}

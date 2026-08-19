@@ -493,7 +493,7 @@ export function ChatView() {
                       'Connecting…'}
               </div>
               <div className="text-[13px] text-apple-ink-muted mt-2 pt-2 border-t border-apple-divider/50 dark:border-apple-tile-3">
-                Content is encrypted between devices. Rooms close automatically — nothing is stored as a product design choice.
+                Content is encrypted between devices. Rooms close automatically — temporary by design.
               </div>
               {/* The pairing code lives here now, not on screen: it\u2019s only
                   needed if the other device drops and has to rejoin, so it\u2019s

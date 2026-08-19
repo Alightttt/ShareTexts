@@ -69,9 +69,9 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
       // Honest error: tell the user exactly what happened and what to do
       const msg = e.message || "Couldn't start the connection.";
       if (msg.includes('trouble connecting') || msg.includes('reach ShareText')) {
-        setCreateError("We couldn't reach the connection service. Nothing was sent. Check your connection and try again.");
+        setCreateError("The bridge couldn't connect. Check your connection and try again.");
       } else {
-        setCreateError(msg + " Nothing was sent.");
+        setCreateError(msg);
       }
     }
   };
@@ -124,9 +124,9 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               Move anything between your devices.
             </h1>
             
-            {/* Subtitle — one clear sentence */}
+            {/* Subtitle — the supporting promise */}
             <p className="mt-4 text-[15px] sm:text-[16px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[42ch]">
-              No app. No account. Just open on both screens, connect, and send.
+              One page, two screens. No app, no account, nothing kept in between.
             </p>
             {/* Primary actions */}
             <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
@@ -151,19 +151,19 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               </motion.button>
             </div>
 
-            {/* Trust row — compact, concrete */}
+            {/* Trust row — the three proof pillars */}
             <div className="mt-4 flex flex-wrap items-center justify-center lg:justify-start gap-x-4 gap-y-1.5 text-[11.5px] sm:text-[12.5px] font-medium text-apple-ink-muted/60 dark:text-white/40">
               <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#1C9A61] dark:bg-[#55D18C]" />
-                Encrypted
-              </span>
-              <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#0A66F0] dark:bg-[#4B8DFF]" />
-                Nothing kept
+                Immediate
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#B26A00] dark:bg-[#F3B44C]" />
-                No app · No account
+                Temporary by design
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#1C9A61] dark:bg-[#55D18C]" />
+                Between any two devices
               </span>
             </div>
 
@@ -198,7 +198,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
         <div id="faq" tabIndex={-1}><Faq /></div>
       </Suspense>
 
-      {/* ============ ENDING — one final CTA, no redundant copy ============ */}
+      {/* ============ ENDING — one final CTA, the wrong-screen moment ============ */}
       <section className="px-6 pb-24 sm:pb-32 pt-20 sm:pt-24 bg-apple-parchment dark:bg-night-950 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
@@ -208,7 +208,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           className="text-center"
         >
           <h2 className="text-[28px] sm:text-[38px] font-semibold text-apple-ink dark:text-white tracking-[-0.03em] leading-[1.1]">
-            Move something. Nothing kept.
+            When it is on the wrong screen.
           </h2>
           <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
             <motion.button
@@ -250,7 +250,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             <div className="flex items-center gap-2.5">
               <ShareTextLogo size={16} className="text-apple-ink dark:text-white/70" />
               <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60">
-                Move anything between two devices.
+                The temporary bridge between your devices.
               </span>
             </div>
             {/* Links — visible on mobile too */}

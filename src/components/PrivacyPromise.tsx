@@ -17,12 +17,12 @@ const PROMISES = [
   {
     icon: ShieldCheck,
     title: 'Encrypted end to end',
-    body: 'The connection is encrypted in your browser. Nobody in the middle can read it.',
+    body: 'Content is encrypted between devices using the browser. Connection setup may use service infrastructure.',
   },
   {
     icon: EyeOff,
-    title: 'Nothing is stored',
-    body: 'No account, no history, no cloud copy. When the session ends, the text is gone.',
+    title: 'Temporary by design',
+    body: 'No account, no permanent history, no cloud copy. When the session ends, the room closes automatically.',
   },
   {
     icon: RotateCcw,
