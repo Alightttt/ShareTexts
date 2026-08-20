@@ -393,48 +393,7 @@
   background-image: radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
   background-size: 20px 20px;
 }
-/* Hover reactive layer — dots grow near cursor.
-   ::before = active grid with LARGER dots (1.5px), masked by radial gradient
-   ::after = subtle blue tint near cursor for depth */
-@media (hover: hover) and (pointer: fine) {
-  @media (prefers-reduced-motion: no-preference) {
-    .dot-grid-bg::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-      /* Larger dots — 1.5px radius instead of 1px */
-      background-image: radial-gradient(circle, rgba(0,0,0,0.08) 1.5px, transparent 1.5px);
-      background-size: 20px 20px;
-      /* Mask: only show near the cursor */
-      -webkit-mask-image: radial-gradient(circle 180px at var(--dot-hover-x, -9999px) var(--dot-hover-y, -9999px), black 0%, transparent 100%);
-      mask-image: radial-gradient(circle 180px at var(--dot-hover-x, -9999px) var(--dot-hover-y, -9999px), black 0%, transparent 100%);
-      opacity: var(--dot-hover-opacity, 0);
-      transition: opacity 200ms ease-out;
-    }
-    .dark .dot-grid-bg::before {
-      background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1.5px, transparent 1.5px);
-      background-size: 20px 20px;
-    }
-    /* Subtle blue tint near cursor for depth */
-    .dot-grid-bg::after {
-      content: '';
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-      background: radial-gradient(circle 220px at var(--dot-hover-x, -9999px) var(--dot-hover-y, -9999px), rgba(10,102,240,0.015) 0%, transparent 70%);
-      -webkit-mask-image: radial-gradient(circle 220px at var(--dot-hover-x, -9999px) var(--dot-hover-y, -9999px), black 0%, transparent 100%);
-      mask-image: radial-gradient(circle 220px at var(--dot-hover-x, -9999px) var(--dot-hover-y, -9999px), black 0%, transparent 100%);
-      opacity: var(--dot-hover-opacity, 0);
-      transition: opacity 200ms ease-out;
-    }
-    .dark .dot-grid-bg::after {
-      background: radial-gradient(circle 220px at var(--dot-hover-x, -9999px) var(--dot-hover-y, -9999px), rgba(75,147,255,0.02) 0%, transparent 70%);
-    }
-  }
-}
+/* Dot grid — static, no hover interaction. */
 
 /* Premium button — subtle 3D gradient (lighter top, darker bottom) + hover lift.
    Works with any background color via the CSS variables. */

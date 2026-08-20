@@ -341,13 +341,7 @@ export function HeroDemo() {
       role="img"
       aria-label={`Preview: ShareText transfers a ${pending?.kind || 'file'} from a phone to a laptop. ${phaseLabel}.`}
     >
-      {/* Preview label */}
-      <div className="flex justify-center sm:justify-start sm:absolute sm:top-0 sm:left-1/2 sm:-translate-x-1/2 z-20 mb-3 sm:mb-0">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-apple-parchment/80 dark:bg-apple-tile-2/80 backdrop-blur-sm border border-apple-divider/50 dark:border-apple-tile-3/50 text-[11px] font-medium text-apple-ink-muted dark:text-white/50">
-          <span className="w-1.5 h-1.5 rounded-full bg-azure-600/60 dark:bg-azure-400/60" />
-          Preview
-        </span>
-      </div>
+
 
       {/* Connection beam */}
       {(bridge.beam.height > 0 || bridge.beam.width > 0) && (

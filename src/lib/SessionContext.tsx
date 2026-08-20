@@ -651,6 +651,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           return m;
         })
       }));
+      // Mark that this user has completed at least one transfer, so the
+      // install prompt can appear after meaningful use.
+      try { localStorage.setItem('sharetext.hasTransfer', '1'); } catch { /* ignore */ }
       // The whole file arrived — only now confirm receipt (metadata alone
       // would be a lie if the transfer later failed).
       const msg = messagesRef.current.find(m => m.attachment?.id === transferId);

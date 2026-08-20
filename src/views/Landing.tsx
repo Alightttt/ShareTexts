@@ -42,37 +42,6 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  // Dot grid hover: only activates on fine pointer (mouse) with no
-  // reduced-motion preference. Touch/coarse pointers get no reactive
-  // behavior — the dots are purely decorative texture on mobile.
-  useEffect(() => {
-    const el = document.querySelector('.dot-grid-bg') as HTMLElement | null;
-    if (!el) return;
-    // Skip on touch devices and reduced-motion
-    const mqFine = window.matchMedia('(hover: hover) and (pointer: fine)');
-    const mqMotion = window.matchMedia('(prefers-reduced-motion: no-preference)');
-    if (!mqFine.matches || !mqMotion.matches) return;
-    let visible = false;
-    const onMove = (e: MouseEvent) => {
-      el.style.setProperty('--dot-hover-x', `${e.clientX}px`);
-      el.style.setProperty('--dot-hover-y', `${e.clientY}px`);
-      if (!visible) {
-        visible = true;
-        el.style.setProperty('--dot-hover-opacity', '1');
-      }
-    };
-    const onLeave = () => {
-      visible = false;
-      el.style.setProperty('--dot-hover-opacity', '0');
-    };
-    window.addEventListener('mousemove', onMove, { passive: true });
-    window.addEventListener('mouseleave', onLeave);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseleave', onLeave);
-    };
-  }, []);
-
   // Focus management for hash navigation — after a user clicks a nav link,
   // move focus to the section heading so keyboard/AT users land in context.
   useEffect(() => {
@@ -108,8 +77,8 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
       clearTimeout(timeout);
       setIsCreating(false);
       const msg = e.message || "Couldn't start the connection.";
-      if (msg.includes('trouble connecting') || msg.includes('reach ShareText')) {
-        setCreateError("The bridge couldn't connect. Check your connection and try again.");
+      if (msg.includes('trouble connecting') || msg.includes('reach ShareText') || msg.includes('signaling')) {
+        setCreateError("ShareText can't reach its connection service. Check your internet and try again.");
       } else {
         setCreateError(msg);
       }

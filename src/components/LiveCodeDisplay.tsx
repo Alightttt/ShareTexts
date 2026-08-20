@@ -73,31 +73,58 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
         </p>
       </div>
 
-      {/* Pairing code — 6 large digits, properly sized and high contrast */}
-      <div className="flex w-full gap-2 sm:gap-3" role="group" aria-label="Pairing code">
-        {digits.map((digit, i) => (
-          <React.Fragment key={i}>
-            <div className={cn(
-              "flex-1 aspect-[3/4] flex items-center justify-center rounded-[14px] sm:rounded-[18px] relative shadow-sm",
-              "bg-apple-parchment dark:bg-[#1e1e22] border-2",
-              "border-apple-divider/60 dark:border-[#3a3a3e]"
+      {/* Pairing code — 6 large digits, high contrast, robust layout */}
+      <div className="flex justify-center gap-2 sm:gap-3" role="group" aria-label="Pairing code">
+        {/* First group: 3 digits */}
+        <div className="flex gap-2 sm:gap-3">
+          {digits.slice(0, 3).map((digit, i) => (
+            <div key={i} className={cn(
+              "relative flex items-center justify-center rounded-[14px] sm:rounded-[18px] shadow-sm w-[48px] h-[68px] sm:w-[64px] sm:h-[88px] lg:w-[72px] lg:h-[100px]",
+              "bg-apple-parchment dark:bg-[#1a1a1e] border-2",
+              "border-apple-divider/80 dark:border-[#3a3a3e]"
             )}>
               <AnimatePresence mode="popLayout">
                 <motion.span
                   key={digit + i}
-                  initial={{ y: 20, opacity: 0 }}
+                  initial={{ y: 14, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -20, opacity: 0 }}
-                  transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
-                  className="text-[clamp(36px,10vw,64px)] font-bold text-apple-ink dark:text-white absolute font-mono tnum tracking-tighter leading-none"
+                  exit={{ y: -14, opacity: 0 }}
+                  transition={{ type: 'spring', bounce: 0, duration: 0.22 }}
+                  className="text-[32px] sm:text-[44px] lg:text-[50px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
                 >
                   {digit}
                 </motion.span>
               </AnimatePresence>
             </div>
-            {i === 2 && <div className="w-3 sm:w-5 shrink-0" />}
-          </React.Fragment>
-        ))}
+          ))}
+        </div>
+        {/* Spacer between groups */}
+        <div className="flex items-center">
+          <div className="w-2 sm:w-3 h-1 rounded-full bg-apple-ink/20 dark:bg-white/20" />
+        </div>
+        {/* Second group: 3 digits */}
+        <div className="flex gap-2 sm:gap-3">
+          {digits.slice(3, 6).map((digit, i) => (
+            <div key={i + 3} className={cn(
+              "relative flex items-center justify-center rounded-[14px] sm:rounded-[18px] shadow-sm w-[48px] h-[68px] sm:w-[64px] sm:h-[88px] lg:w-[72px] lg:h-[100px]",
+              "bg-apple-parchment dark:bg-[#1a1a1e] border-2",
+              "border-apple-divider/80 dark:border-[#3a3a3e]"
+            )}>
+              <AnimatePresence mode="popLayout">
+                <motion.span
+                  key={digit + (i + 3)}
+                  initial={{ y: 14, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -14, opacity: 0 }}
+                  transition={{ type: 'spring', bounce: 0, duration: 0.22 }}
+                  className="text-[32px] sm:text-[44px] lg:text-[50px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
+                >
+                  {digit}
+                </motion.span>
+              </AnimatePresence>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

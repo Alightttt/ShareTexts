@@ -25,15 +25,23 @@ export function InstallPrompt() {
     const onPrompt = (e: Event) => {
       e.preventDefault();
       setDeferred(e as BeforeInstallPromptEvent);
-      try {
-        if (localStorage.getItem(DISMISSED_KEY)) return;
-      } catch { /* private mode */ }
-      // Give the page a moment to settle, then surface the pill.
-      setTimeout(() => setVisible(true), 4000);
     };
     window.addEventListener('beforeinstallprompt', onPrompt);
     return () => window.removeEventListener('beforeinstallprompt', onPrompt);
   }, []);
+
+  // Only show the install prompt AFTER the user has successfully used the app
+  // (i.e., completed at least one transfer). This prevents the prompt from
+  // competing with the primary transfer journey.
+  useEffect(() => {
+    if (!deferred) return;
+    try {
+      if (localStorage.getItem(DISMISSED_KEY)) return;
+      if (!localStorage.getItem('sharetext.hasTransfer')) return;
+    } catch { /* private mode */ }
+    const t = setTimeout(() => setVisible(true), 2000);
+    return () => clearTimeout(t);
+  }, [deferred]);
 
   const dismiss = () => {
     setVisible(false);
@@ -67,7 +75,7 @@ export function InstallPrompt() {
             Install ShareText
           </span>
           <button
-            onPointerDown={install}
+            onClick={install}
             disabled={installing}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[13px] font-semibold transition-motion active:scale-95 disabled:opacity-60 min-h-[40px]"
           >
@@ -75,7 +83,7 @@ export function InstallPrompt() {
             {installing ? 'Installing…' : 'Install'}
           </button>
           <button
-            onPointerDown={dismiss}
+            onClick={dismiss}
             aria-label="Dismiss install prompt"
             className="w-8 h-8 rounded-full flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/60 dark:hover:bg-apple-tile-3 transition-colors shrink-0"
           >
