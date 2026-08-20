@@ -2,73 +2,39 @@ import React, { useState, useEffect } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { LiveCodeDisplay } from '../components/LiveCodeDisplay';
 import { QRCodeSVG } from 'qrcode.react';
-import { Copy, QrCode, Check, Share2, ChevronDown, ChevronLeft, Pencil, Check as CheckIcon, Link2, RefreshCw, Terminal, ShieldAlert, Inbox } from 'lucide-react';
+import { Copy, QrCode, Check, Share2, ChevronLeft, Pencil, Link2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn, shortCodeOf, formatBytes } from '../lib/utils';
+import { cn, shortCodeOf } from '../lib/utils';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { ConnectingVisual } from '../components/ConnectingVisual';
-import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
-import { pushEndpoint } from '../lib/socket';
-
-function timeAgo(ts: number): string {
-  const s = Math.max(1, Math.round((Date.now() - ts) / 1000));
-  if (s < 60) return `${s}s ago`;
-  const m = Math.round(s / 60);
-  if (m < 60) return `${m}m ago`;
-  return `${Math.round(m / 60)}h ago`;
-}
 
 export function RoomHub() {
-  const { session, setDeviceName, requestReconnect, abandonSession, refreshCode } = useSession();
+  const { session, setDeviceName, abandonSession } = useSession();
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showQR, setShowQR] = useState(false);
-  const [showHow, setShowHow] = useState(false);
-  const [showPush, setShowPush] = useState(false);
-  const [nameError, setNameError] = useState<string | null>(null);
-  const [copyStatus, setCopyStatus] = useState<string | null>(null);
-  const [copiedTextCmd, setCopiedTextCmd] = useState(false);
-  const [copiedFileCmd, setCopiedFileCmd] = useState(false);
-  const [tokenRevealed, setTokenRevealed] = useState(false);
-  // QR re-renders on every pairing-code boundary so the scannable code is
-  // always the CURRENT one (the short link inside stays stable — the code
-  // query param just rotates with the 40s window).
-  const [, setQrTick] = useState(0);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(session.deviceName);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [, setQrTick] = useState(0);
 
-  // NOTE: refreshCode() is NOT called on mount. The code was already anchored
-  // at room creation — re-anchoring on mount re-rolls the code unnecessarily
-  // and can confuse a joiner mid-typing. Only manual refresh (user clicking a
-  // button) should re-anchor.
-  useEffect(() => {
-    // Intentionally empty — code stays anchored from creation.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  if (!session.roomId || !session.secret) return null;
 
-  // QR auto-refresh on the pairing-code boundary. Declared BEFORE the early
-  // return below — RoomHub can re-render with a cleared session during the
-  // exit transition, and a hook after a conditional return would change the
-  // hook count and crash React ("Rendered fewer hooks than expected").
-  const shareUrl = session.roomId ? `${window.location.origin}/s/${shortCodeOf(session.roomId)}` : '';
-  const qrCode = session.secret ? generateTOTP(session.secret, session.createdAt) : '';
-  const qrValue = shareUrl ? `${shareUrl}?c=${qrCode}` : '';
+  const shareUrl = `${window.location.origin}/s/${shortCodeOf(session.roomId)}`;
+  const qrCode = generateTOTP(session.secret, session.createdAt);
+  const qrValue = `${shareUrl}?c=${qrCode}`;
+
+  // QR auto-refresh on the pairing-code boundary
   useEffect(() => {
     if (!showQR || !session.roomId || !session.secret) return;
     const waitMs = Math.max(300, getTOTPRemainingSeconds(session.createdAt) * 1000 + 60);
     const t = setTimeout(() => setQrTick(x => x + 1), waitMs);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showQR, qrCode, session.createdAt]);
 
-  if (!session.roomId || !session.secret) return null;
-
   const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-    } catch {
-      // Fallback for browsers without the async clipboard API
+    try { await navigator.clipboard.writeText(shareUrl); } catch {
       const ta = document.createElement('textarea');
       ta.value = shareUrl;
       document.body.appendChild(ta);
@@ -77,27 +43,20 @@ export function RoomHub() {
       document.body.removeChild(ta);
     }
     setCopiedLink(true);
-    setCopyStatus('Link copied to clipboard');
+    setCopyStatus('Link copied');
     setTimeout(() => { setCopiedLink(false); setCopyStatus(null); }, 2000);
   };
 
   const shareLink = async () => {
     if (navigator.share) {
-      try {
-        await navigator.share({ title: 'ShareText', text: 'Join my ShareText room', url: shareUrl });
-        return;
-      } catch {
-        // User cancelled or share failed — fall through to copy.
-      }
+      try { await navigator.share({ title: 'ShareText', url: shareUrl }); return; } catch { /* fall through */ }
     }
     await copyLink();
   };
 
   const copyCode = async () => {
     const code = generateTOTP(session.secret!, session.createdAt);
-    try {
-      await navigator.clipboard.writeText(code);
-    } catch {
+    try { await navigator.clipboard.writeText(code); } catch {
       const ta = document.createElement('textarea');
       ta.value = code;
       document.body.appendChild(ta);
@@ -106,406 +65,165 @@ export function RoomHub() {
       document.body.removeChild(ta);
     }
     setCopiedCode(true);
-    setCopyStatus('Code copied to clipboard');
+    setCopyStatus('Code copied');
     setTimeout(() => { setCopiedCode(false); setCopyStatus(null); }, 2000);
   };
 
   const commitName = () => {
     const trimmed = nameDraft.trim().replace(/\s+/g, ' ');
-    if (!trimmed || trimmed.length === 0) {
-      setNameError('Enter a device name');
-      return;
-    }
-    if (/^[\u0000-\u001F\u007F]/.test(trimmed)) {
-      setNameError('Name contains invalid characters');
-      return;
-    }
+    if (!trimmed) { setNameError('Enter a name'); return; }
     setNameError(null);
     setDeviceName(trimmed.slice(0, 32));
     setEditingName(false);
   };
 
-  // "Peer was connected and dropped" — NOT the fresh-connect flow. During the
-  // initial handshake the transport can briefly read 'disconnected' while the
-  // WebRTC/relay path is still coming up; showing the orange rejoin banner then
-  // is noise. Hide it whenever the joiner is actively connecting.
   const waitingForReconnect = session.connectionType === 'disconnected' && !session.partnerConnecting;
 
   return (
-    <div data-testid="room-shell" data-app-state="sender-waiting" className="min-h-screen flex flex-col bg-apple-canvas dark:bg-black relative overflow-hidden">
-      {/* Brand warmth — a soft azure glow behind the pairing card */}
-      <div className="absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(70%_90%_at_50%_-10%,rgba(46,139,255,0.10),transparent_65%)] pointer-events-none" aria-hidden />
+    <div data-testid="room-shell" data-app-state="sender-waiting" className="min-h-screen flex flex-col bg-apple-canvas dark:bg-night-950 relative overflow-hidden">
+      {/* Subtle brand warmth */}
+      <div className="absolute inset-x-0 top-0 h-[380px] bg-[radial-gradient(60%_80%_at_50%_-5%,rgba(10,102,240,0.06),transparent_60%)] pointer-events-none" aria-hidden />
 
-      {/* Header in normal flow — never overlaps the centered content, even on
-          short screens (the old absolute header collided with the heading on
-          small phones). */}
-      <header className="relative z-10 flex items-center gap-2 px-4 sm:px-6 pt-4 sm:pt-6">
-        <button
-          onPointerDown={abandonSession}
-          aria-label="Back to home"
-          className="flex items-center justify-center w-10 h-10 -ml-2 rounded-full text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-parchment dark:hover:bg-apple-tile-1 active:scale-95 transition-motion"
-        >
+      {/* Header */}
+      <header className="relative z-10 flex items-center gap-2 px-4 sm:px-6 pt-4 sm:pt-5">
+        <button onPointerDown={abandonSession} aria-label="Back to home" className="flex items-center justify-center w-10 h-10 -ml-2 rounded-full text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-parchment dark:hover:bg-apple-tile-1 active:scale-95 transition-motion">
           <ChevronLeft className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-2">
-          <ShareTextLogo size={24} className="text-apple-ink dark:text-white" />
+          <ShareTextLogo size={22} className="text-apple-ink dark:text-white" />
           <span className="text-[14px] font-semibold tracking-tight text-apple-ink dark:text-white">ShareText</span>
         </div>
-        <div className="ml-auto">
-          <ThemeToggle />
-        </div>
+        <div className="ml-auto"><ThemeToggle /></div>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-6 py-8 sm:py-10 w-full">
-      <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg text-center flex flex-col items-center">
+      <main className="flex-1 flex flex-col items-center justify-center px-5 py-8 sm:py-10 w-full">
+        <div className="w-full max-w-sm text-center flex flex-col items-center">
 
-        {waitingForReconnect && (
-          <div className="w-full mb-6 px-4 py-3 rounded-[14px] bg-status-warning/10 border border-status-warning/20 text-[14px] font-medium text-status-warning-ink dark:text-status-warning-ink-dark flex flex-col items-center gap-3">
-            <span className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse shrink-0" />
-              Your other device disconnected. This page is still open — share the code again to connect it.
-            </span>
-            <button
-              onPointerDown={() => { void requestReconnect(); }}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-status-warning/15 hover:bg-status-warning/25 text-status-warning-ink dark:text-status-warning-ink-dark font-semibold text-[13px] transition-colors active:scale-95 min-h-[40px]"
-            >
-              <RefreshCw className="w-3.5 h-3.5" /> Reconnect
-            </button>
-          </div>
-        )}
+          {/* Reconnect banner */}
+          <AnimatePresence>
+            {waitingForReconnect && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="w-full mb-6 overflow-hidden">
+                <div className="px-4 py-3 rounded-[14px] bg-status-warning/10 border border-status-warning/20 text-[13px] font-medium text-status-warning-ink dark:text-status-warning-ink-dark text-center">
+                  Your other device disconnected. Share the code again to reconnect.
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-        <div className="w-full mb-8">
-          <h1 className="text-[24px] sm:text-[26px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em] mb-1.5">
+          {/* ── HEADING ── */}
+          <h1 className="text-[22px] sm:text-[26px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em] mb-1.5">
             Connect your other device.
           </h1>
-          <p className="text-[14px] text-apple-ink-muted dark:text-white/55 font-medium mb-1">
+          <p className="text-[14px] text-apple-ink-muted dark:text-white/55 font-medium mb-6">
             Open ShareText on the other device and enter this code.
           </p>
-          <p className="text-[12.5px] text-apple-ink-muted/80 dark:text-white/40 font-medium mb-6">
-            No app to install. No account. Room stays open while in use.
-          </p>
-          <div data-testid="pairing-code">
+
+          {/* ── PAIRING CODE — the hero element ── */}
+          <div data-testid="pairing-code" className="mb-3">
             <LiveCodeDisplay secret={session.secret} createdAt={session.createdAt} />
           </div>
 
-          {/* The joiner arrived — the same connecting animation the joiner's
-              own screen shows, so both devices tell the same story while the
-              handshake runs. */}
+          {/* Connecting animation */}
           <AnimatePresence>
             {session.partnerConnecting && !session.partnerConnected && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                className="overflow-hidden flex flex-col items-center"
-              >
-                <ConnectingVisual className="mt-5" />
-                <p role="status" className="mt-3 text-[14px] font-medium text-apple-ink-muted dark:text-white/60">
-                  {session.connectionType === 'establishing' ? 'Establishing secure connection…' : 'Connecting to your other device…'}
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }} className="overflow-hidden mb-4">
+                <p role="status" className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60 flex items-center justify-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-apple-blue animate-pulse" />
+                  {session.connectionType === 'establishing' ? 'Establishing secure connection…' : 'Connecting…'}
                 </p>
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
 
-        <button
-          data-testid="room-copy-code"
-          onPointerDown={copyCode}
-          className="mt-2 w-full flex items-center justify-center gap-2 px-5 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] min-h-[48px] shadow-card hover:shadow-float"
-        >
-          {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-          {copiedCode ? 'Code copied' : 'Copy Code'}
-        </button>
-
-        <div className="w-full space-y-3 mt-3">
-          <AnimatePresence mode="popLayout">
-            {showQR ? (
-              <motion.div
-                key="qr"
-                initial={{ opacity: 0, height: 0, scale: 0.95 }}
-                animate={{ opacity: 1, height: 'auto', scale: 1 }}
-                exit={{ opacity: 0, height: 0, scale: 0.95 }}
-                transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-                className="overflow-hidden"
-              >
-                <div className="flex flex-col items-center justify-center p-5 sm:p-6 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[16px] shadow-sm">
-                  <div className="bg-white p-4 rounded-[14px] mb-3 shadow-sm">
-                    <QRCodeSVG value={qrValue} size={216} />
-                  </div>
-                  <p className="text-[12px] text-apple-ink-muted mb-1">
-                    The code refreshes every 90 seconds — scan it while it's current.
-                  </p>
-                  <button
-                    onPointerDown={() => setShowQR(false)}
-                    className="text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors px-4 py-2 min-h-[44px] flex items-center"
-                  >
-                    Hide QR Code
-                  </button>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.button
-                key="show-qr"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              data-testid="room-show-qr"
-              onPointerDown={() => setShowQR(true)}
-              aria-expanded={showQR}
-                className="w-full flex items-center justify-between p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-surface-dark-2 rounded-[14px] transition-colors active:scale-[0.98] shadow-sm"
-              >
-                <div className="flex items-center gap-3 text-[15px] font-medium text-apple-ink dark:text-white">
-                  <QrCode className="w-5 h-5 text-apple-ink-muted" />
-                  Show QR Code
-                </div>
-              </motion.button>
-            )}
-          </AnimatePresence>
-
-          <button
-            data-testid="room-share-link"
-            onPointerDown={shareLink}
-            className="w-full flex items-center justify-between p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-surface-dark-2 rounded-[14px] transition-colors active:scale-[0.98] shadow-sm"
-          >
-            <div className="flex items-center gap-3 text-[15px] font-medium text-apple-ink dark:text-white">
-              {copiedLink ? <Check className="w-5 h-5 text-status-success" /> : (navigator.share ? <Share2 className="w-5 h-5 text-apple-ink-muted" /> : <Link2 className="w-5 h-5 text-apple-ink-muted" />)}
-              {copiedLink ? 'Link copied' : (navigator.share ? 'Share link' : 'Copy link')}
-            </div>
-          </button>
-        </div>
-
-        {/* Device name — a quiet detail below the actions, not a competing
-            control. Lets the other device recognize this one at a glance. */}
-        <div className="flex items-center gap-2 mt-6">
-          {editingName ? (
-            <div className="flex flex-col items-center gap-2">
-              <label className="text-[12px] font-medium text-apple-ink-muted dark:text-white/60">
-                Device name
-              </label>
-              <div className="flex items-center gap-2">
-              <input
-                data-testid="device-name-input"
-                autoFocus
-                value={nameDraft}
-                onChange={(e) => { setNameDraft(e.target.value); setNameError(null); }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') commitName();
-                    if (e.key === 'Escape') { setEditingName(false); setNameError(null); }
-                  }}
-                  className={cn("px-3 py-1.5 text-[14px] font-medium text-apple-ink dark:text-white bg-white dark:bg-apple-tile-1 border rounded-[10px] outline-none focus:ring-2 w-[160px]",
-                    nameError ? 'border-status-error focus:ring-status-error/40' : 'border-apple-divider dark:border-apple-tile-3 focus:ring-apple-blue/40'
-                  )}
-                  maxLength={32}
-                  placeholder="My phone"
-                  aria-invalid={!!nameError}
-                  aria-describedby={nameError ? 'device-name-error' : undefined}
-                />
-                <button
-                  data-testid="device-name-save"
-                  onPointerDown={commitName}
-                  className="px-3 py-1.5 text-[13px] font-medium text-apple-blue hover:text-apple-blue-focus active:scale-95 transition-colors rounded-[8px] min-h-[36px]"
-                >
-                  Save
-                </button>
-                <button
-                  onPointerDown={() => { setEditingName(false); setNameError(null); }}
-                  className="px-3 py-1.5 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white active:scale-95 transition-colors rounded-[8px] min-h-[36px]"
-                >
-                  Cancel
-                </button>
-              </div>
-              {nameError && (
-                <p id="device-name-error" data-testid="device-name-error" role="alert" className="text-[12px] font-medium text-status-error mt-1">
-                  {nameError}
-                </p>
-              )}
-            </div>
-          ) : (
-            <button
-              onPointerDown={() => { setNameDraft(session.deviceName); setEditingName(true); }}
-              data-testid="edit-device-name"
-              className="flex items-center gap-1.5 text-[13px] font-medium text-apple-ink-muted/90 hover:text-apple-ink dark:hover:text-white transition-colors active:scale-95 px-2 py-2 -my-1 -mx-2 min-h-[44px]"
-              title="Edit device name"
-            >
-              <span className="w-6 h-6 rounded-full bg-apple-parchment dark:bg-apple-tile-2 flex items-center justify-center">
-                <Pencil className="w-3 h-3" />
-              </span>
-              {session.deviceName}
+          {/* ── PRIMARY ACTIONS ── */}
+          <div className="w-full space-y-2.5 mt-1">
+            {/* Copy code — dominant action */}
+            <button data-testid="room-copy-code" onPointerDown={copyCode}
+              className="w-full flex items-center justify-center gap-2 px-5 py-3.5 btn-premium bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[15px] font-semibold min-h-[48px] shadow-card hover:shadow-float">
+              {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copiedCode ? 'Code copied' : 'Copy code'}
             </button>
-          )}
-        </div>
 
-        <p className="text-[13px] text-apple-ink-muted mt-2">
-          This temporary connection stays open until the other device joins or you leave.
-        </p>
-
-        {/* Live region for copy feedback — announces to screen readers without stealing focus */}
-        <div aria-live="polite" aria-atomic="true" className="sr-only">
-          {copyStatus}
-        </div>
-
-        {/* Agent push — "send from your computer" without a second browser.
-            Redesigned as a secure, collapsed panel with explicit scope, expiry,
-            and masked secret by default. The permission is short-lived and
-            scoped to text/file push only. */}
-        <div className="w-full mt-4 flex flex-col items-center">
-          <button
-            data-testid="open-advanced-agent"
-            onPointerDown={() => { const next = !showPush; setShowPush(next); if (next) setShowHow(false); }}
-            aria-expanded={showPush}
-            className="flex items-center gap-1.5 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors active:scale-95 px-3 py-2 min-h-[44px]"
-          >
-            <Terminal className="w-3.5 h-3.5" />
-            For developers and trusted agents
-            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", showPush && "rotate-180")} />
-          </button>
-
-          <AnimatePresence>
-            {showPush && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                className="overflow-hidden"
-              >
-                <div className="mt-3 p-4 bg-apple-parchment dark:bg-apple-tile-1 rounded-[14px] text-left">
-                  {/* Warning header */}
-                  <div className="flex items-start gap-2 mb-3">
-                    <ShieldAlert className="w-4 h-4 text-status-warning shrink-0 mt-0.5" />
-                    <p className="text-[13px] text-apple-ink dark:text-white leading-relaxed">
-                      <span className="font-semibold">This permission can send into your room.</span>{' '}
-                      Only share it with a tool you trust.
-                    </p>
-                  </div>
-
-                  {/* Scope labels */}
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    <span className="px-2 py-1 text-[11px] font-medium bg-white dark:bg-black/30 border border-apple-divider dark:border-apple-tile-3 rounded-full text-apple-ink-muted">
-                      Text and files
-                    </span>
-                    <span className="px-2 py-1 text-[11px] font-medium bg-white dark:bg-black/30 border border-apple-divider dark:border-apple-tile-3 rounded-full text-apple-ink-muted">
-                      Max 5 requests
-                    </span>
-                    <span className="px-2 py-1 text-[11px] font-medium bg-white dark:bg-black/30 border border-apple-divider dark:border-apple-tile-3 rounded-full text-apple-ink-muted">
-                      Expires in 10 minutes
-                    </span>
-                  </div>
-
-                  {/* Command preview — token masked by default */}
-                  <pre className="text-[11.5px] sm:text-[12px] font-mono text-apple-ink dark:text-white bg-white/70 dark:bg-black/30 border border-apple-divider dark:border-apple-tile-3 rounded-[10px] p-3 overflow-x-auto whitespace-pre-wrap break-all leading-relaxed mb-2">
-{tokenRevealed
-  ? `curl -X POST ${pushEndpoint() ?? ''} \
-  -H "Authorization: Bearer ${session.secret}" \
-  -H "Content-Type: application/json" \
-  -d '{"roomId":"${session.roomId}","text":"Hello from my computer"}'`
-  : `curl -X POST ${pushEndpoint() ?? ''} \
-  -H "Authorization: Bearer \${SHARETEXTS_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{"roomId":"${session.roomId}","text":"Hello from my computer"}'`}
-                  </pre>
-
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    <button
-                      onPointerDown={() => {
-                        if (tokenRevealed) {
-                          setTokenRevealed(false);
-                        } else {
-                          setTokenRevealed(true);
-                          setTimeout(() => setTokenRevealed(false), 10000);
-                        }
-                      }}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-apple-divider dark:border-apple-tile-3 text-apple-ink dark:text-white text-[12.5px] font-semibold transition-motion active:scale-95 min-h-[40px]"
-                    >
-                      {tokenRevealed ? 'Hide token' : 'Reveal token (10s)'}
-                    </button>
-                    <button
-                      onPointerDown={async () => {
-                        const cmd = `curl -X POST ${pushEndpoint() ?? ''} \\n  -H "Authorization: Bearer ${session.secret}" \\n  -H "Content-Type: application/json" \\n  -d '{"roomId":"${session.roomId}","text":"Hello from my computer"}'`;
-                        try { await navigator.clipboard.writeText(cmd); } catch { /* ignore */ }
-                        setCopiedTextCmd(true);
-                        setCopyStatus('Temporary send permission copied — expires in 10 minutes');
-                        setTimeout(() => { setCopiedTextCmd(false); setCopyStatus(null); }, 2000);
-                      }}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[12.5px] font-semibold transition-motion active:scale-95 min-h-[40px]"
-                    >
-                      {copiedTextCmd ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      {copiedTextCmd ? 'Copied — expires at ' + new Date(Date.now() + 10 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Copy command'}
-                    </button>
-                  </div>
-
-                  <p className="text-[12px] text-apple-ink-muted leading-relaxed">
-                    Temporary send permission. Push-only — cannot read, close, or resume this room. Expires in 10 minutes. Revoke by closing this room.
-                  </p>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Push inbox — messages an agent pushed while this device sat on the
-            connect screen. They live in the room, so they carry over into the
-            chat once a partner pairs. */}
-        {session.messages.filter(m => m.source === 'push').length > 0 && (
-          <div className="w-full mt-4 p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[14px] shadow-sm">
-            <div className="flex items-center gap-2 mb-2.5">
-              <Inbox className="w-4 h-4 text-apple-blue" />
-              <span className="text-[14px] font-semibold text-apple-ink dark:text-white">Sent from your computer</span>
+            {/* QR + Share — secondary, same visual weight */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <button data-testid="room-show-qr" onPointerDown={() => setShowQR(true)}
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-surface-dark border border-apple-divider/60 dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-surface-dark-2 rounded-[12px] text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.97] min-h-[44px]">
+                <QrCode className="w-4 h-4 text-apple-ink-muted" /> Show QR
+              </button>
+              <button data-testid="room-share-link" onPointerDown={shareLink}
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-surface-dark border border-apple-divider/60 dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-surface-dark-2 rounded-[12px] text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.97] min-h-[44px]">
+                {copiedLink ? <Check className="w-4 h-4 text-status-success" /> : <Link2 className="w-4 h-4 text-apple-ink-muted" />}
+                {copiedLink ? 'Copied' : 'Share link'}
+              </button>
             </div>
-            <div className="space-y-2">
-              {session.messages.filter(m => m.source === 'push').slice(-3).map(m => (
-                <div key={m.id} className="flex items-center justify-between gap-2 text-left">
-                  <div className="min-w-0">
-                    <p className="text-[13px] text-apple-ink dark:text-white truncate">
-                      {m.attachment ? `${m.attachment.name} · ${formatBytes(m.attachment.size)}` : m.text}
-                    </p>
-                    <p className="text-[11.5px] text-apple-ink-muted">{timeAgo(m.timestamp)}</p>
-                  </div>
-                  <button
-                    onPointerDown={async () => {
-                      try { await navigator.clipboard.writeText(m.attachment ? m.attachment.name : m.text); } catch { /* ignore */ }
-                    }}
-                    aria-label="Copy"
-                    className="flex items-center justify-center w-8 h-8 rounded-full text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/60 dark:hover:bg-apple-tile-3 transition-motion active:scale-90 shrink-0"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <p className="mt-2.5 text-[12px] text-apple-ink-muted leading-relaxed">
-              These are waiting here — connect the other device to see them.
-            </p>
           </div>
-        )}
 
-        <button
-          data-testid="room-how-this-works"
-          onPointerDown={() => { const next = !showHow; setShowHow(next); if (next) setShowPush(false); }}
-          aria-expanded={showHow}
-          className="flex items-center gap-1 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors mt-2 active:scale-95 px-3 py-2 min-h-[44px]"
-        >
-          How this works
-          <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", showHow && "rotate-180")} />
-        </button>
-        <AnimatePresence>
-          {showHow && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden w-full max-w-sm"
-            >
-              <div className="mt-3 p-4 bg-apple-parchment dark:bg-apple-tile-1 rounded-[14px] text-left text-[13px] text-apple-ink-muted leading-relaxed space-y-2">
-                <p>This connection disappears automatically after a while. When it ends, the code stops working and it can't be reopened.</p>
-                <p>Content is encrypted between devices using WebRTC. When a direct connection isn't possible, a relay forwards encrypted data. Rooms expire automatically — temporary by design.</p>
+          {/* ── DEVICE NAME — quiet, below actions ── */}
+          <div className="mt-5">
+            {editingName ? (
+              <div className="flex items-center gap-2">
+                <input autoFocus value={nameDraft} onChange={(e) => { setNameDraft(e.target.value); setNameError(null); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') commitName(); if (e.key === 'Escape') setEditingName(false); }}
+                  className={cn("px-3 py-1.5 text-[13px] font-medium text-apple-ink dark:text-white bg-white dark:bg-apple-tile-1 border rounded-[8px] outline-none focus:ring-2 w-[140px]",
+                    nameError ? 'border-status-danger focus:ring-status-danger/40' : 'border-apple-divider dark:border-apple-tile-3 focus:ring-azure-600/40')}
+                  maxLength={32} placeholder="My phone" />
+                <button onPointerDown={commitName} className="text-[13px] font-medium text-azure-600 hover:text-azure-700 active:scale-95 px-2 py-1">Save</button>
+                <button onPointerDown={() => setEditingName(false)} className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white active:scale-95 px-2 py-1">Cancel</button>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+            ) : (
+              <button onPointerDown={() => { setNameDraft(session.deviceName); setEditingName(true); }}
+                className="flex items-center gap-1.5 text-[12px] font-medium text-apple-ink-muted/70 hover:text-apple-ink dark:hover:text-white/60 transition-colors active:scale-95">
+                <Pencil className="w-3 h-3" />
+                {session.deviceName}
+              </button>
+            )}
+          </div>
+
+          {/* ── PRIVACY NOTE — quiet but accessible ── */}
+          <p className="text-[12px] text-apple-ink-muted/60 dark:text-white/35 mt-4 max-w-[280px] leading-relaxed">
+            Temporary by design. Encrypted between devices. Room closes when you leave.
+          </p>
+
+          {/* Screen reader live region */}
+          <div aria-live="polite" aria-atomic="true" className="sr-only">{copyStatus}</div>
+        </div>
       </main>
+
+      {/* ═══ QR DIALOG — bounded panel, not inline expansion ═══ */}
+      <AnimatePresence>
+        {showQR && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+            onPointerDown={() => setShowQR(false)}>
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="w-full max-w-[320px] bg-white dark:bg-surface-dark rounded-[20px] p-6 shadow-2xl text-center">
+              {/* Close */}
+              <button onPointerDown={() => setShowQR(false)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-apple-parchment dark:bg-apple-tile-2 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+              {/* QR code */}
+              <div className="bg-white p-3 rounded-[14px] inline-block mb-4 shadow-sm border border-apple-divider/30">
+                <QRCodeSVG value={qrValue} size={180} />
+              </div>
+              <p className="text-[14px] font-semibold text-apple-ink dark:text-white mb-1">
+                Scan with your other device
+              </p>
+              <p className="text-[12px] text-apple-ink-muted dark:text-white/50 mb-4">
+                Open ShareText on the other device and scan this code.
+              </p>
+              <button onPointerDown={() => setShowQR(false)}
+                className="w-full py-2.5 bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 rounded-[10px] text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.98]">
+                Close
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
+
+// Inline TOTP imports (same as before)
+import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
