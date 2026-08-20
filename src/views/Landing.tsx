@@ -21,8 +21,11 @@ const EASE = [0.16, 1, 0.3, 1] as const;
  */
 function AmbientGlow() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[400px] overflow-hidden z-0">
-      <div className="absolute -top-[18%] left-1/2 -translate-x-1/2 w-[120%] h-full bg-[radial-gradient(50%_60%_at_50%_0%,rgba(46,139,255,0.04),transparent_70%)]" />
+    <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[500px] overflow-hidden z-0">
+      {/* Primary blue glow — soft, wide, centered */}
+      <div className="absolute -top-[15%] left-1/2 -translate-x-1/2 w-[140%] h-full bg-[radial-gradient(50%_55%_at_50%_0%,rgba(10,102,240,0.035),transparent_70%)]" />
+      {/* Secondary warm accent — barely visible, adds depth */}
+      <div className="absolute -top-[10%] left-[30%] w-[60%] h-[60%] bg-[radial-gradient(ellipse_at_center,rgba(139,92,246,0.02),transparent_60%)]" />
     </div>
   );
 }
@@ -88,11 +91,18 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
     if (isCreating) return;
     setIsCreating(true);
     setCreateError(null);
+    // Bounded timeout: if creation doesn't complete in 12s, show a clear
+    // error with retry. Prevents the dreaded "Creating…" forever state.
+    const timeout = setTimeout(() => {
+      setIsCreating(false);
+      setCreateError("Taking too long. Check your connection and try again.");
+    }, 12000);
     try {
       await createSession();
+      clearTimeout(timeout);
     } catch (e: any) {
+      clearTimeout(timeout);
       setIsCreating(false);
-      // Honest error: tell the user exactly what happened and what to do
       const msg = e.message || "Couldn't start the connection.";
       if (msg.includes('trouble connecting') || msg.includes('reach ShareText')) {
         setCreateError("The bridge couldn't connect. Check your connection and try again.");
@@ -103,7 +113,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
   };
 
   return (
-    <div className="min-h-screen relative bg-apple-canvas dark:bg-night-900 font-sans selection:bg-azure-500/20 flex flex-col overflow-x-clip dot-grid-bg">
+    <div className="min-h-screen relative bg-apple-canvas dark:bg-night-900 font-sans selection:bg-azure-500/20 flex flex-col overflow-x-clip dot-grid-bg animate-[fadeIn_0.4s_ease-out]">
       <AmbientGlow />
 
       {/* ============ HEADER — logo + desktop-only nav ============ */}
@@ -158,12 +168,19 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
               <motion.button
                 data-testid="hero-send"
-                onClick={handleCreate}
-                disabled={isCreating}
+                onClick={isCreating ? () => { setIsCreating(false); setCreateError(null); } : handleCreate}
                 whileTap={{ scale: 0.97 }}
-                className="group px-7 py-3.5 btn-premium bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60 shadow-card hover:shadow-float"
+                className={`group px-7 py-3.5 btn-premium text-white rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 shadow-card hover:shadow-float ${
+                  isCreating
+                    ? 'bg-apple-ink-muted hover:bg-apple-ink-muted/80'
+                    : 'bg-azure-600 hover:bg-azure-500'
+                } ${!isCreating && createError ? '' : ''}`}
               >
-                {isCreating ? 'Creating…' : createError ? 'Try Again' : (
+                {isCreating ? (
+                  <><span className="relative z-[2]">Cancel</span></>
+                ) : createError ? (
+                  <><Send className="w-4 h-4 relative z-[2]" /> <span className="relative z-[2]">Try Again</span></>
+                ) : (
                   <><Send className="w-4 h-4 relative z-[2]" /> <span className="relative z-[2]">Send something</span></>
                 )}
               </motion.button>
@@ -194,9 +211,17 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             </div>
 
             {createError && (
-              <p role="alert" className="mt-5 text-[14px] font-medium text-status-danger flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-status-danger" /> {createError}
-              </p>
+              <div role="alert" className="mt-5 space-y-2">
+                <p className="text-[14px] font-medium text-status-danger flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-status-danger" /> {createError}
+                </p>
+                <button
+                  onClick={() => setCreateError(null)}
+                  className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
             )}
           </motion.div>
 
@@ -298,9 +323,6 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
       {/* Below-the-fold sections are lazy chunks. Each loads only when near
           the viewport. Kept minimal: Privacy, FAQ. */}
       <Suspense fallback={<div className="h-40" aria-hidden />}>
-        {/* ============ PRIVATE BY DESIGN — the trust wedge ============ */}
-        <div id="private" tabIndex={-1}><PrivacyPromise /></div>
-
         {/* ============ PRIVATE BY DESIGN — the trust wedge ============ */}
         <div id="private" tabIndex={-1}><PrivacyPromise /></div>
 
