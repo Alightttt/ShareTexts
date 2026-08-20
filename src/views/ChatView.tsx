@@ -43,7 +43,7 @@ async function toPngClipboardBlob(blob: Blob): Promise<Blob | null> {
 }
 
 export function ChatView() {
-  const { session, sendMessage, closeSession, cancelTransfer } = useSession();
+  const { session, sendMessage, closeSession, cancelTransfer, requestReconnect } = useSession();
   const [inputText, setInputText] = useState('');
   // Multiple staged attachments per send (up to 20) — each file becomes its
   // own transfer bubble on send, but they're picked together in one message.
@@ -576,9 +576,17 @@ export function ChatView() {
             role="status"
             className="overflow-hidden bg-status-warning/10 border-b border-status-warning/20"
           >
-            <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-2 text-[14px] font-medium text-status-warning-ink dark:text-status-warning-ink-dark">
-              <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse shrink-0" />
-              Your other device disconnected. Waiting for reconnect…
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-2 text-[14px] font-medium text-status-warning-ink dark:text-status-warning-ink-dark">
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse shrink-0" />
+                Your other device disconnected — waiting to reconnect…
+              </span>
+              <button
+                onPointerDown={() => void requestReconnect()}
+                className="px-3 py-1.5 rounded-full text-[13px] font-semibold bg-status-warning/15 hover:bg-status-warning/25 transition-colors active:scale-95 shrink-0"
+              >
+                Reconnect
+              </button>
             </div>
           </motion.div>
         )}
@@ -615,7 +623,7 @@ export function ChatView() {
       >
         <div        className="max-w-3xl mx-auto flex flex-col">
           {session.messages.length === 0 ? (
-            <div className="h-full min-h-[40vh] flex flex-col items-center justify-center text-center space-y-3 opacity-80">
+            <div className="h-full min-h-[40vh] flex flex-col items-center justify-center text-center space-y-4 opacity-80">
               <div className="w-14 h-14 rounded-[20px] bg-apple-parchment dark:bg-apple-tile-2 flex items-center justify-center mb-1">
                 <ShareTextLogo size={26} className="text-apple-ink dark:text-white" />
               </div>
@@ -628,10 +636,16 @@ export function ChatView() {
                 </>
               ) : (
                 <>
-                  <p className="text-[17px] font-semibold text-apple-ink dark:text-white tracking-tight">Your private clipboard</p>
-                  <p className="text-[14px] text-apple-ink-muted max-w-[260px] leading-relaxed">
-                    Anything you paste here will appear on the other device.
+                  <p className="text-[17px] font-semibold text-apple-ink dark:text-white tracking-tight">Ready to send</p>
+                  <p className="text-[14px] text-apple-ink-muted max-w-[300px] leading-relaxed">
+                    Paste or type anything — text, links, photos, or files.
+                    It will appear on the other device instantly.
                   </p>
+                  <div className="flex items-center gap-3 mt-1 text-[12px] text-apple-ink-muted/70 dark:text-white/40">
+                    <span className="flex items-center gap-1.5"><span className="w-6 h-6 rounded-full bg-apple-divider/60 dark:bg-apple-tile-3 flex items-center justify-center"><ImageIcon className="w-3 h-3" /></span>Photo</span>
+                    <span className="flex items-center gap-1.5"><span className="w-6 h-6 rounded-full bg-apple-divider/60 dark:bg-apple-tile-3 flex items-center justify-center"><FileIcon className="w-3 h-3" /></span>File</span>
+                    <span className="flex items-center gap-1.5"><span className="w-6 h-6 rounded-full bg-apple-divider/60 dark:bg-apple-tile-3 flex items-center justify-center"><span className="text-[9px] font-bold">⌘V</span></span>Paste</span>
+                  </div>
                 </>
               )}
             </div>
@@ -685,8 +699,12 @@ export function ChatView() {
 
         {dragOver && (
           <div className="absolute inset-0 z-20 m-2 rounded-[20px] border-2 border-dashed border-apple-blue dark:border-azure-400 bg-apple-blue/10 dark:bg-azure-500/10 pointer-events-none flex items-center justify-center">
-            <div className="px-5 py-3 bg-white dark:bg-surface-dark rounded-full shadow-card text-[15px] font-semibold text-apple-ink dark:text-white">
-              Drop to send
+            <div className="flex flex-col items-center gap-2 px-8 py-6 bg-white/90 dark:bg-surface-dark/90 backdrop-blur-sm rounded-[20px] shadow-card border border-apple-blue/20 dark:border-azure-400/20">
+              <div className="w-12 h-12 rounded-full bg-apple-blue/10 dark:bg-azure-400/10 flex items-center justify-center">
+                <ArrowUp className="w-5 h-5 text-apple-blue dark:text-azure-400" />
+              </div>
+              <span className="text-[15px] font-semibold text-apple-ink dark:text-white">Drop to send</span>
+              <span className="text-[13px] text-apple-ink-muted dark:text-white/50">Files will be sent instantly</span>
             </div>
           </div>
         )}
@@ -828,7 +846,7 @@ export function ChatView() {
                     handleSend(e);
                   }
                 }}
-                placeholder="Paste or type something…"
+                placeholder="Paste or drop anything…"
                 aria-label="Message"
                 title="Enter to send · Shift+Enter for a new line"
                 className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[9px] pl-0.5 pr-0.5 text-apple-ink dark:text-white placeholder:text-apple-ink-muted focus:outline-none text-[16px] leading-[26px]"
@@ -846,8 +864,7 @@ export function ChatView() {
               </button>
 
               <AnimatePresence>
-                {showAttachmentMenu && (
-                  <motion.div
+                {showAttachmentMenu && (                    <motion.div
                     initial={{ opacity: 0, y: 10, scale: 0.9, transformOrigin: 'bottom left' }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.9 }}
@@ -855,6 +872,7 @@ export function ChatView() {
                     className="absolute left-1 bottom-[calc(100%+8px)] bg-white/90 dark:bg-surface-dark-2/90 backdrop-blur-xl border border-apple-divider dark:border-apple-tile-3 rounded-[20px] shadow-2xl p-2 w-[210px] flex flex-col gap-1 z-30"
                   >
                     <AttachmentOption icon={<ImageIcon className="w-5 h-5 text-apple-ink-muted" />} label="Photo" onClick={() => imageInputRef.current?.click()} />
+                    <AttachmentOption icon={<Play className="w-5 h-5 text-apple-ink-muted" />} label="Video" onClick={() => videoInputRef.current?.click()} />
                     <AttachmentOption icon={<FileIcon className="w-5 h-5 text-apple-ink-muted" />} label="File" onClick={() => fileInputRef.current?.click()} />
                   </motion.div>
                 )}
