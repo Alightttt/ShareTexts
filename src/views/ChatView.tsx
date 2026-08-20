@@ -3,7 +3,7 @@ import { useSession } from '../lib/SessionContext';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X, Plus, Image as ImageIcon, Copy, Check, CheckCheck,
-  File as FileIcon, Play, Download, RefreshCw, AlertCircle, ChevronDown, ChevronUp, ArrowUp, Lock, ZoomIn, ShieldCheck, Terminal, Share2, LogOut
+  File as FileIcon, Play, Download, RefreshCw, AlertCircle, ChevronDown, ChevronUp, ArrowUp, Lock, ZoomIn, ShieldCheck, Terminal, Share2, LogOut, Smartphone, Monitor
 } from 'lucide-react';
 import { FileTypeIcon } from '../components/FileTypeIcon';
 import { cn, formatBytes } from '../lib/utils';
@@ -12,6 +12,36 @@ import { ShareTextLogo } from '../components/ShareTextLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
 import { saveDraft, loadDraft, clearDraft, ComposerDraft } from '../lib/draftStore';
+
+/**
+ * Detect if the current device is a mobile/touch device.
+ * Used to show the opposite device icon in the header:
+ * - On a phone: show a laptop/monitor icon (the partner is likely a PC)
+ * - On a PC: show a phone icon (the partner is likely a mobile device)
+ */
+function useIsMobileDevice() {
+  const [mobile, setMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      || (window.innerWidth < 768 && 'ontouchstart' in window);
+  });
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const update = () => setMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  return mobile;
+}
+
+/** Shows the connected partner's device icon — phone on PC, laptop on phone. */
+function PartnerDeviceIcon() {
+  const isMobile = useIsMobileDevice();
+  return isMobile
+    ? <Monitor className="w-6 h-6 text-apple-ink dark:text-white shrink-0" aria-label="Connected to laptop" />
+    : <Smartphone className="w-6 h-6 text-apple-ink dark:text-white shrink-0" aria-label="Connected to phone" />;
+}
 
 const LARGE_TEXT_THRESHOLD = 8000; // chars
 const LARGE_TEXT_PREVIEW = 1400;
@@ -429,7 +459,8 @@ export function ChatView() {
           aria-expanded={showConnectionDetails}
           className="flex items-center gap-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue rounded-[10px] min-h-[40px] min-w-0 max-w-[50vw] sm:max-w-none"
         >
-          <ShareTextLogo size={24} className="text-apple-ink dark:text-white shrink-0" />
+          {/* Show the OTHER device's icon — phone on PC, PC/laptop on phone */}
+          <PartnerDeviceIcon />
           <span className="flex items-center gap-2 min-w-0">
             <span className="text-[16px] font-semibold text-apple-ink dark:text-white leading-tight truncate">
               {session.partnerName || 'Other device'}

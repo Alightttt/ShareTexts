@@ -367,9 +367,10 @@
   background-size: 20px 20px;
 }
 /* Hover reactive layer — only on fine pointer + no reduced motion.
-   A subtle radial darkening (light) / brightening (dark) that makes
-   dots near the cursor appear slightly larger and blue-tinted.
-   200px radius, 180ms transition. Not a glow — a quiet response. */
+   Dots near the cursor get slightly larger and lighter in color.
+   Two radial gradients: inner tight ring + outer soft falloff.
+   Light mode: dots darken slightly. Dark mode: dots lighten.
+   ~200px radius, 180ms transition. */
 @media (hover: hover) and (pointer: fine) {
   @media (prefers-reduced-motion: no-preference) {
     .dot-grid-bg::before,
@@ -385,23 +386,23 @@
       opacity: var(--dot-hover-opacity, 0);
       transition: opacity 180ms ease-out;
     }
-    /* Inner: tight, blue-tinted darkening */
+    /* Inner ring — dots get slightly larger/darker near cursor */
     .dot-grid-bg::before {
       width: 200px;
       height: 200px;
-      background: radial-gradient(circle, rgba(10,102,240,0.06) 0%, rgba(0,0,0,0.04) 40%, transparent 65%);
+      background: radial-gradient(circle, rgba(0,0,0,0.035) 0%, transparent 55%);
     }
     .dark .dot-grid-bg::before {
-      background: radial-gradient(circle, rgba(77,157,255,0.05) 0%, rgba(255,255,255,0.03) 40%, transparent 65%);
+      background: radial-gradient(circle, rgba(255,255,255,0.025) 0%, transparent 55%);
     }
-    /* Outer: wider, softer falloff */
+    /* Outer — wider, softer falloff */
     .dot-grid-bg::after {
       width: 320px;
       height: 320px;
-      background: radial-gradient(circle, rgba(10,102,240,0.03) 0%, transparent 55%);
+      background: radial-gradient(circle, rgba(0,0,0,0.015) 0%, transparent 50%);
     }
     .dark .dot-grid-bg::after {
-      background: radial-gradient(circle, rgba(77,157,255,0.025) 0%, transparent 55%);
+      background: radial-gradient(circle, rgba(255,255,255,0.01) 0%, transparent 50%);
     }
   }
 }
