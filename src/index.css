@@ -352,58 +352,63 @@
   animation: live-dot-pulse 2.4s ease-in-out infinite;
 }
 /* Dot grid background — subtle technical texture.
-   Base: 1px dots at 20px spacing, very quiet.
-   Hover (fine pointer only): dots near the cursor become slightly
-   darker/bigger (light) or brighter (dark) via a radial gradient.
-   Effect radius: ~200px. Transition: 180ms ease-out.
+   Base: 1px dots at 20px spacing.
+   Hover (fine pointer only): dots near the cursor actually GROW to 1.5px.
+   Uses a dual-grid mask approach:
+     - Base grid: 1px dots (always visible)
+     - Active grid: 1.5px dots (masked to only show near cursor)
+   The mask follows the cursor via CSS custom properties.
+   Effect radius: 180px. Transition: 200ms ease-out.
    Coarse pointer (touch): no reactive behavior.
    Reduced motion: no reactive behavior. */
 .dot-grid-bg {
-  background-image: radial-gradient(circle, rgba(0,0,0,0.045) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px);
   background-size: 20px 20px;
   position: relative;
 }
 .dark .dot-grid-bg {
-  background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
   background-size: 20px 20px;
 }
-/* Hover reactive layer — only on fine pointer + no reduced motion.
-   Dots near the cursor get slightly larger and lighter in color.
-   Two radial gradients: inner tight ring + outer soft falloff.
-   Light mode: dots darken slightly. Dark mode: dots lighten.
-   ~200px radius, 180ms transition. */
+/* Hover reactive layer — dots grow near cursor.
+   ::before = active grid with LARGER dots (1.5px), masked by radial gradient
+   ::after = subtle blue tint near cursor for depth */
 @media (hover: hover) and (pointer: fine) {
   @media (prefers-reduced-motion: no-preference) {
-    .dot-grid-bg::before,
+    .dot-grid-bg::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      /* Larger dots — 1.5px radius instead of 1px */
+      background-image: radial-gradient(circle, rgba(0,0,0,0.08) 1.5px, transparent 1.5px);
+      background-size: 20px 20px;
+      /* Mask: only show near the cursor */
+      -webkit-mask-image: radial-gradient(circle 180px at var(--dot-hover-x, -9999px) var(--dot-hover-y, -9999px), black 0%, transparent 100%);
+      mask-image: radial-gradient(circle 180px at var(--dot-hover-x, -9999px) var(--dot-hover-y, -9999px), black 0%, transparent 100%);
+      opacity: var(--dot-hover-opacity, 0);
+      transition: opacity 200ms ease-out;
+    }
+    .dark .dot-grid-bg::before {
+      background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1.5px, transparent 1.5px);
+      background-size: 20px 20px;
+    }
+    /* Subtle blue tint near cursor for depth */
     .dot-grid-bg::after {
       content: '';
       position: fixed;
-      border-radius: 50%;
+      inset: 0;
       pointer-events: none;
       z-index: 0;
-      left: var(--dot-hover-x, -9999px);
-      top: var(--dot-hover-y, -9999px);
-      transform: translate(-50%, -50%);
+      background: radial-gradient(circle 220px at var(--dot-hover-x, -9999px) var(--dot-hover-y, -9999px), rgba(10,102,240,0.015) 0%, transparent 70%);
+      -webkit-mask-image: radial-gradient(circle 220px at var(--dot-hover-x, -9999px) var(--dot-hover-y, -9999px), black 0%, transparent 100%);
+      mask-image: radial-gradient(circle 220px at var(--dot-hover-x, -9999px) var(--dot-hover-y, -9999px), black 0%, transparent 100%);
       opacity: var(--dot-hover-opacity, 0);
-      transition: opacity 180ms ease-out;
-    }
-    /* Inner ring — dots get slightly larger/darker near cursor */
-    .dot-grid-bg::before {
-      width: 200px;
-      height: 200px;
-      background: radial-gradient(circle, rgba(0,0,0,0.035) 0%, transparent 55%);
-    }
-    .dark .dot-grid-bg::before {
-      background: radial-gradient(circle, rgba(255,255,255,0.025) 0%, transparent 55%);
-    }
-    /* Outer — wider, softer falloff */
-    .dot-grid-bg::after {
-      width: 320px;
-      height: 320px;
-      background: radial-gradient(circle, rgba(0,0,0,0.015) 0%, transparent 50%);
+      transition: opacity 200ms ease-out;
     }
     .dark .dot-grid-bg::after {
-      background: radial-gradient(circle, rgba(255,255,255,0.01) 0%, transparent 50%);
+      background: radial-gradient(circle 220px at var(--dot-hover-x, -9999px) var(--dot-hover-y, -9999px), rgba(75,147,255,0.02) 0%, transparent 70%);
     }
   }
 }
