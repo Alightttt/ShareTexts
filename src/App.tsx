@@ -186,6 +186,19 @@ function AppContent() {
     );
   }
 
+  // Auto-reconnect for joiner: when the peer disconnects, automatically try
+  // to resume so the room stays alive. The creator already shows RoomHub
+  // with the pairing code for manual reconnection.
+  useEffect(() => {
+    if (!session.roomId || session.isCreator || session.partnerConnected || session.connectionType !== 'disconnected') return;
+    // Auto-reconnect after 2 seconds — gives the server time to settle
+    const t = setTimeout(() => {
+      void requestReconnect();
+    }, 2000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.partnerConnected, session.connectionType, session.roomId, session.isCreator]);
+
   // Session ended — show a calm closing state instead of dumping the user on
   // the landing page with no explanation. Checked BEFORE the room screens so
   // a closing session can never flash the code/connect screen for a frame
@@ -223,28 +236,30 @@ function AppContent() {
           {session.partnerConnected ? <ChatView /> : session.isCreator ? <RoomHub /> : (
             <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black px-6 text-center">
               <div className="flex flex-col items-center">
-                {!waitingForReconnect && <ConnectingVisual />}
-                <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">
-                  {waitingForReconnect ? "Your other device disconnected."
-                    : session.connectionType === 'establishing' ? "Establishing secure connection…"
-                    : "Connecting…"}
-                </h2>
                 {waitingForReconnect ? (
-                  <p className="text-[17px] text-apple-ink-muted">This connection is still open — you can reconnect anytime.</p>
+                  <>
+                    <div className="w-16 h-16 rounded-[20px] bg-apple-parchment dark:bg-apple-tile-1 flex items-center justify-center mb-6">
+                      <ShareTextLogo size={28} className="text-apple-ink dark:text-white" />
+                    </div>
+                    <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">Reconnecting…</h2>
+                    <p className="text-[17px] text-apple-ink-muted max-w-[340px]">Your other device is still here. Trying to reconnect automatically.</p>
+                    <div className="mt-6 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-apple-blue animate-pulse" />
+                      <span className="text-[14px] text-apple-ink-muted">Waiting for connection…</span>
+                    </div>
+                  </>
                 ) : (
-                  <ConnectingWait key={waitKey} onRetry={() => { setWaitKey(k => k + 1); void requestReconnect(); }} />
-                )}
-                {waitingForReconnect && (
-                  <button
-                    onPointerDown={() => { void requestReconnect(); }}
-                    className="mt-8 px-8 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] shadow-card hover:shadow-float min-h-[48px]"
-                  >
-                    Reconnect
-                  </button>
+                  <>
+                    <ConnectingVisual />
+                    <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">
+                      {session.connectionType === 'establishing' ? "Establishing secure connection…" : "Connecting…"}
+                    </h2>
+                    <ConnectingWait key={waitKey} onRetry={() => { setWaitKey(k => k + 1); void requestReconnect(); }} />
+                  </>
                 )}
                 <button
                   onPointerDown={leaveView}
-                  className="mt-4 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors px-4 py-2 min-h-[44px]"
+                  className="mt-8 text-[14px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors px-4 py-2 min-h-[44px]"
                 >
                   Leave
                 </button>
