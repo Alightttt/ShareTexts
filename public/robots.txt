@@ -6,4 +6,4 @@ Disallow: /room/
 Disallow: /connect/
 Disallow: /s/
 
-Sitemap: https://share-texts.vercel.app/sitemap.xml
+Sitemap: https://sharetexts.online/sitemap.xml
