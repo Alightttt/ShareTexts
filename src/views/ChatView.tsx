@@ -1324,14 +1324,15 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
             </div>
           )}
 
-          {/* Footer: status + time + actions — tighter, better aligned */}
+          {/* Footer: status info on row 1, actions on row 2 */}
           <div className={cn(
-            "px-3 py-2 border-t flex items-center gap-2",
+            "px-3 py-2.5 border-t",
             isMe ? "border-white/15 bg-white/8" : "border-apple-divider/30 dark:border-apple-tile-3/50 bg-apple-canvas/20 dark:bg-black/5"
           )}>
-            <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
+            {/* Row 1: status / time — full width, no competing for space */}
+            <div className="min-w-0">
               {a.status === 'complete' ? (
-                <span className={cn("text-[11px] font-medium flex items-center gap-1 flex-wrap", isMe ? "text-white/75" : "text-apple-ink-muted")}>
+                <span className={cn("text-[11px] font-medium flex items-center gap-1 flex-wrap break-words", isMe ? "text-white/75" : "text-apple-ink-muted")}>
                   {isMe ? <DeliveryTick delivered={msg.delivered} seen={msg.seen} onBlue /> : msg.source === 'push' ? (
                     <span className="font-semibold flex items-center gap-1"><Terminal className="w-3 h-3" /> Sent from your computer</span>
                   ) : <span className="font-semibold">Received</span>}
@@ -1353,7 +1354,8 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
               )}
             </div>
 
-            <div className="flex gap-1.5 shrink-0">
+            {/* Row 2: action buttons — separate row, never fights with text */}
+            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
               {complete && (
                 <>
                   {!isMe && (
