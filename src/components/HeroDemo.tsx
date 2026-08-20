@@ -230,9 +230,19 @@ export function HeroDemo() {
 
   useEffect(() => {
     measure();
-    const t = setTimeout(measure, 120);
+    // Multiple delayed measurements to catch fonts loading, frames painting,
+    // and mobile layout settling (stacked vs side-by-side).
+    const timers = [80, 250, 600, 1200].map(ms => setTimeout(measure, ms));
     window.addEventListener('resize', measure);
-    return () => { window.removeEventListener('resize', measure); clearTimeout(t); };
+    // ResizeObserver catches device-frame size changes that window resize
+    // misses (e.g. mobile orientation change, content reflow).
+    const ro = new ResizeObserver(() => measure());
+    if (containerRef.current) ro.observe(containerRef.current);
+    return () => {
+      window.removeEventListener('resize', measure);
+      timers.forEach(clearTimeout);
+      ro.disconnect();
+    };
   }, [measure]);
 
   useEffect(() => { measure(); }, [attach, measure]);

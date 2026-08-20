@@ -39,20 +39,23 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  // Dot grid hover tracking — CSS custom properties drive a radial glow
-  // that follows the pointer. Pure GPU-composited: left + top + scale
-  // on a fixed pseudo-element; no React re-renders.
+  // Dot grid hover: dots near the cursor grow bigger and darker (light mode)
+  // or brighter (dark mode). CSS custom properties on a fixed pseudo-element
+  // position a radial spotlight — no React re-renders, pure compositor.
   useEffect(() => {
     const el = document.querySelector('.dot-grid-bg') as HTMLElement | null;
     if (!el) return;
+    let visible = false;
     const onMove = (e: MouseEvent) => {
       el.style.setProperty('--dot-hover-x', `${e.clientX}px`);
-      el.style.setProperty('--dot-hover-y', `${e.clientY + window.scrollY}px`);
-      el.style.setProperty('--dot-hover-scale', '1');
-      el.style.setProperty('--dot-hover-opacity', '1');
+      el.style.setProperty('--dot-hover-y', `${e.clientY}px`);
+      if (!visible) {
+        visible = true;
+        el.style.setProperty('--dot-hover-opacity', '1');
+      }
     };
     const onLeave = () => {
-      el.style.setProperty('--dot-hover-scale', '0.6');
+      visible = false;
       el.style.setProperty('--dot-hover-opacity', '0');
     };
     window.addEventListener('mousemove', onMove, { passive: true });
@@ -112,10 +115,10 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           </a>
           {/* Desktop only — mobile nav lives in the footer */}
           <nav className="hidden md:flex items-center justify-center gap-5 flex-1" aria-label="Page sections">
-            <a href="#how-it-works" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">How it works</a>
-            <a href="#private" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Privacy</a>
-            <a href="#faq" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Questions</a>
-            <a href="/docs" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-colors">Docs</a>
+            <a href="#how-it-works" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-all duration-200 hover:translate-y-[-1px]">How it works</a>
+            <a href="#private" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-all duration-200 hover:translate-y-[-1px]">Privacy</a>
+            <a href="#faq" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-all duration-200 hover:translate-y-[-1px]">Questions</a>
+            <a href="/docs" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-all duration-200 hover:translate-y-[-1px]">Docs</a>
           </nav>
           <div className="flex items-center gap-3 sm:gap-4 ml-auto shrink-0">
             <LiveUsers className="hidden lg:inline-flex" />
@@ -158,19 +161,19 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 onClick={handleCreate}
                 disabled={isCreating}
                 whileTap={{ scale: 0.97 }}
-                className="group px-7 py-3.5 bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float"
+                className="group px-7 py-3.5 btn-premium bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60 shadow-card hover:shadow-float"
               >
                 {isCreating ? 'Creating…' : createError ? 'Try Again' : (
-                  <><Send className="w-4 h-4" /> Send something</>
+                  <><Send className="w-4 h-4 relative z-[2]" /> <span className="relative z-[2]">Send something</span></>
                 )}
               </motion.button>
               <motion.button
                 data-testid="hero-receive"
                 onClick={onJoinClick}
                 whileTap={{ scale: 0.97 }}
-                className="group px-7 py-3.5 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float"
+                className="group px-7 py-3.5 btn-premium bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 shadow-card hover:shadow-float"
               >
-                <Inbox className="w-4 h-4" /> Receive something
+                <Inbox className="w-4 h-4 relative z-[2]" /> <span className="relative z-[2]">Receive something</span>
               </motion.button>
             </div>
 
@@ -238,7 +241,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-30px' }}
                 transition={{ duration: 0.5, delay: i * 0.08, ease: EASE }}
-                className="p-5 sm:p-6 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3 text-left hover:shadow-card transition-shadow"
+                className="p-5 sm:p-6 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3 text-left hover:shadow-card hover:translate-y-[-2px] transition-all duration-200"
               >
                 <div className={`w-10 h-10 rounded-[12px] ${item.color} flex items-center justify-center mb-3`}>
                   {item.icon}
@@ -317,13 +320,12 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           <h2 className="text-[28px] sm:text-[38px] font-semibold text-apple-ink dark:text-white tracking-[-0.03em] leading-[1.1]">
             When it is on the wrong screen.
           </h2>
-          <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
-            <motion.button
+          <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">              <motion.button
               data-testid="create-session"
               onClick={handleCreate}
               disabled={isCreating}
               whileTap={{ scale: 0.97 }}
-              className="group px-8 py-3.5 bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion disabled:opacity-60 shadow-card hover:shadow-float min-h-[48px]"
+              className="group px-8 py-3.5 btn-premium bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60 shadow-card hover:shadow-float min-h-[48px]"
             >
               {isCreating ? 'Creating…' : createError ? 'Try Again' : (
                 <><Send className="w-4 h-4" /> Send something</>
@@ -333,7 +335,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               data-testid="join-session"
               onClick={onJoinClick}
               whileTap={{ scale: 0.97 }}
-              className="px-7 py-3.5 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-motion shadow-card hover:shadow-float min-h-[48px]"
+              className="px-7 py-3.5 btn-premium bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 shadow-card hover:shadow-float min-h-[48px]"
             >
               <Inbox className="w-4 h-4" /> Receive something
             </motion.button>

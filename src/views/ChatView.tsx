@@ -1069,26 +1069,30 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
     }
   };
 
-  // Text-only message — a clean bubble with an in-bubble footer (no outer
-  // sender label, no second action bar; that was the misaligned look).
+  // Text-only message — a clean bubble with an in-bubble footer.
+  // Psychology: messages from me feel "sent" (blue, right-aligned, tight),
+  // messages from partner feel "received" (white, left-aligned, warm).
+  // Grouping reduces visual noise: consecutive same-sender messages cluster
+  // with tighter spacing and softer corners, like a chat thread.
   if (!a) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+        initial={{ opacity: 0, y: 10, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: 'spring', bounce: 0.25, duration: 0.45 }}
+        transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
         className={cn(
           "flex w-full",
           isMe ? "justify-end" : "justify-start",
-          // Tighter gap between consecutive messages from same sender
           isGroupStart ? "mt-3" : "mt-0.5",
         )}
       >
         <div className={cn(
-          "max-w-[88%] sm:max-w-[68%] px-4 py-3 rounded-[20px] shadow-sm border",
-          isMe ? "bg-azure-600 text-white border-transparent" : "bg-white dark:bg-surface-dark text-apple-ink dark:text-white border-apple-divider/50 dark:border-apple-tile-3",
-          isMe && isGroupEnd && "rounded-br-[6px]",
-          !isMe && isGroupEnd && "rounded-bl-[6px]",
+          "max-w-[85%] sm:max-w-[65%] px-[14px] py-[10px] rounded-[18px]",
+          isMe
+            ? "bg-azure-600 text-white shadow-[0_1px_3px_rgba(10,102,240,0.18)]"
+            : "bg-white dark:bg-surface-dark text-apple-ink dark:text-white border border-apple-divider/40 dark:border-apple-tile-3 shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
+          isMe && isGroupEnd && "rounded-br-[4px]",
+          !isMe && isGroupEnd && "rounded-bl-[4px]",
           isMe && !isGroupEnd && "rounded-br-[14px]",
           !isMe && !isGroupEnd && "rounded-bl-[14px]",
         )}>
@@ -1186,24 +1190,25 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+      initial={{ opacity: 0, y: 10, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: 'spring', bounce: 0.25, duration: 0.45 }}
+      transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
       className={cn(
         "flex w-full",
         isMe ? "justify-end" : "justify-start",
         isGroupStart ? "mt-3" : "mt-0.5",
       )}
-    >
-      <div className={cn(
-        "flex flex-col gap-2 max-w-[88%] sm:max-w-[68%] w-full",
-        isMe ? "items-end" : "items-start"
-      )}>
+    >        <div className={cn(
+          "flex flex-col gap-0 max-w-[85%] sm:max-w-[65%] w-full",
+          isMe ? "items-end" : "items-start"
+        )}>
         <div className={cn(
-          "flex flex-col w-full overflow-hidden rounded-[20px] shadow-sm border",
-          isMe ? "bg-azure-600 text-white border-transparent" : "bg-white dark:bg-surface-dark border-apple-divider/50 dark:border-apple-tile-3",
-          isMe && isGroupEnd && "rounded-br-[6px]",
-          !isMe && isGroupEnd && "rounded-bl-[6px]",
+          "flex flex-col w-full overflow-hidden rounded-[18px]",
+          isMe
+            ? "bg-azure-600 text-white shadow-[0_1px_3px_rgba(10,102,240,0.18)]"
+            : "bg-white dark:bg-surface-dark border border-apple-divider/40 dark:border-apple-tile-3 shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
+          isMe && isGroupEnd && "rounded-br-[4px]",
+          !isMe && isGroupEnd && "rounded-bl-[4px]",
           isMe && !isGroupEnd && "rounded-br-[14px]",
           !isMe && !isGroupEnd && "rounded-bl-[14px]",
         )}>
@@ -1272,10 +1277,10 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
             </div>
           )}
 
-          {/* Footer: status + time + actions */}
+          {/* Footer: status + time + actions — tighter, better aligned */}
           <div className={cn(
-            "px-4 py-2.5 border-t flex items-center justify-between gap-2",
-            isMe ? "border-white/15 bg-white/10" : "border-apple-divider/50 dark:border-apple-tile-3 bg-apple-canvas/30 dark:bg-black/10"
+            "px-3 py-2 border-t flex items-center justify-between gap-1.5",
+            isMe ? "border-white/15 bg-white/8" : "border-apple-divider/30 dark:border-apple-tile-3/50 bg-apple-canvas/20 dark:bg-black/5"
           )}>
             <div className="flex flex-col min-w-0">
               {a.status === 'complete' ? (

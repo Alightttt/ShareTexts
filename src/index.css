@@ -298,7 +298,8 @@
 }
 /* Dot grid background — subtle technical texture for the landing canvas.
    Radial-gradient dot field at 20px spacing, 0.05 opacity light / 0.03 dark.
-   The hover variant uses a larger dot that grows on pointer proximity. */
+   On hover: dots near the cursor grow bigger and darker (light) or brighter
+   (dark), creating a living texture that responds to the pointer. */
 .dot-grid-bg {
   background-image: radial-gradient(circle, rgba(0,0,0,0.05) 1px, transparent 1px);
   background-size: 20px 20px;
@@ -308,26 +309,56 @@
   background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
   background-size: 20px 20px;
 }
-/* Hover dot — a larger dot placed at pointer position, fades in on hover */
+/* Hover spotlight — a soft radial darkening near the cursor that makes
+   the existing dots appear bigger and darker. In dark mode, it brightens.
+   CSS custom properties (set by JS mousemove) position the spotlight;
+   no React re-renders, pure compositor work. */
 .dot-grid-bg::after {
   content: '';
   position: fixed;
-  width: 32px;
-  height: 32px;
+  width: 280px;
+  height: 280px;
   border-radius: 50%;
   pointer-events: none;
   z-index: 0;
-  opacity: 0;
-  transition: opacity 0.5s ease, transform 0.5s ease;
-  transform: scale(0.6);
-  background: radial-gradient(circle, rgba(0,102,240,0.12) 0%, transparent 70%);
-  left: var(--dot-hover-x, 50%);
-  top: var(--dot-hover-y, 50%);
-  transform: translate(-50%, -50%) scale(var(--dot-hover-scale, 0.6));
+  left: var(--dot-hover-x, -9999px);
+  top: var(--dot-hover-y, -9999px);
+  transform: translate(-50%, -50%);
   opacity: var(--dot-hover-opacity, 0);
+  transition: opacity 0.4s ease;
+  background: radial-gradient(circle, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.06) 40%, transparent 70%);
 }
 .dark .dot-grid-bg::after {
-  background: radial-gradient(circle, rgba(75,141,255,0.10) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 40%, transparent 70%);
+}
+
+/* Premium button — subtle 3D gradient (lighter top, darker bottom) + hover lift.
+   Works with any background color via the CSS variables. */
+.btn-premium {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.btn-premium::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.08) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+.btn-premium:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px -2px rgba(0,0,0,0.2), 0 2px 4px -1px rgba(0,0,0,0.1);
+}
+.btn-premium:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+/* Dark mode: flip the gradient so the top is still lighter */
+.dark .btn-premium::before {
+  background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.15) 100%);
 }
 
 /* Hide scrollbar on mobile */
