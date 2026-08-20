@@ -1,0 +1,181 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Dark premium background gradient -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#04060c"/>
+      <stop offset="0.5" stop-color="#060a13"/>
+      <stop offset="1" stop-color="#0a0f1c"/>
+    </linearGradient>
+    <!-- Subtle atmospheric brand glow -->
+    <radialGradient id="glow1" cx="380" cy="315" r="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0a66f0" stop-opacity="0.06"/>
+      <stop offset="0.6" stop-color="#0a66f0" stop-opacity="0.02"/>
+      <stop offset="1" stop-color="#0a66f0" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="820" cy="280" r="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0a66f0" stop-opacity="0.04"/>
+      <stop offset="0.5" stop-color="#4d9dff" stop-opacity="0.015"/>
+      <stop offset="1" stop-color="#0a66f0" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Phone screen clip -->
+    <clipPath id="phoneClip">
+      <rect x="760" y="155" width="170" height="310" rx="22"/>
+    </clipPath>
+    <!-- Laptop screen clip -->
+    <clipPath id="laptopClip">
+      <rect x="930" y="215" width="240" height="155" rx="12"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- Atmospheric glows -->
+  <rect width="1200" height="630" fill="url(#glow1)"/>
+  <rect width="1200" height="630" fill="url(#glow2)"/>
+
+  <!-- Subtle grid texture -->
+  <g opacity="0.03">
+    <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="12" cy="12" r="0.8" fill="white"/>
+    </pattern>
+    <rect width="1200" height="630" fill="url(#dots)"/>
+  </g>
+
+  <!-- ── LEFT SIDE: Branding + Typography ── -->
+  <g>
+    <!-- Logo mark: two squares + beam -->
+    <g transform="translate(90, 100) scale(0.28)">
+      <rect x="40" y="36" width="84" height="84" rx="24" fill="#0a66f0"/>
+      <rect x="132" y="136" width="84" height="84" rx="24" fill="#0a66f0"/>
+      <path d="M110 106 L146 142" stroke="#0a66f0" stroke-width="28" stroke-linecap="round"/>
+    </g>
+
+    <!-- Brand name -->
+    <text x="134" y="130" fill="white" font-family="-apple-system, BlinkMacSystemFont, SF Pro Display, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="17" font-weight="600" letter-spacing="-0.3" opacity="0.7">ShareText</text>
+
+    <!-- Main statement — large, confident -->
+    <text x="90" y="230" fill="white" font-family="-apple-system, BlinkMacSystemFont, SF Pro Display, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="58" font-weight="600" letter-spacing="-2.2" line-height="1.08">
+      <tspan x="90" dy="0">Move anything</tspan>
+      <tspan x="90" dy="65">between your</tspan>
+      <tspan x="90" dy="65">devices.</tspan>
+    </text>
+
+    <!-- Supporting line -->
+    <text x="90" y="475" fill="#aeaeb2" font-family="-apple-system, BlinkMacSystemFont, SF Pro Text, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="17" font-weight="500" letter-spacing="-0.2">
+      No app. No account. Just connect.
+    </text>
+  </g>
+
+  <!-- ── RIGHT SIDE: Product UI ── -->
+
+  <!-- Connection beam between devices -->
+  <line x1="910" y1="290" x2="950" y2="290" stroke="#0a66f0" stroke-width="1.5" stroke-opacity="0.4"/>
+  <circle cx="930" cy="290" r="4" fill="#0a66f0" fill-opacity="0.5"/>
+
+  <!-- ── PHONE (Sender) ── -->
+  <g>
+    <!-- Phone body -->
+    <rect x="748" y="145" width="195" height="330" rx="28" fill="#111113" stroke="#2a2a2e" stroke-width="1"/>
+    <!-- Status bar -->
+    <rect x="748" y="145" width="195" height="38" rx="28" fill="#18181b"/>
+    <rect x="748" y="165" width="195" height="18" fill="#18181b"/>
+    <!-- Status bar content -->
+    <text x="768" y="170" fill="#7a7a7a" font-family="-apple-system, sans-serif" font-size="11" font-weight="500">9:41</text>
+    <circle cx="926" cy="167" r="2.5" fill="#34c759"/>
+
+    <!-- App header -->
+    <rect x="760" y="188" width="171" height="36" rx="0" fill="#1a1a1e"/>
+    <!-- Logo in header -->
+    <g transform="translate(768, 196) scale(0.06)">
+      <rect x="40" y="36" width="84" height="84" rx="24" fill="white"/>
+      <rect x="132" y="136" width="84" height="84" rx="24" fill="white"/>
+      <path d="M110 106 L146 142" stroke="white" stroke-width="28" stroke-linecap="round"/>
+    </g>
+    <text x="790" y="211" fill="white" font-family="-apple-system, sans-serif" font-size="12" font-weight="600">ShareText</text>
+    <!-- Connected status -->
+    <circle cx="910" cy="208" r="3" fill="#34c759"/>
+    <text x="918" y="211" fill="#34c759" font-family="-apple-system, sans-serif" font-size="10" font-weight="600">Connected</text>
+
+    <!-- Message stream -->
+    <g>
+      <!-- Sent message (blue, right-aligned) -->
+      <rect x="830" y="240" width="85" height="34" rx="12" fill="#0a66f0"/>
+      <rect x="840" y="250" width="65" height="5" rx="2.5" fill="white" opacity="0.9"/>
+      <rect x="840" y="260" width="40" height="5" rx="2.5" fill="white" opacity="0.6"/>
+
+      <!-- Photo attachment (sent) -->
+      <rect x="820" y="282" width="95" height="72" rx="10" fill="#1c1c1e" stroke="#2a2a2e" stroke-width="0.5"/>
+      <!-- Mini landscape photo -->
+      <rect x="820" y="282" width="95" height="50" rx="10" fill="#1a3a2a"/>
+      <rect x="820" y="322" width="95" height="10" fill="#1c1c1e"/>
+      <circle cx="845" cy="298" r="6" fill="#2a5a3a" opacity="0.6"/>
+      <path d="M820 320 L850 300 L870 310 L915 295 L915 332 L820 332Z" fill="#1e4a30" opacity="0.5"/>
+      <text x="828" y="346" fill="#8a8a8a" font-family="-apple-system, sans-serif" font-size="8" font-weight="500">photo.jpg</text>
+      <text x="890" y="346" fill="#5a5a5a" font-family="-apple-system, sans-serif" font-size="7">18.4 MB</text>
+
+      <!-- Sent indicator -->
+      <text x="858" y="372" fill="#34c759" font-family="-apple-system, sans-serif" font-size="9" font-weight="500">✓ Sent</text>
+    </g>
+
+    <!-- Composer area -->
+    <rect x="760" y="390" width="171" height="46" rx="12" fill="#222226" stroke="#333338" stroke-width="0.5"/>
+    <text x="774" y="417" fill="#555" font-family="-apple-system, sans-serif" font-size="10">Paste or drop anything…</text>
+    <!-- Send button -->
+    <circle cx="918" cy="413" r="13" fill="#0a66f0"/>
+    <path d="M913 413 L919 409 L919 417Z" fill="white"/>
+
+    <!-- Safe area bottom -->
+    <rect x="810" y="450" width="30" height="4" rx="2" fill="#444"/>
+  </g>
+
+  <!-- ── LAPTOP (Receiver) ── -->
+  <g>
+    <!-- Laptop lid -->
+    <rect x="920" y="200" width="260" height="180" rx="14" fill="#111113" stroke="#2a2a2e" stroke-width="1"/>
+    <!-- Laptop screen -->
+    <rect x="928" y="208" width="244" height="158" rx="10" fill="#0d0d10"/>
+
+    <!-- Screen content -->
+    <!-- App header -->
+    <rect x="928" y="208" width="244" height="26" fill="#151518"/>
+    <!-- Logo -->
+    <g transform="translate(936, 214) scale(0.04)">
+      <rect x="40" y="36" width="84" height="84" rx="24" fill="white"/>
+      <rect x="132" y="136" width="84" height="84" rx="24" fill="white"/>
+      <path d="M110 106 L146 142" stroke="white" stroke-width="28" stroke-linecap="round"/>
+    </g>
+    <text x="954" y="225" fill="white" font-family="-apple-system, sans-serif" font-size="10" font-weight="600">ShareText</text>
+    <!-- Connected status -->
+    <circle cx="1150" cy="222" r="2.5" fill="#34c759"/>
+    <text x="1158" y="225" fill="#34c759" font-family="-apple-system, sans-serif" font-size="8.5" font-weight="600">Connected</text>
+
+    <!-- Received message (white card on dark bg) -->
+    <rect x="940" y="244" width="80" height="30" rx="10" fill="#1c1c1e" stroke="#2a2a2e" stroke-width="0.5"/>
+    <rect x="950" y="252" width="58" height="4" rx="2" fill="white" opacity="0.8"/>
+    <rect x="950" y="260" width="36" height="4" rx="2" fill="white" opacity="0.5"/>
+
+    <!-- Received photo -->
+    <rect x="940" y="282" width="85" height="64" rx="8" fill="#1c1c1e" stroke="#2a2a2e" stroke-width="0.5"/>
+    <rect x="940" y="282" width="85" height="44" rx="8" fill="#1a3a2a"/>
+    <rect x="940" y="316" width="85" height="10" fill="#1c1c1e"/>
+    <circle cx="962" cy="296" r="5" fill="#2a5a3a" opacity="0.6"/>
+    <path d="M940 314 L966 298 L982 306 L1025 294 L1025 326 L940 326Z" fill="#1e4a30" opacity="0.5"/>
+    <text x="948" y="340" fill="#8a8a8a" font-family="-apple-system, sans-serif" font-size="7" font-weight="500">photo.jpg</text>
+
+    <!-- Received indicator -->
+    <text x="1040" y="356" fill="#34c759" font-family="-apple-system, sans-serif" font-size="8" font-weight="500">✓ Received</text>
+
+    <!-- Laptop base -->
+    <path d="M910 380 L920 375 L1180 375 L1190 380 L1195 385 Q1195 390 1190 390 L910 390 Q905 390 905 385Z" fill="#18181b" stroke="#2a2a2e" stroke-width="0.5"/>
+    <!-- Trackpad hint -->
+    <rect x="1020" y="382" width="60" height="2" rx="1" fill="#2a2a2e"/>
+  </g>
+
+  <!-- Connection line between devices -->
+  <g opacity="0.35">
+    <line x1="910" y1="305" x2="940" y2="305" stroke="#0a66f0" stroke-width="1" stroke-dasharray="3 2"/>
+  </g>
+
+  <!-- Brand accent line at bottom -->
+  <rect x="90" y="580" width="40" height="2" rx="1" fill="#0a66f0" opacity="0.4"/>
+</svg>
