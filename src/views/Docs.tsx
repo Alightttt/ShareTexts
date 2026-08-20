@@ -549,7 +549,7 @@ export function Docs() {
       </header>
 
       <div className="max-w-6xl mx-auto px-6 py-8 flex gap-8">
-        {/* Sidebar Navigation */}
+        {/* Sidebar Navigation — desktop only */}
         <nav className="hidden md:block w-48 shrink-0">
           <div className="sticky top-24 space-y-1">
             {NAV_ITEMS.map((item) => (
@@ -569,28 +569,27 @@ export function Docs() {
           </div>
         </nav>
 
-        {/* Mobile Navigation */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-apple-canvas/90 dark:bg-night-900/90 backdrop-blur-md border-t border-apple-divider dark:border-white/[0.06] px-4 py-2">
-          <div className="flex justify-around">
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveSection(item.id)}
-                className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-[8px] text-[11px] font-medium transition-colors ${
-                  activeSection === item.id
-                    ? 'text-azure-600 dark:text-azure-400'
-                    : 'text-apple-ink-muted dark:text-white/60'
-                }`}
-              >
-                {item.icon}
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Main Content */}
-        <main className="flex-1 min-w-0 pb-24 md:pb-8">
+        <main className="flex-1 min-w-0 pb-20 md:pb-8">
+          {/* Mobile Navigation — horizontal scrollable pills at top of content */}
+          <div className="md:hidden -mx-6 px-6 mb-6 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+            <div className="flex gap-2 min-w-max">
+              {NAV_ITEMS.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveSection(item.id)}
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors ${
+                    activeSection === item.id
+                      ? 'bg-azure-600 text-white shadow-sm'
+                      : 'bg-apple-parchment dark:bg-apple-tile-2 text-apple-ink-muted dark:text-white/60'
+                  }`}
+                >
+                  {item.icon}
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
           {renderSection()}
         </main>
       </div>

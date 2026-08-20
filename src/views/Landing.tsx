@@ -1,16 +1,15 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { motion } from 'motion/react';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { HeroDemo } from '../components/HeroDemo';
-import { Send, Inbox } from 'lucide-react';
+import { Send, Inbox, Zap, Shield, Globe, Clock, Smartphone, Monitor, ArrowRight } from 'lucide-react';
 import { LiveUsers } from '../components/LiveUsers';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { InstallPrompt } from '../components/InstallPrompt';
 
 // Below-the-fold sections load as separate chunks — the hero paints with only
 // the critical JS, and each story section streams in when it nears the viewport.
-const HowItWorks = lazy(() => import('../components/HowItWorks').then(m => ({ default: m.HowItWorks })));
 const PrivacyPromise = lazy(() => import('../components/PrivacyPromise').then(m => ({ default: m.PrivacyPromise })));
 const Faq = lazy(() => import('../components/Faq').then(m => ({ default: m.Faq })));
 
@@ -39,6 +38,30 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
   const { createSession } = useSession();
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+
+  // Dot grid hover tracking — CSS custom properties drive a radial glow
+  // that follows the pointer. Pure GPU-composited: left + top + scale
+  // on a fixed pseudo-element; no React re-renders.
+  useEffect(() => {
+    const el = document.querySelector('.dot-grid-bg') as HTMLElement | null;
+    if (!el) return;
+    const onMove = (e: MouseEvent) => {
+      el.style.setProperty('--dot-hover-x', `${e.clientX}px`);
+      el.style.setProperty('--dot-hover-y', `${e.clientY + window.scrollY}px`);
+      el.style.setProperty('--dot-hover-scale', '1');
+      el.style.setProperty('--dot-hover-opacity', '1');
+    };
+    const onLeave = () => {
+      el.style.setProperty('--dot-hover-scale', '0.6');
+      el.style.setProperty('--dot-hover-opacity', '0');
+    };
+    window.addEventListener('mousemove', onMove, { passive: true });
+    window.addEventListener('mouseleave', onLeave);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseleave', onLeave);
+    };
+  }, []);
 
   // Focus management for hash navigation — after a user clicks a nav link,
   // move focus to the section heading so keyboard/AT users land in context.
@@ -101,15 +124,15 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
         </div>
       </header>
 
-      {/* ============ HERO — a natural two-part frame. Copy leads on the left,
-          and the live demo — the actual product in miniature — sits beside it.
-          No centered stack: one quiet idea, then the working proof, side by
-          side on desktop, stacked on mobile. ============ */}
+      {/* ============ HERO — vertically centered on desktop, compact on mobile.
+          The product is the hero: copy on the left, live demo on the right.
+          On mobile, copy stacks above the demo so the first viewport shows
+          headline + CTA + a peek of both devices. ============ */}
       <section
-        className="px-6 pt-10 sm:pt-16 pb-12 sm:pb-16 relative z-10"
+        className="px-6 min-h-[calc(100dvh-48px)] sm:min-h-0 flex items-center py-12 sm:py-16 lg:py-20 relative z-10"
         aria-labelledby="hero-title"
       >
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-8 items-center">
+        <div className="max-w-6xl mx-auto w-full grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-10 items-center">
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
@@ -119,7 +142,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             {/* Hero headline — premium, editorial, device-first */}
             <h1
               id="hero-title"
-              className="text-[34px] sm:text-[42px] lg:text-[48px] font-semibold text-apple-ink dark:text-white tracking-[-0.035em] leading-[1.08] max-w-[14ch]"
+              className="text-[36px] sm:text-[44px] lg:text-[52px] font-semibold text-apple-ink dark:text-white tracking-[-0.035em] leading-[1.06] max-w-[14ch]"
             >
               Move anything between your devices.
             </h1>
@@ -185,11 +208,95 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
         </div>
       </section>
 
+      {/* ============ USE CASES — visual cards showing what you can move ============ */}
+      <section className="px-6 py-16 sm:py-20 relative z-10">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-40px' }}
+            transition={{ duration: 0.6, ease: EASE }}
+            className="text-center mb-10"
+          >
+            <h2 className="text-[26px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-[-0.03em]">
+              What people move with ShareText
+            </h2>
+            <p className="mt-3 text-[15px] text-apple-ink-muted dark:text-white/60 max-w-md mx-auto">
+              From quick links to original photos — anything that belongs on the other screen.
+            </p>
+          </motion.div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {[
+              { icon: <Smartphone className="w-5 h-5" />, title: 'Phone to laptop', desc: 'A link, photo, or note from your phone to your computer.', color: 'bg-azure-600/10 text-azure-600 dark:text-azure-400' },
+              { icon: <Monitor className="w-5 h-5" />, title: 'iPhone to Windows', desc: 'No AirDrop needed. Works across any two devices with a browser.', color: 'bg-[#B26A00]/10 text-[#B26A00] dark:text-[#F3B44C]' },
+              { icon: <Zap className="w-5 h-5" />, title: 'Error logs & code', desc: 'Move a stack trace or snippet without emailing it to yourself.', color: 'bg-[#1C9A61]/10 text-[#1C9A61] dark:text-[#55D18C]' },
+              { icon: <Shield className="w-5 h-5" />, title: 'Private content', desc: 'Text, links, or files you want to hand off without a permanent copy.', color: 'bg-[#8B5CF6]/10 text-[#8B5CF6] dark:text-[#A78BFA]' },
+            ].map((item, i) => (
+              <motion.div
+                key={item.title}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-30px' }}
+                transition={{ duration: 0.5, delay: i * 0.08, ease: EASE }}
+                className="p-5 sm:p-6 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3 text-left hover:shadow-card transition-shadow"
+              >
+                <div className={`w-10 h-10 rounded-[12px] ${item.color} flex items-center justify-center mb-3`}>
+                  {item.icon}
+                </div>
+                <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-1">{item.title}</h3>
+                <p className="text-[13px] text-apple-ink-muted dark:text-white/60 leading-relaxed">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ HOW IT WORKS — simple three-step visual ============ */}
+      <section className="px-6 py-16 sm:py-20 bg-apple-parchment/50 dark:bg-night-950/50 relative z-10">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-40px' }}
+            transition={{ duration: 0.6, ease: EASE }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-[26px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-[-0.03em]">
+              Three steps. That is it.
+            </h2>
+          </motion.div>
+          <div className="grid sm:grid-cols-3 gap-6 sm:gap-8">
+            {[
+              { step: '1', title: 'Open', desc: 'Open ShareText on both devices.', icon: <Globe className="w-5 h-5" /> },
+              { step: '2', title: 'Pair', desc: 'Match the code or scan the QR.', icon: <ArrowRight className="w-5 h-5" /> },
+              { step: '3', title: 'Send', desc: 'Move anything. It arrives. Done.', icon: <Send className="w-5 h-5" /> },
+            ].map((item, i) => (
+              <motion.div
+                key={item.step}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-30px' }}
+                transition={{ duration: 0.5, delay: i * 0.1, ease: EASE }}
+                className="text-center"
+              >
+                <div className="w-12 h-12 rounded-full bg-azure-600/10 dark:bg-azure-400/10 flex items-center justify-center mx-auto mb-4">
+                  <span className="text-[18px] font-bold text-azure-600 dark:text-azure-400">{item.step}</span>
+                </div>
+                <h3 className="text-[17px] font-semibold text-apple-ink dark:text-white mb-1.5">{item.title}</h3>
+                <p className="text-[14px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-[260px] mx-auto">
+                  {item.desc}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Below-the-fold sections are lazy chunks. Each loads only when near
-          the viewport. Kept minimal: How it works, Privacy, FAQ. */}
+          the viewport. Kept minimal: Privacy, FAQ. */}
       <Suspense fallback={<div className="h-40" aria-hidden />}>
-        {/* ============ HOW IT WORKS — three plain steps ============ */}
-        <div id="how-it-works" tabIndex={-1}><HowItWorks /></div>
+        {/* ============ PRIVATE BY DESIGN — the trust wedge ============ */}
+        <div id="private" tabIndex={-1}><PrivacyPromise /></div>
 
         {/* ============ PRIVATE BY DESIGN — the trust wedge ============ */}
         <div id="private" tabIndex={-1}><PrivacyPromise /></div>

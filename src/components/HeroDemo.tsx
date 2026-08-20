@@ -256,16 +256,18 @@ export function HeroDemo() {
       // when the array trims, re-animating old items on every send.
       setStream(s => [...s.slice(-2), { ...obj, uid: uidRef.current++ }]);
       setStep('received');
-      if (fromUser) {
-        // Resume the auto-run from where it would have gone next.
-        sceneRef.current = nextScene(sceneRef.current);
-        loopTimers.current.push(setTimeout(() => {
-          setStep('composing');
-          loopTimers.current.push(setTimeout(() => scheduleRef.current(), COMPOSE_MS));
-        }, HOLD_MS));
-      }
+      // Always resume the loop — both for user-initiated and auto-run transfers.
+      sceneRef.current = nextScene(sceneRef.current);
+      loopTimers.current.push(setTimeout(() => {
+        setStep('composing');
+        loopTimers.current.push(setTimeout(() => scheduleRef.current(), COMPOSE_MS));
+      }, HOLD_MS));
     };
-    if (reduced) { finish(); return; }
+    if (reduced) {
+      // In reduced-motion: still cycle, just skip the flight animation.
+      finish();
+      return;
+    }
     measure();
     loopTimers.current.push(setTimeout(finish, FLIGHT_MS));
   }, [reduced, measure, clearLoop]);
@@ -308,14 +310,12 @@ export function HeroDemo() {
   playRef.current = playObject;
   scheduleRef.current = scheduleAuto;
 
+  // Always start the auto-run after a brief pause — even in reduced-motion
+  // mode (the loop will cycle through states without flying effects).
   useEffect(() => {
-    if (reduced) {
-      setAutoArmed(false);
-      return;
-    }
     const t = setTimeout(() => scheduleRef.current(), 900);
     return () => clearTimeout(t);
-  }, [reduced]);
+  }, []);
 
   const send = () => {
     if (step === 'sending') return;
@@ -361,9 +361,20 @@ export function HeroDemo() {
         style={bridge.beam.vertical ? { left: bridge.beam.left, top: bridge.beam.top, height: bridge.beam.height, width: 0, transform: 'translateX(-50%)' } : { left: bridge.beam.left, width: bridge.beam.width, top: bridge.beam.top, transform: 'translateY(-50%)' }}
       >
         <div className={bridge.beam.vertical ? "w-px h-full bg-apple-ink/10 dark:bg-white/10" : "h-px w-full bg-apple-ink/10 dark:bg-white/10"} />
+        <div
+          className={cn(
+            "absolute left-0 rounded-full bg-apple-blue",
+            bridge.beam.vertical ? "top-0 animate-beam-v w-2 h-2 shadow-[0_0_12px_rgba(0,102,204,0.8)]" : "top-1/2 animate-beam h-2 w-2 shadow-[0_0_12px_rgba(0,102,204,0.8)]",
+            reduced && "animate-none opacity-40"
+          )}
+          style={{ ['--travel' as string]: `${bridge.beam.vertical ? bridge.beam.height : bridge.beam.width}px` }}
+        />
         {!reduced && (
           <div
-            className={cn("absolute left-0 w-1.5 h-1.5 rounded-full bg-apple-blue shadow-[0_0_8px_rgba(0,102,204,0.7)]", bridge.beam.vertical ? "top-0 animate-beam-v" : "top-1/2 animate-beam")}
+            className={cn(
+              "absolute left-0 rounded-full bg-apple-blue/50",
+              bridge.beam.vertical ? "top-0 animate-beam-delayed w-1.5 h-1.5" : "top-1/2 animate-beam-delayed h-1.5 w-1.5"
+            )}
             style={{ ['--travel' as string]: `${bridge.beam.vertical ? bridge.beam.height : bridge.beam.width}px` }}
           />
         )}
