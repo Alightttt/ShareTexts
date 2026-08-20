@@ -27,7 +27,7 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:3311',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:3311',
-  'https://share-texts.vercel.app',
+  'https://sharetexts.online',
 ];
 
 function allowedOrigins(env: Env): Set<string> {

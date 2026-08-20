@@ -472,7 +472,7 @@ export class Room extends DurableObject<Env> {
     const slot = await this.assignSlot(cid);
     if (slot === 'full') {
       await count(this.env, 'joins.failed:room_full');
-      return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText session is already full.');
+      return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText room is already full.');
     }
     await this.completeJoin(cid, id);
   }
@@ -481,11 +481,11 @@ export class Room extends DurableObject<Env> {
     const r = await this.loadRoom();
     if (!r) {
       await count(this.env, 'joins.failed:session_expired');
-      return this.ackErr(cid, id, 'SESSION_EXPIRED', 'This session has expired.');
+      return this.ackErr(cid, id, 'SESSION_EXPIRED', 'This room has expired.');
     }
     if (payload?.secret && payload.secret !== r.secret) {
       await count(this.env, 'joins.failed:invalid_session');
-      return this.ackErr(cid, id, 'INVALID_SESSION', 'This session link isn\u2019t valid anymore.');
+      return this.ackErr(cid, id, 'INVALID_SESSION', 'This room link isn\u2019t valid anymore.');
     }
     if (r.peerA === cid || r.peerB === cid) {
       return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.codeAnchor });
@@ -493,7 +493,7 @@ export class Room extends DurableObject<Env> {
     const slot = await this.assignSlot(cid);
     if (slot === 'full') {
       await count(this.env, 'joins.failed:room_full');
-      return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText session is already full.');
+      return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText room is already full.');
     }
     await this.completeJoin(cid, id);
   }
@@ -501,7 +501,7 @@ export class Room extends DurableObject<Env> {
   private async handleResume(cid: string, id?: string, payload?: { secret?: unknown }) {
     const r = await this.loadRoom();
     if (!r || r.secret !== payload?.secret) {
-      return this.ackErr(cid, id, 'SESSION_EXPIRED', 'This session has expired.');
+      return this.ackErr(cid, id, 'SESSION_EXPIRED', 'This room has expired.');
     }
     if (r.peerA === cid || r.peerB === cid) {
       // The peer's transport came back but it still holds its seat (same
@@ -517,7 +517,7 @@ export class Room extends DurableObject<Env> {
     if (r.peerB && !live.includes(r.peerB)) r.peerB = null;
     await this.ctx.storage.put('room', r);
     const slot = await this.assignSlot(cid);
-    if (slot === 'full') return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText session is already full.');
+    if (slot === 'full') return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText room is already full.');
     await this.completeJoin(cid, id);
   }
 
@@ -548,7 +548,7 @@ export class Room extends DurableObject<Env> {
     // right after a reload this socket re-joins via resume_room
     // asynchronously, and the creator's code screen must re-anchor first.
     if (!r || r.secret !== payload?.secret) {
-      return this.ackErr(cid, id, 'INVALID_SESSION', 'This session isn\u2019t valid anymore.');
+      return this.ackErr(cid, id, 'INVALID_SESSION', 'This room isn\u2019t valid anymore.');
     }
     r.codeAnchor = Date.now();
     await this.ctx.storage.put('room', r);

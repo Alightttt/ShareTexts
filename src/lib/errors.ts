@@ -7,11 +7,11 @@
  * server (server.ts). Unknown codes fall back to a generic message.
  */
 const ERROR_COPY: Record<string, string> = {
-  ROOM_FULL: 'This ShareText session is already full.',
+  ROOM_FULL: 'This ShareText room is already full.',
   INVALID_CODE: "That code isn't valid or has expired. Ask for a fresh one.",
-  SESSION_EXPIRED: 'This session has expired. Start a new one.',
-  INVALID_SESSION: "This session link isn't active anymore. Ask for a fresh code.",
-  ROOM_NOT_FOUND: "This session isn't active anymore.",
+  SESSION_EXPIRED: 'This room has expired. Start a new one.',
+  INVALID_SESSION: "This room link isn't active anymore. Ask for a fresh code.",
+  ROOM_NOT_FOUND: "This room isn't active anymore.",
   RATE_LIMITED: 'Too many attempts. Try again in a minute.',
   UNSUPPORTED_VERSION: 'This app is out of date. Refresh to continue.',
   ORIGIN_NOT_ALLOWED: "This browser isn't allowed to connect.",

@@ -142,7 +142,7 @@ function HumanSection() {
         <StepCard
           number={1}
           title="Open ShareText on both devices"
-          description="Visit share-texts.vercel.app in any browser on both your devices. No app download needed."
+          description="Visit sharetexts.online in any browser on both your devices. No app download needed."
           icon={<Monitor className="w-4 h-4 text-apple-ink-muted" />}
         />
         <StepCard
@@ -236,7 +236,7 @@ function AgentSection() {
         <h3 className="text-[18px] font-semibold text-apple-ink dark:text-white mb-4">Send Text</h3>
         <CodeBlock
           language="bash"
-          code={`curl -X POST https://share-texts.vercel.app/api/push \\
+          code={`curl -X POST https://sharetexts.online/api/push \\
   -H "Authorization: Bearer YOUR_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{"roomId":"ROOM_ID","text":"Hello from my computer"}'`}
@@ -247,7 +247,7 @@ function AgentSection() {
         <h3 className="text-[18px] font-semibold text-apple-ink dark:text-white mb-4">Send File</h3>
         <CodeBlock
           language="bash"
-          code={`curl -X POST https://share-texts.vercel.app/api/push?roomId=ROOM_ID \\
+          code={`curl -X POST https://sharetexts.online/api/push?roomId=ROOM_ID \\
   -H "Authorization: Bearer YOUR_TOKEN" \\
   -H "Content-Type: application/octet-stream" \\
   -H "X-File-Name: notes.txt" \\

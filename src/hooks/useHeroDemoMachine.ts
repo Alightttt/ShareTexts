@@ -34,7 +34,7 @@ export const SCENARIOS: Record<DemoScenario, {
   },
   link: {
     label: 'Link',
-    senderPreview: 'share-texts.vercel.app',
+    senderPreview: 'sharetexts.online',
     receiverAction: 'Open',
   },
   photo: {

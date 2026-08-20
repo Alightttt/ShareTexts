@@ -1149,7 +1149,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
             {preview}
             {isLargeText && !expanded && (
               <button
-                onPointerDown={() => setExpanded(true)}
+                onClick={() => setExpanded(true)}
                 className={cn("mt-1.5 flex items-center gap-1 text-[14px] font-semibold active:opacity-70", isMe ? "text-white/90" : "text-apple-blue")}
               >
                 <ChevronDown className="w-4 h-4" /> Show full text
@@ -1157,7 +1157,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
             )}
             {isLargeText && expanded && (
               <button
-                onPointerDown={() => setExpanded(false)}
+                onClick={() => setExpanded(false)}
                 className={cn("mt-1.5 flex items-center gap-1 text-[14px] font-semibold active:opacity-70", isMe ? "text-white/90" : "text-apple-blue")}
               >
                 <ChevronUp className="w-4 h-4" /> Collapse
@@ -1171,7 +1171,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
                   <AlertCircle className="w-3.5 h-3.5" /> Couldn't send
                 </span>
                 <button
-                  onPointerDown={() => { void retryText(msg.id); }}
+                  onClick={() => { void retryText(msg.id); }}
                   className={cn("flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold transition-motion active:scale-95", isMe ? "bg-white/20 text-white" : "bg-apple-parchment dark:bg-apple-tile-2 text-apple-ink dark:text-white")}
                 >
                   <RefreshCw className="w-3 h-3" /> Retry
@@ -1193,7 +1193,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
                 </span>
                 {!isMe && (
                   <button
-                    onPointerDown={() => { void sendBack(); }}
+                    onClick={() => { void sendBack(); }}
                     aria-label="Send back"
                     title="Send back to the other device"
                     className="flex items-center justify-center w-7 h-7 rounded-full transition-motion active:scale-90 text-apple-ink-muted hover:text-apple-blue dark:hover:text-azure-400 hover:bg-apple-divider/60 dark:hover:bg-apple-tile-3"
@@ -1410,7 +1410,7 @@ function ProgressState({ attachment: a, isMe, onBlue }: { attachment: Attachment
 function ActionButton({ icon, label, onClick, active, primary, onBlue }: { icon: React.ReactNode, label: string, onClick: () => void, active?: boolean, primary?: boolean, onBlue?: boolean }) {
   return (
     <button
-      onPointerDown={onClick}
+      onClick={onClick}
       className={cn(
         "flex items-center gap-1.5 px-3 py-2 rounded-full text-[12.5px] font-semibold transition-motion active:scale-95 min-h-[40px]",
         active

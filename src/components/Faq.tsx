@@ -22,7 +22,7 @@ const QA = [
   },
   {
     q: 'Is it private?',
-    a: 'Yes. The transfer is encrypted between the two devices. ShareText is designed for temporary handoffs — when the session ends, the room closes automatically.',
+    a: 'Yes. The transfer is encrypted between the two devices. ShareText is designed for temporary handoffs — when the room closes automatically.',
   },
   {
     q: 'What if my internet drops mid-transfer?',
