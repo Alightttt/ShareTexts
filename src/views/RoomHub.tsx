@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { LiveCodeDisplay } from '../components/LiveCodeDisplay';
 import { QRCodeSVG } from 'qrcode.react';
@@ -78,6 +78,17 @@ export function RoomHub() {
   };
 
   const waitingForReconnect = session.connectionType === 'disconnected' && !session.partnerConnecting;
+
+  // Focus trap for QR dialog + Escape key
+  const qrCloseRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (showQR) {
+      const raf = requestAnimationFrame(() => qrCloseRef.current?.focus());
+      const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowQR(false); };
+      window.addEventListener('keydown', onKey);
+      return () => { cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey); };
+    }
+  }, [showQR]);
 
   return (
     <div data-testid="room-shell" data-app-state="sender-waiting" className="min-h-screen flex flex-col bg-apple-canvas dark:bg-night-950 relative overflow-hidden">
@@ -200,12 +211,12 @@ export function RoomHub() {
               onPointerDown={(e) => e.stopPropagation()}
               className="w-full max-w-[320px] bg-white dark:bg-surface-dark rounded-[20px] p-6 shadow-2xl text-center">
               {/* Close */}
-              <button onPointerDown={() => setShowQR(false)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-apple-parchment dark:bg-apple-tile-2 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors">
+              <button ref={qrCloseRef} onPointerDown={() => setShowQR(false)} aria-label="Close QR code" className="absolute top-4 right-4 w-8 h-8 rounded-full bg-apple-parchment dark:bg-apple-tile-2 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors focus-visible:outline-2 focus-visible:outline-apple-blue">
                 <X className="w-4 h-4" />
               </button>
-              {/* QR code */}
-              <div className="bg-white p-3 rounded-[14px] inline-block mb-4 shadow-sm border border-apple-divider/30">
-                <QRCodeSVG value={qrValue} size={180} />
+              {/* QR code — bigger for easier scanning */}
+              <div className="bg-white p-4 rounded-[16px] inline-block mb-4 shadow-sm border border-apple-divider/30">
+                <QRCodeSVG value={qrValue} size={220} />
               </div>
               <p className="text-[14px] font-semibold text-apple-ink dark:text-white mb-1">
                 Scan with your other device

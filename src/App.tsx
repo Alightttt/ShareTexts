@@ -279,6 +279,10 @@ function AppContent() {
 export default function App() {
   return (
     <SessionProvider>
+      {/* Skip link — keyboard users jump past the hero to main content */}
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-azure-600 focus:text-white focus:rounded-lg focus:text-[14px] focus:font-semibold">
+        Skip to main content
+      </a>
       <AppContent />
     </SessionProvider>
   );

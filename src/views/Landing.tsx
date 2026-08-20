@@ -146,6 +146,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           On mobile, copy stacks above the demo so the first viewport shows
           headline + CTA + a peek of both devices. ============ */}
       <section
+        id="main-content"
         className="px-6 min-h-[calc(100dvh-48px)] sm:min-h-0 flex items-center py-12 sm:py-16 lg:py-20 relative z-10"
         aria-labelledby="hero-title"
       >

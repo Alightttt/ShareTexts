@@ -44,7 +44,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
     }
   }, [session.partnerConnected, phase, session.partnerName]);
 
-  // Progress stepper during connection
+  // Progress stepper during connection — fast, no artificial delays
   const simulateProgress = () => {
     setPhase('connecting');
     setProgressText('Connecting…');
@@ -53,7 +53,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
         setPhase('establishing');
         setProgressText('Establishing secure connection…');
       }
-    }, 2500);
+    }, 1200);
   };
 
   const handleCodeComplete = async (code: string) => {
@@ -62,7 +62,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
     const safetyTimer = setTimeout(() => {
       setPhase('error');
       setError("This is taking longer than expected. Check your connection or try the latest code.");
-    }, 10000);
+    }, 8000);
     try {
       const res = await joinWithCode(code);
       clearTimeout(safetyTimer);
@@ -87,7 +87,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
     const safetyTimer = setTimeout(() => {
       setPhase('error');
       setError("This is taking longer than expected. Try again.");
-    }, 10000);
+    }, 8000);
     let id = idToJoin;
     if (id.includes('?join=')) id = id.split('?join=')[1];
     try {
@@ -250,7 +250,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
               <div className="w-14 h-14 rounded-full bg-status-danger/10 flex items-center justify-center mb-4">
                 <Wifi className="w-7 h-7 text-status-danger" />
               </div>
-              <h2 className="text-[20px] font-semibold text-apple-ink dark:text-white mb-2">Something went wrong</h2>
+              <h2 className="text-[20px] font-semibold text-apple-ink dark:text-white mb-2">Couldn't connect</h2>
               <p className="text-[14px] text-apple-ink-muted dark:text-white/55 mb-6 max-w-[280px]">{error}</p>
               <button onPointerDown={resetToInput}
                 className="px-6 py-3 btn-premium bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[14px] font-semibold shadow-card min-h-[44px]">

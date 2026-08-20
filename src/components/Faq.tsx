@@ -1,13 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
+import { ChevronDown } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 /**
- * The questions people actually ask — answered in plain language, all
- * visible (no accordion, no hidden content). Every answer is a true claim
- * about the app: cross-device browsers, nothing to install, E2E encryption,
- * resumable transfers, 90-second pairing codes. This is the section a
- * hesitant first-time user — or someone helping their parents — reads
- * before they press a button.
+ * The questions people actually ask — answered in plain language.
+ * Uses semantic <details>/<summary> for keyboard and screen reader access.
+ * Each question is independently expandable without hiding content from AT.
  */
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -30,7 +29,8 @@ const QA = [
     a: 'If the connection is interrupted, ShareText will tell you whether this transfer can be retried. For large files, we recommend a stable connection.',
   },
   {
-    q: 'How long does the pairing code last?',     a: "It's fresh for 90 seconds on screen. If it runs out, the app shows a new one.",
+    q: 'How long does the pairing code last?',
+    a: "It\u2019s fresh for 90 seconds on screen. If it runs out, the app shows a new one.",
   },
   {
     q: 'Can a script or AI agent send text into my room?',
@@ -38,9 +38,53 @@ const QA = [
   },
 ];
 
+function FaqItem({ item, index }: { item: typeof QA[number]; index: number; key?: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-40px' }}
+      transition={{ duration: 0.5, delay: index * 0.04, ease: EASE }}
+    >
+      <details
+        open={open}
+        onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
+        className="group py-5"
+      >
+        <summary
+          className={cn(
+            "flex items-center justify-between gap-3 cursor-pointer list-none",
+            "text-[16px] sm:text-[17px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]",
+            "min-h-[44px] py-1 rounded-lg",
+            "focus-visible:outline-2 focus-visible:outline-apple-blue focus-visible:outline-offset-2",
+            "[&::-webkit-details-marker]:hidden [&::marker]:hidden"
+          )}
+          aria-label={`${item.q} — ${open ? 'collapse' : 'expand'}`}
+        >
+          <span>{item.q}</span>
+          <ChevronDown
+            className={cn(
+              "w-4 h-4 shrink-0 text-apple-ink-muted dark:text-white/50 transition-transform duration-200",
+              open && "rotate-180"
+            )}
+            aria-hidden
+          />
+        </summary>
+        <div className="pb-1 pt-1">
+          <p className="text-[14px] sm:text-[15px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed">
+            {item.a}
+          </p>
+        </div>
+      </details>
+    </motion.div>
+  );
+}
+
 export function Faq() {
   return (
-    <section className="px-6 py-24 sm:py-32 bg-apple-canvas dark:bg-night-900">
+    <section className="px-6 py-24 sm:py-32 bg-apple-canvas dark:bg-night-900" aria-labelledby="faq-heading">
       <div className="max-w-2xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -58,21 +102,7 @@ export function Faq() {
 
         <div className="mt-10 divide-y divide-apple-divider dark:divide-white/[0.07]">
           {QA.map((item, i) => (
-            <motion.div
-              key={item.q}
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.5, delay: i * 0.04, ease: EASE }}
-              className="py-6"
-            >
-              <h3 className="text-[16px] sm:text-[17px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">
-                {item.q}
-              </h3>
-              <p className="mt-2 text-[14px] sm:text-[15px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed">
-                {item.a}
-              </p>
-            </motion.div>
+            <FaqItem key={item.q} item={item} index={i} />
           ))}
         </div>
       </div>

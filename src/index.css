@@ -124,6 +124,7 @@
     font-size: 17px;
     line-height: 1.44;
     letter-spacing: -0.022em;
+    overflow-x: clip;
   }
   
   /* Dark canvas: driven by the `.dark` class. Semantic tokens override via
