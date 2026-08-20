@@ -90,7 +90,7 @@ export function signalingConfigIssue(): string | null {
   if (import.meta.env.DEV) return null;
   if (mode === 'cloudflare' && url) return null;
   if (mode === 'socketio' && url) return null;
-  return "This build has no signaling server configured. Add VITE_SIGNALING_URL (Cloudflare Worker) or VITE_SOCKET_URL (Node server) to the deployment's build-time environment, then redeploy.";
+  return "ShareText's connection service isn't configured for this deployment. The hosting environment is missing the signaling server URL.";
 }
 
 let instance: SignalingSocket | null = null;

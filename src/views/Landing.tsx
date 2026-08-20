@@ -77,8 +77,8 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
       clearTimeout(timeout);
       setIsCreating(false);
       const msg = e.message || "Couldn't start the connection.";
-      if (msg.includes('trouble connecting') || msg.includes('reach ShareText') || msg.includes('signaling')) {
-        setCreateError("ShareText can't reach its connection service. Check your internet and try again.");
+      if (msg.includes('trouble connecting') || msg.includes('reach ShareText') || msg.includes('signaling') || msg.includes('configured') || msg.includes('connection service')) {
+        setCreateError("ShareText can't reach its connection service right now. This usually means the backend is being updated — try again in a moment.");
       } else {
         setCreateError(msg);
       }

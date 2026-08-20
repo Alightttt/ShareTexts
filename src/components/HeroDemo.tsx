@@ -399,23 +399,6 @@ export function HeroDemo() {
         <ShareTextLogo size={18} className="text-apple-blue" />
       </div>
 
-      {/* Mobile bridge — simple vertical line with center node */}
-      <div className="sm:hidden flex flex-col items-center -my-1 relative z-10">
-        <div className="w-px h-8 bg-apple-ink/10 dark:bg-white/10" />
-        <div className="w-6 h-6 rounded-full bg-white dark:bg-[#1c1c1e] border border-apple-divider/50 dark:border-apple-tile-3/50 flex items-center justify-center shadow-xs z-10">
-          <ShareTextLogo size={12} className="text-apple-blue" />
-        </div>
-        <div className="w-px h-8 bg-apple-ink/10 dark:bg-white/10" />
-        {/* Traveling dot during flight */}
-        {!reduced && (
-          <motion.div
-            className="absolute top-0 left-1/2 -translate-x-1/2 w-[5px] h-[5px] rounded-full bg-apple-blue shadow-[0_0_5px_rgba(10,102,240,0.4)]"
-            animate={isSending ? { y: [0, 76] } : { y: 0, opacity: 0 }}
-            transition={{ duration: FLIGHT_MS / 1000, ease: [0.32, 0.72, 0, 1] }}
-          />
-        )}
-      </div>
-
       <div className="flex flex-col sm:flex-row items-center sm:justify-center gap-0 sm:gap-16 px-0 sm:px-6 relative">
         {/* ================= PHONE — the sender. ================= */}
         <div data-device="phone" className="flex flex-col items-center">
@@ -548,6 +531,23 @@ export function HeroDemo() {
             </div>
           </PhoneFrame>
           <DeviceLabel>Your phone</DeviceLabel>
+        </div>
+
+        {/* Mobile bridge — positioned BETWEEN phone and laptop */}
+        <div className="sm:hidden flex flex-col items-center -my-1 relative z-10">
+          <div className="w-px h-8 bg-apple-ink/10 dark:bg-white/10" />
+          <div className="w-6 h-6 rounded-full bg-white dark:bg-[#1c1c1e] border border-apple-divider/50 dark:border-apple-tile-3/50 flex items-center justify-center shadow-xs z-10">
+            <ShareTextLogo size={12} className="text-apple-blue" />
+          </div>
+          <div className="w-px h-8 bg-apple-ink/10 dark:bg-white/10" />
+          {/* Traveling dot during flight */}
+          {!reduced && (
+            <motion.div
+              className="absolute top-0 left-1/2 -translate-x-1/2 w-[5px] h-[5px] rounded-full bg-apple-blue shadow-[0_0_5px_rgba(10,102,240,0.4)]"
+              animate={isSending ? { y: [0, 76] } : { y: 0, opacity: 0 }}
+              transition={{ duration: FLIGHT_MS / 1000, ease: [0.32, 0.72, 0, 1] }}
+            />
+          )}
         </div>
 
         {/* ================= LAPTOP — the receiver. ================= */}
