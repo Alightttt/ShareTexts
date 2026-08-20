@@ -47,12 +47,11 @@ type Step = 'ready' | 'sending' | 'received' | 'composing';
 
 // One motion language: a short lift, a 1.15s travel, a spring landing, and a
 // quiet compose-in. The visitor's transfers use the same arc as the auto-run.
-const PRE_LAUNCH_MS = 260;
-const FLIGHT_MS = 1150;
-const HOLD_MS = 2900;    // how long the received object stays on the laptop
-const COMPOSE_MS = 850;  // the next object composing into the phone
-const READY_MS = 2600;   // how long the auto-run waits before sending
-const TAKEOVER_MS = 6000; // if the visitor interacts but doesn't send, the demo resumes
+const FLIGHT_MS = 1200;   // payload travels across bridge
+const HOLD_MS = 2400;     // received state holds on laptop
+const COMPOSE_MS = 900;   // next object composes into phone
+const READY_MS = 2200;    // auto-run waits before sending
+const TAKEOVER_MS = 6000; // visitor interaction timeout before resume
 
 /** Tiny per-device connection chip — the only status text in the demo. */
 function DeviceStatus({ state }: { state: 'connected' | 'sending' | 'sent' | 'receiving' | 'received' }) {
@@ -351,6 +350,12 @@ export function HeroDemo() {
     isSending ? 'receiving' : landed ? 'received' : 'connected';
   const composerVisible = step === 'ready' || step === 'composing';
 
+  // Phase labels for the accessibility tree and visual indicator
+  const phaseLabel = step === 'ready' ? 'Ready to send'
+    : step === 'sending' ? 'Sending'
+    : step === 'received' ? 'Received'
+    : step === 'composing' ? 'Preparing' : 'Connected';
+
   return (
     <div
       ref={containerRef}
@@ -360,8 +365,16 @@ export function HeroDemo() {
       data-landed-text={landed?.text ?? ''}
       data-auto={autoArmed ? 'on' : 'off'}
       className="relative w-full max-w-[920px] mx-auto select-none min-h-[540px] sm:min-h-[480px] lg:min-h-[520px]"
-      aria-hidden
+      role="img"
+      aria-label={`Preview: ShareText transfers a ${pending?.kind || 'file'} from a phone to a laptop. ${phaseLabel}.`}
     >
+      {/* Preview label — clearly marks this as a demonstration, not a real room */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-apple-parchment/80 dark:bg-apple-tile-2/80 backdrop-blur-sm border border-apple-divider/50 dark:border-apple-tile-3/50 text-[11px] font-medium text-apple-ink-muted dark:text-white/50">
+          <span className="w-1.5 h-1.5 rounded-full bg-azure-600/60 dark:bg-azure-400/60" />
+          Preview
+        </span>
+      </div>
       {/* Connection beam — horizontal on desktop, vertical when stacked. The
           packet travels via transform only (--travel injected from the
           measured geometry) — never `left`/`top`, which would force layout
@@ -374,7 +387,7 @@ export function HeroDemo() {
         <div
           className={cn(
             "absolute left-0 rounded-full bg-apple-blue",
-            bridge.beam.vertical ? "top-0 animate-beam-v w-2 h-2 shadow-[0_0_12px_rgba(0,102,204,0.8)]" : "top-1/2 animate-beam h-2 w-2 shadow-[0_0_12px_rgba(0,102,204,0.8)]",
+            bridge.beam.vertical ? "top-0 animate-beam-v w-[7px] h-[7px] shadow-[0_0_6px_rgba(10,102,240,0.5)]" : "top-1/2 animate-beam h-[7px] w-[7px] shadow-[0_0_6px_rgba(10,102,240,0.5)]",
             reduced && "animate-none opacity-40"
           )}
           style={{ ['--travel' as string]: `${bridge.beam.vertical ? bridge.beam.height : bridge.beam.width}px` }}
@@ -392,7 +405,7 @@ export function HeroDemo() {
 
       {/* Center node — the ShareText mark at the midpoint of the bridge. */}
       <div
-        className="absolute w-9 h-9 rounded-full shadow-card flex items-center justify-center bg-white dark:bg-[#1c1c1e] border border-apple-divider dark:border-apple-tile-3 z-10"
+        className="absolute w-8 h-8 rounded-full shadow-xs flex items-center justify-center bg-white dark:bg-[#1c1c1e] border border-apple-divider/60 dark:border-apple-tile-3/60 z-10"
         style={{
           left: bridge.nodePos.x,
           top: bridge.nodePos.y,
@@ -404,10 +417,10 @@ export function HeroDemo() {
         <ShareTextLogo size={18} className="text-apple-blue" />
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center sm:justify-center gap-10 sm:gap-20 px-2 sm:px-6 relative">
+      <div className="flex flex-col sm:flex-row items-center sm:justify-center gap-6 sm:gap-16 px-2 sm:px-6 relative">
         {/* ================= PHONE — the sender. ================= */}
         <div data-device="phone" className="flex flex-col items-center">
-          <PhoneFrame className="w-[136px] sm:w-[182px] lg:w-[196px]">
+          <PhoneFrame className="w-[130px] sm:w-[170px] lg:w-[190px]">
             <div ref={phoneScreenRef} className="w-full h-full flex flex-col">
               <RoomHeader status={phoneStatus} label="Your phone" />
               {/* Sent stream */}
@@ -543,7 +556,7 @@ export function HeroDemo() {
 
         {/* ================= LAPTOP — the receiver. ================= */}
         <div data-device="laptop" className="flex flex-col items-center">
-          <LaptopFrame className="w-[268px] sm:w-[360px] lg:w-[396px]">
+          <LaptopFrame className="w-[240px] sm:w-[340px] lg:w-[380px]">
             <div ref={laptopScreenRef} className="w-full h-full flex flex-col">
               <RoomHeader status={laptopStatus} label="Your laptop" />
               <div ref={laptopTargetRef} className="flex-1 flex flex-col items-center justify-center gap-[7px] sm:gap-2.5 px-3">

@@ -7,16 +7,62 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* System-first: SF Pro on Apple, Segoe on Windows, Roboto/Helvetica elsewhere.
-     Explicit SF names let macOS pick the optical variant before falling back. */
+  /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     SHARETEXT DESIGN SYSTEM
+     A calm, precise, premium visual language.
+     Blue = action/connection. Green = received. Amber = waiting.
+     Red = error. Neutral = information.
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+  /* ── Typography ─────────────────────────────────────────────────────── */
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-  
-  /* Brand / semantic colors */
+
+  /* ── Brand ──────────────────────────────────────────────────────────── */
+  --color-brand: #0a66f0;
+  --color-brand-strong: #0b55c9;
+  --color-brand-light: #eef5ff;
+  --color-brand-dark: #4d9dff;
+
+  /* ── Surface ────────────────────────────────────────────────────────── */
+  --color-bg: #ffffff;
+  --color-bg-secondary: #f5f5f7;
+  --color-bg-elevated: #fafafc;
+  --color-surface: #ffffff;
+  --color-surface-secondary: #f5f5f7;
+  --color-surface-elevated: #fafafc;
+
+  /* ── Text ───────────────────────────────────────────────────────────── */
+  --color-text: #1d1d1f;
+  --color-text-secondary: #6e6e73;
+  --color-text-muted: #aeaeb2;
+  --color-text-inverse: #ffffff;
+
+  /* ── Border ─────────────────────────────────────────────────────────── */
+  --color-border: #e5e5ea;
+  --color-border-subtle: #f0f0f5;
+  --color-border-strong: #c7c7cc;
+
+  /* ── Status ─────────────────────────────────────────────────────────── */
+  --color-success: #34c759;
+  --color-success-light: #e8f9ec;
+  --color-warning: #ff9500;
+  --color-warning-light: #fff4e5;
+  --color-error: #ff3b30;
+  --color-error-light: #ffeaea;
+
+  /* ── Focus ──────────────────────────────────────────────────────────── */
+  --color-focus: #0a66f0;
+
+  /* ── Semantic aliases (used by components) ──────────────────────────── */
+  --color-apple-canvas: #ffffff;
+  --color-apple-parchment: #f5f5f7;
+  --color-apple-pearl: #fafafc;
+  --color-apple-ink: #1d1d1f;
+  --color-apple-ink-muted: #7a7a7a;
+  --color-apple-ink-muted-80: #333333;
   --color-apple-blue: #0066cc;
   --color-apple-blue-focus: #0071e3;
   --color-apple-blue-dark: #2997ff;
-  
-  /* Azure scale — the blue aesthetic */
   --color-azure-50: #eef5ff;
   --color-azure-100: #d9e9ff;
   --color-azure-200: #b7d4ff;
@@ -26,39 +72,23 @@
   --color-azure-700: #0b55c9;
   --color-azure-800: #0a46a0;
   --color-azure-900: #0a3d8f;
-  
-  --color-apple-ink: #1d1d1f;
-  --color-apple-ink-muted: #7a7a7a;
-  --color-apple-ink-muted-80: #333333;
-
-  /* Semantic status — the only place status colors should come from */
+  --color-apple-divider: #f0f0f0;
+  --color-apple-hairline: #e0e0e0;
   --color-status-success: #34c759;
   --color-status-warning: #ff9500;
   --color-status-warning-ink: #c77a00;
   --color-status-warning-ink-dark: #ffb340;
   --color-status-danger: #ff3b30;
-
-  /* Dark surfaces — iOS-style elevated tiles */
   --color-surface-dark: #1c1c1e;
   --color-surface-dark-2: #2c2c2e;
-  
-  --color-apple-canvas: #ffffff;
-  --color-apple-parchment: #f5f5f7;
-  --color-apple-pearl: #fafafc;
-  
   --color-apple-tile-1: #272729;
   --color-apple-tile-2: #2a2a2c;
   --color-apple-tile-3: #252527;
-  
-  --color-apple-divider: #f0f0f0;
-  --color-apple-hairline: #e0e0e0;
-
-  /* Night surfaces — navy-tinted black for dark mode */
   --color-night-800: #0b1220;
   --color-night-900: #060a13;
   --color-night-950: #04060c;
 
-  /* Radius scale — controls → cards → sheets → hero frames */
+  /* ── Radius ─────────────────────────────────────────────────────────── */
   --radius-xs: 8px;
   --radius-sm: 12px;
   --radius-md: 16px;
@@ -66,15 +96,14 @@
   --radius-xl: 28px;
   --radius-frame: 36px;
 
-  /* Elevation — quiet by default, deeper only when floating */
+  /* ── Shadows ────────────────────────────────────────────────────────── */
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.04);
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -12px rgb(0 0 0 / 0.14);
   --shadow-float: 0 16px 40px -12px rgb(0 0 0 / 0.2);
   --shadow-device: 0 24px 60px -16px rgb(0 0 0 / 0.28);
   --shadow-inset: inset 0 1px 2px rgb(0 0 0 / 0.05);
 
-  /* Easing tokens — one house curve set for all motion (emilkowalski)
-     Strong ease-out for entrances, strong ease-in-out for on-screen movement,
-     iOS-style drawer curve for sheets. Never hand-roll a curve twice. */
+  /* ── Easing ─────────────────────────────────────────────────────────── */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
@@ -97,14 +126,39 @@
     letter-spacing: -0.022em;
   }
   
-  /* Dark canvas: driven by the `.dark` class (set by the theme toggle or the
-     system preference at boot). Without this, the page chrome behind the app
-     stays white in dark mode. */
+  /* Dark canvas: driven by the `.dark` class. Semantic tokens override via
+     .dark selector below — these are the base light-mode defaults. */
   html.dark body {
     @apply bg-night-950 text-white;
   }
   html:not(.dark) body {
     @apply bg-apple-canvas text-apple-ink;
+  }
+
+  /* ── Dark mode semantic overrides ─────────────────────────────────── */
+  html.dark {
+    --color-bg: #060a13;
+    --color-bg-secondary: #0b1220;
+    --color-bg-elevated: #1c1c1e;
+    --color-surface: #1c1c1e;
+    --color-surface-secondary: #252527;
+    --color-surface-elevated: #2a2a2c;
+    --color-text: #f5f5f7;
+    --color-text-secondary: #a1a1a6;
+    --color-text-muted: #636366;
+    --color-text-inverse: #1d1d1f;
+    --color-border: #38383a;
+    --color-border-subtle: #2c2c2e;
+    --color-border-strong: #48484a;
+    --color-brand-dark: #4d9dff;
+    --color-brand-light: #0a2a4a;
+    --color-success-light: #0a2a14;
+    --color-warning-light: #2a1a05;
+    --color-error-light: #2a0a0a;
+    --color-apple-canvas: #060a13;
+    --color-apple-parchment: #0b1220;
+    --color-apple-divider: #38383a;
+    --color-apple-hairline: #48484a;
   }
   
   h1, h2, h3, h4, h5, h6 {
