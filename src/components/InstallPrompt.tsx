@@ -66,6 +66,7 @@ export function InstallPrompt() {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 24, scale: 0.96 }}
           transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
+          data-testid="install-prompt"
           className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 pl-3 pr-2 py-2 rounded-full bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 shadow-float"
         >
           <span className="w-9 h-9 rounded-full bg-apple-parchment dark:bg-apple-tile-2 flex items-center justify-center shrink-0">
@@ -84,6 +85,7 @@ export function InstallPrompt() {
           </button>
           <button
             onClick={dismiss}
+            data-testid="install-dismiss"
             aria-label="Dismiss install prompt"
             className="w-8 h-8 rounded-full flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/60 dark:hover:bg-apple-tile-3 transition-colors shrink-0"
           >

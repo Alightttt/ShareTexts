@@ -486,6 +486,7 @@ export function ChatView() {
         <div className="flex items-center gap-2 shrink-0">
           <ThemeToggle />
           <button
+            data-testid="connection-details"
             onPointerDown={() => setShowConnectionDetails(!showConnectionDetails)}
             title="Connection & encryption details"
             aria-label="Connection details"
@@ -494,6 +495,7 @@ export function ChatView() {
             <ShieldCheck className="w-[18px] h-[18px]" />
           </button>
           <button
+            data-testid="end-session"
             onPointerDown={() => setConfirmClose(true)}
             aria-label="End room"
             title="End room"
@@ -580,12 +582,14 @@ export function ChatView() {
               <div className="flex flex-col gap-2">
                 <button
                   ref={keepSessionRef}
+                  data-testid="end-session-cancel"
                   onPointerDown={() => setConfirmClose(false)}
                   className="w-full py-3.5 bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white rounded-[14px] text-[15px] font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
                 >
                   Keep Room
                 </button>
                 <button
+                  data-testid="end-session-confirm"
                   onPointerDown={closeSession}
                   className="w-full py-3.5 bg-status-danger hover:bg-[#e0352b] text-white rounded-[14px] text-[15px] font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
                 >
@@ -607,12 +611,13 @@ export function ChatView() {
             role="status"
             className="overflow-hidden bg-status-warning/10 border-b border-status-warning/20"
           >
-            <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-2 text-[14px] font-medium text-status-warning-ink dark:text-status-warning-ink-dark">
+            <div data-testid="disconnect-banner" className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-2 text-[14px] font-medium text-status-warning-ink dark:text-status-warning-ink-dark">
               <span className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse shrink-0" />
                 Your other device disconnected — waiting to reconnect…
               </span>
               <button
+                data-testid="reconnect"
                 onPointerDown={() => void requestReconnect()}
                 className="px-3 py-1.5 rounded-full text-[13px] font-semibold bg-status-warning/15 hover:bg-status-warning/25 transition-colors active:scale-95 shrink-0"
               >
@@ -781,7 +786,7 @@ export function ChatView() {
           <AnimatePresence>
             {errorMsg && (
               <motion.div role="alert" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                <div className="px-4 py-3 bg-status-danger/10 text-status-danger text-[14px] font-medium rounded-xl flex items-center gap-2">
+                <div data-testid="error-message" className="px-4 py-3 bg-status-danger/10 text-status-danger text-[14px] font-medium rounded-xl flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" /> {errorMsg}
                 </div>
               </motion.div>
@@ -1358,20 +1363,20 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
               {complete && (
                 <>
                   {!isMe && (
-                    <ActionButton icon={<ArrowUp />} label="Send back" onClick={() => { void sendBack(); }} onBlue={isMe} />
+                    <ActionButton icon={<ArrowUp />} label="Send back" onClick={() => { void sendBack(); }} onBlue={isMe} testId="send-back" />
                   )}
                   {a.type === 'image' && (
-                    <ActionButton icon={copied ? <Check /> : <Copy />} label={copied ? "Copied" : "Copy"} active={copied} onClick={() => { void copyAttachment(a); }} onBlue={isMe} />
+                    <ActionButton icon={copied ? <Check /> : <Copy />} label={copied ? "Copied" : "Copy"} active={copied} onClick={() => { void copyAttachment(a); }} onBlue={isMe} testId="transfer-copy" />
                   )}
-                  <ActionButton icon={<Share2 />} label={shared ? "Shared" : "Share"} active={shared} onClick={() => { void handleShare(); }} onBlue={isMe} />
-                  <ActionButton icon={saved ? <Check /> : <Download />} label={saved ? "Saved" : "Save"} active={saved} onClick={() => handleDownload(a.url!, a.name)} primary onBlue={isMe} />
+                  <ActionButton icon={<Share2 />} label={shared ? "Shared" : "Share"} active={shared} onClick={() => { void handleShare(); }} onBlue={isMe} testId="transfer-share" />
+                  <ActionButton icon={saved ? <Check /> : <Download />} label={saved ? "Saved" : "Save"} active={saved} onClick={() => handleDownload(a.url!, a.name)} primary onBlue={isMe} testId="transfer-download" />
                 </>
               )}
               {(a.status === 'preparing' || a.status === 'sending' || a.status === 'receiving' || a.status === 'interrupted' || a.status === 'resuming') && (
-                <ActionButton icon={<X />} label="Cancel" onClick={() => { void cancelTransfer(msg.id); }} onBlue={isMe} />
+                <ActionButton icon={<X />} label="Cancel" onClick={() => { void cancelTransfer(msg.id); }} onBlue={isMe} testId="cancel-transfer" />
               )}
               {(a.status === 'failed' || (a.status === 'cancelled' && isMe) || (a.status === 'interrupted' && isMe)) && (
-                <ActionButton icon={<RefreshCw />} label="Retry" onClick={() => { void retryTransfer(msg.id); }} onBlue={isMe} />
+                <ActionButton icon={<RefreshCw />} label="Retry" onClick={() => { void retryTransfer(msg.id); }} onBlue={isMe} testId="retry" />
               )}
             </div>
           </div>
@@ -1407,10 +1412,11 @@ function ProgressState({ attachment: a, isMe, onBlue }: { attachment: Attachment
   );
 }
 
-function ActionButton({ icon, label, onClick, active, primary, onBlue }: { icon: React.ReactNode, label: string, onClick: () => void, active?: boolean, primary?: boolean, onBlue?: boolean }) {
+function ActionButton({ icon, label, onClick, active, primary, onBlue, testId }: { icon: React.ReactNode, label: string, onClick: () => void, active?: boolean, primary?: boolean, onBlue?: boolean, testId?: string }) {
   return (
     <button
       onClick={onClick}
+      data-testid={testId}
       className={cn(
         "flex items-center gap-1.5 px-3 py-2 rounded-full text-[12.5px] font-semibold transition-motion active:scale-95 min-h-[40px]",
         active

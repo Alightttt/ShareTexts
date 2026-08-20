@@ -44,6 +44,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
         onChange={handleChange}
         disabled={isJoining}
         autoFocus
+        data-testid="join-code-input"
         aria-label="Six-digit pairing code"
         aria-describedby={error ? 'live-code-error' : undefined}
         className="absolute inset-0 opacity-0 cursor-default"

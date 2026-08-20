@@ -54,6 +54,7 @@ function FaqItem({ item, index }: { item: typeof QA[number]; index: number; key?
         className="group py-5"
       >
         <summary
+          data-testid="faq-toggle"
           className={cn(
             "flex items-center justify-between gap-3 cursor-pointer list-none",
             "text-[16px] sm:text-[17px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]",

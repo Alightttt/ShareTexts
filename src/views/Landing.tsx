@@ -185,7 +185,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             </div>
 
             {createError && (
-              <div role="alert" className="mt-5 space-y-2">
+              <div role="alert" data-testid="error-message" className="mt-5 space-y-2">
                 <p className="text-[14px] font-medium text-status-danger flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-status-danger" /> {createError}
                 </p>

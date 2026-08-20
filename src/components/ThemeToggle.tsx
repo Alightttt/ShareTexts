@@ -36,6 +36,7 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
   return (
     <button
       type="button"
+      data-testid="theme-toggle"
       onPointerDown={handleToggle}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
