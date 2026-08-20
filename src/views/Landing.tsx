@@ -42,12 +42,16 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  // Dot grid hover: dots near the cursor grow bigger and darker (light mode)
-  // or brighter (dark mode). CSS custom properties on a fixed pseudo-element
-  // position a radial spotlight — no React re-renders, pure compositor.
+  // Dot grid hover: only activates on fine pointer (mouse) with no
+  // reduced-motion preference. Touch/coarse pointers get no reactive
+  // behavior — the dots are purely decorative texture on mobile.
   useEffect(() => {
     const el = document.querySelector('.dot-grid-bg') as HTMLElement | null;
     if (!el) return;
+    // Skip on touch devices and reduced-motion
+    const mqFine = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const mqMotion = window.matchMedia('(prefers-reduced-motion: no-preference)');
+    if (!mqFine.matches || !mqMotion.matches) return;
     let visible = false;
     const onMove = (e: MouseEvent) => {
       el.style.setProperty('--dot-hover-x', `${e.clientX}px`);

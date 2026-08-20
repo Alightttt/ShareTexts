@@ -19,6 +19,23 @@ function useReducedMotion() {
 }
 
 /**
+ * Detect mobile viewport (< 640px = Tailwind sm breakpoint).
+ * Used to switch between the full desktop layout and the simplified
+ * mobile composition that shows SENDER → BRIDGE → RECEIVER above the fold.
+ */
+function useIsMobile() {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const update = () => setMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  return mobile;
+}
+
+/**
  * The transferable objects — text, a photo, a link, a file. The hero runs its
  * own transfer story on a loop (photo → link → file → photo), and the visitor
  * can jump in at any moment: type, paste, or tap a sample and send — the loop
@@ -140,6 +157,7 @@ function ObjectCard({ obj, className }: { obj: TransferObject; className?: strin
 
 export function HeroDemo() {
   const reduced = useReducedMotion();
+  const isMobile = useIsMobile();
   const containerRef = useRef<HTMLDivElement>(null);
   const phoneScreenRef = useRef<HTMLDivElement>(null);
   const laptopScreenRef = useRef<HTMLDivElement>(null);
@@ -356,6 +374,159 @@ export function HeroDemo() {
     : step === 'received' ? 'Received'
     : step === 'composing' ? 'Preparing' : 'Connected';
 
+  /* ═══════════════════════════════════════════════════════════════════
+     MOBILE LAYOUT (< 640px)
+     Simplified vertical composition: SENDER → BRIDGE → RECEIVER.
+     No full device frames — just the essential screen content,
+     larger and more readable. The complete transfer story must
+     be visible above the fold at 390×844.
+     ═══════════════════════════════════════════════════════════════════ */
+  if (isMobile) {
+    return (
+      <div
+        ref={containerRef}
+        data-step={step}
+        className="relative w-full mx-auto select-none"
+        role="img"
+        aria-label={`Preview: ShareText transfers a ${pending?.kind || 'file'} from a phone to a laptop. ${phaseLabel}.`}
+      >
+        {/* Preview label */}
+        <div className="flex justify-center mb-3">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-apple-parchment/80 dark:bg-apple-tile-2/80 backdrop-blur-sm border border-apple-divider/50 dark:border-apple-tile-3/50 text-[11px] font-medium text-apple-ink-muted dark:text-white/50">
+            <span className="w-1.5 h-1.5 rounded-full bg-azure-600/60 dark:bg-azure-400/60" />
+            Preview
+          </span>
+        </div>
+
+        <div className="flex flex-col items-center gap-0 relative">
+          {/* ── SENDER: simplified phone screen ── */}
+          <div className="relative w-[200px]">
+            <div className="rounded-[20px] bg-white dark:bg-[#1c1c1e] border border-apple-divider/60 dark:border-apple-tile-3/60 shadow-card overflow-hidden">
+              <div className="flex items-center justify-between px-3 pt-2.5 pb-1.5 border-b border-apple-divider/40 dark:border-white/[0.06]">
+                <div className="flex items-center gap-1.5">
+                  <ShareTextLogo size={10} className="text-apple-ink dark:text-white" />
+                  <span className="text-[9px] font-semibold text-apple-ink dark:text-white">Your phone</span>
+                </div>
+                <DeviceStatus state={phoneStatus} />
+              </div>
+              <div className="px-3 py-2.5 min-h-[80px] flex flex-col justify-end gap-1.5">
+                <AnimatePresence initial={false}>
+                  {stream.map((obj) => (
+                    <motion.div key={obj.uid} initial={reduced ? { opacity: 1 } : { opacity: 0, y: 6, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: 'spring', bounce: 0.15, duration: 0.4 }} className="self-end max-w-[85%]">
+                      {obj.kind === 'text' ? <TextCard obj={obj} className="text-[9px] px-2.5 py-2" /> : <ObjectCard obj={obj} className="w-[90px]" />}
+                    </motion.div>
+                  ))}
+                  {stream.length === 0 && !isSending && (
+                    <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center gap-1 text-apple-ink-muted/50 py-2">
+                      <Send className="w-3.5 h-3.5 opacity-40" />
+                      <span className="text-[8px] font-medium">Sent things appear here</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+              <div ref={composerRef} className="px-3 pb-3 pt-1">
+                <AnimatePresence mode="wait">
+                  {composerVisible ? (
+                    <motion.div key={`mc-${step}`} initial={reduced ? { opacity: 1 } : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={reduced ? { opacity: 0 } : { opacity: 0, y: -4 }} transition={{ duration: 0.2 }} className="bg-apple-parchment/60 dark:bg-white/[0.06] rounded-[12px] p-2 flex flex-col gap-1.5">
+                      {attach && (
+                        <motion.div key={`ma-${attach.kind}`} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="relative rounded-[8px] bg-white dark:bg-[#1c1c1e] p-1.5 pr-5">
+                          <ObjectCard obj={attach} className="w-[70px]" />
+                          <button type="button" onClick={() => { setAttach(null); touch(); }} tabIndex={-1} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-apple-ink/70 dark:bg-white/70 text-white dark:text-night-900 flex items-center justify-center">
+                            <X className="w-2.5 h-2.5" strokeWidth={3} />
+                          </button>
+                        </motion.div>
+                      )}
+                      <textarea rows={1} value={draft} onChange={(e) => { setDraft(e.target.value); touch(); }} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }} placeholder={attach ? 'Add a note…' : 'Type or paste…'} className="bg-transparent resize-none outline-none w-full text-[10px] leading-snug text-apple-ink dark:text-white placeholder:text-apple-ink-muted/50" />
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          {SAMPLES.map(({ key, Icon, object }) => (
+                            <button key={key} type="button" onClick={() => { setAttach(object); touch(); }} tabIndex={-1} className={cn('w-7 h-7 rounded-full flex items-center justify-center transition-colors', attach?.kind === key ? 'bg-apple-blue/15 text-apple-blue' : 'bg-apple-divider/50 dark:bg-white/[0.06] text-apple-ink-muted')}>
+                              <Icon className="w-3.5 h-3.5" />
+                            </button>
+                          ))}
+                        </div>
+                        <button type="button" onClick={send} disabled={!canSend} className={cn('w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90', canSend ? 'bg-apple-blue text-white shadow-sm' : 'bg-apple-ink/10 dark:bg-white/10 text-apple-ink-muted/50')}>
+                          <Send className="w-3.5 h-3.5" strokeWidth={3} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div key="ms" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-[12px] px-3 py-2 flex items-center justify-between bg-apple-parchment/60 dark:bg-white/[0.06]">
+                      <span className="text-[9px] text-apple-ink-muted/60 font-medium">Sending…</span>
+                      <Send className="w-3 h-3 text-apple-blue/40" strokeWidth={3} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+
+          {/* ── BRIDGE: simple vertical line with traveling dot ── */}
+          <div className="relative w-px h-[48px] bg-apple-ink/[0.08] dark:bg-white/[0.08]">
+            {!reduced && (
+              <motion.div className="absolute left-1/2 -translate-x-1/2 w-[6px] h-[6px] rounded-full bg-apple-blue shadow-[0_0_5px_rgba(10,102,240,0.4)]" animate={isSending ? { y: [0, 42] } : { y: 0, opacity: 0 }} transition={{ duration: FLIGHT_MS / 1000, ease: [0.32, 0.72, 0, 1] }} />
+            )}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white dark:bg-[#1c1c1e] border border-apple-divider/50 dark:border-apple-tile-3/50 flex items-center justify-center shadow-xs z-10">
+              <ShareTextLogo size={12} className="text-apple-blue" />
+            </div>
+          </div>
+
+          {/* ── RECEIVER: simplified laptop screen ── */}
+          <div className="relative w-[220px]">
+            <div className="rounded-[14px] bg-white dark:bg-[#1c1c1e] border border-apple-divider/60 dark:border-apple-tile-3/60 shadow-card overflow-hidden">
+              <div className="flex items-center justify-between px-3 pt-2 pb-1.5 border-b border-apple-divider/40 dark:border-white/[0.06]">
+                <div className="flex items-center gap-1.5">
+                  <ShareTextLogo size={10} className="text-apple-ink dark:text-white" />
+                  <span className="text-[9px] font-semibold text-apple-ink dark:text-white">Your laptop</span>
+                </div>
+                <DeviceStatus state={laptopStatus} />
+              </div>
+              <div ref={laptopTargetRef} className="px-3 py-3 min-h-[65px] flex flex-col items-center justify-center">
+                <AnimatePresence mode="wait">
+                  {isSending && !reduced ? (
+                    <motion.div key="mr" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center gap-1.5 w-full">
+                      <div className="w-full h-1 rounded-full bg-apple-ink/8 dark:bg-white/8 overflow-hidden">
+                        <motion.div className="h-full rounded-full bg-apple-blue origin-left" initial={{ scaleX: 0 }} animate={{ scaleX: 0.94 }} transition={{ duration: FLIGHT_MS / 1000, ease: [0.4, 0, 0.2, 1] }} />
+                      </div>
+                      <span className="text-[8px] font-medium text-apple-ink-muted flex items-center gap-1"><span className="w-1 h-1 rounded-full bg-apple-blue animate-pulse" /> Receiving…</span>
+                    </motion.div>
+                  ) : landed ? (
+                    <motion.div key={`ml-${landed.kind}-${stream.length}`} initial={reduced ? { opacity: 1 } : { opacity: 0, y: 8, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ type: 'spring', bounce: 0, duration: 0.45 }} className="w-full">
+                      {landed.kind === 'text' ? (
+                        <div className="bg-apple-parchment/60 dark:bg-white/[0.06] rounded-[10px] p-2.5"><p className="text-[10px] leading-snug text-apple-ink dark:text-white whitespace-pre-wrap break-words line-clamp-3">{landed.text}</p></div>
+                      ) : (
+                        <ObjectCard obj={landed} className="w-full" />
+                      )}
+                      <div className="flex items-center justify-center gap-1 mt-1.5"><DeviceStatus state="received" /></div>
+                    </motion.div>
+                  ) : (
+                    <motion.div key="mw" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center gap-1 text-apple-ink-muted/50">
+                      <Send className="w-3.5 h-3.5 opacity-30" />
+                      <span className="text-[8px] font-medium">Sent things land here</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Flying payload on mobile — vertical travel */}
+        <AnimatePresence>
+          {isSending && !reduced && pending && (
+            <motion.div key={`fm-${pending.kind}-${stream.length}`} className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none" style={{ top: 'calc(50% - 50px)' }} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, y: [0, 50], scale: [0.9, 1.02, 1] }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: FLIGHT_MS / 1000, ease: [0.32, 0.72, 0, 1] }}>
+              {pending.kind === 'text' ? <div className="max-w-[120px]"><TextCard obj={pending} className="text-[9px] px-2.5 py-2" /></div> : <ObjectCard obj={pending} className="w-[80px] shadow-none" />}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     DESKTOP LAYOUT (>= 640px)
+     Full device frames, interactive composer, measured beam geometry.
+     ═══════════════════════════════════════════════════════════════════ */
   return (
     <div
       ref={containerRef}
@@ -364,11 +535,11 @@ export function HeroDemo() {
       data-landed-kind={landed?.kind ?? ''}
       data-landed-text={landed?.text ?? ''}
       data-auto={autoArmed ? 'on' : 'off'}
-      className="relative w-full max-w-[920px] mx-auto select-none min-h-[540px] sm:min-h-[480px] lg:min-h-[520px]"
+      className="relative w-full max-w-[920px] mx-auto select-none min-h-[480px] lg:min-h-[520px]"
       role="img"
       aria-label={`Preview: ShareText transfers a ${pending?.kind || 'file'} from a phone to a laptop. ${phaseLabel}.`}
     >
-      {/* Preview label — clearly marks this as a demonstration, not a real room */}
+      {/* Preview label */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20">
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-apple-parchment/80 dark:bg-apple-tile-2/80 backdrop-blur-sm border border-apple-divider/50 dark:border-apple-tile-3/50 text-[11px] font-medium text-apple-ink-muted dark:text-white/50">
           <span className="w-1.5 h-1.5 rounded-full bg-azure-600/60 dark:bg-azure-400/60" />
