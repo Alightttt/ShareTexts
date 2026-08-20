@@ -104,7 +104,7 @@ export function PhoneFrame({
         <div className="relative rounded-[clamp(14px,5.6%,30px)] bg-[#0b0b0d] p-[2.4%]">
           <div
             className={cn(
-              'relative w-full aspect-[9/19.2] rounded-[clamp(11px,4.4%,24px)] overflow-hidden bg-apple-parchment dark:bg-black',
+              'relative w-full aspect-[9/19.2] rounded-[clamp(11px,4.4%,24px)] overflow-hidden bg-[#0a0f1a] dark:bg-[#f5f3ef]',
               screenClassName
             )}
           >
@@ -149,7 +149,7 @@ export function LaptopFrame({
         <div className="relative rounded-[clamp(5px,1.6%,13px)] bg-[#121214] p-[2%]">
           <div
             className={cn(
-              'relative w-full aspect-[16/10] rounded-[clamp(3px,0.9%,8px)] overflow-hidden bg-apple-canvas dark:bg-black',
+              'relative w-full aspect-[16/10] rounded-[clamp(3px,0.9%,8px)] overflow-hidden bg-[#0a0f1a] dark:bg-[#f5f3ef]',
               screenClassName
             )}
           >

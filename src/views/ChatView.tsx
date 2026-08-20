@@ -462,19 +462,11 @@ export function ChatView() {
           {/* Show the OTHER device's icon — phone on PC, PC/laptop on phone */}
           <PartnerDeviceIcon />
           <span className="flex items-center gap-2 min-w-0">
-            <span className="text-[16px] font-semibold text-apple-ink dark:text-white leading-tight truncate">
-              {session.partnerName || 'Other device'}
-            </span>
             {/* One line: name + live status chip together. */}
-            <span className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold whitespace-nowrap",
-              session.connectionType === 'relay'
-                ? "bg-status-warning/10 text-status-warning-ink dark:text-status-warning-ink-dark"
-                : "bg-status-success/10 text-status-success"
-            )}>
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold whitespace-nowrap bg-status-success/10 text-status-success">
               <span className={cn(
                 "w-1.5 h-1.5 rounded-full",
-                session.connectionType === 'relay' ? "bg-status-warning" : "bg-status-success",
+                disconnected ? "bg-apple-ink-muted" : "bg-status-success",
                 !disconnected && "animate-pulse"
               )} />
               {disconnected ? 'Offline' : 'Connected'}
@@ -511,9 +503,10 @@ export function ChatView() {
             <motion.div
               initial={{ opacity: 0, y: -5, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -5, scale: 0.95 }}
-              transition={{ type: "spring", bounce: 0, duration: 0.3 }}
+              exit={{ opacity: 0, y: 5, scale: 0.95 }}
+              transition={{ type: "spring", bounce: 0, duration: 0.25 }}
               className="absolute top-[calc(100%+8px)] left-4 sm:left-6 p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[14px] shadow-lg min-w-[240px] max-w-[320px] z-30"
+              onPointerDown={(e) => { if (e.target === e.currentTarget) setShowConnectionDetails(false); }}
             >
               <div className="flex items-center gap-2 text-[13.5px] font-semibold text-apple-ink dark:text-white mb-1.5">
                 <ShieldCheck className="w-4 h-4 text-status-success" />
@@ -1333,17 +1326,18 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
 
           {/* Footer: status + time + actions — tighter, better aligned */}
           <div className={cn(
-            "px-3 py-2 border-t flex items-center justify-between gap-1.5",
+            "px-3 py-2 border-t flex items-center gap-2",
             isMe ? "border-white/15 bg-white/8" : "border-apple-divider/30 dark:border-apple-tile-3/50 bg-apple-canvas/20 dark:bg-black/5"
           )}>
-            <div className="flex flex-col min-w-0">
+            <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
               {a.status === 'complete' ? (
-                <span className={cn("text-[11.5px] font-medium flex items-center gap-1", isMe ? "text-white/75" : "text-apple-ink-muted")}>
+                <span className={cn("text-[11px] font-medium flex items-center gap-1 flex-wrap", isMe ? "text-white/75" : "text-apple-ink-muted")}>
                   {isMe ? <DeliveryTick delivered={msg.delivered} seen={msg.seen} onBlue /> : msg.source === 'push' ? (
                     <span className="font-semibold flex items-center gap-1"><Terminal className="w-3 h-3" /> Sent from your computer</span>
                   ) : <span className="font-semibold">Received</span>}
                   {a.verified && <span className="flex items-center gap-0.5" title="The bytes were checked against the original — nothing was altered"><ShieldCheck className="w-3 h-3" /> Verified</span>}
-                  {' • '}{formatBytes(a.size)}{' • '}{timeOf(msg.timestamp)}
+                  <span className="hidden sm:inline">{' • '}{formatBytes(a.size)}{' • '}{timeOf(msg.timestamp)}</span>
+                  <span className="sm:hidden">{' • '}{formatBytes(a.size)}</span>
                 </span>
               ) : (
                 <span className={cn("text-[12.5px] font-semibold", a.status === 'failed' ? (isMe ? "text-white" : "text-status-danger") : a.status === 'cancelled' || a.status === 'interrupted' ? (isMe ? "text-white/80" : "text-apple-ink-muted") : isMe ? "text-white" : "text-apple-blue")}>

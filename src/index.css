@@ -304,16 +304,16 @@
    low-end devices). The travel distance is injected as `--travel` (px) by
    the components, which already measure the beam geometry. */
 @keyframes beam-travel {
-  from { transform: translateY(-50%) translateX(0); opacity: 0; }
-  8% { opacity: 1; }
-  92% { opacity: 1; }
-  to { transform: translateY(-50%) translateX(var(--travel, 176px)); opacity: 0; }
+  from { transform: translateY(-50%) translateX(0); opacity: 0; box-shadow: 0 0 0 rgba(10,102,240,0); }
+  8% { opacity: 1; box-shadow: 0 0 8px rgba(10,102,240,0.4); }
+  92% { opacity: 1; box-shadow: 0 0 6px rgba(10,102,240,0.3); }
+  to { transform: translateY(-50%) translateX(var(--travel, 176px)); opacity: 0; box-shadow: 0 0 0 rgba(10,102,240,0); }
 }
 @keyframes beam-travel-v {
-  from { transform: translateX(-50%) translateY(0); opacity: 0; }
-  8% { opacity: 1; }
-  92% { opacity: 1; }
-  to { transform: translateX(-50%) translateY(var(--travel, 120px)); opacity: 0; }
+  from { transform: translateX(-50%) translateY(0); opacity: 0; box-shadow: 0 0 0 rgba(10,102,240,0); }
+  8% { opacity: 1; box-shadow: 0 0 8px rgba(10,102,240,0.4); }
+  92% { opacity: 1; box-shadow: 0 0 6px rgba(10,102,240,0.3); }
+  to { transform: translateX(-50%) translateY(var(--travel, 120px)); opacity: 0; box-shadow: 0 0 0 rgba(10,102,240,0); }
 }
 .animate-beam {
   animation: beam-travel 1.6s linear infinite;
@@ -385,13 +385,13 @@
    Coarse pointer (touch): no reactive behavior.
    Reduced motion: no reactive behavior. */
 .dot-grid-bg {
-  background-image: radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-image: radial-gradient(circle, rgba(0,0,0,0.07) 1px, transparent 1px);
+  background-size: 22px 22px;
   position: relative;
 }
 .dark .dot-grid-bg {
-  background-image: radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 22px 22px;
 }
 /* Content visibility optimization — browser skips rendering off-screen sections */
 @media (content-visibility: auto) {
