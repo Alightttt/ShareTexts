@@ -393,6 +393,14 @@
   background-image: radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px);
   background-size: 20px 20px;
 }
+/* Content visibility optimization — browser skips rendering off-screen sections */
+@media (content-visibility: auto) {
+  .content-viz {
+    content-visibility: auto;
+    contain-intrinsic-size: 0 600px;
+  }
+}
+
 /* Dot grid — static, no hover interaction. */
 
 /* Premium button — subtle 3D gradient (lighter top, darker bottom) + hover lift.

@@ -141,6 +141,7 @@ export function HeroDemo() {
   const laptopScreenRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const laptopTargetRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(true);
 
   const [bridge, setBridge] = useState({
     from: { x: 0, y: 0 },
@@ -294,6 +295,20 @@ export function HeroDemo() {
     const t = setTimeout(() => scheduleRef.current(), 900);
     return () => clearTimeout(t);
   }, []);
+
+  // Pause hero animation when off-screen — saves CPU and battery.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([entry]) => {
+      const visible = entry.isIntersecting;
+      setIsVisible(visible);
+      if (!visible) clearLoop();
+      else if (!userTouched.current) scheduleRef.current();
+    }, { threshold: 0.1 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [clearLoop]);
 
   const send = () => {
     if (step === 'sending') return;
