@@ -1222,37 +1222,43 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
    * WITHOUT the "Session ended" screen — a plain, silent exit.
    */
   const abandonSession = () => {
+    // Set abandoned BEFORE close_room: the server echoes room_closed back
+    // to this socket; suppress it so the user lands on the landing page.
+    abandonedRef.current = true;
     if (session.roomId) {
       getSocket().emit('close_room', { roomId: session.roomId });
     }
     resetSession();
-    // Set AFTER reset (which clears it): the server echoes room_closed back
-    // to this socket; suppress it so the user lands on the landing page, not
-    // the "Session ended" screen.
-    abandonedRef.current = true;
   };
 
   const resetSession = (reason?: string) => {
-    abandonedRef.current = false;
+    // 1. Mark abandoned (must happen before room_closed echo can fire)
+    if (reason) abandonedRef.current = false;
+    // 2. Destroy WebRTC connection
     if (peerManagerRef.current) {
-      peerManagerRef.current.destroy();
+      try { peerManagerRef.current.destroy(); } catch { /* noop — idempotent */ }
       peerManagerRef.current = null;
     }
+    // 3. Clear in-flight state
     pendingFilesRef.current.clear();
     progressRef.current.clear();
     pushBuffersRef.current.clear();
-    // The room is gone — partial receives and send progress can't resume,
-    // so release the memory. Object URLs for every transferred file are
-    // page-lifetime artifacts: once the session is torn down they're dead
-    // anyway, so revoke them and free the backing blobs (never accumulate
-    // them across sessions).
+    // 4. Clear transfer state and revoke object URLs
     clearAllTransferState();
     for (const m of messagesRef.current) {
       if (m.attachment?.url) {
         try { URL.revokeObjectURL(m.attachment.url); } catch { /* noop */ }
       }
     }
+    // 5. Clear localStorage FIRST — this prevents auto-resume on next load
     saveStoredSession(null);
+    // 6. Clear the URL bar (remove /s/<code> or ?join= params)
+    try {
+      if (window.location.pathname !== '/' && window.location.pathname !== '/docs') {
+        window.history.replaceState({}, document.title, '/');
+      }
+    } catch { /* noop */ }
+    // 7. Update React state — landing renders immediately
     setSession(s => ({
       roomId: null,
       secret: null,

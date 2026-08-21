@@ -6,6 +6,7 @@ import { ShareTextLogo } from './ShareTextLogo';
 export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (code: string) => void, isJoining: boolean, error?: string | null }) {
   const [code, setCode] = useState('');
   const [shake, setShake] = useState(false);
+  const [pasteHint, setPasteHint] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -23,30 +24,70 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
     }
   }, [error]);
 
+  // Normalize pasted input intelligently: extract only digits from any format
+  // ("123 456", "123456", "Code: 123456", etc.)
+  const normalizeCode = (raw: string): string => {
+    return raw.replace(/\D/g, '').slice(0, 6);
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isJoining) return;
-    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+    const val = normalizeCode(e.target.value);
     setCode(val);
+    setPasteHint(false);
     if (val.length === 6) {
       onComplete(val);
     }
   };
 
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    if (isJoining) return;
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text');
+    const normalized = normalizeCode(pasted);
+    if (normalized.length > 0) {
+      setCode(normalized);
+      setPasteHint(false);
+      if (normalized.length === 6) {
+        onComplete(normalized);
+      } else {
+        // Show hint that more digits are needed
+        setPasteHint(true);
+        setTimeout(() => setPasteHint(false), 2000);
+      }
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && code.length === 6 && !isJoining) {
+      onComplete(code);
+    }
+  };
+
+  const digitCount = code.length;
+
   return (
     <div className="flex flex-col items-center relative w-full">
+      <label htmlFor="pairing-code-input" className="sr-only">Six-digit pairing code</label>
       <input
+        id="pairing-code-input"
         ref={inputRef}
         type="text"
         inputMode="numeric"
         pattern="[0-9]*"
-        maxLength={6}
+        maxLength={10}
         value={code}
         onChange={handleChange}
+        onPaste={handlePaste}
+        onKeyDown={handleKeyDown}
         disabled={isJoining}
         autoFocus
+        autoComplete="one-time-code"
         data-testid="join-code-input"
         aria-label="Six-digit pairing code"
-        aria-describedby={error ? 'live-code-error' : undefined}
+        aria-describedby={error ? 'live-code-error' : pasteHint ? 'live-code-hint' : undefined}
+        aria-invalid={!!error}
+        aria-current={isJoining ? 'step' : undefined}
         className="absolute inset-0 opacity-0 cursor-default"
         style={{ fontSize: '16px' }} // prevent iOS zoom
       />
@@ -86,6 +127,18 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
           </React.Fragment>
         ))}
       </motion.div>
+
+      {!error && pasteHint && (
+        <div id="live-code-hint" role="status" className="mt-4 text-[13px] text-apple-ink-muted dark:text-white/50 font-medium">
+          Enter all 6 digits to continue.
+        </div>
+      )}
+
+      {!error && !pasteHint && digitCount > 0 && digitCount < 6 && (
+        <div role="status" className="mt-4 text-[13px] text-apple-ink-muted dark:text-white/50 font-medium">
+          {digitCount} of 6 digits entered
+        </div>
+      )}
 
       {error && (
         <div id="live-code-error" role="alert" className="mt-6 text-[14px] text-status-danger font-medium">

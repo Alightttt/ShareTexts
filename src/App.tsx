@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, type ReactNode } from 'react';
 import { SessionProvider, useSession } from './lib/SessionContext';
 import { Landing } from './views/Landing';
 import { RoomHub } from './views/RoomHub';
@@ -116,6 +116,43 @@ function ConnectingWait({ onRetry }: { onRetry: () => void; key?: React.Key }) {
   );
 }
 
+/**
+ * Root error boundary — catches rendering errors and never leaves #root empty.
+ * Shows a safe recovery screen so the user can get back to the landing page.
+ */
+// Lightweight error boundary — function components cannot catch render errors.
+// Uses an untyped class because React 19 ships no .d.ts and @types/react is absent.
+function ErrorFallback({ onReset }: { onReset: () => void }) {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-night-900 p-6 text-center">
+      <div className="w-16 h-16 bg-apple-parchment dark:bg-apple-tile-1 rounded-[20px] flex items-center justify-center mb-6">
+        <ShareTextLogo size={28} className="text-apple-ink-muted" />
+      </div>
+      <h2 className="text-[24px] font-semibold text-apple-ink dark:text-white mb-2">Something went wrong</h2>
+      <p className="text-[16px] text-apple-ink-muted dark:text-white/60 max-w-sm mb-6">
+        ShareText couldn't load properly. Your data is safe.
+      </p>
+      <button
+        onClick={onReset}
+        className="px-7 py-3.5 bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[15px] font-semibold min-h-[48px]"
+      >
+        Return to ShareText
+      </button>
+    </div>
+  );
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ErrorBoundary = class extends (React.Component as any) {
+  state = { error: null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return <ErrorFallback onReset={() => { try { localStorage.removeItem('sharetext.session.v1'); } catch {} window.location.href = '/'; }} />;
+    }
+    return (this.props as any).children;
+  }
+};
+
 function AppContent() {
   const { session, leaveView, requestReconnect, createSession } = useSession();
   // Remounts ConnectingWait on "Try again" so its 15s hint timer restarts.
@@ -134,6 +171,24 @@ function AppContent() {
     }
     return 'landing';
   });
+
+  // Browser back button: when the user presses back from a room, return to
+  // landing. Without this, the back button does nothing (no router pushes
+  // history entries) and the user gets stuck.
+  useEffect(() => {
+    const onPopState = () => {
+      // If we're in a room (roomId set) and the user pressed back, exit.
+      if (session.roomId && !session.closedReason) {
+        leaveView();
+      }
+      // If we're on join view, go back to landing.
+      if (view === 'join') {
+        setView('landing');
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [session.roomId, session.closedReason, view, leaveView]);
 
   if (typeof window !== 'undefined' && !window.RTCPeerConnection) {
     return (
@@ -293,12 +348,14 @@ function AppContent() {
 
 export default function App() {
   return (
-    <SessionProvider>
-      {/* Skip link — keyboard users jump past the hero to main content */}
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-azure-600 focus:text-white focus:rounded-lg focus:text-[14px] focus:font-semibold">
-        Skip to main content
-      </a>
-      <AppContent />
-    </SessionProvider>
+    <ErrorBoundary>
+      <SessionProvider>
+        {/* Skip link — keyboard users jump past the hero to main content */}
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-azure-600 focus:text-white focus:rounded-lg focus:text-[14px] focus:font-semibold">
+          Skip to main content
+        </a>
+        <AppContent />
+      </SessionProvider>
+    </ErrorBoundary>
   );
 }
