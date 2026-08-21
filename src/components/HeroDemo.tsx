@@ -34,20 +34,20 @@ interface TransferObject {
 }
 
 const SAMPLES: { key: Exclude<Kind, 'text'>; label: string; Icon: typeof ImageIcon; object: TransferObject }[] = [
-  { key: 'photo', label: 'Photo', Icon: ImageIcon, object: { kind: 'photo', name: 'photo-2026.jpg', size: '18.4 MB' } },
-  { key: 'link', label: 'Link', Icon: Link2, object: { kind: 'link', text: 'example.com/a/very-long-link' } },
-  { key: 'file', label: 'File', Icon: FileArchive, object: { kind: 'file', name: 'project.zip', size: '184 MB' } },
+  { key: 'photo', label: 'Photo', Icon: ImageIcon, object: { kind: 'photo', name: 'sunset-beach.jpg', size: '4.2 MB' } },
+  { key: 'link', label: 'Link', Icon: Link2, object: { kind: 'link', text: 'figma.com/design/abc123' } },
+  { key: 'file', label: 'File', Icon: FileArchive, object: { kind: 'file', name: 'presentation.pdf', size: '2.8 MB' } },
 ];
-const SCENE_ORDER: Kind[] = ['photo', 'link', 'file'];
+const SCENE_ORDER: Kind[] = ['text', 'photo', 'link'];
 const nextScene = (k: Kind) => SCENE_ORDER[(SCENE_ORDER.indexOf(k) + 1) % SCENE_ORDER.length];
 const sampleOf = (k: Kind) => SAMPLES.find(s => s.key === k)!.object;
 
 type Step = 'ready' | 'sending' | 'received' | 'composing';
 
-const FLIGHT_MS = 1200;
-const HOLD_MS = 2400;
-const COMPOSE_MS = 900;
-const READY_MS = 2200;
+const FLIGHT_MS = 1100;
+const HOLD_MS = 2800;
+const COMPOSE_MS = 800;
+const READY_MS = 2000;
 const TAKEOVER_MS = 6000;
 
 function DeviceStatus({ state }: { state: 'connected' | 'sending' | 'sent' | 'receiving' | 'received' }) {
@@ -165,7 +165,7 @@ export function HeroDemo() {
     loopTimers.current.forEach(clearTimeout);
     loopTimers.current = [];
   }, []);
-  const sceneRef = useRef<Kind>('photo');
+  const sceneRef = useRef<Kind>('text');
   const userTouched = useRef(false);
   const userTouchedAt = useRef(0);
   const [autoArmed, setAutoArmed] = useState(false);
@@ -354,7 +354,7 @@ export function HeroDemo() {
       data-auto={autoArmed ? 'on' : 'off'}
       className="relative w-full max-w-[920px] mx-auto select-none min-h-[400px] sm:min-h-[480px] lg:min-h-[520px]"
       role="img"
-      aria-label={`Preview: ShareText transfers a ${pending?.kind || 'file'} from a phone to a laptop. ${phaseLabel}.`}
+      aria-label={`Interactive preview: ShareText transfers content between devices. ${phaseLabel}. Type or tap to try.`}
     >
 
 
@@ -428,7 +428,7 @@ export function HeroDemo() {
                       className="flex flex-col items-center gap-1 text-apple-ink-muted/60 py-2"
                     >
                       <Send className="w-3 h-3 sm:w-3.5 sm:h-3.5 opacity-40" />
-                      <span className="text-[7px] sm:text-[7px] font-medium">Sent things appear here</span>
+                      <span className="text-[7px] sm:text-[7px] font-medium">Type something to send</span>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -623,8 +623,8 @@ export function HeroDemo() {
                       className="flex flex-col items-center gap-1 text-apple-ink-muted/70"
                     >
                       <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-40" />
-                      <span className="text-[7px] sm:text-[8px] font-medium">Nothing received yet</span>
-                      <span className="text-[6px] sm:text-[7px] text-apple-ink-muted/60">Sent things land here</span>
+                      <span className="text-[7px] sm:text-[8px] font-medium">Waiting for something…</span>
+                      <span className="text-[6px] sm:text-[7px] text-apple-ink-muted/60">It will appear here</span>
                     </motion.div>
                   )}
                 </AnimatePresence>
