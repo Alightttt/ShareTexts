@@ -19,11 +19,12 @@ export function RoomHub() {
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [, setQrTick] = useState(0);
 
-  if (!session.roomId || !session.secret) return null;
-
-  const shareUrl = `${window.location.origin}/s/${shortCodeOf(session.roomId)}`;
-  const qrCode = generateTOTP(session.secret, session.createdAt);
-  const qrValue = `${shareUrl}?c=${qrCode}`;
+  // Compute QR values — safe to call even when session is incomplete;
+  // generateTOTP returns '' for empty secret. These MUST be declared before
+  // the early return to satisfy Rules of Hooks (all hooks run every render).
+  const shareUrl = session.roomId ? `${window.location.origin}/s/${shortCodeOf(session.roomId)}` : '';
+  const qrCode = session.secret ? generateTOTP(session.secret, session.createdAt) : '';
+  const qrValue = qrCode ? `${shareUrl}?c=${qrCode}` : '';
 
   // QR auto-refresh on the pairing-code boundary
   useEffect(() => {
@@ -32,6 +33,10 @@ export function RoomHub() {
     const t = setTimeout(() => setQrTick(x => x + 1), waitMs);
     return () => clearTimeout(t);
   }, [showQR, qrCode, session.createdAt]);
+
+  // Early return AFTER all hooks — Rules of Hooks require all hooks to run
+  // every render. Returning before hooks causes React to crash.
+  if (!session.roomId || !session.secret) return null;
 
   const copyLink = async () => {
     try { await navigator.clipboard.writeText(shareUrl); } catch {
