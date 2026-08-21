@@ -620,8 +620,17 @@ async function start() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
+    // SPA fallback: only serve index.html for the root path and known SPA
+    // routes. All other paths that don't match a static file get a proper
+    // 404 — this prevents search engines from indexing nonexistent pages
+    // as HTTP 200.
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      // Known SPA routes that should get the app shell
+      if (req.path === '/' || req.path === '/docs' || /^\/s\/[0-9a-f]{8}$/i.test(req.path)) {
+        return res.sendFile(path.join(distPath, 'index.html'));
+      }
+      // Everything else is a 404
+      res.status(404).sendFile(path.join(distPath, 'index.html'));
     });
   }
 
