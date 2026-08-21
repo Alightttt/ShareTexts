@@ -86,15 +86,18 @@
       <p style="margin:0;"><strong>After transfer:</strong> The file exists only on the two devices that participated. No copy is kept on any server. The temporary room closes and the connection ends.</p>
     </div>
 
-    <h2>What ShareText Stores</h2>
+    <h2>What the Server Stores</h2>
+    <p>The signaling server maintains temporary room state in memory only — nothing is written to disk or a database.</p>
     <table>
-      <tr><th>What</th><th>Stored?</th><th>Details</th></tr>
-      <tr><td>Your files</td><td>No</td><td>Transferred directly between devices.</td></tr>
-      <tr><td>Your text messages</td><td>No</td><td>Transferred directly between devices.</td></tr>
-      <tr><td>Accounts</td><td>No</td><td>No sign-up, no login, no user profiles.</td></tr>
-      <tr><td>Chat history</td><td>No</td><td>Rooms close automatically when you're done.</td></tr>
-      <tr><td>IP addresses</td><td>Temporarily</td><td>Used during connection establishment. Not logged.</td></tr>
-      <tr><td>Pairing codes</td><td>Temporarily</td><td>Valid for a limited time. Expire automatically.</td></tr>
+      <tr><th>Data</th><th>Stored?</th><th>How Long</th><th>Details</th></tr>
+      <tr><td>Room ID + secret</td><td>In memory</td><td>Up to 12 hours idle, 4 hours after both peers leave</td><td>Used to match pairing codes. Destroyed when room closes.</td></tr>
+      <tr><td>Pairing code</td><td>Derived from secret</td><td>Rotates every 40 seconds</td><td>TOTP-based. Never stored separately.</td></tr>
+      <tr><td>Peer socket IDs</td><td>In memory</td><td>While connected</td><td>Truncated identifiers for message routing.</td></tr>
+      <tr><td>Device names</td><td>No</td><td>—</td><td>Exchanged directly between devices, not stored on server.</td></tr>
+      <tr><td>Files and messages</td><td>No</td><td>—</td><td>Transferred directly between devices via WebRTC.</td></tr>
+      <tr><td>Accounts</td><td>No</td><td>—</td><td>No sign-up, no login, no user profiles.</td></tr>
+      <tr><td>IP addresses</td><td>For rate limiting</td><td>Per-request</td><td>Read from x-forwarded-for header. Used to limit abuse (40 room creates/min, 10 joins/min). Not stored persistently.</td></tr>
+      <tr><td>Aggregate metrics</td><td>In memory</td><td>Until restart</td><td>Anonymous counters (e.g., "rooms.created", "push.text"). No room IDs or content.</td></tr>
     </table>
 
     <h2>How Encryption Works</h2>
@@ -105,27 +108,44 @@
       <li>The pairing code authenticates both devices before any data is shared</li>
     </ul>
 
-    <h2>What ShareText Can See</h2>
-    <p>ShareText can see that a room exists and that two devices are connected. It cannot see the content of your transfers — the data is encrypted end-to-end between your devices.</p>
+    <h2>What the Server Can See</h2>
+    <p>The signaling server can observe:</p>
+    <ul>
+      <li><strong>Connection metadata</strong> — that a room exists, that two sockets are connected to it, and the device names exchanged during the hello handshake.</li>
+      <li><strong>Timing</strong> — when rooms are created, when peers join, when connections drop.</li>
+      <li><strong>Aggregate counts</strong> — anonymous metrics like total rooms created, total joins, total pushes.</li>
+    </ul>
+    <p>The server <strong>cannot</strong> see:</p>
+    <ul>
+      <li>File contents (encrypted end-to-end via WebRTC)</li>
+      <li>Text messages (encrypted end-to-end via WebRTC)</li>
+      <li>Transfer metadata like filenames or sizes (exchanged directly between devices)</li>
+      <li>User identities (no accounts)</li>
+    </ul>
+    <p>The server logs truncated socket IDs (first 8 characters) and event names for debugging. No file contents, message text, or full IP addresses are logged.</p>
 
     <h2>Temporary by Design</h2>
     <p>Every ShareText room is temporary. When you close the tab or the session expires, the room is destroyed. There is no "recover previous session" or "view history" feature because there is nothing to recover or view.</p>
 
     <h2>What ShareText Does NOT Do</h2>
     <ul>
-      <li>Store your files or messages on any server</li>
-      <li>Track your usage across sessions</li>
-      <li>Sell or share your data with third parties</li>
+      <li>Store files or messages on any server</li>
+      <li>Track usage across sessions (no persistent analytics)</li>
+      <li>Sell or share data with third parties</li>
       <li>Use cookies for advertising or analytics</li>
-      <li>Require personal information</li>
+      <li>Require personal information (no accounts, no email, no phone number)</li>
+      <li>Log file contents, message text, or filenames</li>
     </ul>
 
     <h2>Limitations</h2>
     <p>No system is perfect. Here's what to be aware of:</p>
     <ul>
-      <li>Both devices must be online during the transfer</li>
-      <li>If a direct connection isn't possible, a relay server handles the encrypted traffic (the content is still encrypted)</li>
-      <li>ShareText cannot prevent you from sharing something with someone — the security boundary is the encrypted connection, not the human using it</li>
+      <li><strong>Both devices must be online</strong> during the transfer — there is no offline mode.</li>
+      <li><strong>Signaling server sees metadata</strong> — the server knows a room exists and two devices are connected, but not what they're transferring.</li>
+      <li><strong>Relay fallback</strong> — if a direct peer-to-peer connection isn't possible, traffic routes through a TURN relay server. The data remains encrypted end-to-end; the relay only forwards encrypted packets.</li>
+      <li><strong>IP addresses are used for rate limiting</strong> — the server reads your IP to prevent abuse, but does not store it persistently.</li>
+      <li><strong>No protection against screenshot/screen recording</strong> — the receiving device can capture content after it arrives.</li>
+      <li><strong>No protection against a compromised browser</strong> — if your browser is compromised, the encryption cannot protect you.</li>
     </ul>
 
     <div style="text-align:center; margin: 40px 0;"><a href="/" class="cta">Try ShareText Free →</a></div>

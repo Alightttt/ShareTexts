@@ -12,6 +12,7 @@ import { ShareTextLogo } from '../components/ShareTextLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
 import { saveDraft, loadDraft, clearDraft, ComposerDraft } from '../lib/draftStore';
+import { useFocusTrap } from '../lib/useFocusTrap';
 
 /**
  * Detect if the current device is a mobile/touch device.
@@ -110,6 +111,8 @@ export function ChatView() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const endSessionTrapRef = useFocusTrap(confirmClose, () => setConfirmClose(false));
+  const connectionDetailsTrapRef = useFocusTrap(showConnectionDetails, () => setShowConnectionDetails(false));
   const [showThatsIt, setShowThatsIt] = useState(false);
   const [thatsItCopy, setThatsItCopy] = useState("That's it — it's on the other device.");
   const [announcement, setAnnouncement] = useState('');
@@ -501,16 +504,29 @@ export function ChatView() {
         <AnimatePresence>
           {showConnectionDetails && (
             <motion.div
+              ref={connectionDetailsTrapRef}
               initial={{ opacity: 0, y: -5, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 5, scale: 0.95 }}
               transition={{ type: "spring", bounce: 0, duration: 0.25 }}
               className="absolute top-[calc(100%+8px)] left-4 sm:left-6 p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[14px] shadow-lg min-w-[240px] max-w-[320px] z-30"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Connection details"
               onPointerDown={(e) => { if (e.target === e.currentTarget) setShowConnectionDetails(false); }}
             >
-              <div className="flex items-center gap-2 text-[13.5px] font-semibold text-apple-ink dark:text-white mb-1.5">
-                <ShieldCheck className="w-4 h-4 text-status-success" />
-                Encrypted between devices
+              <div className="flex items-center justify-between gap-2 text-[13.5px] font-semibold text-apple-ink dark:text-white mb-1.5">
+                <span className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-status-success" />
+                  Encrypted between devices
+                </span>
+                <button
+                  onClick={() => setShowConnectionDetails(false)}
+                  aria-label="Close connection details"
+                  className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-apple-divider/50 dark:hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
               <div className="text-[13px] text-apple-ink-muted leading-relaxed">
                 {session.connectionType === 'relay' ? 'Connected securely through an encrypted relay — a direct connection wasn\u2019t available.' :
@@ -564,11 +580,12 @@ export function ChatView() {
               transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
               onPointerDown={(e) => e.stopPropagation()}
               className="w-full max-w-sm bg-white dark:bg-surface-dark rounded-[20px] p-6 shadow-2xl text-center"
+              ref={endSessionTrapRef}
               role="dialog"
               aria-modal="true"
-              aria-label="End this room?"
+              aria-labelledby="end-session-heading"
             >
-              <h3 className="text-[19px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">End this room?</h3>
+              <h3 id="end-session-heading" className="text-[19px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">End this room?</h3>
               <p className="text-[15px] text-apple-ink-muted leading-relaxed mb-6">
                 Both devices will disconnect and this connection will be permanently closed.
               </p>
