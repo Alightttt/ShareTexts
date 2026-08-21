@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How ShareText Works — Technical Explanation</title>
+  <meta name="description" content="Detailed explanation of how ShareText transfers files between devices using WebRTC, encrypted peer-to-peer connections, and temporary pairing rooms." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://sharetexts.online/guides/how-it-works.html" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="ShareText" />
+  <meta property="og:title" content="How ShareText Works — Technical Explanation" />
+  <meta property="og:description" content="How ShareText transfers files between devices using WebRTC and encrypted peer-to-peer connections." />
+  <meta property="og:url" content="https://sharetexts.online/guides/how-it-works.html" />
+  <meta property="og:image" content="https://sharetexts.online/og/sharetext-og-v3.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="How ShareText Works" />
+  <meta name="twitter:description" content="How ShareText transfers files between devices using WebRTC and encrypted peer-to-peer connections." />
+  <meta name="twitter:image" content="https://sharetexts.online/og/sharetext-og-v3.jpg" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "How ShareText Works",
+    "description": "How ShareText transfers files between devices using WebRTC, encrypted peer-to-peer connections, and temporary pairing rooms.",
+    "step": [
+      { "@type": "HowToStep", "name": "Open ShareText", "text": "Visit sharetexts.online on both devices." },
+      { "@type": "HowToStep", "name": "Pair devices", "text": "One device generates a 6-digit code. The other enters it. Devices connect via WebRTC." },
+      { "@type": "HowToStep", "name": "Transfer", "text": "Files and text move directly between devices, encrypted end-to-end." },
+      { "@type": "HowToStep", "name": "Close", "text": "The temporary room closes. No data is stored." }
+    ]
+  }
+  </script>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif; color: #1d1d1f; background: #fff; line-height: 1.7; -webkit-font-smoothing: antialiased; }
+    @media (prefers-color-scheme: dark) { body { color: #f7faff; background: #060a13; } .card { background: #0d1422 !important; border-color: rgba(247,250,255,.1) !important; } .muted { color: rgba(247,250,255,.55) !important; } .accent { color: #4b93ff !important; } .callout { background: rgba(10,102,240,.08) !important; border-color: rgba(75,147,255,.2) !important; } header { background: rgba(6,10,19,.92) !important; border-color: rgba(247,250,255,.08) !important; } .related-links a, .step-box { background: #0d1422; color: #f7faff; border-color: rgba(247,250,255,.08); } footer { border-color: rgba(247,250,255,.08) !important; } .flow-line { background: rgba(75,147,255,.2); } }
+    .container { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+    header { border-bottom: 1px solid rgba(29,29,31,.08); padding: 16px 24px; position: sticky; top: 0; background: rgba(255,255,255,.92); backdrop-filter: blur(12px); z-index: 40; }
+    .hdr-inner { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+    .hdr-inner svg { width: 20px; height: 20px; }
+    .hdr-inner span { font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
+    .back { font-size: 13px; font-weight: 500; color: #596579; text-decoration: none; margin-left: auto; }
+    .back:hover { color: #1d1d1f; }
+    article { padding: 48px 0 80px; }
+    h1 { font-size: 32px; font-weight: 600; letter-spacing: -.03em; line-height: 1.1; margin-bottom: 12px; }
+    .subtitle { font-size: 17px; color: #596579; max-width: 560px; margin-bottom: 32px; }
+    h2 { font-size: 22px; font-weight: 600; letter-spacing: -.02em; margin: 40px 0 16px; }
+    h3 { font-size: 17px; font-weight: 600; margin: 24px 0 10px; }
+    p { margin-bottom: 16px; font-size: 16px; }
+    .muted { color: #596579; } .accent { color: #0a66f0; }
+    .callout { background: rgba(10,102,240,.04); border: 1px solid rgba(10,102,240,.12); border-radius: 12px; padding: 16px 20px; margin: 24px 0; }
+    .callout p { margin: 0; font-size: 15px; }
+    .card { background: #f7f9fc; border: 1px solid rgba(29,29,31,.06); border-radius: 14px; padding: 20px 24px; margin-bottom: 16px; }
+    .flow { display: flex; flex-direction: column; gap: 0; margin: 24px 0; }
+    .step-box { background: #f7f9fc; border: 1px solid rgba(29,29,31,.06); border-radius: 14px; padding: 20px 24px; }
+    .step-box .num { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(10,102,240,.08); color: #0a66f0; font-weight: 700; font-size: 13px; margin-bottom: 8px; }
+    .step-box h3 { margin: 0 0 6px; font-size: 15px; }
+    .step-box p { margin: 0; font-size: 14px; color: #596579; }
+    .flow-line { width: 2px; height: 24px; background: rgba(29,29,31,.08); margin: 0 auto; }
+    .cta { display: inline-flex; align-items: center; gap: 8px; background: #0a66f0; color: #fff; padding: 14px 28px; border-radius: 12px; font-size: 15px; font-weight: 600; text-decoration: none; transition: background .15s; margin: 16px 0; }
+    .cta:hover { background: #0757d5; }
+    ul, ol { padding-left: 20px; margin-bottom: 16px; }
+    li { margin-bottom: 8px; font-size: 15px; }
+    .tech { font-family: ui-monospace, 'SF Mono', Consolas, monospace; font-size: 13px; background: #f7f9fc; border: 1px solid rgba(29,29,31,.06); border-radius: 8px; padding: 4px 8px; }
+    @media (prefers-color-scheme: dark) { .tech { background: #0d1422; border-color: rgba(247,250,255,.08); } }
+    .related { margin-top: 48px; padding-top: 32px; border-top: 1px solid rgba(29,29,31,.08); }
+    .related h2 { margin-top: 0; }
+    .related-links { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .related-links a { display: block; padding: 14px 18px; background: #f7f9fc; border: 1px solid rgba(29,29,31,.06); border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 500; color: #1d1d1f; transition: all .15s; }
+    .related-links a:hover { border-color: #0a66f0; transform: translateY(-1px); }
+    footer { border-top: 1px solid rgba(29,29,31,.08); padding: 24px; text-align: center; font-size: 13px; color: #7d8998; }
+    @media (max-width: 600px) { h1 { font-size: 26px; } h2 { font-size: 20px; } .related-links { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header><div class="hdr-inner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span>ShareText</span><a href="/" class="back">Home →</a></div></header>
+
+  <main class="container"><article>
+    <p class="muted" style="font-size:13px; margin-bottom:8px;">Guide</p>
+    <h1>How ShareText Works</h1>
+    <p class="subtitle">A detailed explanation of how ShareText transfers files between devices — from pairing to encrypted transfer to completion.</p>
+
+    <div class="callout"><p><strong>The simple version:</strong> Open ShareText on both devices. Connect with a code. Send your file. It moves directly between devices, encrypted. Close the tab when done. Nothing is stored.</p></div>
+
+    <h2>The Transfer Flow</h2>
+    <div class="flow">
+      <div class="step-box">
+        <div class="num">1</div>
+        <h3>Open ShareText on both devices</h3>
+        <p>Visit <a href="/" class="accent">sharetexts.online</a> in a browser on each device. No app download. No account creation.</p>
+      </div>
+      <div class="flow-line"></div>
+      <div class="step-box">
+        <div class="num">2</div>
+        <h3>Create a room (Device A)</h3>
+        <p>On the sending device, tap "Send something." ShareText creates a temporary room and generates a 6-digit pairing code. The room exists only for this session.</p>
+      </div>
+      <div class="flow-line"></div>
+      <div class="step-box">
+        <div class="num">3</div>
+        <h3>Join the room (Device B)</h3>
+        <p>On the receiving device, tap "Receive something" and enter the 6-digit code. Alternatively, scan the QR code or open a share link. The two devices now know about each other.</p>
+      </div>
+      <div class="flow-line"></div>
+      <div class="step-box">
+        <div class="num">4</div>
+        <h3>WebRTC connection established</h3>
+        <p>The browsers negotiate a direct peer-to-peer connection using WebRTC. The signaling server helps them find each other, then steps aside. All subsequent data flows directly between devices.</p>
+      </div>
+      <div class="flow-line"></div>
+      <div class="step-box">
+        <div class="num">5</div>
+        <h3>Transfer data</h3>
+        <p>Type text, paste a link, or attach a file. The data is chunked into 64KB pieces, sent over the encrypted DataChannel, and reassembled on the other side. Progress is shown in real time.</p>
+      </div>
+      <div class="flow-line"></div>
+      <div class="step-box">
+        <div class="num">6</div>
+        <h3>Verify and complete</h3>
+        <p>Each file is verified using SHA-256 checksum. If the checksums match, the transfer is confirmed. The receiver can save or download the received content.</p>
+      </div>
+      <div class="flow-line"></div>
+      <div class="step-box">
+        <div class="num">7</div>
+        <h3>Close the room</h3>
+        <p>When you close the tab or the session expires, the room is destroyed. No files, messages, or metadata are stored on any server.</p>
+      </div>
+    </div>
+
+    <h2>What Happens Technically</h2>
+
+    <h3>Room Creation</h3>
+    <p>When you click "Send something," the frontend calls the signaling server to create a room. The server generates a unique room ID and a TOTP-based pairing code. The room has a limited lifetime and closes automatically if not used.</p>
+
+    <h3>Pairing Code</h3>
+    <p>The 6-digit pairing code is derived from a time-based one-time password (TOTP) algorithm. It rotates periodically for security. The code is displayed on Device A and entered on Device B to prove they're intended partners.</p>
+
+    <h3>WebRTC Connection</h3>
+    <p>WebRTC is a browser technology that enables direct peer-to-peer connections. Here's what happens:</p>
+    <ol>
+      <li><strong>Offer/Answer:</strong> Device A creates a connection offer. The signaling server relays it to Device B. Device B creates an answer.</li>
+      <li><strong>ICE Candidates:</strong> Both devices discover their network addresses (local, public, and relay) and share them through the signaling server.</li>
+      <li><strong>Connection:</strong> The browsers establish a direct connection using the best available path — typically a direct peer-to-peer connection.</li>
+      <li><strong>Encryption:</strong> The connection is encrypted using DTLS (Datagram Transport Layer Security), the same protocol used by secure web browsing.</li>
+    </ol>
+
+    <h3>Data Transfer</h3>
+    <p>Once connected, data flows through a WebRTC DataChannel:</p>
+    <ul>
+      <li>Text messages are sent as structured JSON messages</li>
+      <li>Files are split into 64KB chunks and sent sequentially</li>
+      <li>Each chunk is tracked for progress reporting</li>
+      <li>The receiver reassembles chunks into the original file</li>
+      <li>SHA-256 checksums verify integrity after transfer</li>
+    </ul>
+
+    <h3>Relay Fallback</h3>
+    <p>If a direct peer-to-peer connection isn't possible (e.g., both devices are behind strict firewalls), ShareText uses a TURN relay server as a fallback. The data remains encrypted — the relay only forwards encrypted packets and cannot read the content.</p>
+
+    <h2>Encryption Details</h2>
+    <div class="card">
+      <p style="margin-bottom:8px;"><strong>Protocol:</strong> <span class="tech">DTLS-SRTP</span> over WebRTC DataChannel</p>
+      <p style="margin-bottom:8px;"><strong>Scope:</strong> All data between devices is encrypted in transit</p>
+      <p style="margin-bottom:8px;"><strong>Key exchange:</strong> DTLS handshake during connection setup</p>
+      <p style="margin:0;"><strong>Server visibility:</strong> The signaling server sees connection metadata but not file contents</p>
+    </div>
+
+    <h2>File Integrity</h2>
+    <p>Every file transfer includes a SHA-256 checksum verification. The sender computes the checksum before sending. The receiver computes it after receiving. If they match, the file arrived intact. If they don't match, ShareText flags the discrepancy.</p>
+
+    <h2>Session Lifecycle</h2>
+    <ul>
+      <li><strong>Room creation:</strong> Temporary, with a limited lifetime</li>
+      <li><strong>Pairing code:</strong> Rotates periodically, expires after a short window</li>
+      <li><strong>Active session:</strong> Exists only while both devices are connected</li>
+      <li><strong>Disconnection:</strong> If one device disconnects, the other can wait for reconnection</li>
+      <li><strong>Closure:</strong> When the tab closes or the session expires, the room is destroyed</li>
+    </ul>
+
+    <h2>Limitations</h2>
+    <ul>
+      <li>Both devices must be online during the transfer</li>
+      <li>ShareText connects two devices only (no group transfers)</li>
+      <li>File size is limited by browser memory, not by ShareText</li>
+      <li>Some network configurations may require the relay fallback (slightly slower)</li>
+      <li>The pairing code expires — a new code must be generated for reconnection</li>
+    </ul>
+
+    <div style="text-align:center; margin: 40px 0;"><a href="/" class="cta">Try ShareText Free →</a></div>
+
+    <section class="related">
+      <h2>Related</h2>
+      <div class="related-links">
+        <a href="/guides/about.html">About ShareText</a>
+        <a href="/guides/privacy.html">Privacy &amp; Security</a>
+        <a href="/guides/browser-file-transfer.html">Browser File Transfer</a>
+        <a href="/guides/how-to-transfer-files-between-devices.html">How to Transfer Files</a>
+        <a href="/docs">API Documentation</a>
+        <a href="/guides/troubleshooting.html">Troubleshooting</a>
+      </div>
+    </section>
+  </article></main>
+
+  <footer><p><a href="/" style="color:inherit; text-decoration:none;">ShareText</a> — The temporary bridge between your devices.</p></footer>
+</body>
+</html>

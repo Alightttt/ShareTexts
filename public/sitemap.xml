@@ -13,6 +13,18 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://sharetexts.online/guides/about.html</loc>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://sharetexts.online/guides/how-it-works.html</loc>
+    <lastmod>2026-08-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
     <loc>https://sharetexts.online/guides/how-to-transfer-files-between-devices.html</loc>
     <lastmod>2026-08-21</lastmod>
     <changefreq>monthly</changefreq>
