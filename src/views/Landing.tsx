@@ -78,7 +78,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
       setIsCreating(false);
       const msg = e.message || "Couldn't start the connection.";
       if (msg.includes('trouble connecting') || msg.includes('reach ShareText') || msg.includes('signaling') || msg.includes('configured') || msg.includes('connection service')) {
-        setCreateError("ShareText can't reach its connection service right now. This usually means the backend is being updated — try again in a moment.");
+        setCreateError("Couldn't start the connection.\n\nShareText couldn't reach the connection service. Check your internet and try again.");
       } else {
         setCreateError(msg);
       }
@@ -186,12 +186,18 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
 
             {createError && (
               <div role="alert" data-testid="error-message" className="mt-5 space-y-2">
-                <p className="text-[14px] font-medium text-status-danger flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-status-danger" /> {createError}
+                <p className="text-[14px] font-medium text-status-danger whitespace-pre-line leading-relaxed">
+                  {createError}
                 </p>
                 <button
+                  onClick={() => { setCreateError(null); handleCreate(); }}
+                  className="px-5 py-2.5 rounded-[10px] text-[13px] font-semibold bg-azure-600 hover:bg-azure-500 text-white transition-colors active:scale-[0.97]"
+                >
+                  Try again
+                </button>
+                <button
                   onClick={() => setCreateError(null)}
-                  className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white transition-colors"
+                  className="block text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white transition-colors"
                 >
                   Dismiss
                 </button>
@@ -337,8 +343,8 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             </motion.button>
           </div>
           {createError && (
-            <p role="alert" className="mt-4 text-[14px] font-medium text-status-danger inline-flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-status-danger" /> {createError}
+            <p role="alert" className="mt-4 text-[14px] font-medium text-status-danger whitespace-pre-line leading-relaxed">
+              {createError}
             </p>
           )}
         </motion.div>

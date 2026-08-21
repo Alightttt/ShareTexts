@@ -214,15 +214,17 @@ export function RoomHub() {
               <button ref={qrCloseRef} data-testid="qr-close" onPointerDown={() => setShowQR(false)} aria-label="Close QR code" className="absolute top-4 right-4 w-8 h-8 rounded-full bg-apple-parchment dark:bg-apple-tile-2 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors focus-visible:outline-2 focus-visible:outline-apple-blue">
                 <X className="w-4 h-4" />
               </button>
-              {/* QR code — bigger for easier scanning */}
-              <div className="bg-white p-4 rounded-[16px] inline-block mb-4 shadow-sm border border-apple-divider/30">
-                <QRCodeSVG value={qrValue} size={220} />
-              </div>
-              <p className="text-[14px] font-semibold text-apple-ink dark:text-white mb-1">
-                Scan with your other device
+              {/* Clear step-by-step instruction */}
+              <p className="text-[13px] text-apple-ink-muted dark:text-white/60 mb-4 leading-relaxed">
+                Open ShareText on your other device,<br/>choose <strong className="text-apple-ink dark:text-white">Receive</strong>, then scan this code.
               </p>
-              <p className="text-[12px] text-apple-ink-muted dark:text-white/50 mb-4">
-                Open ShareText on the other device and scan this code.
+              {/* QR code — bigger for easier scanning */}
+              <div className="bg-white p-5 rounded-[18px] inline-block mb-4 shadow-sm border border-apple-divider/30">
+                <QRCodeSVG value={qrValue} size={260} level="M" />
+              </div>
+              {/* Expiry + manual code fallback */}
+              <p className="text-[11px] text-apple-ink-muted/60 dark:text-white/40 mb-3">
+                Code refreshes automatically. If QR doesn't scan, use the 6-digit code on the previous screen.
               </p>
               <button onPointerDown={() => setShowQR(false)}
                 className="w-full py-2.5 bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 rounded-[10px] text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.98]">
