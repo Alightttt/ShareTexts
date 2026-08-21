@@ -6,7 +6,7 @@ import {
   File as FileIcon, Play, Download, RefreshCw, AlertCircle, ChevronDown, ChevronUp, ArrowUp, Lock, ZoomIn, ShieldCheck, Terminal, Share2, LogOut, Smartphone, Monitor
 } from 'lucide-react';
 import { FileTypeIcon } from '../components/FileTypeIcon';
-import { cn, formatBytes } from '../lib/utils';
+import { cn, formatBytes, sanitizeFilename } from '../lib/utils';
 import { ChatMessage, Attachment } from '../types';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -1093,9 +1093,10 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
   };
 
   const handleDownload = (url: string, filename: string) => {
+    const safeName = sanitizeFilename(filename);
     const link = document.createElement('a');
     link.href = url;
-    link.download = filename;
+    link.download = safeName;
     document.body.appendChild(link);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);

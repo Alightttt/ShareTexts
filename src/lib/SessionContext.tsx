@@ -4,6 +4,7 @@ import { getSocket, devLog, signalingConfigIssue, resolveShortCode, refreshCode 
 import { PeerManager, TransferCancelledError, hasSendProgress, clearAllTransferState, clearTransferState, getPartialInfo } from './webrtc';
 import { humanizeError } from './errors';
 import { diag } from './diag';
+import { sanitizeFilename } from './utils';
 
 function toHex(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
@@ -376,7 +377,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         let buf = pushBuffersRef.current.get(id);
         if (!buf) {
           buf = {
-            name: String((payload as any).name ?? 'file'),
+            name: sanitizeFilename(String((payload as any).name ?? 'file')),
             mimeType: String((payload as any).mimeType ?? 'application/octet-stream'),
             size: typeof (payload as any).size === 'number' ? (payload as any).size : 0,
             chunkCount,
@@ -550,9 +551,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           const isDuplicate = messagesRef.current.some(m => m.id === parsed.id);
           if (!isDuplicate) {
             // A peer's 'sending' is our 'receiving'.
+            // Sanitize the sender-provided filename to prevent path traversal,
+            // control characters, and other injection vectors.
             const incoming = parsed.attachment && parsed.attachment.status === 'sending'
-              ? { ...parsed, attachment: { ...parsed.attachment, status: 'receiving' } }
-              : parsed;
+              ? { ...parsed, attachment: { ...parsed.attachment, status: 'receiving', name: sanitizeFilename(parsed.attachment.name || 'file') } }
+              : parsed.attachment ? { ...parsed, attachment: { ...parsed.attachment, name: sanitizeFilename(parsed.attachment.name || 'file') } } : parsed;
             setSession(s => ({
               ...s,
               messages: [...s.messages, incoming]
