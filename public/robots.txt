@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Allow: /docs
+Allow: /guides/
 Disallow: /api/
 Disallow: /room/
 Disallow: /connect/

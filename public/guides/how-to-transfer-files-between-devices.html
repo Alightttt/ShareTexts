@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to Transfer Files Between Devices — ShareText</title>
+  <meta name="description" content="Transfer files between any two devices directly from your browser. No app, no account. Open ShareText on both devices, connect with a code, and send anything." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://sharetexts.online/guides/how-to-transfer-files-between-devices.html" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="ShareText" />
+  <meta property="og:title" content="How to Transfer Files Between Devices — ShareText" />
+  <meta property="og:description" content="Transfer files between any two devices directly from your browser. No app, no account. Open ShareText on both devices, connect with a code, and send anything." />
+  <meta property="og:url" content="https://sharetexts.online/guides/how-to-transfer-files-between-devices.html" />
+  <meta property="og:image" content="https://sharetexts.online/og/sharetext-og-v2.png?v=2" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="How to Transfer Files Between Devices — ShareText" />
+  <meta name="twitter:description" content="Transfer files between any two devices directly from your browser. No app, no account." />
+  <meta name="twitter:image" content="https://sharetexts.online/og/sharetext-og-v2.png?v=2" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "How to Transfer Files Between Devices",
+    "description": "Transfer files between any two devices directly from your browser using ShareText. No app, no account needed.",
+    "step": [
+      { "@type": "HowToStep", "name": "Open ShareText", "text": "Visit sharetexts.online on both devices." },
+      { "@type": "HowToStep", "name": "Connect devices", "text": "On the first device, click Send. Enter the 6-digit code on the second device." },
+      { "@type": "HowToStep", "name": "Transfer files", "text": "Select a file or paste content. It transfers directly between devices." }
+    ]
+  }
+  </script>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+      color: #1d1d1f; background: #ffffff; line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { color: #f7faff; background: #060a13; }
+      .card { background: #0d1422 !important; border-color: rgba(247,250,255,.1) !important; }
+      .step-num { background: rgba(10,102,240,.12) !important; color: #4b93ff !important; }
+      .muted { color: rgba(247,250,255,.55) !important; }
+      .accent { color: #4b93ff !important; }
+      .callout { background: rgba(10,102,240,.08) !important; border-color: rgba(75,147,255,.2) !important; }
+      nav, header { border-color: rgba(247,250,255,.08) !important; }
+    }
+    .container { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+    header { border-bottom: 1px solid rgba(29,29,31,.08); padding: 16px 24px; position: sticky; top: 0; background: rgba(255,255,255,.92); backdrop-filter: blur(12px); z-index: 40; }
+    @media (prefers-color-scheme: dark) { header { background: rgba(6,10,19,.92); } }
+    .hdr-inner { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+    .hdr-inner svg { width: 20px; height: 20px; }
+    .hdr-inner span { font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
+    .back { font-size: 13px; font-weight: 500; color: #596579; text-decoration: none; margin-left: auto; }
+    .back:hover { color: #1d1d1f; }
+    article { padding: 48px 0 80px; }
+    h1 { font-size: 32px; font-weight: 600; letter-spacing: -.03em; line-height: 1.1; margin-bottom: 12px; }
+    .subtitle { font-size: 17px; color: #596579; max-width: 560px; margin-bottom: 32px; }
+    h2 { font-size: 22px; font-weight: 600; letter-spacing: -.02em; margin: 40px 0 16px; }
+    h3 { font-size: 17px; font-weight: 600; margin: 24px 0 10px; }
+    p { margin-bottom: 16px; font-size: 16px; }
+    .muted { color: #596579; }
+    .accent { color: #0a66f0; }
+    .steps { counter-reset: step; list-style: none; padding: 0; }
+    .steps li { counter-increment: step; display: flex; gap: 16px; margin-bottom: 24px; align-items: flex-start; }
+    .steps li::before {
+      content: counter(step); min-width: 36px; height: 36px; border-radius: 50%;
+      background: rgba(10,102,240,.08); color: #0a66f0; font-weight: 700; font-size: 15px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .steps li h3 { margin: 0 0 4px; font-size: 16px; }
+    .steps li p { margin: 0; font-size: 15px; color: #596579; }
+    .card { background: #f7f9fc; border: 1px solid rgba(29,29,31,.06); border-radius: 14px; padding: 20px 24px; margin-bottom: 16px; }
+    .callout { background: rgba(10,102,240,.04); border: 1px solid rgba(10,102,240,.12); border-radius: 12px; padding: 16px 20px; margin: 24px 0; }
+    .callout p { margin: 0; font-size: 15px; }
+    .devices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+    .device { background: #f7f9fc; border: 1px solid rgba(29,29,31,.06); border-radius: 12px; padding: 16px; text-align: center; }
+    .device .icon { font-size: 32px; margin-bottom: 8px; }
+    .device .label { font-size: 13px; font-weight: 600; }
+    .cta { display: inline-flex; align-items: center; gap: 8px; background: #0a66f0; color: #fff; padding: 14px 28px; border-radius: 12px; font-size: 15px; font-weight: 600; text-decoration: none; transition: background .15s; margin: 16px 0; }
+    .cta:hover { background: #0757d5; }
+    .cta-secondary { display: inline-flex; align-items: center; gap: 8px; background: transparent; color: #0a66f0; padding: 14px 28px; border-radius: 12px; font-size: 15px; font-weight: 600; text-decoration: none; border: 1px solid rgba(10,102,240,.2); transition: all .15s; margin: 16px 0; }
+    .cta-secondary:hover { border-color: #0a66f0; background: rgba(10,102,240,.04); }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    li { margin-bottom: 8px; font-size: 15px; }
+    a.inline { color: #0a66f0; text-decoration: none; font-weight: 500; }
+    a.inline:hover { text-decoration: underline; }
+    .related { margin-top: 48px; padding-top: 32px; border-top: 1px solid rgba(29,29,31,.08); }
+    .related h2 { margin-top: 0; }
+    .related-links { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .related-links a { display: block; padding: 14px 18px; background: #f7f9fc; border: 1px solid rgba(29,29,31,.06); border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 500; color: #1d1d1f; transition: all .15s; }
+    .related-links a:hover { border-color: #0a66f0; transform: translateY(-1px); }
+    @media (prefers-color-scheme: dark) { .related-links a { background: #0d1422; border-color: rgba(247,250,255,.08); color: #f7faff; } .related-links a:hover { border-color: #4b93ff; } }
+    footer { border-top: 1px solid rgba(29,29,31,.08); padding: 24px; text-align: center; font-size: 13px; color: #7d8998; }
+    @media (max-width: 600px) { h1 { font-size: 26px; } h2 { font-size: 20px; } .devices { grid-template-columns: 1fr; } .related-links { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="hdr-inner">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      <span>ShareText</span>
+      <a href="/" class="back">Home →</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <article>
+      <p class="muted" style="font-size:13px; margin-bottom:8px;">Guide</p>
+      <h1>How to Transfer Files Between Devices</h1>
+      <p class="subtitle">Move text, photos, videos, and files between any two devices directly from your browser. No app to install. No account to create.</p>
+
+      <div class="callout">
+        <p><strong>The short answer:</strong> Open <a href="/" class="accent">sharetexts.online</a> on both devices. Click Send on the first, enter the code on the second. Select your file. It arrives.</p>
+      </div>
+
+      <h2>Step by Step</h2>
+      <ol class="steps">
+        <li>
+          <div>
+            <h3>Open ShareText on both devices</h3>
+            <p>Visit <a href="/" class="accent">sharetexts.online</a> in any browser — Chrome, Safari, Firefox, Edge. Works on phones, tablets, and computers.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Connect the two devices</h3>
+            <p>On the device that has the file, click <strong>Send something</strong>. You'll see a 6-digit pairing code. On the other device, click <strong>Receive something</strong> and enter that code. Or scan the QR code.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Transfer your file</h3>
+            <p>Type text, paste a link, or tap the attachment button to select a file. The transfer starts immediately. When it's done, the other device shows the received content with a Save button.</p>
+          </div>
+        </li>
+      </ol>
+
+      <div class="devices">
+        <div class="device">
+          <div class="icon">📱</div>
+          <div class="label">Device A — Send</div>
+          <p class="muted" style="font-size:13px; margin-top:4px;">Phone, tablet, or computer</p>
+        </div>
+        <div class="device">
+          <div class="icon">💻</div>
+          <div class="label">Device B — Receive</div>
+          <p class="muted" style="font-size:13px; margin-top:4px;">Any device with a browser</p>
+        </div>
+      </div>
+
+      <h2>What You Can Transfer</h2>
+      <div class="card">
+        <p style="margin-bottom:8px;"><strong>Text, links, and code</strong> — Paste anything. It appears on the other device instantly.</p>
+        <p style="margin-bottom:8px;"><strong>Photos and videos</strong> — Select images or videos from your camera roll or file system.</p>
+        <p style="margin-bottom:0;"><strong>Any file</strong> — Documents, PDFs, ZIPs, audio, and more. No size limit imposed by ShareText.</p>
+      </div>
+
+      <h2>Supported Devices</h2>
+      <p>ShareText works on any two devices with a modern browser and an internet connection:</p>
+      <ul>
+        <li>iPhone and Android phones</li>
+        <li>Windows, macOS, and Linux computers</li>
+        <li>iPads and Android tablets</li>
+        <li>Any combination — iPhone to Windows, Android to Mac, phone to tablet, and more</li>
+      </ul>
+
+      <h2>How It Stays Private</h2>
+      <p>ShareText connects two devices directly using encrypted browser technology. Your files move between devices, not through a cloud server. Temporary rooms close automatically. No accounts. No history.</p>
+
+      <div style="text-align:center; margin: 40px 0;">
+        <a href="/" class="cta">Try ShareText Free →</a>
+        <br />
+        <a href="/guides/privacy.html" class="cta-secondary">Learn about Privacy →</a>
+      </div>
+
+      <section class="related">
+        <h2>Related Guides</h2>
+        <div class="related-links">
+          <a href="/guides/how-to-transfer-files-from-phone-to-computer.html">Phone → Computer</a>
+          <a href="/guides/how-to-transfer-files-from-computer-to-phone.html">Computer → Phone</a>
+          <a href="/guides/send-text-between-devices.html">Send Text Between Devices</a>
+          <a href="/guides/transfer-photos-without-an-app.html">Transfer Photos Without an App</a>
+          <a href="/guides/browser-file-transfer.html">Browser File Transfer</a>
+          <a href="/guides/supported-devices.html">Supported Devices</a>
+          <a href="/guides/privacy.html">Privacy &amp; Security</a>
+          <a href="/guides/troubleshooting.html">Troubleshooting</a>
+        </div>
+      </section>
+    </article>
+  </main>
+
+  <footer>
+    <p><a href="/" style="color:inherit; text-decoration:none;">ShareText</a> — The temporary bridge between your devices. No app. No account.</p>
+  </footer>
+</body>
+</html>

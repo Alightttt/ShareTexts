@@ -364,6 +364,9 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               <a href="#private" className="hover:text-apple-ink dark:hover:text-white transition-colors">Privacy</a>
               <a href="#faq" className="hover:text-apple-ink dark:hover:text-white transition-colors">Questions</a>
               <a href="/docs" className="hover:text-apple-ink dark:hover:text-white transition-colors">Docs</a>
+              <a href="/guides/how-to-transfer-files-between-devices.html" className="hover:text-apple-ink dark:hover:text-white transition-colors">Transfer Guide</a>
+              <a href="/guides/supported-devices.html" className="hover:text-apple-ink dark:hover:text-white transition-colors">Devices</a>
+              <a href="/guides/troubleshooting.html" className="hover:text-apple-ink dark:hover:text-white transition-colors">Help</a>
             </div>
           </div>
           <div className="mt-5 pt-5 border-t border-apple-divider/60 dark:border-white/[0.04] flex flex-wrap items-center gap-2 text-[12px] font-medium text-apple-ink-muted/70 dark:text-white/40">

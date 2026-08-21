@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy and Security — ShareText</title>
+  <meta name="description" content="How ShareText protects your data. Encrypted transfers, no accounts, no storage, temporary connections. Learn about WebRTC security and what happens to your files." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://sharetexts.online/guides/privacy.html" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="ShareText" />
+  <meta property="og:title" content="Privacy and Security — ShareText" />
+  <meta property="og:description" content="How ShareText protects your data. Encrypted transfers, no accounts, no storage, temporary connections." />
+  <meta property="og:url" content="https://sharetexts.online/guides/privacy.html" />
+  <meta property="og:image" content="https://sharetexts.online/og/sharetext-og-v2.png?v=2" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Privacy and Security — ShareText" />
+  <meta name="twitter:description" content="How ShareText protects your data. Encrypted transfers, no accounts, no storage." />
+  <meta name="twitter:image" content="https://sharetexts.online/og/sharetext-og-v2.png?v=2" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Privacy and Security — ShareText",
+    "description": "How ShareText protects your data. Encrypted transfers, no accounts, no storage, temporary connections.",
+    "publisher": { "@id": "https://sharetexts.online/#organization" }
+  }
+  </script>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif; color: #1d1d1f; background: #fff; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    @media (prefers-color-scheme: dark) { body { color: #f7faff; background: #060a13; } .card { background: #0d1422 !important; border-color: rgba(247,250,255,.1) !important; } .muted { color: rgba(247,250,255,.55) !important; } .accent { color: #4b93ff !important; } .callout { background: rgba(10,102,240,.08) !important; border-color: rgba(75,147,255,.2) !important; } header { background: rgba(6,10,19,.92) !important; border-color: rgba(247,250,255,.08) !important; } .related-links a { background: #0d1422; color: #f7faff; border-color: rgba(247,250,255,.08); } footer { border-color: rgba(247,250,255,.08) !important; } .green-card { background: rgba(22,131,75,.06) !important; border-color: rgba(22,131,75,.15) !important; } }
+    .container { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+    header { border-bottom: 1px solid rgba(29,29,31,.08); padding: 16px 24px; position: sticky; top: 0; background: rgba(255,255,255,.92); backdrop-filter: blur(12px); z-index: 40; }
+    .hdr-inner { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+    .hdr-inner svg { width: 20px; height: 20px; }
+    .hdr-inner span { font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
+    .back { font-size: 13px; font-weight: 500; color: #596579; text-decoration: none; margin-left: auto; }
+    .back:hover { color: #1d1d1f; }
+    article { padding: 48px 0 80px; }
+    h1 { font-size: 32px; font-weight: 600; letter-spacing: -.03em; line-height: 1.1; margin-bottom: 12px; }
+    .subtitle { font-size: 17px; color: #596579; max-width: 560px; margin-bottom: 32px; }
+    h2 { font-size: 22px; font-weight: 600; letter-spacing: -.02em; margin: 40px 0 16px; }
+    p { margin-bottom: 16px; font-size: 16px; }
+    .muted { color: #596579; } .accent { color: #0a66f0; }
+    .callout { background: rgba(10,102,240,.04); border: 1px solid rgba(10,102,240,.12); border-radius: 12px; padding: 16px 20px; margin: 24px 0; }
+    .callout p { margin: 0; font-size: 15px; }
+    .green-card { background: rgba(22,131,75,.04); border: 1px solid rgba(22,131,75,.12); border-radius: 14px; padding: 20px 24px; margin-bottom: 16px; }
+    .card { background: #f7f9fc; border: 1px solid rgba(29,29,31,.06); border-radius: 14px; padding: 20px 24px; margin-bottom: 16px; }
+    .cta { display: inline-flex; align-items: center; gap: 8px; background: #0a66f0; color: #fff; padding: 14px 28px; border-radius: 12px; font-size: 15px; font-weight: 600; text-decoration: none; transition: background .15s; margin: 16px 0; }
+    .cta:hover { background: #0757d5; }
+    ul { padding-left: 20px; margin-bottom: 16px; } li { margin-bottom: 8px; font-size: 15px; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid rgba(29,29,31,.06); }
+    th { font-weight: 600; font-size: 13px; color: #596579; }
+    @media (prefers-color-scheme: dark) { th, td { border-color: rgba(247,250,255,.06); } }
+    .related { margin-top: 48px; padding-top: 32px; border-top: 1px solid rgba(29,29,31,.08); }
+    .related h2 { margin-top: 0; }
+    .related-links { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .related-links a { display: block; padding: 14px 18px; background: #f7f9fc; border: 1px solid rgba(29,29,31,.06); border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 500; color: #1d1d1f; transition: all .15s; }
+    .related-links a:hover { border-color: #0a66f0; transform: translateY(-1px); }
+    footer { border-top: 1px solid rgba(29,29,31,.08); padding: 24px; text-align: center; font-size: 13px; color: #7d8998; }
+    @media (max-width: 600px) { h1 { font-size: 26px; } h2 { font-size: 20px; } .related-links { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header><div class="hdr-inner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span>ShareText</span><a href="/" class="back">Home →</a></div></header>
+
+  <main class="container"><article>
+    <p class="muted" style="font-size:13px; margin-bottom:8px;">Privacy &amp; Security</p>
+    <h1>How ShareText Protects Your Data</h1>
+    <p class="subtitle">ShareText is designed around a simple principle: your data moves between your devices, not through ours. Here's exactly what that means.</p>
+
+    <div class="callout"><p><strong>In short:</strong> Transfers are encrypted between devices. ShareText stores no accounts, no chat history, and no copies of your content. Temporary rooms close automatically when you're done.</p></div>
+
+    <h2>What Happens to Your Files</h2>
+    <div class="green-card">
+      <p style="margin:0;"><strong>During transfer:</strong> Your file travels directly between the two connected devices using encrypted browser technology (WebRTC). It doesn't pass through ShareText's servers for storage.</p>
+    </div>
+    <div class="green-card">
+      <p style="margin:0;"><strong>After transfer:</strong> The file exists only on the two devices that participated. No copy is kept on any server. The temporary room closes and the connection ends.</p>
+    </div>
+
+    <h2>What ShareText Stores</h2>
+    <table>
+      <tr><th>What</th><th>Stored?</th><th>Details</th></tr>
+      <tr><td>Your files</td><td>No</td><td>Transferred directly between devices.</td></tr>
+      <tr><td>Your text messages</td><td>No</td><td>Transferred directly between devices.</td></tr>
+      <tr><td>Accounts</td><td>No</td><td>No sign-up, no login, no user profiles.</td></tr>
+      <tr><td>Chat history</td><td>No</td><td>Rooms close automatically when you're done.</td></tr>
+      <tr><td>IP addresses</td><td>Temporarily</td><td>Used during connection establishment. Not logged.</td></tr>
+      <tr><td>Pairing codes</td><td>Temporarily</td><td>Valid for a limited time. Expire automatically.</td></tr>
+    </table>
+
+    <h2>How Encryption Works</h2>
+    <p>ShareText uses WebRTC, which encrypts all data in transit using DTLS (Datagram Transport Layer Security). This is the same encryption used by video calling and other secure browser applications.</p>
+    <ul>
+      <li>All data between devices is encrypted</li>
+      <li>Each transfer uses a unique encryption key</li>
+      <li>The pairing code authenticates both devices before any data is shared</li>
+    </ul>
+
+    <h2>What ShareText Can See</h2>
+    <p>ShareText can see that a room exists and that two devices are connected. It cannot see the content of your transfers — the data is encrypted end-to-end between your devices.</p>
+
+    <h2>Temporary by Design</h2>
+    <p>Every ShareText room is temporary. When you close the tab or the session expires, the room is destroyed. There is no "recover previous session" or "view history" feature because there is nothing to recover or view.</p>
+
+    <h2>What ShareText Does NOT Do</h2>
+    <ul>
+      <li>Store your files or messages on any server</li>
+      <li>Track your usage across sessions</li>
+      <li>Sell or share your data with third parties</li>
+      <li>Use cookies for advertising or analytics</li>
+      <li>Require personal information</li>
+    </ul>
+
+    <h2>Limitations</h2>
+    <p>No system is perfect. Here's what to be aware of:</p>
+    <ul>
+      <li>Both devices must be online during the transfer</li>
+      <li>If a direct connection isn't possible, a relay server handles the encrypted traffic (the content is still encrypted)</li>
+      <li>ShareText cannot prevent you from sharing something with someone — the security boundary is the encrypted connection, not the human using it</li>
+    </ul>
+
+    <div style="text-align:center; margin: 40px 0;"><a href="/" class="cta">Try ShareText Free →</a></div>
+
+    <section class="related">
+      <h2>Related</h2>
+      <div class="related-links">
+        <a href="/guides/browser-file-transfer.html">How Browser Transfer Works</a>
+        <a href="/guides/supported-devices.html">Supported Devices</a>
+        <a href="/guides/troubleshooting.html">Troubleshooting</a>
+        <a href="/guides/how-to-transfer-files-between-devices.html">How to Transfer Files</a>
+      </div>
+    </section>
+  </article></main>
+
+  <footer><p><a href="/" style="color:inherit; text-decoration:none;">ShareText</a> — The temporary bridge between your devices.</p></footer>
+</body>
+</html>
