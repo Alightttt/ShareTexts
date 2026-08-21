@@ -102,7 +102,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
         {Array.from({ length: 6 }).map((_, i) => (
           <React.Fragment key={i}>
             <div className={cn(
-              "flex-1 aspect-[3/4] rounded-[14px] sm:rounded-[16px] flex items-center justify-center overflow-hidden transition-all relative",
+              "flex-1 aspect-[3/4] rounded-[14px] sm:rounded-[16px] flex items-center justify-center overflow-hidden transition-motion relative",
               "shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]",
               code[i]
                 ? "bg-white dark:bg-apple-tile-3 border border-apple-divider dark:border-apple-tile-3"

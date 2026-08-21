@@ -98,10 +98,10 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           </a>
           {/* Desktop only — mobile nav lives in the footer */}
           <nav className="hidden md:flex items-center justify-center gap-5 flex-1" aria-label="Page sections">
-            <a href="#how-it-works" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-all duration-200 hover:translate-y-[-1px]">How it works</a>
-            <a href="#private" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-all duration-200 hover:translate-y-[-1px]">Privacy</a>
-            <a href="#faq" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-all duration-200 hover:translate-y-[-1px]">Questions</a>
-            <a href="/docs" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-all duration-200 hover:translate-y-[-1px]">Docs</a>
+            <a href="#how-it-works" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-motion hover:translate-y-[-1px]">How it works</a>
+            <a href="#private" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-motion hover:translate-y-[-1px]">Privacy</a>
+            <a href="#faq" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-motion hover:translate-y-[-1px]">Questions</a>
+            <a href="/docs" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/55 dark:hover:text-white transition-motion hover:translate-y-[-1px]">Docs</a>
           </nav>
           <div className="flex items-center gap-3 sm:gap-4 ml-auto shrink-0">
             <LiveUsers className="hidden lg:inline-flex" />
@@ -246,7 +246,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-30px' }}
                 transition={{ duration: 0.5, delay: i * 0.08, ease: EASE }}
-                className="p-5 sm:p-6 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3 text-left hover:shadow-card hover:translate-y-[-2px] transition-all duration-200"
+                className="p-5 sm:p-6 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3 text-left hover:shadow-card hover:translate-y-[-2px] transition-motion"
               >
                 <div className={`w-10 h-10 rounded-[12px] ${item.color} flex items-center justify-center mb-3`}>
                   {item.icon}

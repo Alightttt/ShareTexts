@@ -503,7 +503,7 @@ export function HeroDemo() {
                           disabled={!canSend}
                           aria-label="Send demo"
                           className={cn(
-                            'w-[24px] h-[24px] sm:w-[24px] sm:h-[24px] rounded-full flex items-center justify-center transition-all active:scale-90',
+                            'w-[24px] h-[24px] sm:w-[24px] sm:h-[24px] rounded-full flex items-center justify-center transition-motion active:scale-90',
                             canSend
                               ? 'bg-apple-blue text-white shadow-[0_2px_6px_rgba(0,102,204,0.45)]'
                               : 'bg-apple-ink/10 dark:bg-white/10 text-apple-ink-muted/60 cursor-default'
