@@ -10,7 +10,7 @@
   <meta property="og:type" content="article" />
   <meta property="og:site_name" content="ShareText" />
   <meta property="og:title" content="Troubleshooting — ShareText" />
-  <meta property="og:description" content="Fix common ShareText issues. Pairing code not working, transfer stuck, connection lost." />
+  <meta property="og:description" content="Fix common ShareText issues." />
   <meta property="og:url" content="https://sharetexts.online/guides/troubleshooting.html" />
   <meta property="og:image" content="https://sharetexts.online/og/sharetext-og-v3.jpg" />
   <meta property="og:image:width" content="1200" />
@@ -18,185 +18,141 @@
   <meta property="og:image:type" content="image/jpeg" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Troubleshooting — ShareText" />
-  <meta name="twitter:description" content="Fix common ShareText issues. Pairing code not working, transfer stuck, connection lost." />
+  <meta name="twitter:description" content="Fix common ShareText issues." />
   <meta name="twitter:image" content="https://sharetexts.online/og/sharetext-og-v3.jpg" />
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "The pairing code isn't working",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Pairing codes expire after a short time. Ask the other device to generate a new code. Make sure you're entering the exact 6 digits shown."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "The transfer is stuck",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Check that both devices have a stable internet connection. If the transfer doesn't progress, try refreshing the page on both devices and reconnecting."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "ShareText says my browser isn't supported",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "ShareText requires WebRTC. Update your browser to the latest version, or try Chrome, Firefox, Safari, or Edge."
-        }
-      }
-    ]
-  }
-  </script>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <link rel="stylesheet" href="/guides/_template.css" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif; color: #1d1d1f; background: #fff; line-height: 1.6; -webkit-font-smoothing: antialiased; }
-    @media (prefers-color-scheme: dark) { body { color: #f7faff; background: #060a13; } .card { background: #0d1422 !important; border-color: rgba(247,250,255,.1) !important; } .muted { color: rgba(247,250,255,.55) !important; } .accent { color: #4b93ff !important; } .callout { background: rgba(10,102,240,.08) !important; border-color: rgba(75,147,255,.2) !important; } header { background: rgba(6,10,19,.92) !important; border-color: rgba(247,250,255,.08) !important; } .related-links a { background: #0d1422; color: #f7faff; border-color: rgba(247,250,255,.08); } footer { border-color: rgba(247,250,255,.08) !important; } .issue { background: #0d1422; border-color: rgba(247,250,255,.08); } }
-    .container { max-width: 720px; margin: 0 auto; padding: 0 24px; }
-    header { border-bottom: 1px solid rgba(29,29,31,.08); padding: 16px 24px; position: sticky; top: 0; background: rgba(255,255,255,.92); backdrop-filter: blur(12px); z-index: 40; }
-    .hdr-inner { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
-    .hdr-inner svg { width: 20px; height: 20px; }
-    .hdr-inner span { font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
-    .back { font-size: 13px; font-weight: 500; color: #596579; text-decoration: none; margin-left: auto; }
-    .back:hover { color: #1d1d1f; }
-    article { padding: 48px 0 80px; }
-    h1 { font-size: 32px; font-weight: 600; letter-spacing: -.03em; line-height: 1.1; margin-bottom: 12px; }
-    .subtitle { font-size: 17px; color: #596579; max-width: 560px; margin-bottom: 32px; }
-    h2 { font-size: 22px; font-weight: 600; letter-spacing: -.02em; margin: 40px 0 16px; }
-    p { margin-bottom: 16px; font-size: 16px; }
-    .muted { color: #596579; } .accent { color: #0a66f0; }
-    .callout { background: rgba(10,102,240,.04); border: 1px solid rgba(10,102,240,.12); border-radius: 12px; padding: 16px 20px; margin: 24px 0; }
-    .callout p { margin: 0; font-size: 15px; }
-    .issue { background: #f7f9fc; border: 1px solid rgba(29,29,31,.06); border-radius: 14px; padding: 20px 24px; margin-bottom: 16px; }
-    .issue h3 { font-size: 16px; font-weight: 600; margin: 0 0 8px; color: #c83535; }
-    @media (prefers-color-scheme: dark) { .issue h3 { color: #ff7373; } }
-    .solution { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(29,29,31,.06); }
-    .solution p { margin: 0; font-size: 14px; }
-    .cta { display: inline-flex; align-items: center; gap: 8px; background: #0a66f0; color: #fff; padding: 14px 28px; border-radius: 12px; font-size: 15px; font-weight: 600; text-decoration: none; transition: background .15s; margin: 16px 0; }
-    .cta:hover { background: #0757d5; }
-    ul { padding-left: 20px; margin-bottom: 16px; } li { margin-bottom: 8px; font-size: 15px; }
-    ol { padding-left: 20px; margin-bottom: 16px; } ol li { margin-bottom: 8px; font-size: 15px; }
-    .related { margin-top: 48px; padding-top: 32px; border-top: 1px solid rgba(29,29,31,.08); }
-    .related h2 { margin-top: 0; }
-    .related-links { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .related-links a { display: block; padding: 14px 18px; background: #f7f9fc; border: 1px solid rgba(29,29,31,.06); border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 500; color: #1d1d1f; transition: all .15s; }
-    .related-links a:hover { border-color: #0a66f0; transform: translateY(-1px); }
-    footer { border-top: 1px solid rgba(29,29,31,.08); padding: 24px; text-align: center; font-size: 13px; color: #7d8998; }
-    @media (max-width: 600px) { h1 { font-size: 26px; } h2 { font-size: 20px; } .related-links { grid-template-columns: 1fr; } }
+    .issue { margin-bottom: 16px; }
+    .issue-symptom {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--error);
+      margin-bottom: 6px;
+    }
+    .issue-cause {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .issue-solution {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .issue-solution strong { color: var(--text); }
+    @media (prefers-color-scheme: dark) {
+      .issue-symptom { color: var(--error); }
+    }
   </style>
 </head>
 <body>
-  <header><div class="hdr-inner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span>ShareText</span><a href="/" class="back">Home →</a></div></header>
+  <header class="header"><div class="header-inner">
+    <a href="/" class="header-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      <span>ShareText</span>
+    </a>
+    <a href="/" class="header-back">Home →</a>
+  </div></header>
 
   <main class="container"><article>
-    <p class="muted" style="font-size:13px; margin-bottom:8px;">Support</p>
-    <h1>Troubleshooting ShareText</h1>
+    <p class="overline">Support</p>
+    <h1>Troubleshooting</h1>
     <p class="subtitle">Solutions for common issues with pairing, transferring, and connecting.</p>
 
     <div class="callout"><p><strong>Quick fix for most issues:</strong> Refresh ShareText on both devices, create a new room, and try again. Most problems are temporary and resolve with a fresh connection.</p></div>
 
     <h2>Pairing Issues</h2>
 
-    <div class="issue">
-      <h3>"That code isn't active"</h3>
-      <p>The pairing code has expired. Codes rotate automatically for security.</p>
-      <div class="solution"><p><strong>Fix:</strong> Ask the other device to generate a new code. Enter the fresh 6 digits.</p></div>
+    <div class="card issue">
+      <div class="issue-symptom">"That code isn't active"</div>
+      <div class="issue-cause">The pairing code has expired. Codes rotate automatically for security.</div>
+      <div class="issue-solution"><strong>Fix:</strong> Ask the other device to generate a new code. Enter the fresh 6 digits immediately.</div>
     </div>
 
-    <div class="issue">
-      <h3>"Invalid code" when entering a correct code</h3>
-      <p>This usually means the code expired between when it was shown and when you entered it.</p>
-      <div class="solution"><p><strong>Fix:</strong> Request a new code and enter it immediately. Codes are valid for a limited window.</p></div>
+    <div class="card issue">
+      <div class="issue-symptom">"Invalid code" when entering a correct code</div>
+      <div class="issue-cause">The code expired between when it was shown and when you entered it.</div>
+      <div class="issue-solution"><strong>Fix:</strong> Request a new code and enter it right away. Codes are valid for a limited window.</div>
     </div>
 
-    <div class="issue">
-      <h3>Code is hard to read on mobile</h3>
-      <p>The pairing code display should be large enough to read. If it's too small:</p>
-      <div class="solution"><p><strong>Fix:</strong> Use the QR code option instead. Tap "Show QR" on the sending device and scan it with the receiving device.</p></div>
+    <div class="card issue">
+      <div class="issue-symptom">Code is hard to read on mobile</div>
+      <div class="issue-cause">The pairing code display may be too small on some screens.</div>
+      <div class="issue-solution"><strong>Fix:</strong> Use the QR code option instead. Tap "Show QR" on the sending device and scan it with the receiving device.</div>
     </div>
 
     <h2>Connection Issues</h2>
 
-    <div class="issue">
-      <h3>"Still connecting" after a long time</h3>
-      <p>The devices are trying to connect but haven't established a link yet.</p>
-      <div class="solution"><p><strong>Fix:</strong> Check that both devices have internet. If on different networks, ShareText may use a relay (still secure, slightly slower). Wait up to 15 seconds, then tap "Try again".</p></div>
+    <div class="card issue">
+      <div class="issue-symptom">"Still connecting" after a long time</div>
+      <div class="issue-cause">The devices are trying to connect but haven't established a link yet. Usually a network issue.</div>
+      <div class="issue-solution"><strong>Fix:</strong> Check that both devices have internet. Wait up to 15 seconds, then tap "Try again". If on different networks, ShareText may use a relay (still secure, slightly slower).</div>
     </div>
 
-    <div class="issue">
-      <h3>"The other device disconnected"</h3>
-      <p>The partner device closed the tab, lost internet, or went to sleep.</p>
-      <div class="solution"><p><strong>Fix:</strong> ShareText will try to reconnect automatically. If it doesn't, refresh the page and re-enter the code. Your unsent content is preserved in the composer.</p></div>
+    <div class="card issue">
+      <div class="issue-symptom">"The other device disconnected"</div>
+      <div class="issue-cause">The partner device closed the tab, lost internet, or went to sleep.</div>
+      <div class="issue-solution"><strong>Fix:</strong> ShareText will try to reconnect automatically. If it doesn't, refresh the page and re-enter the code. Your unsent content is preserved in the composer.</div>
     </div>
 
-    <div class="issue">
-      <h3>Connection drops during transfer</h3>
-      <p>Unstable Wi-Fi or cellular networks can interrupt the connection.</p>
-      <div class="solution"><p><strong>Fix:</strong> Ensure both devices have stable internet. Move closer to the Wi-Fi router. If the transfer was interrupted, try sending again — ShareText will start from where it left off.</p></div>
+    <div class="card issue">
+      <div class="issue-symptom">Connection drops during transfer</div>
+      <div class="issue-cause">Unstable Wi-Fi or cellular networks can interrupt the connection.</div>
+      <div class="issue-solution"><strong>Fix:</strong> Ensure both devices have stable internet. Move closer to the Wi-Fi router. ShareText will resume from where it left off.</div>
     </div>
 
     <h2>Transfer Issues</h2>
 
-    <div class="issue">
-      <h3>Transfer seems stuck or very slow</h3>
-      <p>Large files take time, and slow connections make it worse.</p>
-      <div class="solution"><p><strong>Fix:</strong> Check the progress indicator. For large files, progress may pause briefly during chunk transfers. If truly stuck, refresh and try again. A faster Wi-Fi connection helps.</p></div>
+    <div class="card issue">
+      <div class="issue-symptom">Transfer seems stuck or very slow</div>
+      <div class="issue-cause">Large files take time, and slow connections make it worse.</div>
+      <div class="issue-solution"><strong>Fix:</strong> Check the progress indicator. For large files, progress may pause briefly during chunk transfers. If truly stuck, refresh and try again.</div>
     </div>
 
-    <div class="issue">
-      <h3>Received file looks different or corrupted</h3>
-      <p>This is extremely rare. ShareText verifies file integrity using SHA-256 checksums.</p>
-      <div class="solution"><p><strong>Fix:</strong> If the file fails verification, ShareText will show a warning. Try sending again. The checksum comparison ensures what you send is exactly what arrives.</p></div>
-    </div>
-
-    <div class="issue">
-      <h3>Can't save the received file on mobile</h3>
-      <p>Some mobile browsers handle file downloads differently.</p>
-      <div class="solution"><p><strong>Fix:</strong> Tap the Save/Download button on the received file card. If nothing happens, try long-pressing the file preview and selecting "Save to Files" or "Download".</p></div>
+    <div class="card issue">
+      <div class="issue-symptom">Can't save the received file on mobile</div>
+      <div class="issue-cause">Some mobile browsers handle file downloads differently.</div>
+      <div class="issue-solution"><strong>Fix:</strong> Tap the Save/Download button on the received file card. If nothing happens, try long-pressing the file preview and selecting "Save to Files" or "Download".</div>
     </div>
 
     <h2>Browser Issues</h2>
 
-    <div class="issue">
-      <h3>"Browser Unsupported" message</h3>
-      <p>Your browser doesn't support WebRTC, which ShareText requires for device-to-device connections.</p>
-      <div class="solution"><p><strong>Fix:</strong> Update your browser to the latest version, or try a different browser. Chrome, Firefox, Safari (15+), and Edge all support WebRTC.</p></div>
+    <div class="card issue">
+      <div class="issue-symptom">"Browser Unsupported" message</div>
+      <div class="issue-cause">Your browser doesn't support WebRTC, which ShareText requires.</div>
+      <div class="issue-solution"><strong>Fix:</strong> Update your browser to the latest version, or try Chrome, Firefox, Safari (15+), or Edge.</div>
     </div>
 
-    <div class="issue">
-      <h3>Camera doesn't open for QR scan</h3>
-      <p>The browser needs camera permission to scan QR codes.</p>
-      <div class="solution"><p><strong>Fix:</strong> When prompted, allow camera access. If you denied it, go to your browser's site settings and enable camera permission for sharetexts.online.</p></div>
+    <div class="card issue">
+      <div class="issue-symptom">Camera doesn't open for QR scan</div>
+      <div class="issue-cause">The browser needs camera permission to scan QR codes.</div>
+      <div class="issue-solution"><strong>Fix:</strong> When prompted, allow camera access. If you denied it, go to your browser's site settings and enable camera permission for sharetexts.online.</div>
     </div>
 
     <h2>General Tips</h2>
-    <ol>
-      <li><strong>Refresh both devices</strong> — This fixes most temporary issues.</li>
-      <li><strong>Check your internet</strong> — Both devices need an active connection.</li>
-      <li><strong>Use a fresh code</strong> — If pairing fails, generate a new code instead of retrying the same one.</li>
-      <li><strong>Try a different browser</strong> — If one browser has issues, another might work better.</li>
-      <li><strong>Disable VPN temporarily</strong> — Some VPNs interfere with WebRTC connections.</li>
+    <ol class="steps">
+      <li><div><h3>Refresh both devices</h3><p>This fixes most temporary issues.</p></div></li>
+      <li><div><h3>Check your internet</h3><p>Both devices need an active connection.</p></div></li>
+      <li><div><h3>Use a fresh code</h3><p>If pairing fails, generate a new code instead of retrying the same one.</p></div></li>
+      <li><div><h3>Try a different browser</h3><p>If one browser has issues, another might work better.</p></div></li>
+      <li><div><h3>Disable VPN temporarily</h3><p>Some VPNs interfere with WebRTC connections.</p></div></li>
     </ol>
 
-    <div style="text-align:center; margin: 40px 0;"><a href="/" class="cta">Try ShareText Free →</a></div>
+    <div style="text-align:center; margin: 48px 0 0"><a href="/" class="cta">Try ShareText Free →</a></div>
 
     <section class="related">
-      <h2>Related Guides</h2>
+      <h2>Learn More</h2>
       <div class="related-links">
-        <a href="/guides/how-to-transfer-files-between-devices.html">How to Transfer Files</a>
+        <a href="/guides/how-to-transfer-files-between-devices.html">Transfer Guide</a>
         <a href="/guides/supported-devices.html">Supported Devices</a>
-        <a href="/guides/privacy.html">Privacy &amp; Security</a>
-        <a href="/guides/browser-file-transfer.html">Browser File Transfer</a>
+        <a href="/guides/privacy.html">Privacy</a>
+        <a href="/guides/how-it-works.html">How It Works</a>
       </div>
     </section>
   </article></main>
 
-  <footer><p><a href="/" style="color:inherit; text-decoration:none;">ShareText</a> — The temporary bridge between your devices.</p></footer>
+  <footer class="footer"><p><a href="/">ShareText</a> — The temporary bridge between your devices.</p></footer>
 </body>
 </html>

@@ -9,7 +9,7 @@
   <link rel="canonical" href="https://sharetexts.online/guides/about.html" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="ShareText" />
-  <meta property="og:title" content="About ShareText — Browser-Based Device-to-Device Transfer" />
+  <meta property="og:title" content="About ShareText" />
   <meta property="og:description" content="ShareText is a free browser tool for transferring text, photos, videos, and files between any two devices." />
   <meta property="og:url" content="https://sharetexts.online/guides/about.html" />
   <meta property="og:image" content="https://sharetexts.online/og/sharetext-og-v3.jpg" />
@@ -20,183 +20,139 @@
   <meta name="twitter:title" content="About ShareText" />
   <meta name="twitter:description" content="ShareText is a free browser tool for transferring text, photos, videos, and files between any two devices." />
   <meta name="twitter:image" content="https://sharetexts.online/og/sharetext-og-v3.jpg" />
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "AboutPage",
-    "name": "About ShareText",
-    "url": "https://sharetexts.online/guides/about.html",
-    "mainEntity": {
-      "@type": "WebApplication",
-      "name": "ShareText",
-      "url": "https://sharetexts.online/",
-      "description": "ShareText is a browser-based tool for temporarily transferring text, photos, videos, and files between two devices without installing an app or creating an account.",
-      "applicationCategory": "UtilitiesApplication",
-      "operatingSystem": "Any modern browser",
-      "isAccessibleForFree": true
-    }
-  }
-  </script>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif; color: #1d1d1f; background: #fff; line-height: 1.7; -webkit-font-smoothing: antialiased; }
-    @media (prefers-color-scheme: dark) { body { color: #f7faff; background: #060a13; } .card { background: #0d1422 !important; border-color: rgba(247,250,255,.1) !important; } .muted { color: rgba(247,250,255,.55) !important; } .accent { color: #4b93ff !important; } .callout { background: rgba(10,102,240,.08) !important; border-color: rgba(75,147,255,.2) !important; } header { background: rgba(6,10,19,.92) !important; border-color: rgba(247,250,255,.08) !important; } .related-links a { background: #0d1422; color: #f7faff; border-color: rgba(247,250,255,.08); } footer { border-color: rgba(247,250,255,.08) !important; } .spec { background: #0d1422; border-color: rgba(247,250,255,.08); } }
-    .container { max-width: 720px; margin: 0 auto; padding: 0 24px; }
-    header { border-bottom: 1px solid rgba(29,29,31,.08); padding: 16px 24px; position: sticky; top: 0; background: rgba(255,255,255,.92); backdrop-filter: blur(12px); z-index: 40; }
-    .hdr-inner { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
-    .hdr-inner svg { width: 20px; height: 20px; }
-    .hdr-inner span { font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
-    .back { font-size: 13px; font-weight: 500; color: #596579; text-decoration: none; margin-left: auto; }
-    .back:hover { color: #1d1d1f; }
-    article { padding: 48px 0 80px; }
-    h1 { font-size: 32px; font-weight: 600; letter-spacing: -.03em; line-height: 1.1; margin-bottom: 12px; }
-    .subtitle { font-size: 17px; color: #596579; max-width: 560px; margin-bottom: 32px; }
-    h2 { font-size: 22px; font-weight: 600; letter-spacing: -.02em; margin: 40px 0 16px; }
-    h3 { font-size: 17px; font-weight: 600; margin: 24px 0 10px; }
-    p { margin-bottom: 16px; font-size: 16px; }
-    .muted { color: #596579; } .accent { color: #0a66f0; }
-    .callout { background: rgba(10,102,240,.04); border: 1px solid rgba(10,102,240,.12); border-radius: 12px; padding: 16px 20px; margin: 24px 0; }
-    .callout p { margin: 0; font-size: 15px; }
-    .card { background: #f7f9fc; border: 1px solid rgba(29,29,31,.06); border-radius: 14px; padding: 20px 24px; margin-bottom: 16px; }
-    .spec { background: #f7f9fc; border: 1px solid rgba(29,29,31,.06); border-radius: 14px; padding: 20px 24px; margin-bottom: 16px; }
-    .cta { display: inline-flex; align-items: center; gap: 8px; background: #0a66f0; color: #fff; padding: 14px 28px; border-radius: 12px; font-size: 15px; font-weight: 600; text-decoration: none; transition: background .15s; margin: 16px 0; }
-    .cta:hover { background: #0757d5; }
-    ul, ol { padding-left: 20px; margin-bottom: 16px; }
-    li { margin-bottom: 8px; font-size: 15px; }
-    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
-    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid rgba(29,29,31,.06); }
-    th { font-weight: 600; font-size: 13px; color: #596579; }
-    @media (prefers-color-scheme: dark) { th, td { border-color: rgba(247,250,255,.06); } .spec { background: #0d1422; border-color: rgba(247,250,255,.08); } }
-    .related { margin-top: 48px; padding-top: 32px; border-top: 1px solid rgba(29,29,31,.08); }
-    .related h2 { margin-top: 0; }
-    .related-links { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .related-links a { display: block; padding: 14px 18px; background: #f7f9fc; border: 1px solid rgba(29,29,31,.06); border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 500; color: #1d1d1f; transition: all .15s; }
-    .related-links a:hover { border-color: #0a66f0; transform: translateY(-1px); }
-    footer { border-top: 1px solid rgba(29,29,31,.08); padding: 24px; text-align: center; font-size: 13px; color: #7d8998; }
-    @media (max-width: 600px) { h1 { font-size: 26px; } h2 { font-size: 20px; } .related-links { grid-template-columns: 1fr; } }
-  </style>
+  <link rel="stylesheet" href="/guides/_template.css" />
 </head>
 <body>
-  <header><div class="hdr-inner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span>ShareText</span><a href="/" class="back">Home →</a></div></header>
+  <header class="header"><div class="header-inner">
+    <a href="/" class="header-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      <span>ShareText</span>
+    </a>
+    <a href="/" class="header-back">Home →</a>
+  </div></header>
 
   <main class="container"><article>
-    <p class="muted" style="font-size:13px; margin-bottom:8px;">About</p>
-    <h1>About ShareText</h1>
-    <p class="subtitle">ShareText is a free browser-based tool for transferring text, photos, videos, and files between any two devices — without installing an app or creating an account.</p>
+    <p class="overline">About</p>
+    <h1>What is ShareText?</h1>
+    <p class="subtitle">A free browser tool for moving text, photos, videos, and files between any two devices. No app. No account. Temporary by design.</p>
 
-    <div class="callout"><p><strong>What is ShareText?</strong> ShareText is a temporary bridge between two screens. You open it on both devices, connect them with a pairing code, and send anything. When you're done, the connection closes. No accounts. No history. No storage.</p></div>
+    <div class="callout"><p><strong>The short version:</strong> Open <a href="/" style="color:var(--brand);text-decoration:none;font-weight:500">sharetexts.online</a> on both devices. Connect with a pairing code. Send anything. When you're done, the connection closes.</p></div>
 
-    <h2>What ShareText Is</h2>
-    <ul>
-      <li><strong>A browser-based transfer tool</strong> — runs entirely in the browser on any device with a modern browser (Chrome, Safari, Firefox, Edge).</li>
-      <li><strong>A temporary bridge</strong> — connects two devices for the duration of a transfer, then closes. There is no persistent account or history.</li>
-      <li><strong>A no-install solution</strong> — no app to download, no software to install, no account to create. Just open the website and go.</li>
-      <li><strong>An encrypted transfer</strong> — data moves between devices using WebRTC, which provides DTLS encryption in transit.</li>
-    </ul>
+    <h2>What ShareText Does</h2>
+    <div class="card">
+      <p style="margin:0 0 10px"><strong>Transfers between devices</strong> — text, links, photos, videos, audio, documents, and any file type your browser can select.</p>
+    </div>
+    <div class="card">
+      <p style="margin:0 0 10px"><strong>Works across platforms</strong> — iPhone to Windows, Android to Mac, any combination. No ecosystem lock-in.</p>
+    </div>
+    <div class="card">
+      <p style="margin:0 0 10px"><strong>Encrypted end-to-end</strong> — data moves between devices using WebRTC encryption. The server never sees your files or messages.</p>
+    </div>
+    <div class="card">
+      <p style="margin:0"><strong>Temporary by design</strong> — rooms close automatically. No accounts, no history, no permanent storage.</p>
+    </div>
 
-    <h2>What ShareText Transfers</h2>
+    <h2>How It Works</h2>
+    <ol class="steps">
+      <li>
+        <div>
+          <h3>Open on both devices</h3>
+          <p>Visit <a href="/" style="color:var(--brand);text-decoration:none">sharetexts.online</a> in any browser — Chrome, Safari, Firefox, Edge.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Connect with a code</h3>
+          <p>One device shows a 6-digit pairing code. The other enters it. Or scan the QR code.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Send anything</h3>
+          <p>Type text, paste a link, or attach a file. It transfers directly between devices.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Done</h3>
+          <p>The other device receives it. Close the tab when finished. Nothing is stored.</p>
+        </div>
+      </li>
+    </ol>
+
+    <h2>What You Can Transfer</h2>
     <table>
-      <tr><th>Type</th><th>Examples</th><th>Supported</th></tr>
-      <tr><td>Text</td><td>Notes, code, URLs, error messages</td><td>✓</td></tr>
-      <tr><td>Photos</td><td>PNG, JPG, WEBP, HEIC</td><td>✓</td></tr>
-      <tr><td>Videos</td><td>MP4, MOV, WebM</td><td>✓</td></tr>
-      <tr><td>Audio</td><td>MP3, WAV, AAC</td><td>✓</td></tr>
-      <tr><td>Documents</td><td>PDF, DOCX, TXT, CSV</td><td>✓</td></tr>
-      <tr><td>Archives</td><td>ZIP, RAR, 7Z</td><td>✓</td></tr>
-      <tr><td>Any file</td><td>Any file your browser can select</td><td>✓</td></tr>
+      <tr><th>Type</th><th>Examples</th><th>Status</th></tr>
+      <tr><td>Text</td><td>Notes, code, URLs, error messages</td><td><span class="badge badge-success">Supported</span></td></tr>
+      <tr><td>Photos</td><td>PNG, JPG, WEBP, HEIC</td><td><span class="badge badge-success">Supported</span></td></tr>
+      <tr><td>Videos</td><td>MP4, MOV, WebM</td><td><span class="badge badge-success">Supported</span></td></tr>
+      <tr><td>Audio</td><td>MP3, WAV, AAC</td><td><span class="badge badge-success">Supported</span></td></tr>
+      <tr><td>Documents</td><td>PDF, DOCX, TXT, CSV</td><td><span class="badge badge-success">Supported</span></td></tr>
+      <tr><td>Any file</td><td>ZIP, RAR, or any file your browser can select</td><td><span class="badge badge-success">Supported</span></td></tr>
     </table>
 
     <h2>Supported Devices</h2>
+    <p>Any two devices with a modern browser and an internet connection:</p>
     <table>
       <tr><th>Platform</th><th>Browsers</th><th>Status</th></tr>
-      <tr><td>iPhone / iPad</td><td>Safari 15+, Chrome</td><td>Supported</td></tr>
-      <tr><td>Android</td><td>Chrome, Firefox, Samsung Internet</td><td>Supported</td></tr>
-      <tr><td>Windows</td><td>Chrome, Edge, Firefox</td><td>Supported</td></tr>
-      <tr><td>macOS</td><td>Safari, Chrome, Firefox</td><td>Supported</td></tr>
-      <tr><td>Linux</td><td>Chrome, Firefox</td><td>Supported</td></tr>
+      <tr><td>iPhone / iPad</td><td>Safari 15+, Chrome</td><td><span class="badge badge-success">Tested</span></td></tr>
+      <tr><td>Android</td><td>Chrome, Firefox, Samsung Internet</td><td><span class="badge badge-success">Tested</span></td></tr>
+      <tr><td>Windows</td><td>Chrome, Edge, Firefox</td><td><span class="badge badge-success">Tested</span></td></tr>
+      <tr><td>macOS</td><td>Safari, Chrome, Firefox</td><td><span class="badge badge-success">Tested</span></td></tr>
+      <tr><td>Linux</td><td>Chrome, Firefox</td><td><span class="badge badge-success">Tested</span></td></tr>
     </table>
-    <p>Any two devices with a modern browser can connect. Cross-platform transfers (e.g., iPhone to Windows, Android to Mac) work without any special configuration.</p>
-
-    <h2>How Pairing Works</h2>
-    <p>ShareText uses a 6-digit pairing code to connect two devices:</p>
-    <ol>
-      <li><strong>Device A</strong> (sender) opens ShareText and clicks "Send something." A 6-digit code appears.</li>
-      <li><strong>Device B</strong> (receiver) opens ShareText and clicks "Receive something," then enters the code.</li>
-      <li>The devices connect. Transfers happen directly between them.</li>
-    </ol>
-    <p>Pairing codes rotate automatically for security and expire after a limited time. QR codes and share links are also available as alternative connection methods.</p>
-
-    <h2>How Direct Transfer Works</h2>
-    <p>ShareText uses WebRTC (Web Real-Time Communication) — a browser technology that enables direct peer-to-peer connections. When two devices connect:</p>
-    <ul>
-      <li>They establish an encrypted connection using DTLS (the same encryption used by secure web browsing).</li>
-      <li>Files and text move directly between devices, not through a cloud server.</li>
-      <li>If a direct connection isn't possible (due to network restrictions), ShareText uses a relay server as a fallback — the data remains encrypted.</li>
-    </ul>
-
-    <h2>How Agent/API Transfer Works</h2>
-    <p>ShareText supports programmatic access through a temporary agent API. This allows trusted tools to send text or files into an active room. The agent permission is:</p>
-    <ul>
-      <li>Room-scoped — only works for the specific room</li>
-      <li>Time-limited — expires automatically</li>
-      <li>Revocable — the room creator can revoke access at any time</li>
-    </ul>
-
-    <h2>What ShareText Does NOT Do</h2>
-    <ul>
-      <li>Store files or messages on any server</li>
-      <li>Require accounts or login</li>
-      <li>Create permanent transfer history</li>
-      <li>Compress or modify transferred files</li>
-      <li>Support group transfers (two devices only)</li>
-      <li>Work offline (both devices need internet for initial pairing)</li>
-    </ul>
 
     <h2>Privacy Model</h2>
-    <div class="spec">
-      <p style="margin:0;"><strong>Encryption:</strong> All data between devices is encrypted using DTLS via WebRTC. Each transfer uses a unique encryption key.</p>
+    <div class="card">
+      <p style="margin:0 0 6px"><strong>Encryption</strong> — DTLS via WebRTC. All data between devices is encrypted.</p>
     </div>
-    <div class="spec">
-      <p style="margin:0;"><strong>Storage:</strong> ShareText stores no files, no messages, no accounts, and no transfer history. Temporary rooms close automatically when you're done.</p>
+    <div class="card">
+      <p style="margin:0 0 6px"><strong>Storage</strong> — No files, messages, or accounts stored on any server.</p>
     </div>
-    <div class="spec">
-      <p style="margin:0;"><strong>Identity:</strong> No sign-up, no login, no personal information required. Device names are local identifiers only.</p>
+    <div class="card">
+      <p style="margin:0"><strong>Identity</strong> — No sign-up, no login, no personal information required.</p>
     </div>
 
     <h2>Technical Architecture</h2>
-    <p>ShareText's architecture consists of three layers:</p>
-    <ol>
-      <li><strong>Frontend</strong> — A React single-page application served as static files. Handles the UI, pairing flow, file attachment, and WebRTC connection management.</li>
-      <li><strong>Signaling server</strong> — A Cloudflare Worker that coordinates the initial handshake between devices (exchange of connection offers, answers, and ICE candidates). Does not see file contents.</li>
-      <li><strong>Peer connection</strong> — WebRTC DataChannel between the two browsers. Files and text move directly between devices. Encrypted end-to-end.</li>
+    <p>Three layers make ShareText work:</p>
+    <ol class="steps">
+      <li>
+        <div>
+          <h3>Frontend</h3>
+          <p>React single-page application served as static files. Handles the UI, pairing, and WebRTC connection.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Signaling server</h3>
+          <p>Coordinates the initial handshake between devices. Does not see file contents.</p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <h3>Peer connection</h3>
+          <p>WebRTC DataChannel between browsers. Files move directly. Encrypted end-to-end.</p>
+        </div>
+      </li>
     </ol>
 
-    <h2>Who Should Use ShareText</h2>
-    <ul>
-      <li>Anyone who needs to move a file between two devices quickly</li>
-      <li>People who don't want to install an app for a one-time transfer</li>
-      <li>Users who need to send something between devices they don't own</li>
-      <li>Anyone transferring sensitive content who wants encryption without accounts</li>
-      <li>Developers who need to move code, logs, or files between machines</li>
-    </ul>
-
-    <div style="text-align:center; margin: 40px 0;"><a href="/" class="cta">Try ShareText Free →</a></div>
+    <div style="text-align:center; margin: 48px 0 0"><a href="/" class="cta">Try ShareText Free →</a></div>
 
     <section class="related">
-      <h2>Related</h2>
+      <h2>Learn More</h2>
       <div class="related-links">
-        <a href="/guides/privacy.html">Privacy &amp; Security</a>
+        <a href="/guides/how-it-works.html">How It Works</a>
+        <a href="/guides/privacy.html">Privacy</a>
+        <a href="/guides/security.html">Security</a>
         <a href="/guides/supported-devices.html">Supported Devices</a>
-        <a href="/guides/browser-file-transfer.html">How Browser Transfer Works</a>
-        <a href="/guides/how-to-transfer-files-between-devices.html">How to Transfer Files</a>
-        <a href="/guides/troubleshooting.html">Troubleshooting</a>
+        <a href="/guides/how-to-transfer-files-between-devices.html">Transfer Guide</a>
         <a href="/docs">API Documentation</a>
       </div>
     </section>
   </article></main>
 
-  <footer><p><a href="/" style="color:inherit; text-decoration:none;">ShareText</a> — The temporary bridge between your devices.</p></footer>
+  <footer class="footer"><p><a href="/">ShareText</a> — The temporary bridge between your devices.</p></footer>
 </body>
 </html>
