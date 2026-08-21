@@ -521,7 +521,7 @@ export function ChatView() {
                   Encrypted between devices
                 </span>
                 <button
-                  onClick={() => setShowConnectionDetails(false)}
+                  onPointerDown={() => setShowConnectionDetails(false)}
                   aria-label="Close connection details"
                   className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-apple-divider/50 dark:hover:bg-white/10 transition-colors"
                 >
