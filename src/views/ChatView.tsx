@@ -1186,7 +1186,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
                   <AlertCircle className="w-3.5 h-3.5" /> Couldn't send
                 </span>
                 <button
-                  onClick={() => { void retryText(msg.id); }}
+                  onPointerDown={(e) => { e.preventDefault(); void retryText(msg.id); }}
                   className={cn("flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold transition-motion active:scale-95", isMe ? "bg-white/20 text-white" : "bg-apple-parchment dark:bg-apple-tile-2 text-apple-ink dark:text-white")}
                 >
                   <RefreshCw className="w-3 h-3" /> Retry
@@ -1208,7 +1208,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
                 </span>
                 {!isMe && (
                   <button
-                    onClick={() => { void sendBack(); }}
+                    onPointerDown={(e) => { e.preventDefault(); void sendBack(); }}
                     aria-label="Send back"
                     title="Send back to the other device"
                     className="flex items-center justify-center w-7 h-7 rounded-full transition-motion active:scale-90 text-apple-ink-muted hover:text-apple-blue dark:hover:text-azure-400 hover:bg-apple-divider/60 dark:hover:bg-apple-tile-3"
@@ -1363,10 +1363,10 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
                     a.status === 'preparing' ? 'Preparing…' :
                       a.status === 'restoring' ? `Restoring file…${a.progress ? ` ${Math.round(a.progress * 100)}%` : ''}` :
                         a.status === 'cancelled' ? 'Cancelled' :
-                          a.status === 'interrupted' ? 'Connection interrupted — waiting to reconnect…' :
-                            a.status === 'resuming' ? `Resuming… ${Math.round((a.progress || 0) * 100)}%` :
-                              a.status === 'sending' ? `Sending… ${Math.round((a.progress || 0) * 100)}%` :
-                                `Receiving… ${Math.round((a.progress || 0) * 100)}%`}
+                          a.status === 'interrupted' ? 'The other device disconnected — reconnect to continue' :
+                            a.status === 'resuming' ? `Resuming… ${a.size && a.progress ? `${formatBytes(Math.floor(a.size * a.progress))} of ${formatBytes(a.size)}` : `${Math.round((a.progress || 0) * 100)}%`}` :
+                              a.status === 'sending' ? `Sending… ${a.size && a.progress ? `${formatBytes(Math.floor(a.size * a.progress))} of ${formatBytes(a.size)}` : `${Math.round((a.progress || 0) * 100)}%`}` :
+                                `Receiving… ${a.size && a.progress ? `${formatBytes(Math.floor(a.size * a.progress))} of ${formatBytes(a.size)}` : `${Math.round((a.progress || 0) * 100)}%`}`}
                 </span>
               )}
             </div>
@@ -1416,11 +1416,11 @@ function ProgressState({ attachment: a, isMe, onBlue }: { attachment: Attachment
   if (a.status === 'complete') return null;
   if (a.status === 'preparing') return <span className={cn("font-medium animate-pulse", onBlue ? "text-white" : "text-apple-ink-muted")}>Preparing…</span>;
   if (a.status === 'restoring') return <span className={cn("font-medium animate-pulse", onBlue ? "text-white" : "text-apple-ink-muted")}>Restoring file…</span>;
-  if (a.status === 'interrupted') return <span className={cn("font-medium", onBlue ? "text-white" : "text-apple-ink-muted")}>Connection interrupted</span>;
-  if (a.status === 'resuming') return <span className={cn("font-medium", onBlue ? "text-white" : "text-apple-blue")}>Resuming… {Math.round((a.progress || 0) * 100)}%</span>;
+  if (a.status === 'interrupted') return <span className={cn("font-medium", onBlue ? "text-white" : "text-apple-ink-muted")}>The other device disconnected</span>;
+  if (a.status === 'resuming') return <span className={cn("font-medium", onBlue ? "text-white" : "text-apple-blue")}>Resuming… {a.size && a.progress ? `${formatBytes(Math.floor(a.size * a.progress))} of ${formatBytes(a.size)}` : `${Math.round((a.progress || 0) * 100)}%`}</span>;
   return (
     <span className={cn("font-medium animate-pulse", onBlue ? "text-white" : "text-apple-ink-muted")}>
-      {isMe ? 'Sending…' : 'Receiving…'} {Math.round((a.progress || 0) * 100)}%
+      {isMe ? 'Sending…' : 'Receiving…'} {a.size && a.progress ? `${formatBytes(Math.floor(a.size * a.progress))} of ${formatBytes(a.size)}` : `${Math.round((a.progress || 0) * 100)}%`}
     </span>
   );
 }
@@ -1428,7 +1428,7 @@ function ProgressState({ attachment: a, isMe, onBlue }: { attachment: Attachment
 function ActionButton({ icon, label, onClick, active, primary, onBlue, testId }: { icon: React.ReactNode, label: string, onClick: () => void, active?: boolean, primary?: boolean, onBlue?: boolean, testId?: string }) {
   return (
     <button
-      onClick={onClick}
+      onPointerDown={(e) => { e.preventDefault(); onClick(); }}
       data-testid={testId}
       className={cn(
         "flex items-center gap-1.5 px-3 py-2 rounded-full text-[12.5px] font-semibold transition-motion active:scale-95 min-h-[40px]",
