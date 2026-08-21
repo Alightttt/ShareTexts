@@ -3,17 +3,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, type ReactNode } from 'react';
+import React, { useState, useEffect, lazy, Suspense, type ReactNode } from 'react';
 import { SessionProvider, useSession } from './lib/SessionContext';
-import { Landing } from './views/Landing';
-import { RoomHub } from './views/RoomHub';
-import { JoinSession } from './views/JoinSession';
-import { ChatView } from './views/ChatView';
 import { AnimatePresence, motion } from 'motion/react';
 import { WifiOff, Send, Home, Share2, Check } from 'lucide-react';
 import { ShareTextLogo } from './components/ShareTextLogo';
 import { ConnectingVisual } from './components/ConnectingVisual';
-import { Docs } from './views/Docs';
+
+// Lazy-load every view — the landing page paints with only the core JS;
+// ChatView, RoomHub, JoinSession, and Docs stream in only when needed.
+const Landing = lazy(() => import('./views/Landing').then(m => ({ default: m.Landing })));
+const RoomHub = lazy(() => import('./views/RoomHub').then(m => ({ default: m.RoomHub })));
+const JoinSession = lazy(() => import('./views/JoinSession').then(m => ({ default: m.JoinSession })));
+const ChatView = lazy(() => import('./views/ChatView').then(m => ({ default: m.ChatView })));
+const Docs = lazy(() => import('./views/Docs').then(m => ({ default: m.Docs })));
 
 function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, onNewSession: () => void, onHome: () => void }) {
   // One honest line about what happened, then one clear action.
@@ -203,7 +206,7 @@ function AppContent() {
   }
 
   if (typeof window !== 'undefined' && window.location.pathname === '/docs') {
-    return <Docs />;
+    return <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-black" />}><Docs /></Suspense>;
   }
 
   if (typeof window !== 'undefined' && !/^(\/|\/s\/[0-9a-f]{8})$/i.test(window.location.pathname)) {
@@ -288,7 +291,7 @@ function AppContent() {
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
         >
-          {session.partnerConnected ? <ChatView /> : session.isCreator ? <RoomHub /> : (
+          {session.partnerConnected ? <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-black" />}><ChatView /></Suspense> : session.isCreator ? <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-black" />}><RoomHub /></Suspense> : (
             <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black px-6 text-center">
               <div className="flex flex-col items-center">
                 {waitingForReconnect ? (
@@ -328,21 +331,23 @@ function AppContent() {
 
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={view}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.2 }}
-      >
-        {view === 'landing' ? (
-          <Landing onJoinClick={() => setView('join')} />
-        ) : (
-          <JoinSession onBack={() => { window.history.replaceState({}, document.title, '/'); setView('landing'); }} />
-        )}
-      </motion.div>
-    </AnimatePresence>
+    <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-black" /> }>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={view}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+        >
+          {view === 'landing' ? (
+            <Landing onJoinClick={() => setView('join')} />
+          ) : (
+            <JoinSession onBack={() => { window.history.replaceState({}, document.title, '/'); setView('landing'); }} />
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </Suspense>
   );
 }
 
