@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ShareText vs PairDrop — Browser File Transfer Comparison</title>
+  <meta name="description" content="Compare ShareText and PairDrop — both browser-based file transfer tools. ShareText adds text transfer, pairing codes, and a simpler flow." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://sharetexts.online/guides/compare-pairdrop.html" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="ShareText" />
+  <meta property="og:title" content="ShareText vs PairDrop" />
+  <meta property="og:description" content="Compare ShareText and PairDrop — both browser-based file transfer tools." />
+  <meta property="og:url" content="https://sharetexts.online/guides/compare-pairdrop.html" />
+  <meta property="og:image" content="https://sharetexts.online/og/sharetext-og-v3.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="ShareText vs PairDrop" />
+  <meta name="twitter:description" content="Compare ShareText and PairDrop." />
+  <meta name="twitter:image" content="https://sharetexts.online/og/sharetext-og-v3.jpg" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif; color: #1d1d1f; background: #fff; line-height: 1.7; -webkit-font-smoothing: antialiased; }
+    @media (prefers-color-scheme: dark) { body { color: #f7faff; background: #060a13; } .card { background: #0d1422 !important; border-color: rgba(247,250,255,.1) !important; } .muted { color: rgba(247,250,255,.55) !important; } .accent { color: #4b93ff !important; } header { background: rgba(6,10,19,.92) !important; border-color: rgba(247,250,255,.08) !important; } .related-links a, .vs-card > div, .choose-box { background: #0d1422; color: #f7faff; border-color: rgba(247,250,255,.08); } footer { border-color: rgba(247,250,255,.08) !important; } table td, table th { border-color: rgba(247,250,255,.06); } }
+    .container { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+    header { border-bottom: 1px solid rgba(29,29,31,.08); padding: 16px 24px; position: sticky; top: 0; background: rgba(255,255,255,.92); backdrop-filter: blur(12px); z-index: 40; }
+    .hdr-inner { max-width: 720px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+    .hdr-inner svg { width: 20px; height: 20px; }
+    .hdr-inner span { font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
+    .back { font-size: 13px; font-weight: 500; color: #596579; text-decoration: none; margin-left: auto; }
+    .back:hover { color: #1d1d1f; }
+    article { padding: 48px 0 80px; }
+    h1 { font-size: 32px; font-weight: 600; letter-spacing: -.03em; line-height: 1.1; margin-bottom: 12px; }
+    .subtitle { font-size: 17px; color: #596579; max-width: 560px; margin-bottom: 32px; }
+    h2 { font-size: 22px; font-weight: 600; letter-spacing: -.02em; margin: 40px 0 16px; }
+    p { margin-bottom: 16px; font-size: 16px; }
+    .muted { color: #596579; } .accent { color: #0a66f0; }
+    .vs-card { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 24px 0; }
+    .vs-card > div { padding: 16px; background: #f7f9fc; border: 1px solid rgba(29,29,31,.06); border-radius: 12px; }
+    .vs-card .tool-name { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    .vs-card .tool-desc { font-size: 13px; color: #596579; }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid rgba(29,29,31,.06); }
+    th { font-weight: 600; font-size: 13px; color: #596579; }
+    td:first-child { font-weight: 500; }
+    .choose-box { border: 1px solid rgba(29,29,31,.08); border-radius: 14px; padding: 20px 24px; margin: 16px 0; }
+    .choose-box h3 { font-size: 15px; font-weight: 600; margin: 0 0 8px; }
+    .choose-box p { margin: 0; font-size: 14px; color: #596579; }
+    .cta { display: inline-flex; align-items: center; gap: 8px; background: #0a66f0; color: #fff; padding: 14px 28px; border-radius: 12px; font-size: 15px; font-weight: 600; text-decoration: none; transition: background .15s; margin: 16px 0; }
+    .cta:hover { background: #0757d5; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    li { margin-bottom: 8px; font-size: 15px; }
+    .related { margin-top: 48px; padding-top: 32px; border-top: 1px solid rgba(29,29,31,.08); }
+    .related h2 { margin-top: 0; }
+    .related-links { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .related-links a { display: block; padding: 14px 18px; background: #f7f9fc; border: 1px solid rgba(29,29,31,.06); border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 500; color: #1d1d1f; transition: all .15s; }
+    .related-links a:hover { border-color: #0a66f0; transform: translateY(-1px); }
+    footer { border-top: 1px solid rgba(29,29,31,.08); padding: 24px; text-align: center; font-size: 13px; color: #7d8998; }
+    @media (max-width: 600px) { h1 { font-size: 26px; } h2 { font-size: 20px; } .vs-card { grid-template-columns: 1fr; } .related-links { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header><div class="hdr-inner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span>ShareText</span><a href="/" class="back">Home →</a></div></header>
+
+  <main class="container"><article>
+    <p class="muted" style="font-size:13px; margin-bottom:8px;">Comparison</p>
+    <h1>ShareText vs PairDrop</h1>
+    <p class="subtitle">Both are browser-based file transfer tools. PairDrop focuses on local network discovery. ShareText adds pairing codes and text transfer.</p>
+
+    <div class="vs-card">
+      <div>
+        <div class="tool-name">ShareText</div>
+        <div class="tool-desc">Pairing-code based. Works across any network. Adds text transfer, share links, and QR codes.</div>
+      </div>
+      <div>
+        <div class="tool-name">PairDrop</div>
+        <div class="tool-desc">Self-hosted or public instance. Discovers devices on the same network. File transfer only.</div>
+      </div>
+    </div>
+
+    <h2>Feature Comparison</h2>
+    <table>
+      <tr><th>Dimension</th><th>ShareText</th><th>PairDrop</th></tr>
+      <tr><td>Installation</td><td>None — hosted service</td><td>Self-hosted or public instance</td></tr>
+      <tr><td>Account required</td><td>No</td><td>No</td></tr>
+      <tr><td>Network model</td><td>Any network (signaling server)</td><td>Same local network (mDNS/Bonjour)</td></tr>
+      <tr><td>Cross-network</td><td>Yes — devices can be anywhere</td><td>No — must be on same LAN</td></tr>
+      <tr><td>Pairing method</td><td>6-digit code, QR, share link</td><td>Same-network discovery (auto)</td></tr>
+      <tr><td>Text transfer</td><td>Yes</td><td>No</td></tr>
+      <tr><td>File transfer</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>Self-hosting</td><td>Open source available</td><td>Docker, Node.js</td></tr>
+      <tr><td>Encryption</td><td>DTLS via WebRTC</td><td>DTLS via WebRTC</td></tr>
+      <tr><td>Offline</td><td>No (needs internet for pairing)</td><td>Yes (local network only)</td></tr>
+    </table>
+
+    <h2>Where ShareText Is Useful</h2>
+    <ul>
+      <li><strong>Cross-network transfers</strong> — devices on different Wi-Fi networks, different locations</li>
+      <li><strong>Text transfer</strong> — links, code, notes between devices</li>
+      <li><strong>QR/pairing codes</strong> — no need for devices to discover each other</li>
+      <li><strong>Guest devices</strong> — works on any device with a browser</li>
+    </ul>
+
+    <h2>Where PairDrop Is Better</h2>
+    <ul>
+      <li><strong>Self-hosting</strong> — full control over your transfer infrastructure</li>
+      <li><strong>Local network speed</strong> — direct LAN transfer can be faster</li>
+      <li><strong>Offline</strong> — works without internet (same network only)</li>
+      <li><strong>Auto-discovery</strong> — no codes needed on same network</li>
+    </ul>
+
+    <div class="choose-box">
+      <h3>Choose ShareText if…</h3>
+      <p>Devices are on different networks, you need text transfer, or you want a simpler pairing flow with codes and QR.</p>
+    </div>
+    <div class="choose-box">
+      <h3>Choose PairDrop if…</h3>
+      <p>Both devices are on the same local network, you want self-hosting control, or you need offline transfers without internet.</p>
+    </div>
+
+    <div style="text-align:center; margin: 40px 0;"><a href="/" class="cta">Try ShareText Free →</a></div>
+
+    <section class="related">
+      <h2>Other Comparisons</h2>
+      <div class="related-links">
+        <a href="/guides/compare-airdrop.html">ShareText vs AirDrop</a>
+        <a href="/guides/compare-localsend.html">ShareText vs LocalSend</a>
+        <a href="/guides/compare-cloud.html">ShareText vs Cloud Storage</a>
+        <a href="/guides/compare-whatsapp.html">ShareText vs WhatsApp</a>
+      </div>
+    </section>
+  </article></main>
+
+  <footer><p><a href="/" style="color:inherit; text-decoration:none;">ShareText</a> — The temporary bridge between your devices.</p></footer>
+</body>
+</html>
