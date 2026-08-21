@@ -10,21 +10,27 @@ import {
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-type Section = 'overview' | 'human' | 'agent' | 'api' | 'security' | 'faq';
+type Section = 'overview' | 'transfer' | 'pairing' | 'troubleshooting' | 'privacy' | 'devices' | 'faq' | 'developer' | 'api';
 
 interface NavItem {
   id: Section;
   label: string;
   icon: React.ReactNode;
+  group?: 'user' | 'developer';
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'overview', label: 'Overview', icon: <Monitor className="w-4 h-4" /> },
-  { id: 'human', label: 'For Humans', icon: <Smartphone className="w-4 h-4" /> },
-  { id: 'agent', label: 'For Agents', icon: <Terminal className="w-4 h-4" /> },
-  { id: 'api', label: 'API Reference', icon: <Key className="w-4 h-4" /> },
-  { id: 'security', label: 'Security', icon: <Shield className="w-4 h-4" /> },
-  { id: 'faq', label: 'FAQ', icon: <AlertCircle className="w-4 h-4" /> },
+  // ── User Documentation ──────────────────────────────────────
+  { id: 'overview', label: 'Getting Started', icon: <Monitor className="w-4 h-4" />, group: 'user' },
+  { id: 'transfer', label: 'How to Transfer', icon: <Send className="w-4 h-4" />, group: 'user' },
+  { id: 'pairing', label: 'Pairing & QR', icon: <QrCode className="w-4 h-4" />, group: 'user' },
+  { id: 'troubleshooting', label: 'Troubleshooting', icon: <RefreshCw className="w-4 h-4" />, group: 'user' },
+  { id: 'privacy', label: 'Privacy & Security', icon: <Shield className="w-4 h-4" />, group: 'user' },
+  { id: 'devices', label: 'Supported Devices', icon: <Smartphone className="w-4 h-4" />, group: 'user' },
+  { id: 'faq', label: 'FAQ', icon: <AlertCircle className="w-4 h-4" />, group: 'user' },
+  // ── Developer Documentation ─────────────────────────────────
+  { id: 'developer', label: 'Developer Guide', icon: <Terminal className="w-4 h-4" />, group: 'developer' },
+  { id: 'api', label: 'API Reference', icon: <Key className="w-4 h-4" />, group: 'developer' },
 ];
 
 function CodeBlock({ code, language = 'bash' }: { code: string; language?: string }) {
@@ -126,37 +132,20 @@ function OverviewSection() {
   );
 }
 
-function HumanSection() {
+function TransferSection() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-4">
-          How to Use ShareText
-        </h2>
+        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-4">How to Transfer</h2>
         <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-2xl">
-          ShareText works in three simple steps. Open it on both devices, connect them, and transfer.
+          ShareText moves content between two devices through your browser. No app, no account, no cloud storage.
         </p>
       </div>
 
       <div className="space-y-6">
-        <StepCard
-          number={1}
-          title="Open ShareText on both devices"
-          description="Visit sharetexts.online in any browser on both your devices. No app download needed."
-          icon={<Monitor className="w-4 h-4 text-apple-ink-muted" />}
-        />
-        <StepCard
-          number={2}
-          title="Connect the devices"
-          description="On the first device, click 'Send'. You'll see a 6-digit code. On the second device, click 'Receive' and enter that code. Or scan the QR code."
-          icon={<QrCode className="w-4 h-4 text-apple-ink-muted" />}
-        />
-        <StepCard
-          number={3}
-          title="Transfer"
-          description="Type text, paste a link, or attach a file. The transfer completes automatically."
-          icon={<Send className="w-4 h-4 text-apple-ink-muted" />}
-        />
+        <StepCard number={1} title="Open ShareText on both devices" description="Visit sharetexts.online in any browser. Works on phones, laptops, tablets — any device with a modern browser." icon={<Monitor className="w-4 h-4 text-apple-ink-muted" />} />
+        <StepCard number={2} title="Connect the devices" description="Click 'Send' on one device to get a pairing code. Click 'Receive' on the other and enter the code. Or scan the QR code." icon={<QrCode className="w-4 h-4 text-apple-ink-muted" />} />
+        <StepCard number={3} title="Transfer" description="Type text, paste a link, or attach files. The content moves directly between devices. When you're done, close the tab." icon={<Send className="w-4 h-4 text-apple-ink-muted" />} />
       </div>
 
       <div className="p-5 rounded-[16px] bg-apple-parchment dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3">
@@ -164,8 +153,7 @@ function HumanSection() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {['Text', 'Links', 'Photos', 'Videos', 'Audio', 'Documents', 'Code', 'Any file'].map((type) => (
             <div key={type} className="flex items-center gap-2 text-[14px] text-apple-ink-muted dark:text-white/60">
-              <Check className="w-4 h-4 text-status-success" />
-              {type}
+              <Check className="w-4 h-4 text-status-success" />{type}
             </div>
           ))}
         </div>
@@ -182,6 +170,146 @@ function HumanSection() {
             <kbd className="px-2 py-1 rounded-[6px] bg-white dark:bg-apple-tile-2 border border-apple-divider dark:border-apple-tile-3 text-[13px] font-mono">Shift + Enter</kbd>
             <span className="text-[14px] text-apple-ink-muted dark:text-white/60">New line</span>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PairingSection() {
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-4">Pairing & QR</h2>
+        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-2xl">
+          ShareText uses a 6-digit pairing code to connect two devices. The code refreshes automatically and expires after a short time for security.
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-[18px] font-semibold text-apple-ink dark:text-white">How pairing works</h3>
+        <div className="space-y-3 text-[15px] text-apple-ink-muted dark:text-white/60 leading-relaxed">
+          <p><strong className="text-apple-ink dark:text-white">Sender:</strong> Click 'Send something' to create a room. You'll see a 6-digit code and a QR code.</p>
+          <p><strong className="text-apple-ink dark:text-white">Receiver:</strong> Click 'Receive something' and enter the 6-digit code, or scan the QR code with your camera.</p>
+          <p>Once both devices are connected, the pairing screen is replaced by the transfer workspace.</p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-[18px] font-semibold text-apple-ink dark:text-white">QR code</h3>
+        <div className="space-y-3 text-[15px] text-apple-ink-muted dark:text-white/60 leading-relaxed">
+          <p>The QR code contains the pairing link. Scan it with the other device's camera to connect automatically.</p>
+          <p>If the QR code doesn't scan, you can always type the 6-digit code manually.</p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-[18px] font-semibold text-apple-ink dark:text-white">Code expiry</h3>
+        <div className="space-y-3 text-[15px] text-apple-ink-muted dark:text-white/60 leading-relaxed">
+          <p>The pairing code refreshes automatically. If it expires before the other device connects, a new code is generated.</p>
+          <p>Share link: You can also share the room link directly. The receiver opens the link and connects automatically.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TroubleshootingSection() {
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-4">Troubleshooting</h2>
+        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-2xl">
+          Most issues resolve by checking your internet connection and trying again.
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        {[
+          { problem: "Can't create a room", solution: "Check your internet connection. If the problem persists, the service may be temporarily unavailable — try again in a moment." },
+          { problem: 'Code expired', solution: 'The pairing code refreshes automatically. If the other device can\'t connect in time, create a new room to get a fresh code.' },
+          { problem: "Code doesn't work", solution: 'Make sure you\'re entering the correct 6-digit code from the other device. Codes are case-sensitive and must be entered exactly.' },
+          { problem: 'QR code won\'t scan', solution: 'Make sure the camera has permission. If scanning still fails, type the 6-digit code manually instead.' },
+          { problem: 'Connection dropped', solution: 'The other device may have closed their tab or lost internet. On the sending device, a new pairing code is available to reconnect.' },
+          { problem: 'Transfer failed', solution: 'The connection was interrupted. Tap Retry to send again. The file was not marked as complete.' },
+          { problem: 'File won\'t download', solution: 'Check that your browser allows downloads. On mobile, try long-pressing the file and selecting Save.' },
+        ].map((item, i) => (
+          <div key={i} className="p-5 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3">
+            <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-2">{item.problem}</h3>
+            <p className="text-[14px] text-apple-ink-muted dark:text-white/60 leading-relaxed">{item.solution}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PrivacySection() {
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-4">Privacy & Security</h2>
+        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-2xl">
+          ShareText is designed for temporary, private transfers. Your data moves directly between devices — nothing is stored on servers.
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        <div className="p-5 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3">
+          <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-2">Direct device-to-device transfer</h3>
+          <p className="text-[14px] text-apple-ink-muted dark:text-white/60 leading-relaxed">Content moves directly between your devices using encrypted peer-to-peer connections. ShareText servers only help devices find each other — they never see your files or messages.</p>
+        </div>
+        <div className="p-5 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3">
+          <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-2">No accounts, no history</h3>
+          <p className="text-[14px] text-apple-ink-muted dark:text-white/60 leading-relaxed">ShareText doesn't require an account. There's no transfer history, no cloud storage, and no tracking. When you close the tab, the room is gone.</p>
+        </div>
+        <div className="p-5 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3">
+          <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-2">Encrypted connections</h3>
+          <p className="text-[14px] text-apple-ink-muted dark:text-white/60 leading-relaxed">All transfers are encrypted using DTLS (built into WebRTC) and additional application-level encryption. Your data is protected in transit.</p>
+        </div>
+        <div className="p-5 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3">
+          <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-2">Temporary rooms</h3>
+          <p className="text-[14px] text-apple-ink-muted dark:text-white/60 leading-relaxed">Rooms expire automatically. If no devices are connected for a period of time, the room is destroyed. Your data is never stored long-term.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DevicesSection() {
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-4">Supported Devices</h2>
+        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-2xl">
+          ShareText works in any modern browser. No app installation required.
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        <div className="p-5 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3">
+          <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-3">Browsers</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {['Chrome', 'Safari', 'Firefox', 'Edge'].map((b) => (
+              <div key={b} className="flex items-center gap-2 text-[14px] text-apple-ink-muted dark:text-white/60">
+                <Check className="w-4 h-4 text-status-success" />{b}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="p-5 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3">
+          <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-3">Operating Systems</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {['iOS / iPadOS', 'Android', 'Windows', 'macOS', 'Linux', 'ChromeOS'].map((os) => (
+              <div key={os} className="flex items-center gap-2 text-[14px] text-apple-ink-muted dark:text-white/60">
+                <Check className="w-4 h-4 text-status-success" />{os}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="p-5 rounded-[16px] bg-apple-parchment dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3">
+          <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-2">Requirements</h3>
+          <p className="text-[14px] text-apple-ink-muted dark:text-white/60 leading-relaxed">Both devices need an internet connection and a browser that supports WebRTC. No special permissions are required for text transfers. Camera permission is needed for QR scanning.</p>
         </div>
       </div>
     </div>
@@ -523,11 +651,14 @@ export function Docs() {
   const renderSection = () => {
     switch (activeSection) {
       case 'overview': return <OverviewSection />;
-      case 'human': return <HumanSection />;
-      case 'agent': return <AgentSection />;
-      case 'api': return <APISection />;
-      case 'security': return <SecuritySection />;
+      case 'transfer': return <TransferSection />;
+      case 'pairing': return <PairingSection />;
+      case 'troubleshooting': return <TroubleshootingSection />;
+      case 'privacy': return <PrivacySection />;
+      case 'devices': return <DevicesSection />;
       case 'faq': return <FAQSection />;
+      case 'developer': return <AgentSection />;
+      case 'api': return <APISection />;
     }
   };
 
@@ -551,21 +682,47 @@ export function Docs() {
       <div className="max-w-6xl mx-auto px-6 py-8 flex gap-8">
         {/* Sidebar Navigation — desktop only */}
         <nav className="hidden md:block w-48 shrink-0">
-          <div className="sticky top-24 space-y-1">
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveSection(item.id)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-[14px] font-medium transition-colors ${
-                  activeSection === item.id
-                    ? 'bg-azure-600/10 text-azure-600 dark:text-azure-400'
-                    : 'text-apple-ink-muted dark:text-white/60 hover:bg-apple-parchment dark:hover:bg-apple-tile-1'
-                }`}
-              >
-                {item.icon}
-                {item.label}
-              </button>
-            ))}
+          <div className="sticky top-24 space-y-4">
+            {/* User Documentation */}
+            <div>
+              <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-apple-ink-muted/50 dark:text-white/30">User Guide</p>
+              <div className="space-y-0.5">
+                {NAV_ITEMS.filter(i => i.group === 'user').map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveSection(item.id)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-[14px] font-medium transition-colors ${
+                      activeSection === item.id
+                        ? 'bg-azure-600/10 text-azure-600 dark:text-azure-400'
+                        : 'text-apple-ink-muted dark:text-white/60 hover:bg-apple-parchment dark:hover:bg-apple-tile-1'
+                    }`}
+                  >
+                    {item.icon}
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Developer Documentation */}
+            <div>
+              <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-apple-ink-muted/50 dark:text-white/30">Developer</p>
+              <div className="space-y-0.5">
+                {NAV_ITEMS.filter(i => i.group === 'developer').map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveSection(item.id)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-[14px] font-medium transition-colors ${
+                      activeSection === item.id
+                        ? 'bg-azure-600/10 text-azure-600 dark:text-azure-400'
+                        : 'text-apple-ink-muted dark:text-white/60 hover:bg-apple-parchment dark:hover:bg-apple-tile-1'
+                    }`}
+                  >
+                    {item.icon}
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </nav>
 
