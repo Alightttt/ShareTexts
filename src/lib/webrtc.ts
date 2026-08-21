@@ -43,7 +43,7 @@ function iceServers(): RTCIceServer[] {
   ];
 }
 
-const CHUNK_SIZE = 64 * 1024; // 64 KB
+const CHUNK_SIZE = 256 * 1024; // 256 KB — larger chunks = fewer awaits = faster transfer
 // 4 GB ceiling. Files stream in 64KB slices (never whole-file arrayBuffers),
 // so the sender's memory stays flat. The receiver assembles chunks in RAM for
 // files under OPFS_THRESHOLD; anything larger streams straight to the Origin
@@ -920,11 +920,24 @@ export class PeerManager {
     // to the relay for the rest of this transfer instead of hanging forever.
     let wedged = false;
 
+    // Double-buffer pipeline: prepare the next chunk's ArrayBuffer while the
+    // current chunk is being encrypted. Overlaps disk read with CPU work.
+    let nextBuf: Promise<ArrayBuffer> | null = start < numChunks
+      ? file.slice(start * CHUNK_SIZE, (start + 1) * CHUNK_SIZE).arrayBuffer()
+      : null;
+
     try {
       for (let i = start; i < numChunks; i++) {
         if (signal.aborted) throw new TransferCancelledError();
-        const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-        const arrayBuffer = await chunk.arrayBuffer();
+
+        const arrayBuffer = await nextBuf!;
+
+        // Kick off next chunk read while we encrypt this one
+        const nextIdx = i + 1;
+        nextBuf = nextIdx < numChunks
+          ? file.slice(nextIdx * CHUNK_SIZE, (nextIdx + 1) * CHUNK_SIZE).arrayBuffer()
+          : null;
+
         const encrypted = await encryptBinaryChunk(arrayBuffer, key);
 
         const packet = new Uint8Array(20 + encrypted.byteLength);
@@ -934,11 +947,8 @@ export class PeerManager {
         packet.set(new Uint8Array(encrypted), 20);
 
         if (!wedged && this.dc && this.dc.readyState === 'open') {
-          if (this.dc.bufferedAmount > 2 * 1024 * 1024) {
-            // Bounded wait: a channel that dropped (or whose flow control
-            // wedged) mid-wait must not hang the loop forever. Give it a few
-            // seconds, then finish this transfer over the relay.
-            const drained = await this.waitForDrain(2 * 1024 * 1024, 1 * 1024 * 1024, 6000);
+          if (this.dc.bufferedAmount > 4 * 1024 * 1024) {
+            const drained = await this.waitForDrain(4 * 1024 * 1024, 2 * 1024 * 1024, 6000);
             if (!drained) {
               wedged = true;
               diag('transfer.dc_wedged', true, `chunk ${i} — finishing via relay`);
@@ -955,7 +965,7 @@ export class PeerManager {
 
         prog.sentUpTo = i + 1;
         prog.updatedAt = Date.now();
-        if (i % 64 === 0) diag('transfer.sent', true, `${i}/${numChunks}`);
+        if (i % 16 === 0) diag('transfer.sent', true, `${i}/${numChunks}`);
         if (this.onFileProgress) {
           this.onFileProgress(transferId, i + 1, numChunks);
         }

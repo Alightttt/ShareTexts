@@ -975,25 +975,28 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       const localUrl = URL.createObjectURL(file);
       updateMessageAttachment(msg.id, { url: localUrl });
 
-      // SHA-256 of the original bytes, streamed by the browser (bounded
-      // memory even for multi-GB files). Sent in the metadata so the receiver
-      // can verify what actually arrived.
+      // SHA-256 of the original bytes — computed in the background so the
+      // transfer starts immediately. The hash runs in parallel with the first
+      // chunks; for small files it finishes before the transfer does.
       let checksum: string | undefined;
-      try {
-        checksum = await sha256Hex(file);
-        diag('transfer.hash_ok', true, checksum.slice(0, 12));
-      } catch (e) {
+      const hashPromise = sha256Hex(file).then(c => {
+        checksum = c;
+        diag('transfer.hash_ok', true, c.slice(0, 12));
+        // Send updated metadata with checksum if transfer is still in progress
+        updateMessageAttachment(msg.id, { checksum: c });
+        return c;
+      }).catch(e => {
         diag('transfer.hash_failed', false, String(e));
-      }
-      updateMessageAttachment(msg.id, { status: 'sending', checksum });
+        return undefined;
+      });
 
-      const partnerMsg = { ...msg, sender: 'partner', attachment: { ...msg.attachment!, status: 'sending', checksum } };
+      updateMessageAttachment(msg.id, { status: 'sending' });
+
+      const partnerMsg = { ...msg, sender: 'partner', attachment: { ...msg.attachment!, status: 'sending' } };
       const payload = JSON.stringify(partnerMsg);
       try {
         await peerManagerRef.current.send(payload);
       } catch {
-        // The channel dropped before the metadata left this device. Never
-        // leave a bubble that claims "Sent".
         updateMessageAttachment(msg.id, { status: 'failed' });
         return;
       }
