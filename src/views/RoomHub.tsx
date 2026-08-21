@@ -214,7 +214,7 @@ export function RoomHub() {
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
               onPointerDown={(e) => e.stopPropagation()}
-              className="w-full max-w-[320px] bg-white dark:bg-surface-dark rounded-[20px] p-6 shadow-2xl text-center">
+              className="w-full max-w-[320px] bg-white dark:bg-surface-dark rounded-[20px] p-6 shadow-2xl text-center relative">
               {/* Close */}
               <button ref={qrCloseRef} data-testid="qr-close" onPointerDown={() => setShowQR(false)} aria-label="Close QR code" className="absolute top-4 right-4 w-8 h-8 rounded-full bg-apple-parchment dark:bg-apple-tile-2 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors focus-visible:outline-2 focus-visible:outline-apple-blue">
                 <X className="w-4 h-4" />

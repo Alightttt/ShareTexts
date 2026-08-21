@@ -291,21 +291,30 @@ export function HeroDemo() {
   playRef.current = playObject;
   scheduleRef.current = scheduleAuto;
 
+  // Start the auto-play loop immediately on mount (300ms for layout settle).
+  // Previously this waited 900ms + 2000ms READY_MS = 2.9s — users scrolled
+  // past before the animation began.
   useEffect(() => {
-    const t = setTimeout(() => scheduleRef.current(), 900);
+    const t = setTimeout(() => scheduleRef.current(), 300);
     return () => clearTimeout(t);
   }, []);
 
   // Pause hero animation when off-screen — saves CPU and battery.
+  // When the hero scrolls back into view, immediately restart the loop
+  // so the animation is always running when visible.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const io = new IntersectionObserver(([entry]) => {
       const visible = entry.isIntersecting;
       setIsVisible(visible);
-      if (!visible) clearLoop();
-      else if (!userTouched.current) scheduleRef.current();
-    }, { threshold: 0.1 });
+      if (!visible) {
+        clearLoop();
+      } else if (!userTouched.current) {
+        // Hero just became visible — restart immediately
+        scheduleRef.current();
+      }
+    }, { threshold: 0.05 });
     io.observe(el);
     return () => io.disconnect();
   }, [clearLoop]);
