@@ -24,4 +24,4 @@ tag = "v3-stats"
 new_sqlite_classes = ["Stats"]
 
 # Extra frontend origins can be added via the ALLOWED_ORIGINS var/secret.
-# Defaults (dev origins + share-texts.vercel.app) are built in.
+# Defaults (dev origins + sharetexts.online) are built in.

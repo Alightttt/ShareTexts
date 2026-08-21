@@ -4,7 +4,7 @@
 //      frontend: create → join with code → chat opens → message lands.
 //
 // Usage:
-//   FRONTEND_URL=https://share-texts.vercel.app \
+//   FRONTEND_URL=https://sharetexts.online \
 //   VERIFY_SERVER=https://your-server.onrender.com \
 //   node scripts/verify-production.mjs
 //
@@ -12,7 +12,7 @@
 // different networks — this script approximates that with two contexts.
 import { launchBrowser, readLiveCode, waitForChat, sleep } from './lib.mjs';
 
-const FRONTEND = process.env.FRONTEND_URL || 'https://share-texts.vercel.app';
+const FRONTEND = process.env.FRONTEND_URL || 'https://sharetexts.online';
 const SERVER = process.env.VERIFY_SERVER;
 let failures = 0;
 

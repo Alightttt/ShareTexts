@@ -133,7 +133,7 @@ const ogHtml = `<!doctype html><html><head><meta charset="utf-8"><style>
   <p class="sub">Text · Photos · Videos · Files — no app, no account, nothing stored</p>
   <div class="foot">
     <span class="brand"><img src="data:image/png;base64,${markPng}" /><span>ShareText</span></span>
-    <span class="url">share-texts.vercel.app</span>
+    <span class="url">sharetexts.online</span>
     <span class="lock">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
       End-to-end encrypted
