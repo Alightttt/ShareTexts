@@ -224,8 +224,8 @@ export function RoomHub() {
                 Open ShareText on your other device,<br/>choose <strong className="text-apple-ink dark:text-white">Receive</strong>, then scan this code.
               </p>
               {/* QR code — bigger for easier scanning */}
-              <div className="bg-white p-5 rounded-[18px] inline-block mb-4 shadow-sm border border-apple-divider/30">
-                <QRCodeSVG value={qrValue} size={260} level="M" />
+              <div className="bg-white p-4 rounded-[18px] inline-flex items-center justify-center mb-4 shadow-sm border border-apple-divider/30">
+                <QRCodeSVG value={qrValue} size={220} level="M" />
               </div>
               {/* Expiry + manual code fallback */}
               <p className="text-[11px] text-apple-ink-muted/60 dark:text-white/40 mb-3">

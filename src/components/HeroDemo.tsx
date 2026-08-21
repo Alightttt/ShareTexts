@@ -40,7 +40,11 @@ const SAMPLES: { key: Exclude<Kind, 'text'>; label: string; Icon: typeof ImageIc
 ];
 const SCENE_ORDER: Kind[] = ['text', 'photo', 'link'];
 const nextScene = (k: Kind) => SCENE_ORDER[(SCENE_ORDER.indexOf(k) + 1) % SCENE_ORDER.length];
-const sampleOf = (k: Kind) => SAMPLES.find(s => s.key === k)!.object;
+const TEXT_SAMPLE: TransferObject = { kind: 'text', text: 'Hey, check out this link 👇' };
+const sampleOf = (k: Kind): TransferObject => {
+  if (k === 'text') return TEXT_SAMPLE;
+  return SAMPLES.find(s => s.key === k)!.object;
+};
 
 type Step = 'ready' | 'sending' | 'received' | 'composing';
 
