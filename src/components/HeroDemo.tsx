@@ -70,15 +70,23 @@ type SimState =
 // ---------------------------------------------------------------------------
 // Timing
 // ---------------------------------------------------------------------------
+// Choreography: 7-10s product story
+// 0.0–1.5s  Two interfaces visible, nothing moving (IDLE)
+// 1.5–2.5s  Sender selects item, UI responds (PAIRING → CONNECTING)
+// 2.5–3.5s  Connection begins, both sides react (CONNECTED)
+// 3.5–6.5s  Content transfers, progress visible (PREPARING → TRANSFERRING)
+// 6.5–7.5s  Transfer completes, receiver shows content (RECEIVED)
+// 7.5–9.0s  Completed state breathes (COMPLETE)
+// 9.0–10.0s Return naturally to start (RESET)
 const T = {
-  IDLE_HOLD:       400,
-  PAIRING_HOLD:    500,
-  CONNECTING_HOLD: 400,
-  CONNECTED_HOLD:  900,
-  PREPARING_HOLD:  250,
-  FLIGHT_MS:       700,
-  RECEIVED_HOLD:   1600,
-  COMPLETE_HOLD:   500,
+  IDLE_HOLD:       1500,  // 0.0–1.5s: calm opening
+  PAIRING_HOLD:    500,   // 1.5–2.0s: code appears
+  CONNECTING_HOLD: 500,   // 2.0–2.5s: connection forms
+  CONNECTED_HOLD:  1000,  // 2.5–3.5s: both sides react
+  PREPARING_HOLD:  300,   // 3.5–3.8s: sender prepares
+  FLIGHT_MS:       2700,  // 3.8–6.5s: transfer with progress
+  RECEIVED_HOLD:   1500,  // 6.5–8.0s: completion breathes
+  COMPLETE_HOLD:   1200,  // 8.0–9.2s: natural pause before reset
 };
 
 // ---------------------------------------------------------------------------
@@ -671,17 +679,26 @@ export function HeroDemo() {
                 </motion.div>
               )}
 
-              {/* Transferring — progress */}
+              {/* Transferring — file being received with progress */}
               {simState === 'transferring' && !isDone && (
                 <motion.div
                   key="progress"
-                  initial={{ opacity: 0, y: 4 }}
+                  initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.2 }}
-                  className="w-full max-w-[200px] flex flex-col items-center gap-2"
+                  transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  className="w-full flex flex-col items-center gap-2.5"
                 >
-                  <ProgressBar progress={progress} />
+                  {/* Show the file card with progress overlay */}
+                  <div className="w-full max-w-[220px] relative">
+                    <div className="opacity-60">
+                      <TransferCard obj={item} />
+                    </div>
+                    {/* Progress bar overlay at bottom of card */}
+                    <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-2">
+                      <ProgressBar progress={progress} />
+                    </div>
+                  </div>
                   <span className="text-[10px] sm:text-[11px] font-medium text-apple-ink-muted flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-apple-blue animate-pulse" />
                     Receiving…

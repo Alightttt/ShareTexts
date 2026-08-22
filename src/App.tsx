@@ -184,10 +184,9 @@ function AppContent() {
       if (session.roomId && !session.closedReason) {
         leaveView();
       }
-      // If we're on join view, go back to landing.
-      if (view === 'join') {
-        setView('landing');
-      }
+      // Always return to landing on back — prevents stale 'join' view
+      // when user arrived via /s/<code> share link.
+      setView('landing');
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
