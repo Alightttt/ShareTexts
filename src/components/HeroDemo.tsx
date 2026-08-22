@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Image as ImageIcon, FileArchive, Send, Video,
-  Download, Copy, Lock, Plus,
+  Download, Copy, Lock,
 } from 'lucide-react';
 import { ShareTextLogo } from './ShareTextLogo';
 import { DemoPhoto } from './DemoPhoto';
@@ -38,18 +38,11 @@ interface TransferItem {
 }
 
 const TRANSFER_ITEMS: Record<Kind, TransferItem> = {
-  text:   { kind: 'text',   text: 'Hey, check this out 👇' },
-  photo:  { kind: 'photo',  name: 'sunset-beach.jpg',  size: '4.2 MB' },
+  text:   { kind: 'text',   text: 'Meeting tomorrow at 4 PM' },
+  photo:  { kind: 'photo',  name: 'holiday.jpg',  size: '4.2 MB' },
   video:  { kind: 'video',  name: 'holiday-clip.mp4',   size: '18.3 MB', duration: '00:18' },
   file:   { kind: 'file',   name: 'presentation.pdf',   size: '2.8 MB' },
 };
-
-const KIND_META: { kind: Kind; label: string; Icon: typeof ImageIcon }[] = [
-  { kind: 'text',  label: 'Text',  Icon: Send },
-  { kind: 'photo', label: 'Photo', Icon: ImageIcon },
-  { kind: 'video', label: 'Video', Icon: Video },
-  { kind: 'file',  label: 'File',  Icon: FileArchive },
-];
 
 const SCENE_ORDER: Kind[] = ['text', 'photo', 'video', 'file'];
 const nextKind = (k: Kind) => SCENE_ORDER[(SCENE_ORDER.indexOf(k) + 1) % SCENE_ORDER.length];
@@ -82,69 +75,144 @@ const T = {
 };
 
 // ---------------------------------------------------------------------------
-// ShareText panel — the real product surface, no browser chrome
+// Realistic device frames — phone + laptop
 // ---------------------------------------------------------------------------
-function ShareTextPanel({
-  status,
-  children,
-  className,
-}: {
-  status: 'connected' | 'sending' | 'sent' | 'receiving' | 'received';
-  children: React.ReactNode;
-  className?: string;
-}) {
-  const statusMap: Record<string, { dot: string; text: string; cls: string; pulse: boolean }> = {
-    connected: { dot: 'bg-status-success', text: 'Connected', cls: 'text-status-success', pulse: false },
-    sending:   { dot: 'bg-apple-blue', text: 'Sending…', cls: 'text-apple-blue', pulse: true },
-    sent:      { dot: 'bg-status-success', text: 'Sent ✓', cls: 'text-status-success', pulse: false },
-    receiving: { dot: 'bg-apple-blue', text: 'Receiving…', cls: 'text-apple-blue', pulse: true },
-    received:  { dot: 'bg-status-success', text: 'Received ✓', cls: 'text-status-success', pulse: false },
-  };
-  const s = statusMap[status];
 
+/** Modern smartphone frame */
+function PhoneDevice({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn(
-      'flex flex-col rounded-[16px] sm:rounded-[20px] overflow-hidden',
-      'bg-white dark:bg-[#1a1a1e]',
-      'border border-black/[0.08] dark:border-white/[0.1]',
-      'shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_20px_rgba(0,0,0,0.04)]',
-      'dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_6px_20px_rgba(0,0,0,0.18)]',
-      className,
-    )}>
-      {/* ShareText header — the real app header */}
-      <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 border-b border-black/[0.06] dark:border-white/[0.08]">
-        <div className="flex items-center gap-1.5">
-          <ShareTextLogo size={16} className="text-apple-ink dark:text-white" />
-          <span className="text-[12px] sm:text-[13px] font-semibold tracking-tight text-apple-ink dark:text-white">ShareText</span>
-          <span className="flex items-center gap-0.5 ml-0.5">
-            <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-status-success" />
-            <span className="text-[8px] sm:text-[9px] font-medium text-status-success">E2E</span>
-          </span>
+    <div className={cn('relative shrink-0', className)}>
+      {/* Phone body */}
+      <div className="relative rounded-[28px] sm:rounded-[32px] p-[3%] bg-gradient-to-b from-[#e8e8ec] via-[#d1d1d6] to-[#c7c7cc] dark:from-[#2c2c2e] dark:via-[#1c1c1e] dark:to-[#141416] shadow-[0_4px_20px_rgba(0,0,0,0.15),0_1px_4px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4),0_1px_4px_rgba(0,0,0,0.2)]">
+        {/* Screen */}
+        <div className="relative rounded-[22px] sm:rounded-[26px] bg-[#0a0f1a] dark:bg-[#0a0a0c] overflow-hidden aspect-[9/19.5]">
+          {/* Dynamic island */}
+          <div className="absolute top-[3%] left-1/2 -translate-x-1/2 w-[32%] h-[2.5%] min-h-[6px] bg-black rounded-full z-10 flex items-center justify-end px-[8%]">
+            <span className="w-[14%] h-[35%] rounded-full bg-[#1a1a2e]" />
+          </div>
+          {/* Status bar */}
+          <div className="absolute inset-x-0 top-[1.5%] z-10 flex items-center justify-between px-[6%] text-[clamp(4px,1.2vw,8px)] text-white/80">
+            <span className="font-semibold">9:41</span>
+            <div className="flex items-center gap-[0.3em]">
+              <span className="flex items-end gap-[0.06em]">
+                {[0.4, 0.6, 0.8, 1].map((h, i) => (
+                  <span key={i} className="w-[0.12em] rounded-[0.02em] bg-current" style={{ height: `${h * 0.45}em` }} />
+                ))}
+              </span>
+              <span className="relative flex items-center w-[1em] h-[0.45em] rounded-[0.14em] border-[0.05em] border-current/60 px-[0.05em]">
+                <span className="h-[65%] w-[75%] rounded-[0.08em] bg-current" />
+                <span className="absolute -right-[0.18em] w-[0.1em] h-[0.2em] rounded-r-[0.04em] bg-current/50" />
+              </span>
+            </div>
+          </div>
+          {/* Screen content */}
+          <div className="relative w-full h-full z-[5]">
+            {children}
+          </div>
         </div>
-        <span className={cn('flex items-center gap-1 text-[10px] sm:text-[11px] font-medium', s.cls)}>
-          <span className={cn('w-1.5 h-1.5 rounded-full', s.dot, s.pulse && 'animate-pulse')} />
-          {s.text}
-        </span>
       </div>
+      {/* Side buttons */}
+      <div className="absolute -left-[1%] top-[14%] h-[3%] w-[1.8%] rounded-l-[1px] bg-gradient-to-b from-[#b0b0b5] to-[#9a9a9f] dark:from-[#3a3a3e] dark:to-[#2a2a2e]" />
+      <div className="absolute -left-[1%] top-[20%] h-[5%] w-[1.8%] rounded-l-[1px] bg-gradient-to-b from-[#b0b0b5] to-[#9a9a9f] dark:from-[#3a3a3e] dark:to-[#2a2a2e]" />
+      <div className="absolute -right-[1%] top-[17%] h-[6%] w-[1.8%] rounded-r-[1px] bg-gradient-to-b from-[#a5a5aa] to-[#8a8a8f] dark:from-[#353538] dark:to-[#252528]" />
+    </div>
+  );
+}
 
-      {/* Content */}
-      <div className="relative flex-1">
-        {children}
+/** Modern laptop frame */
+function LaptopDevice({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn('relative shrink-0', className)}>
+      {/* Lid */}
+      <div className="relative rounded-[10px] sm:rounded-[12px] p-[1.5%] bg-gradient-to-b from-[#d5d5da] via-[#b8b8bd] to-[#a8a8ad] dark:from-[#3a3a3e] dark:via-[#2a2a2e] dark:to-[#222224] shadow-[0_4px_24px_rgba(0,0,0,0.12),0_1px_4px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.35),0_1px_4px_rgba(0,0,0,0.15)]">
+        {/* Camera dot */}
+        <div className="absolute top-[2.5%] left-1/2 -translate-x-1/2 w-[2%] aspect-square rounded-full bg-[#1a1a1e] ring-[0.5px] ring-white/20 z-10" />
+        {/* Screen bezel */}
+        <div className="relative rounded-[6px] sm:rounded-[8px] bg-[#1a1a1e] p-[1.5%]">
+          {/* Screen */}
+          <div className="relative rounded-[3px] sm:rounded-[4px] bg-[#0a0f1a] dark:bg-[#0a0a0c] overflow-hidden aspect-[16/10]">
+            {children}
+          </div>
+        </div>
+      </div>
+      {/* Keyboard deck */}
+      <div className="relative -mt-[0.5%] -mx-[5%] w-[110%] rounded-b-[10px] sm:rounded-b-[12px] bg-gradient-to-b from-[#c0c0c5] to-[#a5a5aa] dark:from-[#2a2a2e] dark:to-[#1e1e20] shadow-[0_12px_30px_-8px_rgba(0,0,0,0.15)] dark:shadow-[0_12px_30px_-8px_rgba(0,0,0,0.3)]"
+        style={{ clipPath: 'polygon(4% 0%, 96% 0%, 100% 100%, 0% 100%)' }}
+      >
+        <div className="absolute top-0 left-[4%] right-[4%] h-[0.5cqw] rounded-full bg-black/60 dark:bg-black/80" />
+        <div className="flex flex-col gap-[0.6cqw] pt-[1.5cqw] px-[5cqw]">
+          {Array.from({ length: 3 }).map((_, row) => (
+            <div key={row} className="flex gap-[0.6cqw]">
+              {Array.from({ length: row === 0 ? 12 : row === 1 ? 11 : 10 }).map((_, key) => (
+                <span key={key} className="h-[1.2cqw] flex-1 rounded-[0.3cqw] bg-gradient-to-b from-white/10 to-black/5 dark:from-white/5 dark:to-black/10" />
+              ))}
+            </div>
+          ))}
+          <div className="flex gap-[0.6cqw]">
+            <span className="h-[1.4cqw] w-[8cqw] rounded-[0.3cqw] bg-gradient-to-b from-white/10 to-black/5 dark:from-white/5 dark:to-black/10" />
+            <span className="h-[1.4cqw] flex-1 rounded-[0.3cqw] bg-gradient-to-b from-white/10 to-black/5 dark:from-white/5 dark:to-black/10" />
+            <span className="h-[1.4cqw] w-[8cqw] rounded-[0.3cqw] bg-gradient-to-b from-white/10 to-black/5 dark:from-white/5 dark:to-black/10" />
+          </div>
+        </div>
+        {/* Trackpad */}
+        <div className="flex justify-center py-[1cqw]">
+          <div className="w-[22cqw] h-[2cqw] rounded-[0.8cqw] bg-gradient-to-b from-black/5 to-black/10 dark:from-white/5 dark:to-white/8" />
+        </div>
       </div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Message bubbles — real ChatView style
+// ShareText UI — rendered inside device screens
 // ---------------------------------------------------------------------------
-function TextBubble({ obj, sent }: { obj: TransferItem; sent?: boolean }) {
+
+/** Status pill */
+function StatusPill({ state }: { state: 'connected' | 'sending' | 'sent' | 'receiving' | 'received' }) {
+  if (state === 'connected') {
+    return (
+      <span className="flex items-center gap-0.5 text-[7px] sm:text-[8px] font-semibold text-status-success">
+        <span className="w-1 h-1 rounded-full bg-status-success" />
+        Connected
+      </span>
+    );
+  }
+  const map: Record<string, { dot: string; text: string; cls: string; pulse: boolean }> = {
+    sending:   { dot: 'bg-apple-blue', text: 'Sending…', cls: 'text-apple-blue', pulse: true },
+    sent:      { dot: 'bg-status-success', text: 'Sent ✓', cls: 'text-status-success', pulse: false },
+    receiving: { dot: 'bg-apple-blue', text: 'Receiving…', cls: 'text-apple-blue', pulse: true },
+    received:  { dot: 'bg-status-success', text: 'Received ✓', cls: 'text-status-success', pulse: false },
+  };
+  const s = map[state];
+  return (
+    <span className={cn('flex items-center gap-0.5 text-[7px] sm:text-[8px] font-medium', s.cls)}>
+      <span className={cn('w-1 h-1 rounded-full', s.dot, s.pulse && 'animate-pulse')} />
+      {s.text}
+    </span>
+  );
+}
+
+/** Mini ShareText header for inside devices */
+function MiniHeader({ status }: { status: 'connected' | 'sending' | 'sent' | 'receiving' | 'received' }) {
+  return (
+    <div className="flex items-center justify-between px-[6px] sm:px-2 pt-[14%] sm:pt-[10%] pb-[5px] sm:pb-1.5 border-b border-black/[0.08] dark:border-white/[0.1]">
+      <div className="flex items-center gap-0.5">
+        <ShareTextLogo size={8} className="text-apple-ink dark:text-white" />
+        <span className="text-[7px] sm:text-[8px] font-semibold text-apple-ink dark:text-white">ShareText</span>
+        <Lock className="w-[5px] h-[5px] text-status-success ml-0.5" />
+      </div>
+      <StatusPill state={status} />
+    </div>
+  );
+}
+
+/** Message bubbles */
+function MiniText({ obj, sent }: { obj: TransferItem; sent?: boolean }) {
   return (
     <div className={cn(
-      'rounded-[14px] px-3 py-2 max-w-[85%]',
-      'text-[11px] sm:text-[12px] leading-snug whitespace-pre-wrap break-words',
+      'rounded-[6px] sm:rounded-[8px] px-[6px] sm:px-2 py-[4px] sm:py-1 max-w-[80%] text-[6px] sm:text-[7px] leading-snug',
       sent
-        ? 'bg-azure-600 text-white rounded-tr-[4px] ml-auto shadow-[0_1px_3px_rgba(10,102,240,0.2)]'
+        ? 'bg-azure-600 text-white rounded-tr-[2px] ml-auto'
         : 'bg-apple-parchment dark:bg-white/[0.08] border border-black/[0.06] dark:border-white/[0.08] text-apple-ink dark:text-white',
     )}>
       {obj.text}
@@ -152,170 +220,90 @@ function TextBubble({ obj, sent }: { obj: TransferItem; sent?: boolean }) {
   );
 }
 
-function PhotoCard({ obj, received }: { obj: TransferItem; received?: boolean }) {
+function MiniPhoto({ obj, received }: { obj: TransferItem; received?: boolean }) {
   return (
     <div className={cn(
-      'bg-apple-parchment dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] rounded-[14px] overflow-hidden',
-      received && 'ring-2 ring-status-success/25',
+      'bg-apple-parchment dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] rounded-[6px] sm:rounded-[8px] overflow-hidden',
+      received && 'ring-1 ring-status-success/30',
     )}>
-      <DemoPhoto className="w-full aspect-[16/10]" />
-      <div className="px-3 py-2 flex items-center justify-between">
-        <span className="text-[10px] sm:text-[11px] font-semibold text-apple-ink dark:text-white truncate">{obj.name}</span>
-        <span className="text-[9px] sm:text-[10px] text-apple-ink-muted font-medium shrink-0">{obj.size}</span>
+      <DemoPhoto className="w-full aspect-[4/3]" />
+      <div className="px-[5px] sm:px-1.5 py-[3px] sm:py-1 flex items-center justify-between">
+        <span className="text-[5px] sm:text-[6px] font-semibold text-apple-ink dark:text-white truncate">{obj.name}</span>
+        <span className="text-[4.5px] sm:text-[5px] text-apple-ink-muted">{obj.size}</span>
       </div>
     </div>
   );
 }
 
-function VideoCard({ obj, received }: { obj: TransferItem; received?: boolean }) {
+function MiniVideo({ obj, received }: { obj: TransferItem; received?: boolean }) {
   return (
     <div className={cn(
-      'bg-apple-parchment dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] rounded-[14px] overflow-hidden',
-      received && 'ring-2 ring-status-success/25',
+      'bg-apple-parchment dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] rounded-[6px] sm:rounded-[8px] overflow-hidden',
+      received && 'ring-1 ring-status-success/30',
     )}>
-      <div className="relative w-full aspect-[16/10] bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
+      <div className="relative w-full aspect-[4/3] bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
         <DemoPhoto className="w-full h-full opacity-50" />
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-9 h-9 rounded-full bg-white/90 dark:bg-black/60 flex items-center justify-center shadow-lg">
-            <div className="w-0 h-0 ml-0.5 border-l-[8px] border-l-apple-ink dark:border-l-white border-y-[5.5px] border-y-transparent" />
+          <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-white/90 dark:bg-black/60 flex items-center justify-center shadow">
+            <div className="w-0 h-0 ml-px border-l-[5px] border-l-apple-ink dark:border-l-white border-y-[3.5px] border-y-transparent" />
           </div>
         </div>
-        <span className="absolute bottom-1.5 right-2 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold bg-black/70 text-white">
-          {obj.duration}
-        </span>
+        <span className="absolute bottom-0.5 right-1 px-0.5 py-px rounded text-[4px] sm:text-[5px] font-bold bg-black/70 text-white">{obj.duration}</span>
       </div>
-      <div className="px-3 py-2 flex items-center justify-between">
-        <span className="text-[10px] sm:text-[11px] font-semibold text-apple-ink dark:text-white truncate">{obj.name}</span>
-        <span className="text-[9px] sm:text-[10px] text-apple-ink-muted font-medium shrink-0">{obj.size}</span>
+      <div className="px-[5px] sm:px-1.5 py-[3px] sm:py-1 flex items-center justify-between">
+        <span className="text-[5px] sm:text-[6px] font-semibold text-apple-ink dark:text-white truncate">{obj.name}</span>
+        <span className="text-[4.5px] sm:text-[5px] text-apple-ink-muted">{obj.size}</span>
       </div>
     </div>
   );
 }
 
-function FileCard({ obj, received }: { obj: TransferItem; received?: boolean }) {
+function MiniFile({ obj, received }: { obj: TransferItem; received?: boolean }) {
   return (
     <div className={cn(
-      'bg-apple-parchment dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] rounded-[14px] px-3 py-2.5 flex items-center gap-2.5',
-      received && 'ring-2 ring-status-success/25',
+      'bg-apple-parchment dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] rounded-[6px] sm:rounded-[8px] px-[5px] sm:px-2 py-[4px] sm:py-1.5 flex items-center gap-1.5',
+      received && 'ring-1 ring-status-success/30',
     )}>
-      <span className="shrink-0 w-9 h-9 rounded-[9px] bg-white dark:bg-white/[0.08] flex items-center justify-center border border-black/[0.04] dark:border-white/[0.06]">
-        <FileTypeIcon name={obj.name || 'file.pdf'} size={18} />
+      <span className="shrink-0 w-4 h-4 sm:w-5 sm:h-5 rounded-[4px] bg-white dark:bg-white/[0.08] flex items-center justify-center border border-black/[0.04] dark:border-white/[0.06]">
+        <FileTypeIcon name={obj.name || 'file.pdf'} size={8} />
       </span>
       <span className="min-w-0 flex-1 flex flex-col">
-        <span className="text-[11px] sm:text-[12px] font-semibold text-apple-ink dark:text-white truncate">{obj.name}</span>
-        <span className="text-[9px] sm:text-[10px] text-apple-ink-muted font-medium">{obj.size}</span>
+        <span className="text-[5.5px] sm:text-[6.5px] font-semibold text-apple-ink dark:text-white truncate">{obj.name}</span>
+        <span className="text-[4.5px] sm:text-[5px] text-apple-ink-muted">{obj.size}</span>
       </span>
     </div>
   );
 }
 
-function TransferCard({ obj, received }: { obj: TransferItem; received?: boolean }) {
+function MiniCard({ obj, received }: { obj: TransferItem; received?: boolean }) {
   switch (obj.kind) {
-    case 'text':  return <TextBubble obj={obj} sent={!received} />;
-    case 'photo': return <PhotoCard obj={obj} received={received} />;
-    case 'video': return <VideoCard obj={obj} received={received} />;
-    case 'file':  return <FileCard obj={obj} received={received} />;
+    case 'text':  return <MiniText obj={obj} sent={!received} />;
+    case 'photo': return <MiniPhoto obj={obj} received={received} />;
+    case 'video': return <MiniVideo obj={obj} received={received} />;
+    case 'file':  return <MiniFile obj={obj} received={received} />;
   }
 }
 
-// ---------------------------------------------------------------------------
-// Progress bar
-// ---------------------------------------------------------------------------
-function ProgressBar({ progress }: { progress: number }) {
+/** Mini progress bar */
+function MiniProgress({ progress }: { progress: number }) {
   return (
-    <div className="w-full flex flex-col gap-1.5">
-      <div className="w-full h-1.5 rounded-full bg-black/[0.06] dark:bg-white/[0.1] overflow-hidden">
-        <motion.div
-          className="h-full rounded-full bg-apple-blue origin-left"
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: progress / 100 }}
-          transition={{ duration: 0.08, ease: 'linear' }}
-        />
+    <div className="w-full flex flex-col gap-0.5">
+      <div className="w-full h-[3px] rounded-full bg-black/[0.08] dark:bg-white/[0.12] overflow-hidden">
+        <motion.div className="h-full rounded-full bg-apple-blue origin-left" animate={{ scaleX: progress / 100 }} transition={{ duration: 0.08, ease: 'linear' }} />
       </div>
-      <span className="text-[10px] sm:text-[11px] font-medium text-apple-ink-muted text-center">
-        {Math.round(progress)}%
-      </span>
+      <span className="text-[5px] sm:text-[6px] font-medium text-apple-ink-muted text-center">{Math.round(progress)}%</span>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Mini composer — the real ShareText input area
-// ---------------------------------------------------------------------------
-function MiniComposer({
-  selected,
-  onSelect,
-  onSend,
-  disabled,
-}: {
-  selected: Kind;
-  onSelect: (k: Kind) => void;
-  onSend: () => void;
-  disabled: boolean;
-}) {
-  return (
-    <div className="border-t border-black/[0.06] dark:border-white/[0.08] p-2.5 sm:p-3">
-      {/* Selected item preview */}
-      <div className="rounded-[10px] bg-apple-parchment/80 dark:bg-white/[0.04] p-2 flex items-center gap-2 mb-2">
-        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-[8px] bg-azure-600/8 dark:bg-azure-400/10 flex items-center justify-center shrink-0">
-          <span className="text-[10px] sm:text-[11px] font-semibold text-azure-600 dark:text-azure-400">
-            {selected === 'text' && 'Hey…'}
-            {selected === 'photo' && '📷'}
-            {selected === 'video' && '🎬'}
-            {selected === 'file' && '📄'}
-          </span>
-        </div>
-        <span className="text-[10px] sm:text-[11px] font-medium text-apple-ink-muted dark:text-white/50 truncate">
-          {selected === 'text' ? 'Text message' : TRANSFER_ITEMS[selected].name}
-        </span>
-      </div>
-      {/* Type pills + send */}
-      <div className="flex items-center justify-between gap-1">
-        <div className="flex items-center gap-0.5 sm:gap-1">
-          {KIND_META.map(({ kind, label, Icon }) => (
-            <button
-              key={kind}
-              type="button"
-              onClick={() => onSelect(kind)}
-              className={cn(
-                'flex items-center gap-0.5 px-1.5 sm:px-2 py-1 rounded-full text-[9px] sm:text-[10px] font-medium transition-colors duration-150',
-                selected === kind
-                  ? 'bg-azure-600/10 text-azure-600 dark:bg-azure-400/15 dark:text-azure-400'
-                  : 'text-apple-ink-muted/50 dark:text-white/35 hover:text-apple-ink dark:hover:text-white',
-              )}
-            >
-              <Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-              <span className="hidden sm:inline">{label}</span>
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={onSend}
-          disabled={disabled}
-          className={cn(
-            'w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all duration-150 active:scale-90',
-            !disabled
-              ? 'bg-azure-600 text-white shadow-[0_2px_8px_rgba(10,102,240,0.3)]'
-              : 'bg-black/[0.06] dark:bg-white/[0.1] text-apple-ink-muted/40',
-          )}
-        >
-          <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.5} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Main HeroDemo — product interaction as hero
+// Main HeroDemo
 // ---------------------------------------------------------------------------
 export function HeroDemo() {
   const reduced = useReducedMotion();
   const containerRef = useRef<HTMLDivElement>(null);
-
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [simState, setSimState] = useState<SimState>('idle');
-  const [selectedKind, setSelectedKind] = useState<Kind>('text');
   const [transferKind, setTransferKind] = useState<Kind>('text');
   const [progress, setProgress] = useState(0);
   const sceneRef = useRef<Kind>('text');
@@ -336,12 +324,22 @@ export function HeroDemo() {
     return t;
   }, []);
 
+  // Pointer parallax — extremely subtle depth
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+    const y = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+    setMousePos({ x: x * 3, y: y * 2 }); // very subtle: ±3px x, ±2px y
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setMousePos({ x: 0, y: 0 });
+  }, []);
+
   // ---- State machine ----
   const runMachine = useCallback((startKind: Kind) => {
-    clearTimers();
-    setProgress(0);
-    sceneRef.current = startKind;
-    setTransferKind(startKind);
+    clearTimers(); setProgress(0); sceneRef.current = startKind; setTransferKind(startKind);
 
     setSimState('idle');
     schedule(() => setSimState('pairing'), T.IDLE_HOLD);
@@ -360,18 +358,14 @@ export function HeroDemo() {
           if (p < 100) schedule(tick, 25);
         };
         schedule(tick, 25);
-
         schedule(() => {
-          setSimState('received');
-          setProgress(100);
+          setSimState('received'); setProgress(100);
           schedule(() => {
             setSimState('complete');
             schedule(() => {
-              setSimState('idle');
-              setProgress(0);
+              setSimState('idle'); setProgress(0);
               const next = nextKind(sceneRef.current);
-              sceneRef.current = next;
-              setSelectedKind(next);
+              sceneRef.current = next; setTransferKind(next);
               runMachine(next);
             }, T.COMPLETE_HOLD);
           }, T.RECEIVED_HOLD);
@@ -383,14 +377,11 @@ export function HeroDemo() {
   simStateRef.current = simState;
   runMachineRef.current = () => runMachine(sceneRef.current);
 
-  // Auto-play
   useEffect(() => {
     const t = setTimeout(() => runMachine('text'), 300);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Pause when off-screen
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -402,88 +393,51 @@ export function HeroDemo() {
     return () => io.disconnect();
   }, [clearTimers]);
 
-  // Hover-to-pause
   const handleMouseEnter = useCallback(() => {
     hoverRef.current = true;
-    hoverTimerRef.current = setTimeout(() => {
-      if (hoverRef.current) clearTimers();
-    }, 300);
+    hoverTimerRef.current = setTimeout(() => { if (hoverRef.current) clearTimers(); }, 300);
   }, [clearTimers]);
 
-  const handleMouseLeave = useCallback(() => {
+  const handleContainerMouseLeave = useCallback(() => {
     hoverRef.current = false;
     if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; }
     if (simStateRef.current === 'idle') runMachineRef.current();
+    setMousePos({ x: 0, y: 0 });
   }, []);
-
-  // User interaction
-  const handleSelectKind = useCallback((k: Kind) => {
-    setSelectedKind(k);
-    if (simState === 'idle' || simState === 'complete') {
-      clearTimers(); setSimState('idle'); setProgress(0);
-      schedule(() => runMachine(k), 200);
-    }
-  }, [simState, clearTimers, schedule, runMachine]);
-
-  const handleSend = useCallback(() => {
-    if (simState !== 'connected' && simState !== 'idle' && simState !== 'complete') return;
-    clearTimers(); setTransferKind(selectedKind); setProgress(0); setSimState('preparing');
-    schedule(() => {
-      setSimState('transferring');
-      const flightStart = Date.now();
-      const tick = () => {
-        const elapsed = Date.now() - flightStart;
-        const p = Math.min(100, (elapsed / T.FLIGHT_MS) * 100);
-        setProgress(p);
-        if (p < 100) schedule(tick, 25);
-      };
-      schedule(tick, 25);
-      schedule(() => {
-        setSimState('received'); setProgress(100);
-        schedule(() => {
-          setSimState('complete');
-          schedule(() => {
-            setSimState('idle'); setProgress(0);
-            const next = nextKind(selectedKind);
-            sceneRef.current = next; setSelectedKind(next);
-            schedule(() => runMachine(next), 300);
-          }, T.COMPLETE_HOLD);
-        }, T.RECEIVED_HOLD);
-      }, T.FLIGHT_MS);
-    }, T.PREPARING_HOLD);
-  }, [simState, selectedKind, clearTimers, schedule, runMachine]);
 
   // Derived states
   const isSending = simState === 'preparing' || simState === 'transferring';
   const isReceiving = simState === 'transferring' || simState === 'received';
   const isDone = simState === 'received' || simState === 'complete';
-  const showComposer = simState === 'connected' || simState === 'idle' || simState === 'complete';
-  const canUserSend = simState === 'connected' || simState === 'idle' || simState === 'complete';
-
   const senderStatus: 'connected' | 'sending' | 'sent' = isSending ? 'sending' : isDone ? 'sent' : 'connected';
   const receiverStatus: 'connected' | 'receiving' | 'received' = isReceiving ? (isDone ? 'received' : 'receiving') : 'connected';
-
   const item = TRANSFER_ITEMS[transferKind];
 
   // ---- Reduced motion ----
   if (reduced) {
     return (
       <div ref={containerRef} data-testid="hero-demo" role="img"
-        aria-label="ShareText preview: transfer text, photos, videos and files between two devices"
+        aria-label="ShareText preview: transfer files between phone and computer"
         className="relative w-full max-w-[700px] mx-auto select-none"
       >
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-5">
-          <ShareTextPanel status="sent" className="flex-1">
-            <div className="px-3 sm:px-4 py-3 sm:py-4 min-h-[160px] sm:min-h-[200px] flex flex-col justify-end">
-              <TransferCard obj={item} />
+        <div className="flex items-end justify-center gap-4 sm:gap-8">
+          <PhoneDevice className="w-[140px] sm:w-[160px] lg:w-[180px]">
+            <div className="w-full h-full flex flex-col bg-white dark:bg-[#0a0a0c]">
+              <MiniHeader status="sent" />
+              <div className="flex-1 flex flex-col justify-end gap-1 px-[5px] sm:px-1.5 pb-1">
+                <MiniCard obj={item} />
+              </div>
             </div>
-          </ShareTextPanel>
-          <ShareTextPanel status="received" className="flex-1">
-            <div className="px-3 sm:px-4 py-3 sm:py-4 min-h-[160px] sm:min-h-[200px] flex flex-col items-center justify-center">
-              <TransferCard obj={item} received />
-              <span className="mt-2 text-[10px] sm:text-[11px] font-medium text-status-success">✓ Received</span>
+          </PhoneDevice>
+          <LaptopDevice className="w-[240px] sm:w-[300px] lg:w-[340px]">
+            <div className="w-full h-full flex flex-col bg-white dark:bg-[#0a0a0c]">
+              <MiniHeader status="received" />
+              <div className="flex-1 flex flex-col items-center justify-center px-2">
+                <MiniCard obj={item} received />
+                <span className="mt-1 text-[5px] sm:text-[6px] font-medium text-status-success">✓ Received</span>
+              </div>
             </div>
-          </ShareTextPanel>
+          </LaptopDevice>
         </div>
       </div>
     );
@@ -497,147 +451,151 @@ export function HeroDemo() {
       data-sim-state={simState}
       data-transfer-kind={transferKind}
       role="img"
-      aria-label="Interactive preview: ShareText transfers content between devices."
-      className="relative w-full max-w-[700px] mx-auto select-none"
+      aria-label="Interactive preview: ShareText transfers content from phone to computer."
+      className="relative w-full max-w-[750px] mx-auto select-none"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleContainerMouseLeave}
       onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
     >
-      <div className="flex flex-col sm:flex-row gap-3 sm:gap-5 items-stretch">
-        {/* ============ SENDER ============ */}
-        <ShareTextPanel status={senderStatus} className="flex-1 min-w-0">
-          <div className="px-3 sm:px-4 py-3 sm:py-4 min-h-[180px] sm:min-h-[240px] flex flex-col">
-            {/* Chat messages */}
-            <div className="flex-1 flex flex-col justify-end gap-2 mb-2">
-              <AnimatePresence initial={false}>
-                {isDone && (
-                  <motion.div
-                    key="sent-msg"
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-                  >
-                    <TransferCard obj={item} />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+      <div className="flex items-end justify-center gap-4 sm:gap-8 lg:gap-12">
+        {/* ============ PHONE — the sender ============ */}
+        <motion.div
+          animate={{ x: mousePos.x * -0.5, y: mousePos.y * -0.3 }}
+          transition={{ type: 'spring', stiffness: 150, damping: 20 }}
+          className="relative z-10"
+        >
+          <PhoneDevice className="w-[140px] sm:w-[160px] lg:w-[180px]">
+            <div className="w-full h-full flex flex-col bg-white dark:bg-[#0a0a0c]">
+              <MiniHeader status={senderStatus} />
+              {/* Chat area */}
+              <div className="flex-1 flex flex-col justify-end gap-1 px-[5px] sm:px-1.5 pb-1 overflow-hidden">
+                <AnimatePresence initial={false}>
+                  {isDone && (
+                    <motion.div key="sent" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}>
+                      <MiniCard obj={item} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+              {/* Composer or status */}
+              <div className="border-t border-black/[0.08] dark:border-white/[0.1] px-[5px] sm:px-1.5 py-1">
+                <AnimatePresence mode="wait">
+                  {simState === 'connected' || simState === 'idle' || simState === 'complete' ? (
+                    <motion.div key="composer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="flex items-center gap-1"
+                    >
+                      <div className="flex-1 rounded-[6px] bg-apple-parchment/80 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.08] px-[5px] sm:px-1.5 py-[3px] sm:py-1">
+                        <span className="text-[5px] sm:text-[6px] text-apple-ink-muted/60 dark:text-white/40 font-medium">
+                          {transferKind === 'text' ? 'Meeting tomorrow…' : TRANSFER_ITEMS[transferKind].name}
+                        </span>
+                      </div>
+                      <button type="button" className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-azure-600 flex items-center justify-center shadow-[0_1px_4px_rgba(10,102,240,0.3)]">
+                        <Send className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-white" strokeWidth={3} />
+                      </button>
+                    </motion.div>
+                  ) : (
+                    <motion.div key="status" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      transition={{ duration: 0.12 }}
+                      className="flex items-center justify-between px-[5px] sm:px-1.5 py-[3px]"
+                    >
+                      <span className="text-[5px] sm:text-[6px] text-apple-ink-muted/60 dark:text-white/40 font-medium">
+                        {simState === 'preparing' ? 'Preparing…' : simState === 'transferring' ? `Sending… ${Math.round(progress)}%` : simState === 'received' ? 'Sent ✓' : 'Connecting…'}
+                      </span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
+          </PhoneDevice>
+          <p className="text-center mt-2 sm:mt-3 text-[10px] sm:text-[11px] font-medium text-apple-ink-muted dark:text-white/50">Your phone</p>
+        </motion.div>
 
-            {/* Composer or status */}
-            <AnimatePresence mode="wait">
-              {showComposer ? (
-                <motion.div
-                  key="composer"
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -3, transition: { duration: 0.12 } }}
-                  transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-                >
-                  <MiniComposer selected={selectedKind} onSelect={handleSelectKind} onSend={handleSend} disabled={!canUserSend} />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="status"
-                  initial={{ opacity: 0, y: 3 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className="border-t border-black/[0.06] dark:border-white/[0.08] px-3 sm:px-4 py-2.5 flex items-center justify-between"
-                >
-                  <span className="text-[10px] sm:text-[11px] text-apple-ink-muted/60 dark:text-white/40 font-medium">
-                    {simState === 'preparing' ? 'Preparing…' :
-                     simState === 'transferring' ? 'Sending…' :
-                     simState === 'received' ? 'Sent ✓' : 'Connecting…'}
-                  </span>
-                  <Send className="w-3 h-3 text-azure-600/40" strokeWidth={2.5} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </ShareTextPanel>
+        {/* ============ LAPTOP — the receiver ============ */}
+        <motion.div
+          animate={{ x: mousePos.x * 0.3, y: mousePos.y * 0.2 }}
+          transition={{ type: 'spring', stiffness: 150, damping: 20 }}
+          className="relative z-0"
+        >
+          <LaptopDevice className="w-[240px] sm:w-[300px] lg:w-[340px]">
+            <div className="w-full h-full flex flex-col bg-white dark:bg-[#0a0a0c]">
+              <MiniHeader status={receiverStatus} />
+              {/* Content area */}
+              <div className="flex-1 flex flex-col items-center justify-center px-2 overflow-hidden">
+                <AnimatePresence mode="wait">
+                  {/* Pairing */}
+                  {simState === 'pairing' && (
+                    <motion.div key="pairing" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }}
+                      transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+                      className="flex flex-col items-center gap-1.5"
+                    >
+                      <span className="text-[6px] sm:text-[7px] font-medium text-apple-ink dark:text-white">Enter pairing code</span>
+                      <div className="flex gap-0.5">
+                        {['8','4','7','2','9','1'].map((d, i) => (
+                          <motion.span key={i} initial={{ opacity: 0, y: 2 }} animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.03, duration: 0.15 }}
+                            className="w-4 h-5 sm:w-5 sm:h-6 rounded-[3px] bg-apple-parchment dark:bg-white/[0.08] border border-black/[0.08] dark:border-white/[0.1] flex items-center justify-center text-[8px] sm:text-[10px] font-mono font-bold text-apple-ink dark:text-white"
+                          >{d}</motion.span>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
 
-        {/* ============ RECEIVER ============ */}
-        <ShareTextPanel status={receiverStatus} className="flex-1 min-w-0">
-          <div className="px-3 sm:px-4 py-3 sm:py-4 min-h-[180px] sm:min-h-[240px] flex flex-col items-center justify-center">
-            <AnimatePresence mode="wait">
-              {/* Pairing */}
-              {simState === 'pairing' && (
-                <motion.div key="pairing" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-                  className="flex flex-col items-center gap-3"
-                >
-                  <span className="text-[11px] sm:text-[12px] font-medium text-apple-ink dark:text-white">Enter pairing code</span>
-                  <div className="flex gap-1.5">
-                    {['8', '4', '7', '2', '9', '1'].map((d, i) => (
-                      <motion.span key={i} initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.04, duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-                        className="w-7 h-9 sm:w-8 sm:h-10 rounded-[5px] bg-apple-parchment dark:bg-white/[0.08] border border-black/[0.08] dark:border-white/[0.1] flex items-center justify-center text-[14px] sm:text-[16px] font-mono font-bold text-apple-ink dark:text-white"
-                      >{d}</motion.span>
-                    ))}
-                  </div>
-                  <span className="text-[9px] sm:text-[10px] text-apple-ink-muted/50 font-medium">Code expires in 5:00</span>
-                </motion.div>
-              )}
+                  {/* Transferring */}
+                  {simState === 'transferring' && !isDone && (
+                    <motion.div key="progress" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }}
+                      transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+                      className="w-full max-w-[160px] flex flex-col items-center gap-1.5"
+                    >
+                      <div className="w-full relative">
+                        <div className="opacity-50"><MiniCard obj={item} /></div>
+                        <div className="absolute bottom-0 left-0 right-0 px-1 pb-1"><MiniProgress progress={progress} /></div>
+                      </div>
+                      <span className="text-[5px] sm:text-[6px] font-medium text-apple-ink-muted flex items-center gap-0.5">
+                        <span className="w-1 h-1 rounded-full bg-apple-blue animate-pulse" /> Receiving…
+                      </span>
+                    </motion.div>
+                  )}
 
-              {/* Transferring — file with progress */}
-              {simState === 'transferring' && !isDone && (
-                <motion.div key="progress" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-                  className="w-full flex flex-col items-center gap-2.5"
-                >
-                  <div className="w-full max-w-[220px] relative">
-                    <div className="opacity-60"><TransferCard obj={item} /></div>
-                    <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-2"><ProgressBar progress={progress} /></div>
-                  </div>
-                  <span className="text-[10px] sm:text-[11px] font-medium text-apple-ink-muted flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-apple-blue animate-pulse" />
-                    Receiving…
-                  </span>
-                </motion.div>
-              )}
-
-              {/* Received */}
-              {isDone && (
-                <motion.div key={`received-${transferKind}`} initial={{ opacity: 0, y: 8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-                  className="w-full flex flex-col items-center gap-2"
-                >
-                  <TransferCard obj={item} received />
-                  <span className="text-[10px] sm:text-[11px] font-medium text-status-success">✓ Received</span>
-                  <AnimatePresence>
-                    {simState === 'received' && (
-                      <motion.div initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                        transition={{ delay: 0.2, duration: 0.2 }}
-                        className="flex items-center gap-2"
-                      >
-                        {transferKind === 'text' ? (
-                          <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-azure-600/10 text-azure-600 text-[10px] sm:text-[11px] font-medium">
-                            <Copy className="w-3 h-3" /> Copy
-                          </button>
-                        ) : (
-                          <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-azure-600/10 text-azure-600 text-[10px] sm:text-[11px] font-medium">
-                            <Download className="w-3 h-3" /> Download
-                          </button>
+                  {/* Received */}
+                  {isDone && (
+                    <motion.div key={`received-${transferKind}`} initial={{ opacity: 0, y: 6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                      className="w-full flex flex-col items-center gap-1"
+                    >
+                      <MiniCard obj={item} received />
+                      <span className="text-[5px] sm:text-[6px] font-medium text-status-success">✓ Received</span>
+                      <AnimatePresence>
+                        {simState === 'received' && (
+                          <motion.div initial={{ opacity: 0, y: 2 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                            transition={{ delay: 0.15, duration: 0.15 }}
+                          >
+                            <button type="button" className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-azure-600/10 text-azure-600 text-[5px] sm:text-[6px] font-medium">
+                              {transferKind === 'text' ? <><Copy className="w-1.5 h-1.5" /> Copy</> : <><Download className="w-1.5 h-1.5" /> Download</>}
+                            </button>
+                          </motion.div>
                         )}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              )}
+                      </AnimatePresence>
+                    </motion.div>
+                  )}
 
-              {/* Waiting */}
-              {!isSending && !isReceiving && !isDone && simState !== 'pairing' && (
-                <motion.div key="waiting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="flex flex-col items-center gap-1.5 text-apple-ink-muted/40 dark:text-white/25"
-                >
-                  <Send className="w-5 h-5 opacity-30" />
-                  <span className="text-[11px] sm:text-[12px] font-medium">Waiting for something…</span>
-                  <span className="text-[9px] sm:text-[10px]">It will appear here</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </ShareTextPanel>
+                  {/* Waiting */}
+                  {!isSending && !isReceiving && !isDone && simState !== 'pairing' && (
+                    <motion.div key="waiting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="flex flex-col items-center gap-1 text-apple-ink-muted/40 dark:text-white/25"
+                    >
+                      <Send className="w-3 h-3 sm:w-4 sm:h-4 opacity-30" />
+                      <span className="text-[6px] sm:text-[7px] font-medium">Waiting for something…</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </LaptopDevice>
+          <p className="text-center mt-2 sm:mt-3 text-[10px] sm:text-[11px] font-medium text-apple-ink-muted dark:text-white/50">Your computer</p>
+        </motion.div>
       </div>
     </div>
   );
