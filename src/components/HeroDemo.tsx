@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Image as ImageIcon, FileArchive, Send, Video,
-  Download, Copy, Lock,
+  Download, Copy, Lock, Plus,
 } from 'lucide-react';
 import { ShareTextLogo } from './ShareTextLogo';
 import { DemoPhoto } from './DemoPhoto';
@@ -68,142 +68,83 @@ type SimState =
   | 'complete';
 
 // ---------------------------------------------------------------------------
-// Timing
+// Timing — 7-10s product story
 // ---------------------------------------------------------------------------
-// Choreography: 7-10s product story
-// 0.0–1.5s  Two interfaces visible, nothing moving (IDLE)
-// 1.5–2.5s  Sender selects item, UI responds (PAIRING → CONNECTING)
-// 2.5–3.5s  Connection begins, both sides react (CONNECTED)
-// 3.5–6.5s  Content transfers, progress visible (PREPARING → TRANSFERRING)
-// 6.5–7.5s  Transfer completes, receiver shows content (RECEIVED)
-// 7.5–9.0s  Completed state breathes (COMPLETE)
-// 9.0–10.0s Return naturally to start (RESET)
 const T = {
-  IDLE_HOLD:       1500,  // 0.0–1.5s: calm opening
-  PAIRING_HOLD:    500,   // 1.5–2.0s: code appears
-  CONNECTING_HOLD: 500,   // 2.0–2.5s: connection forms
-  CONNECTED_HOLD:  1000,  // 2.5–3.5s: both sides react
-  PREPARING_HOLD:  300,   // 3.5–3.8s: sender prepares
-  FLIGHT_MS:       2700,  // 3.8–6.5s: transfer with progress
-  RECEIVED_HOLD:   1500,  // 6.5–8.0s: completion breathes
-  COMPLETE_HOLD:   1200,  // 8.0–9.2s: natural pause before reset
+  IDLE_HOLD:       1500,
+  PAIRING_HOLD:    500,
+  CONNECTING_HOLD: 500,
+  CONNECTED_HOLD:  1000,
+  PREPARING_HOLD:  300,
+  FLIGHT_MS:       2700,
+  RECEIVED_HOLD:   1500,
+  COMPLETE_HOLD:   1200,
 };
 
 // ---------------------------------------------------------------------------
-// Product-surface components — match real ChatView exactly
+// ShareText panel — the real product surface, no browser chrome
 // ---------------------------------------------------------------------------
-
-/** Connected status pill — no animation when idle, pulse only during active transfer */
-function ConnectedPill() {
-  return (
-    <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-status-success/15 text-status-success">
-      <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
-      Connected
-    </span>
-  );
-}
-
-/** Status label — pulse only during active transfer, not when idle */
-function StatusPill({ state }: { state: 'connected' | 'sending' | 'sent' | 'receiving' | 'received' }) {
-  if (state === 'connected') return <ConnectedPill />;
-  const isActive = state === 'sending' || state === 'receiving';
-  const map: Record<string, { dot: string; text: string; cls: string }> = {
-    sending:   { dot: 'bg-apple-blue',  text: 'Sending…',   cls: 'text-apple-blue' },
-    sent:      { dot: 'bg-status-success', text: 'Sent ✓',     cls: 'text-status-success' },
-    receiving: { dot: 'bg-apple-blue',  text: 'Receiving…', cls: 'text-apple-blue' },
-    received:  { dot: 'bg-status-success', text: 'Received ✓',  cls: 'text-status-success' },
-  };
-  const s = map[state];
-  return (
-    <span className={`flex items-center gap-1 text-[10px] sm:text-[11px] font-medium ${s.cls}`}>
-      <span className={cn(
-        'w-1.5 h-1.5 rounded-full',
-        s.dot,
-        isActive && 'animate-pulse',
-      )} />
-      {s.text}
-    </span>
-  );
-}
-
-/** ShareText browser window — the product surface with quiet material depth */
-function ProductWindow({
-  title,
+function ShareTextPanel({
   status,
   children,
   className,
 }: {
-  title: string;
   status: 'connected' | 'sending' | 'sent' | 'receiving' | 'received';
   children: React.ReactNode;
   className?: string;
 }) {
+  const statusMap: Record<string, { dot: string; text: string; cls: string; pulse: boolean }> = {
+    connected: { dot: 'bg-status-success', text: 'Connected', cls: 'text-status-success', pulse: false },
+    sending:   { dot: 'bg-apple-blue', text: 'Sending…', cls: 'text-apple-blue', pulse: true },
+    sent:      { dot: 'bg-status-success', text: 'Sent ✓', cls: 'text-status-success', pulse: false },
+    receiving: { dot: 'bg-apple-blue', text: 'Receiving…', cls: 'text-apple-blue', pulse: true },
+    received:  { dot: 'bg-status-success', text: 'Received ✓', cls: 'text-status-success', pulse: false },
+  };
+  const s = statusMap[status];
+
   return (
     <div className={cn(
-      'rounded-[14px] sm:rounded-[18px] overflow-hidden relative',
+      'flex flex-col rounded-[16px] sm:rounded-[20px] overflow-hidden',
       'bg-white dark:bg-[#1a1a1e]',
       'border border-black/[0.08] dark:border-white/[0.1]',
-      // Multi-layer shadow: tight contact shadow + soft ambient
-      'shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.05),0_12px_40px_rgba(0,0,0,0.03)]',
-      'dark:shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.25),0_12px_40px_rgba(0,0,0,0.15)]',
+      'shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_20px_rgba(0,0,0,0.04)]',
+      'dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_6px_20px_rgba(0,0,0,0.18)]',
       className,
     )}>
-      {/* Browser chrome — minimal, authentic */}
-      <div className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-black/[0.06] dark:border-white/[0.08] bg-apple-parchment/50 dark:bg-white/[0.03]">
-        {/* Traffic lights */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]" />
-          <span className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]" />
-          <span className="w-2.5 h-2.5 rounded-full bg-[#28C840]" />
-        </div>
-        {/* URL bar */}
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/[0.04] dark:bg-white/[0.06] text-[10px] sm:text-[11px] font-medium text-apple-ink-muted dark:text-white/50">
-            <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-            sharetexts.online
-          </div>
-        </div>
-        <div className="w-12" /> {/* spacer to balance traffic lights */}
-      </div>
-
-      {/* ShareText app header */}
-      <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-2.5 border-b border-black/[0.06] dark:border-white/[0.08]">
+      {/* ShareText header — the real app header */}
+      <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 border-b border-black/[0.06] dark:border-white/[0.08]">
         <div className="flex items-center gap-1.5">
-          <ShareTextLogo size={14} className="text-apple-ink dark:text-white" />
-          <span className="text-[11px] sm:text-[12px] font-semibold tracking-tight text-apple-ink dark:text-white">ShareText</span>
+          <ShareTextLogo size={16} className="text-apple-ink dark:text-white" />
+          <span className="text-[12px] sm:text-[13px] font-semibold tracking-tight text-apple-ink dark:text-white">ShareText</span>
           <span className="flex items-center gap-0.5 ml-0.5">
-            <Lock className="w-2.5 h-2.5 text-status-success" />
+            <Lock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-status-success" />
             <span className="text-[8px] sm:text-[9px] font-medium text-status-success">E2E</span>
           </span>
         </div>
-        <StatusPill state={status} />
+        <span className={cn('flex items-center gap-1 text-[10px] sm:text-[11px] font-medium', s.cls)}>
+          <span className={cn('w-1.5 h-1.5 rounded-full', s.dot, s.pulse && 'animate-pulse')} />
+          {s.text}
+        </span>
       </div>
 
       {/* Content */}
-      <div className="relative">
+      <div className="relative flex-1">
         {children}
       </div>
-
-      {/* Subtle screen reflection — one coherent light source from top-left */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-10 rounded-[inherit]"
-        style={{
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.015) 100%)',
-        }}
-      />
     </div>
   );
 }
 
-/** Text message bubble — matches real ChatView */
+// ---------------------------------------------------------------------------
+// Message bubbles — real ChatView style
+// ---------------------------------------------------------------------------
 function TextBubble({ obj, sent }: { obj: TransferItem; sent?: boolean }) {
   return (
     <div className={cn(
-      'rounded-[12px] px-3 py-2 shadow-sm max-w-[85%]',
+      'rounded-[14px] px-3 py-2 max-w-[85%]',
       'text-[11px] sm:text-[12px] leading-snug whitespace-pre-wrap break-words',
       sent
-        ? 'bg-azure-600 text-white rounded-tr-[3px] ml-auto'
+        ? 'bg-azure-600 text-white rounded-tr-[4px] ml-auto shadow-[0_1px_3px_rgba(10,102,240,0.2)]'
         : 'bg-apple-parchment dark:bg-white/[0.08] border border-black/[0.06] dark:border-white/[0.08] text-apple-ink dark:text-white',
     )}>
       {obj.text}
@@ -211,15 +152,14 @@ function TextBubble({ obj, sent }: { obj: TransferItem; sent?: boolean }) {
   );
 }
 
-/** Photo card */
 function PhotoCard({ obj, received }: { obj: TransferItem; received?: boolean }) {
   return (
     <div className={cn(
-      'bg-apple-parchment dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] rounded-[12px] overflow-hidden',
-      received && 'ring-2 ring-status-success/30',
+      'bg-apple-parchment dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] rounded-[14px] overflow-hidden',
+      received && 'ring-2 ring-status-success/25',
     )}>
       <DemoPhoto className="w-full aspect-[16/10]" />
-      <div className="px-2.5 py-2 flex items-center justify-between">
+      <div className="px-3 py-2 flex items-center justify-between">
         <span className="text-[10px] sm:text-[11px] font-semibold text-apple-ink dark:text-white truncate">{obj.name}</span>
         <span className="text-[9px] sm:text-[10px] text-apple-ink-muted font-medium shrink-0">{obj.size}</span>
       </div>
@@ -227,17 +167,16 @@ function PhotoCard({ obj, received }: { obj: TransferItem; received?: boolean })
   );
 }
 
-/** Video card */
 function VideoCard({ obj, received }: { obj: TransferItem; received?: boolean }) {
   return (
     <div className={cn(
-      'bg-apple-parchment dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] rounded-[12px] overflow-hidden',
-      received && 'ring-2 ring-status-success/30',
+      'bg-apple-parchment dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] rounded-[14px] overflow-hidden',
+      received && 'ring-2 ring-status-success/25',
     )}>
       <div className="relative w-full aspect-[16/10] bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
         <DemoPhoto className="w-full h-full opacity-50" />
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/90 dark:bg-black/60 flex items-center justify-center shadow-lg">
+          <div className="w-9 h-9 rounded-full bg-white/90 dark:bg-black/60 flex items-center justify-center shadow-lg">
             <div className="w-0 h-0 ml-0.5 border-l-[8px] border-l-apple-ink dark:border-l-white border-y-[5.5px] border-y-transparent" />
           </div>
         </div>
@@ -245,7 +184,7 @@ function VideoCard({ obj, received }: { obj: TransferItem; received?: boolean })
           {obj.duration}
         </span>
       </div>
-      <div className="px-2.5 py-2 flex items-center justify-between">
+      <div className="px-3 py-2 flex items-center justify-between">
         <span className="text-[10px] sm:text-[11px] font-semibold text-apple-ink dark:text-white truncate">{obj.name}</span>
         <span className="text-[9px] sm:text-[10px] text-apple-ink-muted font-medium shrink-0">{obj.size}</span>
       </div>
@@ -253,14 +192,13 @@ function VideoCard({ obj, received }: { obj: TransferItem; received?: boolean })
   );
 }
 
-/** File card */
 function FileCard({ obj, received }: { obj: TransferItem; received?: boolean }) {
   return (
     <div className={cn(
-      'bg-apple-parchment dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] rounded-[12px] px-3 py-2.5 flex items-center gap-2.5',
-      received && 'ring-2 ring-status-success/30',
+      'bg-apple-parchment dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] rounded-[14px] px-3 py-2.5 flex items-center gap-2.5',
+      received && 'ring-2 ring-status-success/25',
     )}>
-      <span className="shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-[8px] bg-white dark:bg-white/[0.08] flex items-center justify-center border border-black/[0.04] dark:border-white/[0.06]">
+      <span className="shrink-0 w-9 h-9 rounded-[9px] bg-white dark:bg-white/[0.08] flex items-center justify-center border border-black/[0.04] dark:border-white/[0.06]">
         <FileTypeIcon name={obj.name || 'file.pdf'} size={18} />
       </span>
       <span className="min-w-0 flex-1 flex flex-col">
@@ -271,7 +209,6 @@ function FileCard({ obj, received }: { obj: TransferItem; received?: boolean }) 
   );
 }
 
-/** Render the right card type */
 function TransferCard({ obj, received }: { obj: TransferItem; received?: boolean }) {
   switch (obj.kind) {
     case 'text':  return <TextBubble obj={obj} sent={!received} />;
@@ -281,7 +218,9 @@ function TransferCard({ obj, received }: { obj: TransferItem; received?: boolean
   }
 }
 
-/** Progress bar */
+// ---------------------------------------------------------------------------
+// Progress bar
+// ---------------------------------------------------------------------------
 function ProgressBar({ progress }: { progress: number }) {
   return (
     <div className="w-full flex flex-col gap-1.5">
@@ -300,7 +239,9 @@ function ProgressBar({ progress }: { progress: number }) {
   );
 }
 
-/** Composer — simplified version of real composer */
+// ---------------------------------------------------------------------------
+// Mini composer — the real ShareText input area
+// ---------------------------------------------------------------------------
 function MiniComposer({
   selected,
   onSelect,
@@ -313,11 +254,11 @@ function MiniComposer({
   disabled: boolean;
 }) {
   return (
-    <div className="bg-apple-parchment/80 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.08] rounded-[12px] p-2 sm:p-2.5">
-      {/* Selected preview */}
-      <div className="rounded-[8px] bg-white dark:bg-white/[0.06] p-1.5 flex items-center gap-2 mb-2">
-        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[6px] bg-azure-600/8 dark:bg-azure-400/10 flex items-center justify-center shrink-0">
-          <span className="text-[9px] sm:text-[10px] font-semibold text-azure-600 dark:text-azure-400">
+    <div className="border-t border-black/[0.06] dark:border-white/[0.08] p-2.5 sm:p-3">
+      {/* Selected item preview */}
+      <div className="rounded-[10px] bg-apple-parchment/80 dark:bg-white/[0.04] p-2 flex items-center gap-2 mb-2">
+        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-[8px] bg-azure-600/8 dark:bg-azure-400/10 flex items-center justify-center shrink-0">
+          <span className="text-[10px] sm:text-[11px] font-semibold text-azure-600 dark:text-azure-400">
             {selected === 'text' && 'Hey…'}
             {selected === 'photo' && '📷'}
             {selected === 'video' && '🎬'}
@@ -330,21 +271,21 @@ function MiniComposer({
       </div>
       {/* Type pills + send */}
       <div className="flex items-center justify-between gap-1">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 sm:gap-1">
           {KIND_META.map(({ kind, label, Icon }) => (
             <button
               key={kind}
               type="button"
               onClick={() => onSelect(kind)}
               className={cn(
-                'flex items-center gap-0.5 px-2 py-1 rounded-full text-[9px] sm:text-[10px] font-medium transition-colors duration-150',
+                'flex items-center gap-0.5 px-1.5 sm:px-2 py-1 rounded-full text-[9px] sm:text-[10px] font-medium transition-colors duration-150',
                 selected === kind
                   ? 'bg-azure-600/10 text-azure-600 dark:bg-azure-400/15 dark:text-azure-400'
-                  : 'text-apple-ink-muted/60 dark:text-white/40 hover:text-apple-ink dark:hover:text-white',
+                  : 'text-apple-ink-muted/50 dark:text-white/35 hover:text-apple-ink dark:hover:text-white',
               )}
             >
               <Icon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-              {label}
+              <span className="hidden sm:inline">{label}</span>
             </button>
           ))}
         </div>
@@ -353,13 +294,13 @@ function MiniComposer({
           onClick={onSend}
           disabled={disabled}
           className={cn(
-            'w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-150 active:scale-90',
+            'w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all duration-150 active:scale-90',
             !disabled
               ? 'bg-azure-600 text-white shadow-[0_2px_8px_rgba(10,102,240,0.3)]'
               : 'bg-black/[0.06] dark:bg-white/[0.1] text-apple-ink-muted/40',
           )}
         >
-          <Send className="w-3 h-3 sm:w-3.5 sm:h-3.5" strokeWidth={2.5} />
+          <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" strokeWidth={2.5} />
         </button>
       </div>
     </div>
@@ -367,7 +308,7 @@ function MiniComposer({
 }
 
 // ---------------------------------------------------------------------------
-// Main HeroDemo
+// Main HeroDemo — product interaction as hero
 // ---------------------------------------------------------------------------
 export function HeroDemo() {
   const reduced = useReducedMotion();
@@ -454,11 +395,8 @@ export function HeroDemo() {
     const el = containerRef.current;
     if (!el) return;
     const io = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting) {
-        clearTimers();
-      } else if (simStateRef.current === 'idle' && !hoverRef.current) {
-        runMachineRef.current();
-      }
+      if (!entry.isIntersecting) clearTimers();
+      else if (simStateRef.current === 'idle' && !hoverRef.current) runMachineRef.current();
     }, { threshold: 0.05 });
     io.observe(el);
     return () => io.disconnect();
@@ -474,10 +412,7 @@ export function HeroDemo() {
 
   const handleMouseLeave = useCallback(() => {
     hoverRef.current = false;
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current);
-      hoverTimerRef.current = null;
-    }
+    if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; }
     if (simStateRef.current === 'idle') runMachineRef.current();
   }, []);
 
@@ -485,19 +420,14 @@ export function HeroDemo() {
   const handleSelectKind = useCallback((k: Kind) => {
     setSelectedKind(k);
     if (simState === 'idle' || simState === 'complete') {
-      clearTimers();
-      setSimState('idle');
-      setProgress(0);
+      clearTimers(); setSimState('idle'); setProgress(0);
       schedule(() => runMachine(k), 200);
     }
   }, [simState, clearTimers, schedule, runMachine]);
 
   const handleSend = useCallback(() => {
     if (simState !== 'connected' && simState !== 'idle' && simState !== 'complete') return;
-    clearTimers();
-    setTransferKind(selectedKind);
-    setProgress(0);
-    setSimState('preparing');
+    clearTimers(); setTransferKind(selectedKind); setProgress(0); setSimState('preparing');
     schedule(() => {
       setSimState('transferring');
       const flightStart = Date.now();
@@ -509,16 +439,13 @@ export function HeroDemo() {
       };
       schedule(tick, 25);
       schedule(() => {
-        setSimState('received');
-        setProgress(100);
+        setSimState('received'); setProgress(100);
         schedule(() => {
           setSimState('complete');
           schedule(() => {
-            setSimState('idle');
-            setProgress(0);
+            setSimState('idle'); setProgress(0);
             const next = nextKind(selectedKind);
-            sceneRef.current = next;
-            setSelectedKind(next);
+            sceneRef.current = next; setSelectedKind(next);
             schedule(() => runMachine(next), 300);
           }, T.COMPLETE_HOLD);
         }, T.RECEIVED_HOLD);
@@ -541,36 +468,22 @@ export function HeroDemo() {
   // ---- Reduced motion ----
   if (reduced) {
     return (
-      <div
-        ref={containerRef}
-        data-testid="hero-demo"
-        role="img"
+      <div ref={containerRef} data-testid="hero-demo" role="img"
         aria-label="ShareText preview: transfer text, photos, videos and files between two devices"
-        className="relative w-full max-w-[800px] mx-auto select-none"
+        className="relative w-full max-w-[700px] mx-auto select-none"
       >
-        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
-          <ProductWindow title="Sender" status="sent" className="flex-1">
-            <div className="px-3 sm:px-4 py-3 sm:py-4 min-h-[180px] sm:min-h-[220px] flex flex-col justify-end">
-              <div className="flex flex-col gap-2">
-                <TransferCard obj={item} />
-              </div>
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-5">
+          <ShareTextPanel status="sent" className="flex-1">
+            <div className="px-3 sm:px-4 py-3 sm:py-4 min-h-[160px] sm:min-h-[200px] flex flex-col justify-end">
+              <TransferCard obj={item} />
             </div>
-          </ProductWindow>
-          <ProductWindow title="Receiver" status="received" className="flex-1">
-            <div className="px-3 sm:px-4 py-3 sm:py-4 min-h-[180px] sm:min-h-[220px] flex flex-col items-center justify-center">
+          </ShareTextPanel>
+          <ShareTextPanel status="received" className="flex-1">
+            <div className="px-3 sm:px-4 py-3 sm:py-4 min-h-[160px] sm:min-h-[200px] flex flex-col items-center justify-center">
               <TransferCard obj={item} received />
+              <span className="mt-2 text-[10px] sm:text-[11px] font-medium text-status-success">✓ Received</span>
             </div>
-          </ProductWindow>
-        </div>
-        <div className="flex justify-center mt-6">
-          <button
-            type="button"
-            onClick={() => runMachine(sceneRef.current)}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-azure-600/10 text-azure-600 text-[12px] font-medium hover:bg-azure-600/15 transition-colors"
-          >
-            <Send className="w-3.5 h-3.5" />
-            Play preview
-          </button>
+          </ShareTextPanel>
         </div>
       </div>
     );
@@ -584,24 +497,24 @@ export function HeroDemo() {
       data-sim-state={simState}
       data-transfer-kind={transferKind}
       role="img"
-      aria-label={`Interactive preview: ShareText transfers content between devices. Click Send to try.`}
-      className="relative w-full max-w-[800px] mx-auto select-none"
+      aria-label="Interactive preview: ShareText transfers content between devices."
+      className="relative w-full max-w-[700px] mx-auto select-none"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-start">
-        {/* ============ SENDER — slightly elevated (source) ============ */}
-        <ProductWindow title="Sender" status={senderStatus} className="flex-1 min-w-0 sm:translate-y-0">
-          <div className="px-3 sm:px-4 py-3 sm:py-4 min-h-[200px] sm:min-h-[260px] flex flex-col">
-            {/* Chat area */}
-            <div className="flex-1 flex flex-col justify-end gap-2 mb-3">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-5 items-stretch">
+        {/* ============ SENDER ============ */}
+        <ShareTextPanel status={senderStatus} className="flex-1 min-w-0">
+          <div className="px-3 sm:px-4 py-3 sm:py-4 min-h-[180px] sm:min-h-[240px] flex flex-col">
+            {/* Chat messages */}
+            <div className="flex-1 flex flex-col justify-end gap-2 mb-2">
               <AnimatePresence initial={false}>
                 {isDone && (
                   <motion.div
                     key="sent-msg"
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
                   >
                     <TransferCard obj={item} />
                   </motion.div>
@@ -619,23 +532,18 @@ export function HeroDemo() {
                   exit={{ opacity: 0, y: -3, transition: { duration: 0.12 } }}
                   transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
                 >
-                  <MiniComposer
-                    selected={selectedKind}
-                    onSelect={handleSelectKind}
-                    onSend={handleSend}
-                    disabled={!canUserSend}
-                  />
+                  <MiniComposer selected={selectedKind} onSelect={handleSelectKind} onSend={handleSend} disabled={!canUserSend} />
                 </motion.div>
               ) : (
                 <motion.div
-                  key="sending-status"
+                  key="status"
                   initial={{ opacity: 0, y: 3 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.15 }}
-                  className="bg-apple-parchment/80 dark:bg-white/[0.04] border border-black/[0.06] dark:border-white/[0.08] rounded-[12px] px-3 py-2.5 flex items-center justify-between"
+                  className="border-t border-black/[0.06] dark:border-white/[0.08] px-3 sm:px-4 py-2.5 flex items-center justify-between"
                 >
-                  <span className="text-[10px] sm:text-[11px] text-apple-ink-muted/70 dark:text-white/40 font-medium">
+                  <span className="text-[10px] sm:text-[11px] text-apple-ink-muted/60 dark:text-white/40 font-medium">
                     {simState === 'preparing' ? 'Preparing…' :
                      simState === 'transferring' ? 'Sending…' :
                      simState === 'received' ? 'Sent ✓' : 'Connecting…'}
@@ -645,59 +553,40 @@ export function HeroDemo() {
               )}
             </AnimatePresence>
           </div>
-        </ProductWindow>
+        </ShareTextPanel>
 
-        {/* ============ RECEIVER — slightly recessed (destination) ============ */}
-        <ProductWindow title="Receiver" status={receiverStatus} className="flex-1 min-w-0 sm:translate-y-1">
-          <div className="px-3 sm:px-4 py-3 sm:py-4 min-h-[200px] sm:min-h-[260px] flex flex-col items-center justify-center">
+        {/* ============ RECEIVER ============ */}
+        <ShareTextPanel status={receiverStatus} className="flex-1 min-w-0">
+          <div className="px-3 sm:px-4 py-3 sm:py-4 min-h-[180px] sm:min-h-[240px] flex flex-col items-center justify-center">
             <AnimatePresence mode="wait">
-              {/* Pairing code */}
+              {/* Pairing */}
               {simState === 'pairing' && (
-                <motion.div
-                  key="pairing"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
+                <motion.div key="pairing" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
                   className="flex flex-col items-center gap-3"
                 >
                   <span className="text-[11px] sm:text-[12px] font-medium text-apple-ink dark:text-white">Enter pairing code</span>
                   <div className="flex gap-1.5">
                     {['8', '4', '7', '2', '9', '1'].map((d, i) => (
-                      <motion.span
-                        key={i}
-                        initial={{ opacity: 0, y: 3 }}
-                        animate={{ opacity: 1, y: 0 }}
+                      <motion.span key={i} initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.04, duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
                         className="w-7 h-9 sm:w-8 sm:h-10 rounded-[5px] bg-apple-parchment dark:bg-white/[0.08] border border-black/[0.08] dark:border-white/[0.1] flex items-center justify-center text-[14px] sm:text-[16px] font-mono font-bold text-apple-ink dark:text-white"
-                      >
-                        {d}
-                      </motion.span>
+                      >{d}</motion.span>
                     ))}
                   </div>
                   <span className="text-[9px] sm:text-[10px] text-apple-ink-muted/50 font-medium">Code expires in 5:00</span>
                 </motion.div>
               )}
 
-              {/* Transferring — file being received with progress */}
+              {/* Transferring — file with progress */}
               {simState === 'transferring' && !isDone && (
-                <motion.div
-                  key="progress"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
+                <motion.div key="progress" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
                   className="w-full flex flex-col items-center gap-2.5"
                 >
-                  {/* Show the file card with progress overlay */}
                   <div className="w-full max-w-[220px] relative">
-                    <div className="opacity-60">
-                      <TransferCard obj={item} />
-                    </div>
-                    {/* Progress bar overlay at bottom of card */}
-                    <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-2">
-                      <ProgressBar progress={progress} />
-                    </div>
+                    <div className="opacity-60"><TransferCard obj={item} /></div>
+                    <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-2"><ProgressBar progress={progress} /></div>
                   </div>
                   <span className="text-[10px] sm:text-[11px] font-medium text-apple-ink-muted flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-apple-blue animate-pulse" />
@@ -708,54 +597,27 @@ export function HeroDemo() {
 
               {/* Received */}
               {isDone && (
-                <motion.div
-                  key={`received-${transferKind}`}
-                  initial={{ opacity: 0, y: 8, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                <motion.div key={`received-${transferKind}`} initial={{ opacity: 0, y: 8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
                   className="w-full flex flex-col items-center gap-2"
                 >
                   <TransferCard obj={item} received />
-
-                  {/* Received badge + action */}
-                  <div className="flex items-center gap-2">
-                    <StatusPill state="received" />
-                    <span className="text-[9px] sm:text-[10px] text-apple-ink-muted/60 font-medium">
-                      {transferKind === 'text' ? 'Text message' : `${item.name} · ${item.size}`}
-                    </span>
-                  </div>
-
+                  <span className="text-[10px] sm:text-[11px] font-medium text-status-success">✓ Received</span>
                   <AnimatePresence>
-                    {simState === 'received' && transferKind !== 'text' && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 3 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ delay: 0.25, duration: 0.2 }}
+                    {simState === 'received' && (
+                      <motion.div initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                        transition={{ delay: 0.2, duration: 0.2 }}
+                        className="flex items-center gap-2"
                       >
-                        <button
-                          type="button"
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-azure-600/10 text-azure-600 text-[10px] sm:text-[11px] font-medium"
-                        >
-                          <Download className="w-3 h-3" />
-                          Download
-                        </button>
-                      </motion.div>
-                    )}
-                    {simState === 'received' && transferKind === 'text' && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 3 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ delay: 0.25, duration: 0.2 }}
-                      >
-                        <button
-                          type="button"
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-azure-600/10 text-azure-600 text-[10px] sm:text-[11px] font-medium"
-                        >
-                          <Copy className="w-3 h-3" />
-                          Copy
-                        </button>
+                        {transferKind === 'text' ? (
+                          <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-azure-600/10 text-azure-600 text-[10px] sm:text-[11px] font-medium">
+                            <Copy className="w-3 h-3" /> Copy
+                          </button>
+                        ) : (
+                          <button type="button" className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-azure-600/10 text-azure-600 text-[10px] sm:text-[11px] font-medium">
+                            <Download className="w-3 h-3" /> Download
+                          </button>
+                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -764,22 +626,18 @@ export function HeroDemo() {
 
               {/* Waiting */}
               {!isSending && !isReceiving && !isDone && simState !== 'pairing' && (
-                <motion.div
-                  key="waiting"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
+                <motion.div key="waiting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="flex flex-col items-center gap-1.5 text-apple-ink-muted/50 dark:text-white/30"
+                  className="flex flex-col items-center gap-1.5 text-apple-ink-muted/40 dark:text-white/25"
                 >
-                  <Send className="w-4 h-4 sm:w-5 sm:h-5 opacity-40" />
+                  <Send className="w-5 h-5 opacity-30" />
                   <span className="text-[11px] sm:text-[12px] font-medium">Waiting for something…</span>
                   <span className="text-[9px] sm:text-[10px]">It will appear here</span>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
-        </ProductWindow>
+        </ShareTextPanel>
       </div>
     </div>
   );
