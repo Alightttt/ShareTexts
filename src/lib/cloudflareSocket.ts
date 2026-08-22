@@ -24,7 +24,7 @@ const PROTOCOL_VERSION = 1;
 
 type Handler = (...args: any[]) => void;
 
-const WS_OPEN_TIMEOUT = 15000;
+const WS_OPEN_TIMEOUT = 8000;
 
 function uuid(): string {
   return crypto.randomUUID();

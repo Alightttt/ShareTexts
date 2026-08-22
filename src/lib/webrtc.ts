@@ -52,7 +52,7 @@ const CHUNK_SIZE = 256 * 1024; // 256 KB — larger chunks = fewer awaits = fast
 // in-memory path still works up to ~2 GB on a desktop.
 const MAX_TRANSFER_SIZE = 4 * 1024 * 1024 * 1024; // 4 GB max total
 const MAX_CHUNKS = Math.ceil(MAX_TRANSFER_SIZE / CHUNK_SIZE);
-const OFFER_RETRY_DELAY = 4000;
+const OFFER_RETRY_DELAY = 2500;
 const OFFER_RETRY_MAX = 3;
 
 /**
@@ -354,7 +354,7 @@ export class PeerManager {
 
   private createPeerConnection() {
     if (this.destroyed) return;
-    this.pc = new RTCPeerConnection({ iceServers: iceServers() });
+    this.pc = new RTCPeerConnection({ iceServers: iceServers(), bundlePolicy: 'max-bundle' });
 
     this.pc.onicecandidate = (event) => {
       if (event.candidate && this.peerId) {
@@ -474,7 +474,7 @@ export class PeerManager {
         if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
         if (this.peerId && this.onOpen) this.onOpen();
       }
-    }, 10000);
+    }, 6000);
   }
 
   public expectBinaryTransfer(transferId: string, totalChunks: number) {

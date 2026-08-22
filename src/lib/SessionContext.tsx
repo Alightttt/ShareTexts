@@ -149,7 +149,7 @@ export function guessDeviceName(): string {
  * of intermittent "Couldn't reach ShareText." on flaky networks: the first
  * failed WS attempt failed the whole create/join instantly.
  */
-function ensureSocketConnected(timeoutMs = 15000): Promise<void> {
+function ensureSocketConnected(timeoutMs = 8000): Promise<void> {
   const socket = getSocket();
   if (socket.connected) return Promise.resolve();
   return new Promise((resolve, reject) => {

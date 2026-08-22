@@ -402,12 +402,12 @@
    Coarse pointer (touch): no reactive behavior.
    Reduced motion: no reactive behavior. */
 .dot-grid-bg {
-  background-image: radial-gradient(circle, rgba(0,0,0,0.07) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(0,0,0,0.11) 1.2px, transparent 1.2px);
   background-size: 22px 22px;
   position: relative;
 }
 .dark .dot-grid-bg {
-  background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(255,255,255,0.055) 1.2px, transparent 1.2px);
   background-size: 22px 22px;
 }
 /* Content visibility optimization — browser skips rendering off-screen sections */
