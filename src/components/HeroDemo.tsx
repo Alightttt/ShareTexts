@@ -85,35 +85,40 @@ const T = {
 // Product-surface components — match real ChatView exactly
 // ---------------------------------------------------------------------------
 
-/** Connected status pill */
+/** Connected status pill — no animation when idle, pulse only during active transfer */
 function ConnectedPill() {
   return (
     <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-status-success/15 text-status-success">
-      <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" />
+      <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
       Connected
     </span>
   );
 }
 
-/** Status label */
+/** Status label — pulse only during active transfer, not when idle */
 function StatusPill({ state }: { state: 'connected' | 'sending' | 'sent' | 'receiving' | 'received' }) {
   if (state === 'connected') return <ConnectedPill />;
+  const isActive = state === 'sending' || state === 'receiving';
   const map: Record<string, { dot: string; text: string; cls: string }> = {
-    sending:   { dot: 'bg-apple-blue animate-pulse',  text: 'Sending…',   cls: 'text-apple-blue' },
-    sent:      { dot: 'bg-status-success',             text: 'Sent ✓',     cls: 'text-status-success' },
-    receiving: { dot: 'bg-apple-blue animate-pulse',  text: 'Receiving…', cls: 'text-apple-blue' },
-    received:  { dot: 'bg-status-success',             text: 'Received ✓',  cls: 'text-status-success' },
+    sending:   { dot: 'bg-apple-blue',  text: 'Sending…',   cls: 'text-apple-blue' },
+    sent:      { dot: 'bg-status-success', text: 'Sent ✓',     cls: 'text-status-success' },
+    receiving: { dot: 'bg-apple-blue',  text: 'Receiving…', cls: 'text-apple-blue' },
+    received:  { dot: 'bg-status-success', text: 'Received ✓',  cls: 'text-status-success' },
   };
   const s = map[state];
   return (
     <span className={`flex items-center gap-1 text-[10px] sm:text-[11px] font-medium ${s.cls}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+      <span className={cn(
+        'w-1.5 h-1.5 rounded-full',
+        s.dot,
+        isActive && 'animate-pulse',
+      )} />
       {s.text}
     </span>
   );
 }
 
-/** ShareText browser window — the product surface */
+/** ShareText browser window — the product surface with quiet material depth */
 function ProductWindow({
   title,
   status,
@@ -127,11 +132,12 @@ function ProductWindow({
 }) {
   return (
     <div className={cn(
-      'rounded-[14px] sm:rounded-[18px] overflow-hidden',
+      'rounded-[14px] sm:rounded-[18px] overflow-hidden relative',
       'bg-white dark:bg-[#1a1a1e]',
       'border border-black/[0.08] dark:border-white/[0.1]',
-      'shadow-[0_2px_8px_rgba(0,0,0,0.06),0_8px_32px_rgba(0,0,0,0.04)]',
-      'dark:shadow-[0_2px_8px_rgba(0,0,0,0.3),0_8px_32px_rgba(0,0,0,0.2)]',
+      // Multi-layer shadow: tight contact shadow + soft ambient
+      'shadow-[0_1px_2px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.05),0_12px_40px_rgba(0,0,0,0.03)]',
+      'dark:shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.25),0_12px_40px_rgba(0,0,0,0.15)]',
       className,
     )}>
       {/* Browser chrome — minimal, authentic */}
@@ -169,6 +175,15 @@ function ProductWindow({
       <div className="relative">
         {children}
       </div>
+
+      {/* Subtle screen reflection — one coherent light source from top-left */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-10 rounded-[inherit]"
+        style={{
+          background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.015) 100%)',
+        }}
+      />
     </div>
   );
 }
@@ -566,9 +581,9 @@ export function HeroDemo() {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
-        {/* ============ SENDER ============ */}
-        <ProductWindow title="Sender" status={senderStatus} className="flex-1 min-w-0">
+      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-start">
+        {/* ============ SENDER — slightly elevated (source) ============ */}
+        <ProductWindow title="Sender" status={senderStatus} className="flex-1 min-w-0 sm:translate-y-0">
           <div className="px-3 sm:px-4 py-3 sm:py-4 min-h-[200px] sm:min-h-[260px] flex flex-col">
             {/* Chat area */}
             <div className="flex-1 flex flex-col justify-end gap-2 mb-3">
@@ -624,8 +639,8 @@ export function HeroDemo() {
           </div>
         </ProductWindow>
 
-        {/* ============ RECEIVER ============ */}
-        <ProductWindow title="Receiver" status={receiverStatus} className="flex-1 min-w-0">
+        {/* ============ RECEIVER — slightly recessed (destination) ============ */}
+        <ProductWindow title="Receiver" status={receiverStatus} className="flex-1 min-w-0 sm:translate-y-1">
           <div className="px-3 sm:px-4 py-3 sm:py-4 min-h-[200px] sm:min-h-[260px] flex flex-col items-center justify-center">
             <AnimatePresence mode="wait">
               {/* Pairing code */}
