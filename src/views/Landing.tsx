@@ -131,7 +131,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             {/* Hero headline — premium, editorial, device-first */}
             <h1
               id="hero-title"
-              className="text-[30px] sm:text-[44px] lg:text-[52px] font-semibold text-apple-ink dark:text-white tracking-[-0.035em] leading-[1.06] max-w-[14ch]"
+              className="text-[34px] sm:text-[44px] lg:text-[52px] font-semibold text-apple-ink dark:text-white tracking-[-0.035em] leading-[1.06] max-w-[14ch]"
             >
               Move anything between your devices.
             </h1>

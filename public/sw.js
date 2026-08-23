@@ -9,7 +9,7 @@
  *     cache on first fetch. Cross-origin requests (the signaling Worker's
  *     /health, /lookup, /ws) are never intercepted.
  */
-const CACHE = 'sharetext-v8';
+const CACHE = 'sharetext-v10';
 const SHELL = [
   '/',
   '/index.html',
@@ -23,7 +23,8 @@ const SHELL = [
   '/icon-maskable-192.png',
   '/icon-maskable-512.png',
   '/apple-touch-icon.png',
-  '/og/sharetext-og-v3.jpg',
+  '/og/sharetext-og-v6.png',
+  '/og/sharetext-og-v6.jpg',
   '/demo/photo-4x3.jpg',
 ];
 

@@ -125,16 +125,18 @@ function LaptopDevice({ children, className }: { children: React.ReactNode; clas
           </div>
         </div>
       </div>
-      {/* Keyboard deck — simplified, realistic */}
-      <div className="relative -mt-[0.5%] -mx-[5%] w-[110%] rounded-b-[10px] sm:rounded-b-[12px] bg-gradient-to-b from-[#c0c0c5] to-[#a5a5aa] dark:from-[#2a2a2e] dark:to-[#1e1e20] shadow-[0_12px_30px_-8px_rgba(0,0,0,0.15)] dark:shadow-[0_12px_30px_-8px_rgba(0,0,0,0.3)]">
-        <div className="absolute top-0 left-[4%] right-[4%] h-[1px] rounded-full bg-black/40 dark:bg-black/60" />
-        {/* Keyboard — subtle texture, not individual keys */}
-        <div className="mx-[8%] mt-[8%] mb-[6%] rounded-[4px] bg-gradient-to-b from-black/[0.03] to-black/[0.06] dark:from-white/[0.04] dark:to-white/[0.02]">
-          <div className="h-[60%] bg-[repeating-linear-gradient(0deg,transparent,transparent_3px,rgba(0,0,0,0.02)_3px,rgba(0,0,0,0.02)_4px)] dark:bg-[repeating-linear-gradient(0deg,transparent,transparent_3px,rgba(255,255,255,0.03)_3px,rgba(255,255,255,0.03)_4px)]" />
+      {/* Keyboard deck — slim, elegant, barely visible */}
+      <div className="relative -mt-[0.5%] -mx-[3%] w-[106%] rounded-b-[10px] sm:rounded-b-[12px] bg-gradient-to-b from-[#d0d0d5] via-[#b8b8bd] to-[#a8a8ad] dark:from-[#333338] dark:via-[#282830] dark:to-[#222228] shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.3)]">
+        <div className="absolute top-0 left-[6%] right-[6%] h-[1px] rounded-full bg-white/30 dark:bg-white/10" />
+        {/* Hinge notch — the subtle curve where screen meets deck */}
+        <div className="mx-[35%] mt-[3%] h-[2px] rounded-full bg-black/[0.06] dark:bg-white/[0.06]" />
+        {/* Keyboard area — ultra minimal, just a hint of texture */}
+        <div className="mx-[8%] mt-[4%] rounded-[3px] bg-gradient-to-b from-black/[0.02] to-black/[0.04] dark:from-white/[0.03] dark:to-white/[0.01]">
+          <div className="h-[50%] bg-[repeating-linear-gradient(0deg,transparent,transparent_4px,rgba(0,0,0,0.015)_4px,rgba(0,0,0,0.015)_5px)] dark:bg-[repeating-linear-gradient(0deg,transparent,transparent_4px,rgba(255,255,255,0.02)_4px,rgba(255,255,255,0.02)_5px)]" />
         </div>
-        {/* Trackpad */}
-        <div className="flex justify-center pb-[10%]">
-          <div className="w-[30%] h-[12%] rounded-[3px] bg-gradient-to-b from-black/[0.03] to-black/[0.06] dark:from-white/[0.04] dark:to-white/[0.02] border border-black/[0.04] dark:border-white/[0.06]" />
+        {/* Trackpad — barely visible */}
+        <div className="flex justify-center pb-[8%] mt-[2%]">
+          <div className="w-[28%] h-[10%] rounded-[3px] bg-gradient-to-b from-black/[0.02] to-black/[0.04] dark:from-white/[0.02] dark:to-white/[0.01] border border-black/[0.03] dark:border-white/[0.04]" />
         </div>
       </div>
     </div>

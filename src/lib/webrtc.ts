@@ -43,7 +43,7 @@ function iceServers(): RTCIceServer[] {
   ];
 }
 
-const CHUNK_SIZE = 256 * 1024; // 256 KB — smaller chunks = smoother progress + better flow control on mobile
+const CHUNK_SIZE = 128 * 1024; // 128 KB — small chunks for instant progress + maximum pipeline throughput
 // 4 GB ceiling. Files stream in 64KB slices (never whole-file arrayBuffers),
 // so the sender's memory stays flat. The receiver assembles chunks in RAM for
 // files under OPFS_THRESHOLD; anything larger streams straight to the Origin
@@ -925,7 +925,7 @@ export class PeerManager {
 
     // Parallel pipeline: read + encrypt N chunks ahead while sending.
     // Overlaps disk I/O, encryption CPU, and network send for max throughput.
-    const PIPELINE_DEPTH = 4;
+    const PIPELINE_DEPTH = 8;
     type PipelineEntry = { index: number; packet: Uint8Array };
     const pipeline: PipelineEntry[] = [];
     let readIdx = start;

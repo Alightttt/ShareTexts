@@ -1,7 +1,20 @@
 <svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- ShareText mark: two device screens joined by a connection beam.
-       Must match src/components/ShareTextLogo.tsx and scripts/render-brand.mjs. -->
-  <rect x="40" y="36" width="84" height="84" rx="24" fill="#0a66f0"/>
-  <rect x="132" y="136" width="84" height="84" rx="24" fill="#0a66f0"/>
-  <path d="M110 106 L146 142" stroke="#0a66f0" stroke-width="28" stroke-linecap="round"/>
+  <!-- ShareText mark: two rounded squares joined by a connection beam. -->
+  <rect x="40" y="36" width="84" height="84" rx="24" fill="url(#grad1)"/>
+  <rect x="132" y="136" width="84" height="84" rx="24" fill="url(#grad2)"/>
+  <path d="M110 106 L146 142" stroke="url(#beam)" stroke-width="28" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="grad1" x1="40" y1="36" x2="124" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4D9DFF"/>
+      <stop offset="1" stop-color="#0A66F0"/>
+    </linearGradient>
+    <linearGradient id="grad2" x1="132" y1="136" x2="216" y2="220" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4D9DFF"/>
+      <stop offset="1" stop-color="#0A66F0"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="110" y1="106" x2="146" y2="142" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4D9DFF"/>
+      <stop offset="1" stop-color="#0A66F0"/>
+    </linearGradient>
+  </defs>
 </svg>

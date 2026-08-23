@@ -112,7 +112,7 @@ export function RoomHub() {
         <div className="ml-auto"><ThemeToggle /></div>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-5 py-8 sm:py-10 w-full">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-5 py-6 sm:py-10 w-full">
         <div className="w-full max-w-sm text-center flex flex-col items-center">
 
           {/* Reconnect banner */}
@@ -127,10 +127,10 @@ export function RoomHub() {
           </AnimatePresence>
 
           {/* ── HEADING ── */}
-          <h1 className="text-[22px] sm:text-[26px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em] mb-1.5">
+          <h1 className="text-[20px] sm:text-[26px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em] mb-1.5">
             Connect your other device.
           </h1>
-          <p className="text-[14px] text-apple-ink-muted dark:text-white/55 font-medium mb-6">
+          <p className="text-[13px] sm:text-[14px] text-apple-ink-muted dark:text-white/55 font-medium mb-5 sm:mb-6">
             Open ShareText on the other device and enter this code.
           </p>
 
@@ -162,13 +162,13 @@ export function RoomHub() {
           <div className="w-full space-y-2.5 mt-1">
             {/* Show QR — dominant action */}
             <button data-testid="room-show-qr" onPointerDown={() => setShowQR(true)}
-              className="w-full flex items-center justify-center gap-2 px-5 py-3.5 btn-premium bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[15px] font-semibold min-h-[48px] shadow-card hover:shadow-float">
+              className="w-full flex items-center justify-center gap-2 px-5 py-3 sm:py-3.5 btn-premium bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[14px] sm:text-[15px] font-semibold min-h-[46px] sm:min-h-[48px] shadow-card hover:shadow-float">
               <QrCode className="w-4 h-4" /> Show QR
             </button>
 
             {/* Share link — secondary */}
             <button data-testid="room-share-link" onPointerDown={shareLink}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-surface-dark border border-apple-divider/60 dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-surface-dark-2 rounded-[12px] text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.97] min-h-[44px]">
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 bg-white dark:bg-surface-dark border border-apple-divider/60 dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-surface-dark-2 rounded-[12px] text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.97] min-h-[44px]">
               {copiedLink ? <Check className="w-4 h-4 text-status-success" /> : <Link2 className="w-4 h-4 text-apple-ink-muted" />}
               {copiedLink ? 'Copied' : 'Share link'}
             </button>

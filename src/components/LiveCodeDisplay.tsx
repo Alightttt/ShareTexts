@@ -36,11 +36,11 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
       : `Code active · ${Math.ceil(remaining)}s`;
 
   return (
-    <div className="flex flex-col items-center px-5 py-6 sm:px-8 sm:py-8 bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 rounded-[20px] sm:rounded-[24px] shadow-card">
+    <div className="flex flex-col items-center px-3 py-5 sm:px-8 sm:py-8 bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 rounded-[16px] sm:rounded-[24px] shadow-card w-full">
       {/* Countdown ring + status — ABOVE the code, not overlapping it */}
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-5">
         <div className={cn("relative flex items-center justify-center transition-transform", isUrgent && "scale-110")}>
-          <svg width="40" height="40" viewBox="0 0 44 44" className="transform -rotate-90">
+          <svg width="36" height="36" viewBox="0 0 44 44" className="transform -rotate-90 sm:width-10 sm:h-10">
             <circle cx="22" cy="22" r="18" fill="transparent" stroke="currentColor" strokeWidth="3" className="text-apple-divider dark:text-apple-tile-3" />
             <circle
               cx="22" cy="22" r="18"
@@ -73,13 +73,13 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
         </p>
       </div>
 
-      {/* Pairing code — 6 large digits, high contrast, robust layout */}
-      <div className="flex justify-center gap-2 sm:gap-3" role="group" aria-label="Pairing code">
+      {/* Pairing code — 6 large digits, high contrast, responsive layout */}
+      <div className="flex justify-center gap-1.5 sm:gap-3 w-full" role="group" aria-label="Pairing code">
         {/* First group: 3 digits */}
-        <div className="flex gap-2 sm:gap-3">
+        <div className="flex gap-1.5 sm:gap-3 flex-1 justify-end">
           {digits.slice(0, 3).map((digit, i) => (
             <div key={i} className={cn(
-              "relative flex items-center justify-center rounded-[14px] sm:rounded-[18px] shadow-sm w-[48px] h-[68px] sm:w-[64px] sm:h-[88px] lg:w-[72px] lg:h-[100px]",
+              "relative flex items-center justify-center rounded-[12px] sm:rounded-[18px] shadow-sm flex-1 max-w-[60px] aspect-[3/4.2] sm:w-[64px] sm:h-[88px] sm:max-w-none sm:aspect-auto lg:w-[72px] lg:h-[100px]",
               "bg-apple-parchment dark:bg-[#1a1a1e] border-2",
               "border-apple-divider/80 dark:border-[#3a3a3e]"
             )}>
@@ -90,7 +90,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -14, opacity: 0 }}
                   transition={{ type: 'spring', bounce: 0, duration: 0.22 }}
-                  className="text-[32px] sm:text-[44px] lg:text-[50px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
+                  className="text-[28px] sm:text-[44px] lg:text-[50px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
                 >
                   {digit}
                 </motion.span>
@@ -99,14 +99,14 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
           ))}
         </div>
         {/* Spacer between groups */}
-        <div className="flex items-center">
-          <div className="w-2 sm:w-3 h-1 rounded-full bg-apple-ink/20 dark:bg-white/20" />
+        <div className="flex items-center shrink-0">
+          <div className="w-1.5 sm:w-3 h-1 rounded-full bg-apple-ink/20 dark:bg-white/20" />
         </div>
         {/* Second group: 3 digits */}
-        <div className="flex gap-2 sm:gap-3">
+        <div className="flex gap-1.5 sm:gap-3 flex-1 justify-start">
           {digits.slice(3, 6).map((digit, i) => (
             <div key={i + 3} className={cn(
-              "relative flex items-center justify-center rounded-[14px] sm:rounded-[18px] shadow-sm w-[48px] h-[68px] sm:w-[64px] sm:h-[88px] lg:w-[72px] lg:h-[100px]",
+              "relative flex items-center justify-center rounded-[12px] sm:rounded-[18px] shadow-sm flex-1 max-w-[60px] aspect-[3/4.2] sm:w-[64px] sm:h-[88px] sm:max-w-none sm:aspect-auto lg:w-[72px] lg:h-[100px]",
               "bg-apple-parchment dark:bg-[#1a1a1e] border-2",
               "border-apple-divider/80 dark:border-[#3a3a3e]"
             )}>
@@ -117,7 +117,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -14, opacity: 0 }}
                   transition={{ type: 'spring', bounce: 0, duration: 0.22 }}
-                  className="text-[32px] sm:text-[44px] lg:text-[50px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
+                  className="text-[28px] sm:text-[44px] lg:text-[50px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
                 >
                   {digit}
                 </motion.span>
