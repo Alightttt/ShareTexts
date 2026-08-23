@@ -4,11 +4,9 @@ import { motion } from 'motion/react';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { HeroDemo } from '../components/HeroDemo';
 import { Send, Inbox } from 'lucide-react';
-
 import { LiveUsers } from '../components/LiveUsers';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { InstallPrompt } from '../components/InstallPrompt';
-import { IllustPhoneToLaptop, IllustLaptopToPhone, IllustPairing, IllustQR, IllustTextHandoff, IllustReceiving, IllustComplete, IllustPrivate } from '../components/Illustrations';
 
 const PrivacyPromise = lazy(() => import('../components/PrivacyPromise').then(m => ({ default: m.PrivacyPromise })));
 const Faq = lazy(() => import('../components/Faq').then(m => ({ default: m.Faq })));
@@ -134,8 +132,6 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               </motion.button>
             </div>
 
-
-
             {createError && (
               <div role="alert" data-testid="error-message" className="mt-4 space-y-2">
                 <p className="text-[14px] font-medium text-status-danger whitespace-pre-line leading-relaxed">{createError}</p>
@@ -157,26 +153,26 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
         </div>
       </section>
 
-      {/* ── HOW IT WORKS — three large illustrated demonstrations ── */}
+      {/* ── HOW IT WORKS — three steps, editorial style ── */}
       <section id="how-it-works" className="px-5 sm:px-6 py-20 sm:py-28 relative z-10">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-3xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
             transition={{ duration: 0.5, ease: EASE }}
-            className="mb-14"
+            className="mb-16"
           >
             <h2 className="text-[28px] sm:text-[36px] font-semibold text-apple-ink dark:text-white tracking-[-0.03em]">
               Three steps.
             </h2>
           </motion.div>
 
-          <div className="grid sm:grid-cols-3 gap-10 sm:gap-8">
+          <div className="space-y-12">
             {[
-              { n: '01', title: 'Open', desc: 'ShareText on both devices. Same page, any browser.', illust: <IllustPhoneToLaptop className="w-full" /> },
-              { n: '02', title: 'Connect', desc: 'Type the code or scan the QR. That\'s the whole pairing.', illust: <IllustPairing className="w-full" /> },
-              { n: '03', title: 'Move', desc: 'Text, photo, or file goes straight between devices. Done.', illust: <IllustTextHandoff className="w-full" /> },
+              { n: '01', title: 'Open', desc: 'ShareText on both devices. Same page, any browser.' },
+              { n: '02', title: 'Connect', desc: 'Type the six-digit code or scan the QR. That\'s the whole pairing.' },
+              { n: '03', title: 'Move', desc: 'Text, photo, or file goes straight between devices. Done.' },
             ].map((step, i) => (
               <motion.div
                 key={step.n}
@@ -184,22 +180,22 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-40px' }}
                 transition={{ duration: 0.5, delay: i * 0.08, ease: EASE }}
+                className="flex gap-6 items-start"
               >
-                <div className="mb-4 rounded-[10px] bg-apple-parchment/50 dark:bg-white/[0.03] border border-apple-divider/40 dark:border-white/[0.05] overflow-hidden">
-                  {step.illust}
+                <span className="font-mono text-[14px] text-azure-600 dark:text-azure-400 tabular-nums mt-0.5 shrink-0">{step.n}</span>
+                <div>
+                  <h3 className="text-[18px] font-semibold text-apple-ink dark:text-white">{step.title}</h3>
+                  <p className="mt-1.5 text-[15px] text-apple-ink-muted dark:text-white/55 leading-relaxed max-w-[48ch]">{step.desc}</p>
                 </div>
-                <span className="font-mono text-[12px] text-azure-600 dark:text-azure-400 tabular-nums">{step.n}</span>
-                <h3 className="mt-1.5 text-[18px] font-semibold text-apple-ink dark:text-white">{step.title}</h3>
-                <p className="mt-1.5 text-[14px] text-apple-ink-muted dark:text-white/55 leading-relaxed">{step.desc}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── USE CASES — illustrated recognizable situations ── */}
+      {/* ── WHAT YOU CAN MOVE — inline list, not cards ── */}
       <section className="px-5 sm:px-6 py-20 sm:py-28 bg-apple-parchment/40 dark:bg-night-950/40 relative z-10">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-3xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -212,31 +208,25 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             </h2>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6">
             {[
-              { title: 'Phone → Laptop', desc: 'A photo from your pocket to your screen.', illust: <IllustPhoneToLaptop className="w-full" /> },
-              { title: 'Laptop → Phone', desc: 'A link or text without emailing it to yourself.', illust: <IllustLaptopToPhone className="w-full" /> },
-              { title: 'Text handoff', desc: 'Move notes or code between your machines.', illust: <IllustTextHandoff className="w-full" /> },
-              { title: 'Work', desc: 'Move an error log or code snippet between your machines.', illust: <IllustPairing className="w-full" /> },
-              { title: 'Private', desc: 'Transfer temporary content without a permanent cloud copy.', illust: <IllustPrivate className="w-full" /> },
+              { label: 'Photos', example: 'holiday.jpg — 4.2 MB' },
+              { label: 'Text & links', example: 'Meeting notes, URLs, code snippets' },
+              { label: 'Videos', example: 'holiday-clip.mp4 — 18.3 MB' },
+              { label: 'Files', example: 'presentation.pdf — 2.8 MB' },
+              { label: 'Any file', example: 'ZIP, CSV, APK — anything under 4 GB' },
+              { label: 'Between phones', example: 'iPhone to Android, or vice versa' },
             ].map((item, i) => (
               <motion.div
-                key={item.title}
-                initial={{ opacity: 0, y: 12 }}
+                key={item.label}
+                initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-30px' }}
-                transition={{ duration: 0.4, delay: i * 0.06, ease: EASE }}
-                className="rounded-[12px] bg-white dark:bg-surface-dark border border-apple-divider/60 dark:border-white/[0.06] text-left overflow-hidden"
+                transition={{ duration: 0.4, delay: i * 0.04, ease: EASE }}
+                className="flex flex-col"
               >
-                {item.illust && (
-                  <div className="px-4 pt-4 pb-2">
-                    {item.illust}
-                  </div>
-                )}
-                <div className="p-5">
-                  <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-1">{item.title}</h3>
-                  <p className="text-[13px] text-apple-ink-muted dark:text-white/50 leading-relaxed">{item.desc}</p>
-                </div>
+                <span className="text-[15px] font-semibold text-apple-ink dark:text-white">{item.label}</span>
+                <span className="mt-0.5 text-[13px] text-apple-ink-muted dark:text-white/50">{item.example}</span>
               </motion.div>
             ))}
           </div>
