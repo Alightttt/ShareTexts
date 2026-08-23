@@ -4,8 +4,9 @@ import { motion } from 'motion/react';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { HeroDemo } from '../components/HeroDemo';
 import { Send, Inbox, Zap, Shield, Globe, Clock, Smartphone, Monitor, ArrowRight } from 'lucide-react';
-import { SendIcon, ArrowRightIcon, ZapIcon, ShieldCheckIcon, LockIcon, DownloadIcon, CopyIcon, CheckIcon, EarthIcon, SmartphoneChargingIcon, MonitorCheckIcon } from 'lucide-animated';
+import { SendIcon } from 'lucide-animated';
 import { LiveUsers } from '../components/LiveUsers';
+import { IllustOpen, IllustPair, IllustSend, IllustEncrypted, IllustTemporary, IllustNoStorage, IllustCrossPlatform, IllustNoApp, IllustFast, IllustPrivacy, IllustFileTypes, IllustTroubleshoot } from '../components/Illustrations';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { InstallPrompt } from '../components/InstallPrompt';
 
@@ -236,10 +237,10 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           </motion.div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {[
-              { icon: <SmartphoneChargingIcon size={20} animateOnHover />, title: 'Phone to laptop', desc: 'A link, photo, or note from your phone to your computer.', color: 'bg-azure-600/10 text-azure-600 dark:text-azure-400' },
-              { icon: <MonitorCheckIcon size={20} animateOnHover />, title: 'iPhone to Windows', desc: 'No AirDrop needed. Works across any two devices with a browser.', color: 'bg-[#B26A00]/10 text-[#B26A00] dark:text-[#F3B44C]' },
-              { icon: <ZapIcon size={20} animateOnHover />, title: 'Error logs & code', desc: 'Move a stack trace or snippet without emailing it to yourself.', color: 'bg-[#1C9A61]/10 text-[#1C9A61] dark:text-[#55D18C]' },
-              { icon: <ShieldCheckIcon size={20} animateOnHover />, title: 'Private content', desc: 'Text, links, or files you want to hand off without a permanent copy.', color: 'bg-[#8B5CF6]/10 text-[#8B5CF6] dark:text-[#A78BFA]' },
+              { illustration: <IllustCrossPlatform className="w-12 h-12" />, title: 'Phone to laptop', desc: 'A link, photo, or note from your phone to your computer.', color: 'bg-azure-600/10 text-azure-600 dark:text-azure-400' },
+              { illustration: <IllustCrossPlatform className="w-12 h-12" />, title: 'iPhone to Windows', desc: 'No AirDrop needed. Works across any two devices with a browser.', color: 'bg-[#B26A00]/10 text-[#B26A00] dark:text-[#F3B44C]' },
+              { illustration: <IllustFast className="w-12 h-12" />, title: 'Error logs & code', desc: 'Move a stack trace or snippet without emailing it to yourself.', color: 'bg-[#1C9A61]/10 text-[#1C9A61] dark:text-[#55D18C]' },
+              { illustration: <IllustPrivacy className="w-12 h-12" />, title: 'Private content', desc: 'Text, links, or files you want to hand off without a permanent copy.', color: 'bg-[#8B5CF6]/10 text-[#8B5CF6] dark:text-[#A78BFA]' },
             ].map((item, i) => (
               <motion.div
                 key={item.title}
@@ -249,7 +250,8 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 transition={{ duration: 0.5, delay: i * 0.08, ease: EASE }}
                 className="group p-5 sm:p-6 rounded-[18px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3/60 text-left shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.2),0_4px_12px_rgba(0,0,0,0.15)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08),0_8px_32px_rgba(0,0,0,0.04)] dark:hover:shadow-[0_4px_16px_rgba(0,0,0,0.3),0_8px_32px_rgba(0,0,0,0.2)] hover:translate-y-[-2px] transition-all duration-300 ease-out"
               >
-                <div className={`w-10 h-10 rounded-[12px] ${item.color} flex items-center justify-center mb-3 group-hover:scale-105 transition-transform duration-300`}>                  {item.icon}
+                <div className="mb-3 group-hover:scale-105 transition-transform duration-300">
+                  {item.illustration}
                 </div>
                 <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-1">{item.title}</h3>
                 <p className="text-[13px] text-apple-ink-muted dark:text-white/60 leading-relaxed">{item.desc}</p>
@@ -275,9 +277,9 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           </motion.div>
           <div className="grid sm:grid-cols-3 gap-6 sm:gap-8">
             {[
-              { step: '1', title: 'Open', desc: 'Open ShareText on both devices.', icon: <EarthIcon size={20} animateOnHover /> },
-              { step: '2', title: 'Pair', desc: 'Match the code or scan the QR.', icon: <ArrowRightIcon size={20} animateOnHover /> },
-              { step: '3', title: 'Send', desc: 'Move anything. It arrives. Done.', icon: <SendIcon size={20} animateOnHover /> },
+              { step: '1', title: 'Open', desc: 'Open ShareText on both devices.', illustration: <IllustOpen className="w-16 h-16 sm:w-20 sm:h-20" /> },
+              { step: '2', title: 'Pair', desc: 'Match the code or scan the QR.', illustration: <IllustPair className="w-16 h-16 sm:w-20 sm:h-20" /> },
+              { step: '3', title: 'Send', desc: 'Move anything. It arrives. Done.', illustration: <IllustSend className="w-16 h-16 sm:w-20 sm:h-20" /> },
             ].map((item, i) => (
               <motion.div
                 key={item.step}
@@ -287,8 +289,8 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 transition={{ duration: 0.5, delay: i * 0.1, ease: EASE }}
                 className="text-center group"
               >
-                <div className="w-12 h-12 rounded-full bg-azure-600/10 dark:bg-azure-400/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-azure-600/15 dark:group-hover:bg-azure-400/15 transition-colors duration-300">
-                  <span className="text-azure-600 dark:text-azure-400">{item.icon}</span>
+                <div className="flex items-center justify-center mx-auto mb-4">
+                  {item.illustration}
                 </div>
                 <h3 className="text-[17px] font-semibold text-apple-ink dark:text-white mb-1.5">{item.title}</h3>
                 <p className="text-[14px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-[260px] mx-auto">

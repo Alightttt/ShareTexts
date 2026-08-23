@@ -153,25 +153,32 @@ export function RoomHub() {
 
           {/* ── PRIMARY ACTIONS ── */}
           <div className="w-full space-y-2.5 mt-1">
-            {/* Copy code — dominant action */}
-            <button data-testid="room-copy-code" onPointerDown={copyCode}
+            {/* Show QR — dominant action */}
+            <button data-testid="room-show-qr" onPointerDown={() => setShowQR(true)}
               className="w-full flex items-center justify-center gap-2 px-5 py-3.5 btn-premium bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[15px] font-semibold min-h-[48px] shadow-card hover:shadow-float">
-              {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copiedCode ? 'Code copied' : 'Copy code'}
+              <QrCode className="w-4 h-4" /> Show QR
             </button>
 
-            {/* QR + Share — secondary, same visual weight */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <button data-testid="room-show-qr" onPointerDown={() => setShowQR(true)}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-surface-dark border border-apple-divider/60 dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-surface-dark-2 rounded-[12px] text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.97] min-h-[44px]">
-                <QrCode className="w-4 h-4 text-apple-ink-muted" /> Show QR
-              </button>
-              <button data-testid="room-share-link" onPointerDown={shareLink}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-surface-dark border border-apple-divider/60 dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-surface-dark-2 rounded-[12px] text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.97] min-h-[44px]">
-                {copiedLink ? <Check className="w-4 h-4 text-status-success" /> : <Link2 className="w-4 h-4 text-apple-ink-muted" />}
-                {copiedLink ? 'Copied' : 'Share link'}
-              </button>
+            {/* Share link — secondary */}
+            <button data-testid="room-share-link" onPointerDown={shareLink}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-surface-dark border border-apple-divider/60 dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-surface-dark-2 rounded-[12px] text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.97] min-h-[44px]">
+              {copiedLink ? <Check className="w-4 h-4 text-status-success" /> : <Link2 className="w-4 h-4 text-apple-ink-muted" />}
+              {copiedLink ? 'Copied' : 'Share link'}
+            </button>
+
+            {/* ── OR separator ── */}
+            <div className="flex items-center gap-3 py-1">
+              <div className="flex-1 h-px bg-apple-divider/60 dark:bg-white/[0.08]" />
+              <span className="text-[12px] font-medium text-apple-ink-muted/50 dark:text-white/30 uppercase tracking-wider">or</span>
+              <div className="flex-1 h-px bg-apple-divider/60 dark:bg-white/[0.08]" />
             </div>
+
+            {/* Copy code — least important action */}
+            <button data-testid="room-copy-code" onPointerDown={copyCode}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-[10px] text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white/70 transition-colors active:scale-[0.98]">
+              {copiedCode ? <Check className="w-3.5 h-3.5 text-status-success" /> : <Copy className="w-3.5 h-3.5" />}
+              {copiedCode ? 'Code copied' : 'Copy code'}
+            </button>
           </div>
 
           {/* ── DEVICE NAME — quiet, below actions ── */}

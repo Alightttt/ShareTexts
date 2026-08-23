@@ -827,17 +827,17 @@ export class PeerManager {
 
       const serialized = JSON.stringify(packet);
 
+      let sentViaDc = false;
       if (this.dc && this.dc.readyState === 'open') {
         if (this.dc.bufferedAmount > 1024 * 1024) {
           const drained = await this.waitForDrain(1024 * 1024, 512 * 1024, 6000);
           if (!drained) this.isRelayFallback = true;
         }
         if (this.dc.readyState === 'open') {
-          this.dc.send(serialized);
-        } else {
-          getSocket().emit('relay_message', { roomId: this.roomId, data: serialized });
+          try { this.dc.send(serialized); sentViaDc = true; } catch { /* fall through to relay */ }
         }
-      } else {
+      }
+      if (!sentViaDc) {
         this.isRelayFallback = true;
         if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
         getSocket().emit('relay_message', { roomId: this.roomId, data: serialized });
@@ -955,9 +955,11 @@ export class PeerManager {
             }
           }
         }
+        let sentViaDc = false;
         if (!wedged && this.dc && this.dc.readyState === 'open') {
-          this.dc.send(packet.buffer);
-        } else {
+          try { this.dc.send(packet.buffer); sentViaDc = true; } catch { /* channel closed mid-send — fall through to relay */ }
+        }
+        if (!sentViaDc) {
           this.isRelayFallback = true;
           if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
           getSocket().emit('relay_message', { roomId: this.roomId, data: packet.buffer });
