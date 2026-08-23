@@ -203,7 +203,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
               <h3 className="text-[21px] font-semibold text-apple-ink dark:text-white mb-2 tracking-tight">Connect to this device?</h3>
               <p className="text-[14px] text-apple-ink-muted mb-8">The session is temporary — a handoff, not a history.</p>
               <button onPointerDown={handleConfirm} disabled={!pendingLink && !pendingShortCode}
-                className="w-full py-3.5 btn-premium bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[15px] font-semibold flex items-center justify-center gap-2 shadow-card disabled:opacity-60 min-h-[48px]">
+                className="w-full py-3.5 bg-azure-600 hover:bg-azure-500 text-white rounded-[10px] text-[15px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60 min-h-[48px] transition-all duration-150">
                 Connect
               </button>
             </motion.div>
@@ -253,7 +253,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
               <h2 className="text-[20px] font-semibold text-apple-ink dark:text-white mb-2">Couldn't connect</h2>
               <p className="text-[14px] text-apple-ink-muted dark:text-white/55 mb-6 max-w-[280px]">{error}</p>
               <button onPointerDown={resetToInput}
-                className="px-6 py-3 btn-premium bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[14px] font-semibold shadow-card min-h-[44px]">
+                className="px-6 py-3 bg-azure-600 hover:bg-azure-500 text-white rounded-[10px] text-[14px] font-semibold min-h-[44px] transition-all duration-150">
                 Try again
               </button>
             </motion.div>

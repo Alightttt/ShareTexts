@@ -97,9 +97,6 @@ export function RoomHub() {
 
   return (
     <div data-testid="room-shell" data-app-state="sender-waiting" className="min-h-screen flex flex-col bg-apple-canvas dark:bg-night-950 relative overflow-hidden">
-      {/* Subtle brand warmth */}
-      <div className="absolute inset-x-0 top-0 h-[380px] bg-[radial-gradient(60%_80%_at_50%_-5%,rgba(10,102,240,0.06),transparent_60%)] pointer-events-none" aria-hidden />
-
       {/* Header */}
       <header className="relative z-10 flex items-center gap-2 px-4 sm:px-6 pt-4 sm:pt-5">
         <button onPointerDown={abandonSession} aria-label="Back to home" className="flex items-center justify-center w-10 h-10 -ml-2 rounded-full text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-parchment dark:hover:bg-apple-tile-1 active:scale-95 transition-motion">
@@ -112,7 +109,7 @@ export function RoomHub() {
         <div className="ml-auto"><ThemeToggle /></div>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-5 py-6 sm:py-10 w-full">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-6 sm:py-10 w-full">
         <div className="w-full max-w-sm text-center flex flex-col items-center">
 
           {/* Reconnect banner */}
@@ -139,13 +136,6 @@ export function RoomHub() {
             <LiveCodeDisplay secret={session.secret} createdAt={session.createdAt} />
           </div>
 
-          {/* ── Separator between code and actions ── */}
-          <div className="w-full flex items-center gap-3 py-1 mb-2">
-            <div className="flex-1 h-px bg-apple-divider dark:bg-white/[0.08]" />
-            <span className="text-[11px] font-medium text-apple-ink-muted/40 dark:text-white/25 uppercase tracking-widest">or</span>
-            <div className="flex-1 h-px bg-apple-divider dark:bg-white/[0.08]" />
-          </div>
-
           {/* Connecting animation */}
           <AnimatePresence>
             {session.partnerConnecting && !session.partnerConnected && (
@@ -162,7 +152,7 @@ export function RoomHub() {
           <div className="w-full space-y-2.5 mt-1">
             {/* Show QR — dominant action */}
             <button data-testid="room-show-qr" onPointerDown={() => setShowQR(true)}
-              className="w-full flex items-center justify-center gap-2 px-5 py-3 sm:py-3.5 btn-premium bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[14px] sm:text-[15px] font-semibold min-h-[46px] sm:min-h-[48px] shadow-card hover:shadow-float">
+              className="w-full flex items-center justify-center gap-2 px-5 py-3 sm:py-3.5 bg-azure-600 hover:bg-azure-500 text-white rounded-[10px] text-[14px] sm:text-[15px] font-semibold min-h-[46px] sm:min-h-[48px] transition-all duration-150 hover:opacity-90">
               <QrCode className="w-4 h-4" /> Show QR
             </button>
 

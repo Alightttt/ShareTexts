@@ -63,7 +63,7 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full max-w-sm sm:max-w-none sm:w-auto">
         <button
           onPointerDown={onNewSession}
-          className="px-7 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] shadow-card hover:shadow-float min-h-[48px] flex items-center justify-center gap-2"
+          className="px-7 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] shadow-sm hover:opacity-90 min-h-[48px] flex items-center justify-center gap-2"
         >
           <Send className="w-4 h-4" /> Start a transfer
         </button>
@@ -228,7 +228,7 @@ function AppContent() {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full max-w-sm sm:max-w-none sm:w-auto">
           <button
             onClick={() => { window.location.href = '/'; }}
-            className="px-7 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] shadow-card hover:shadow-float min-h-[48px] flex items-center justify-center gap-2"
+            className="px-7 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] shadow-sm hover:opacity-90 min-h-[48px] flex items-center justify-center gap-2"
           >
             <Send className="w-4 h-4" /> Start a transfer
           </button>
