@@ -456,7 +456,7 @@ export function ChatView() {
       <div aria-live="polite" role="status" className="sr-only">{announcement}</div>
 
       {/* Header — device relationship, not chat */}
-      <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 shrink-0 border-b border-apple-divider/40 dark:border-white/[0.06] bg-apple-canvas/90 dark:bg-night-950/90 backdrop-blur-md z-20 sticky top-0">
+      <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 shrink-0 border-b border-apple-divider/40 dark:border-white/[0.06] bg-apple-canvas dark:bg-night-950 z-20 sticky top-0">
         <div className="flex items-center gap-3 min-w-0">
           <ShareTextLogo size={18} className="text-apple-ink dark:text-white shrink-0" />
           <div className="flex items-center gap-2 min-w-0">
@@ -564,7 +564,7 @@ export function ChatView() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/40 dark:bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 sm:p-6"
+            className="fixed inset-0 z-50 bg-black/40 dark:bg-black/60 flex items-end sm:items-center justify-center p-4 sm:p-6"
             onPointerDown={() => setConfirmClose(false)}
           >
             <motion.div
@@ -732,7 +732,7 @@ export function ChatView() {
 
         {dragOver && (
           <div className="absolute inset-0 z-20 m-2 rounded-[20px] border-2 border-dashed border-apple-blue dark:border-azure-400 bg-apple-blue/10 dark:bg-azure-500/10 pointer-events-none flex items-center justify-center">
-            <div className="flex flex-col items-center gap-2 px-8 py-6 bg-white/90 dark:bg-surface-dark/90 backdrop-blur-sm rounded-[20px] shadow-card border border-apple-blue/20 dark:border-azure-400/20">
+            <div className="flex flex-col items-center gap-2 px-8 py-6 bg-white dark:bg-surface-dark rounded-[20px] border border-apple-blue/20 dark:border-azure-400/20">
               <div className="w-12 h-12 rounded-full bg-apple-blue/10 dark:bg-azure-400/10 flex items-center justify-center">
                 <ArrowUp className="w-5 h-5 text-apple-blue dark:text-azure-400" />
               </div>
@@ -743,37 +743,9 @@ export function ChatView() {
         )}
       </div>
 
-      {/* Device relationship panel */}
-      <div className="hidden xl:flex absolute top-20 right-6 bottom-24 w-[200px] flex-col gap-3" aria-hidden>
-        <div className="rounded-[12px] bg-white dark:bg-surface-dark border border-apple-divider/40 dark:border-white/[0.06] p-4 text-[12px] leading-relaxed text-apple-ink-muted">
-          <div className="flex items-center gap-2 mb-3">
-            <span className={cn(
-              "w-1.5 h-1.5 rounded-full",
-              disconnected ? "bg-apple-ink-muted" : "bg-status-success"
-            )} />
-            <span className="font-medium text-apple-ink dark:text-white">
-              {disconnected ? 'Offline' : 'Connected'}
-            </span>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Smartphone className="w-3.5 h-3.5 text-apple-ink-muted" />
-              <span className="text-apple-ink dark:text-white/80">This device</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Monitor className="w-3.5 h-3.5 text-apple-ink-muted" />
-              <span className="text-apple-ink dark:text-white/80">Other device</span>
-            </div>
-          </div>
-          <div className="mt-3 pt-3 border-t border-apple-divider/40 dark:border-white/[0.04] text-[11px] text-apple-ink-muted/60 dark:text-white/30">
-            Encrypted · Temporary
-          </div>
-        </div>
-      </div>
-
 
       {/* Input Area */}
-      <div className="p-3 sm:p-5 bg-apple-canvas/90 dark:bg-night-950/90 backdrop-blur-xl border-t border-apple-divider/50 dark:border-apple-tile-3/50 z-10 pb-[env(safe-area-inset-bottom)] relative">
+      <div className="p-3 sm:p-5 bg-apple-canvas dark:bg-night-950 border-t border-apple-divider/50 dark:border-apple-tile-3/50 z-10 pb-[env(safe-area-inset-bottom)] relative">
         <form onSubmit={handleSend} className="max-w-3xl mx-auto flex flex-col gap-2">
           <div className="hidden sm:flex items-center justify-end gap-1.5 text-[11px] font-medium text-apple-ink-muted/70 dark:text-white/40 px-1">
             <kbd className="px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">Enter</kbd>
@@ -800,7 +772,7 @@ export function ChatView() {
             <input type="file" ref={fileInputRef} multiple className="hidden" onChange={(e) => handleFileSelect(e, 'file')} />
           </div>
 
-          <motion.div layout className="relative border border-apple-divider dark:border-apple-tile-3 rounded-[22px] bg-white dark:bg-surface-dark overflow-visible shadow-sm transition-motion focus-within:ring-2 focus-within:ring-apple-blue-focus/50 focus-within:border-apple-blue-focus focus-within:shadow-[0_6px_24px_-8px_rgba(46,139,255,0.25)] z-20">
+          <motion.div layout className="relative border border-apple-divider dark:border-apple-tile-3 rounded-[22px] bg-white dark:bg-surface-dark overflow-visible shadow-sm transition-motion focus-within:ring-2 focus-within:ring-apple-blue-focus/40 focus-within:border-apple-blue-focus z-20">
             {/* Multi-attachment preview strip — up to 20 files, each with a
                 circular remove button that's always visible and tappable. */}
             <AnimatePresence>
@@ -894,7 +866,7 @@ export function ChatView() {
                 onPointerDown={handleSend}
                 disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
                 aria-label="Send"
-                className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-[0.92] bg-azure-600 hover:bg-azure-500 text-white shadow-[0_4px_12px_-2px_rgba(10,102,240,0.4)] disabled:opacity-25 disabled:bg-apple-divider dark:disabled:bg-apple-tile-2 disabled:text-apple-ink-muted dark:disabled:text-white/40 disabled:shadow-none"
+                className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-[0.92] bg-azure-600 hover:bg-azure-500 text-white disabled:opacity-25 disabled:bg-apple-divider dark:disabled:bg-apple-tile-2 disabled:text-apple-ink-muted dark:disabled:text-white/40 disabled:shadow-none"
               >
                 <ArrowUp className="w-5 h-5" strokeWidth={2.4} />
               </button>
@@ -905,7 +877,7 @@ export function ChatView() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.9 }}
                     transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                    className="absolute left-1 bottom-[calc(100%+8px)] bg-white/90 dark:bg-surface-dark-2/90 backdrop-blur-xl border border-apple-divider dark:border-apple-tile-3 rounded-[20px] shadow-2xl p-2 w-[210px] flex flex-col gap-1 z-30"
+                    className="absolute left-1 bottom-[calc(100%+8px)] bg-white dark:bg-surface-dark-2 border border-apple-divider dark:border-apple-tile-3 rounded-[20px] shadow-2xl p-2 w-[210px] flex flex-col gap-1 z-30"
                   >
                     <AttachmentOption icon={<ImageIcon className="w-5 h-5 text-apple-ink-muted" />} label="Photo" onClick={() => imageInputRef.current?.click()} />
                     <AttachmentOption icon={<Play className="w-5 h-5 text-apple-ink-muted" />} label="Video" onClick={() => videoInputRef.current?.click()} />
@@ -1144,8 +1116,8 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
         <div className={cn(
           "max-w-[85%] sm:max-w-[65%] px-[14px] py-[10px] rounded-[18px]",
           isMe
-            ? "bg-azure-600 text-white shadow-[0_1px_3px_rgba(10,102,240,0.18)]"
-            : "bg-white dark:bg-surface-dark text-apple-ink dark:text-white border border-apple-divider/40 dark:border-apple-tile-3 shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
+            ? "bg-azure-600 text-white"
+            : "bg-white dark:bg-surface-dark text-apple-ink dark:text-white border border-apple-divider/40 dark:border-apple-tile-3",
           isMe && isGroupEnd && "rounded-br-[4px]",
           !isMe && isGroupEnd && "rounded-bl-[4px]",
           isMe && !isGroupEnd && "rounded-br-[14px]",
