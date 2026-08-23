@@ -38,53 +38,51 @@ interface TransferItem {
 }
 
 const TRANSFER_ITEMS: Record<Kind, TransferItem> = {
-  text:   { kind: 'text',   text: 'Meeting tomorrow at 4 PM' },
-  photo:  { kind: 'photo',  name: 'holiday.jpg',  size: '4.2 MB' },
-  video:  { kind: 'video',  name: 'holiday-clip.mp4',   size: '18.3 MB', duration: '00:18' },
-  file:   { kind: 'file',   name: 'presentation.pdf',   size: '2.8 MB' },
+  text:  { kind: 'text',  text: 'Meeting tomorrow at 4 PM' },
+  photo: { kind: 'photo', name: 'holiday.jpg',  size: '4.2 MB' },
+  video: { kind: 'video', name: 'holiday-clip.mp4',   size: '18.3 MB', duration: '00:18' },
+  file:  { kind: 'file',  name: 'presentation.pdf',   size: '2.8 MB' },
 };
 
 const SCENE_ORDER: Kind[] = ['text', 'photo', 'video', 'file'];
 const nextKind = (k: Kind) => SCENE_ORDER[(SCENE_ORDER.indexOf(k) + 1) % SCENE_ORDER.length];
 
 // ---------------------------------------------------------------------------
-// State machine
+// State machine — the single source of truth
 // ---------------------------------------------------------------------------
+// The story: idle → connected → button press → sending → transfer → receiving → received → complete → reset → idle
 type SimState =
-  | 'idle'
-  | 'pairing'
-  | 'connecting'
-  | 'connected'
-  | 'preparing'
-  | 'transferring'
-  | 'received'
-  | 'complete';
+  | 'idle'          // both devices visible, phone has content, laptop waiting
+  | 'pressing'      // send button is being pressed (0.25s)
+  | 'sending'       // phone shows "Sending…", progress starts
+  | 'transferring'  // both devices show progress
+  | 'receiving'     // laptop receives the content
+  | 'received'      // laptop shows ✓ Received + action button
+  | 'complete'      // both devices show completion
+  | 'resetting';    // brief fade before next scene
 
 // ---------------------------------------------------------------------------
-// Timing — 7-10s product story
+// Timing — breathing pace, each state is understandable
 // ---------------------------------------------------------------------------
 const T = {
-  IDLE_HOLD:       1500,
-  PAIRING_HOLD:    500,
-  CONNECTING_HOLD: 500,
-  CONNECTED_HOLD:  1000,
-  PREPARING_HOLD:  300,
-  FLIGHT_MS:       2700,
-  RECEIVED_HOLD:   1500,
-  COMPLETE_HOLD:   1200,
+  IDLE_HOLD:      2000,   // visitor sees phone has content, laptop waiting
+  PRESS_HOLD:     250,    // button press animation
+  SENDING_HOLD:   600,    // phone enters "Sending…"
+  TRANSFER_MS:    1600,   // progress fills (both devices)
+  RECEIVING_HOLD: 400,    // brief pause while laptop processes
+  RECEIVED_HOLD:  1800,   // visitor reads "✓ Received"
+  COMPLETE_HOLD:  1500,   // completion state breathes
+  RESET_HOLD:     600,    // crossfade before next scene
 };
 
 // ---------------------------------------------------------------------------
-// Realistic device frames — phone + laptop
+// Realistic device frames
 // ---------------------------------------------------------------------------
 
-/** Modern smartphone frame */
 function PhoneDevice({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={cn('relative shrink-0', className)}>
-      {/* Phone body */}
       <div className="relative rounded-[28px] sm:rounded-[32px] p-[3%] bg-gradient-to-b from-[#e8e8ec] via-[#d1d1d6] to-[#c7c7cc] dark:from-[#2c2c2e] dark:via-[#1c1c1e] dark:to-[#141416] shadow-[0_4px_20px_rgba(0,0,0,0.15),0_1px_4px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4),0_1px_4px_rgba(0,0,0,0.2)]">
-        {/* Screen */}
         <div className="relative rounded-[22px] sm:rounded-[26px] bg-[#0a0f1a] dark:bg-[#0a0a0c] overflow-hidden aspect-[9/19.5]">
           {/* Dynamic island */}
           <div className="absolute top-[3%] left-1/2 -translate-x-1/2 w-[32%] h-[2.5%] min-h-[6px] bg-black rounded-full z-10 flex items-center justify-end px-[8%]">
@@ -105,10 +103,7 @@ function PhoneDevice({ children, className }: { children: React.ReactNode; class
               </span>
             </div>
           </div>
-          {/* Screen content */}
-          <div className="relative w-full h-full z-[5]">
-            {children}
-          </div>
+          <div className="relative w-full h-full z-[5]">{children}</div>
         </div>
       </div>
       {/* Side buttons */}
@@ -119,23 +114,17 @@ function PhoneDevice({ children, className }: { children: React.ReactNode; class
   );
 }
 
-/** Modern laptop frame */
 function LaptopDevice({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={cn('relative shrink-0', className)}>
-      {/* Lid */}
       <div className="relative rounded-[10px] sm:rounded-[12px] p-[1.5%] bg-gradient-to-b from-[#d5d5da] via-[#b8b8bd] to-[#a8a8ad] dark:from-[#3a3a3e] dark:via-[#2a2a2e] dark:to-[#222224] shadow-[0_4px_24px_rgba(0,0,0,0.12),0_1px_4px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.35),0_1px_4px_rgba(0,0,0,0.15)]">
-        {/* Camera dot */}
         <div className="absolute top-[2.5%] left-1/2 -translate-x-1/2 w-[2%] aspect-square rounded-full bg-[#1a1a1e] ring-[0.5px] ring-white/20 z-10" />
-        {/* Screen bezel */}
         <div className="relative rounded-[6px] sm:rounded-[8px] bg-[#1a1a1e] p-[1.5%]">
-          {/* Screen */}
           <div className="relative rounded-[3px] sm:rounded-[4px] bg-[#0a0f1a] dark:bg-[#0a0a0c] overflow-hidden aspect-[16/10]">
             {children}
           </div>
         </div>
       </div>
-      {/* Keyboard deck */}
       <div className="relative -mt-[0.5%] -mx-[5%] w-[110%] rounded-b-[10px] sm:rounded-b-[12px] bg-gradient-to-b from-[#c0c0c5] to-[#a5a5aa] dark:from-[#2a2a2e] dark:to-[#1e1e20] shadow-[0_12px_30px_-8px_rgba(0,0,0,0.15)] dark:shadow-[0_12px_30px_-8px_rgba(0,0,0,0.3)]"
         style={{ clipPath: 'polygon(4% 0%, 96% 0%, 100% 100%, 0% 100%)' }}
       >
@@ -154,7 +143,6 @@ function LaptopDevice({ children, className }: { children: React.ReactNode; clas
             <span className="h-[1.4cqw] w-[8cqw] rounded-[0.3cqw] bg-gradient-to-b from-white/10 to-black/5 dark:from-white/5 dark:to-black/10" />
           </div>
         </div>
-        {/* Trackpad */}
         <div className="flex justify-center py-[1cqw]">
           <div className="w-[22cqw] h-[2cqw] rounded-[0.8cqw] bg-gradient-to-b from-black/5 to-black/10 dark:from-white/5 dark:to-white/8" />
         </div>
@@ -164,10 +152,9 @@ function LaptopDevice({ children, className }: { children: React.ReactNode; clas
 }
 
 // ---------------------------------------------------------------------------
-// ShareText UI — rendered inside device screens
+// ShareText UI components — rendered inside device screens
 // ---------------------------------------------------------------------------
 
-/** Status pill */
 function StatusPill({ state }: { state: 'connected' | 'sending' | 'sent' | 'receiving' | 'received' }) {
   if (state === 'connected') {
     return (
@@ -192,7 +179,6 @@ function StatusPill({ state }: { state: 'connected' | 'sending' | 'sent' | 'rece
   );
 }
 
-/** Mini ShareText header for inside devices */
 function MiniHeader({ status }: { status: 'connected' | 'sending' | 'sent' | 'receiving' | 'received' }) {
   return (
     <div className="flex items-center justify-between px-[6px] sm:px-2 pt-[14%] sm:pt-[10%] pb-[5px] sm:pb-1.5 border-b border-black/[0.08] dark:border-white/[0.1]">
@@ -206,7 +192,8 @@ function MiniHeader({ status }: { status: 'connected' | 'sending' | 'sent' | 're
   );
 }
 
-/** Message bubbles */
+// ---- Transfer cards ----
+
 function MiniText({ obj, sent }: { obj: TransferItem; sent?: boolean }) {
   return (
     <div className={cn(
@@ -284,12 +271,15 @@ function MiniCard({ obj, received }: { obj: TransferItem; received?: boolean }) 
   }
 }
 
-/** Mini progress bar */
 function MiniProgress({ progress }: { progress: number }) {
   return (
     <div className="w-full flex flex-col gap-0.5">
       <div className="w-full h-[3px] rounded-full bg-black/[0.08] dark:bg-white/[0.12] overflow-hidden">
-        <motion.div className="h-full rounded-full bg-apple-blue origin-left" animate={{ scaleX: progress / 100 }} transition={{ duration: 0.08, ease: 'linear' }} />
+        <motion.div
+          className="h-full rounded-full bg-apple-blue origin-left"
+          animate={{ scaleX: progress / 100 }}
+          transition={{ duration: 0.08, ease: 'linear' }}
+        />
       </div>
       <span className="text-[5px] sm:text-[6px] font-medium text-apple-ink-muted text-center">{Math.round(progress)}%</span>
     </div>
@@ -297,7 +287,7 @@ function MiniProgress({ progress }: { progress: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// Main HeroDemo
+// Main HeroDemo — product simulation
 // ---------------------------------------------------------------------------
 export function HeroDemo() {
   const reduced = useReducedMotion();
@@ -330,48 +320,67 @@ export function HeroDemo() {
     if (!rect) return;
     const x = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
     const y = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
-    setMousePos({ x: x * 3, y: y * 2 }); // very subtle: ±3px x, ±2px y
+    setMousePos({ x: x * 3, y: y * 2 });
   }, []);
 
-  const handleMouseLeave = useCallback(() => {
-    setMousePos({ x: 0, y: 0 });
-  }, []);
-
-  // ---- State machine ----
+  // ---- State machine — the complete product story ----
   const runMachine = useCallback((startKind: Kind) => {
-    clearTimers(); setProgress(0); sceneRef.current = startKind; setTransferKind(startKind);
+    clearTimers();
+    setProgress(0);
+    sceneRef.current = startKind;
+    setTransferKind(startKind);
 
+    // 1. IDLE — phone shows content, laptop shows "Waiting for something…"
     setSimState('idle');
-    schedule(() => setSimState('pairing'), T.IDLE_HOLD);
-    schedule(() => setSimState('connecting'), T.IDLE_HOLD + T.PAIRING_HOLD);
-    schedule(() => setSimState('connected'), T.IDLE_HOLD + T.PAIRING_HOLD + T.CONNECTING_HOLD);
+    const afterIdle = T.IDLE_HOLD;
 
+    // 2. PRESSING — send button depresses
+    schedule(() => setSimState('pressing'), afterIdle);
+
+    // 3. SENDING — phone enters "Sending…"
+    schedule(() => setSimState('sending'), afterIdle + T.PRESS_HOLD);
+
+    // 4. TRANSFERRING — progress fills on both devices
     schedule(() => {
-      setSimState('preparing');
+      setSimState('transferring');
+      const flightStart = Date.now();
+      const tick = () => {
+        const elapsed = Date.now() - flightStart;
+        const p = Math.min(100, (elapsed / T.TRANSFER_MS) * 100);
+        setProgress(p);
+        if (p < 100) schedule(tick, 30);
+      };
+      schedule(tick, 30);
+
+      // 5. RECEIVING — laptop shows content arriving
       schedule(() => {
-        setSimState('transferring');
-        const flightStart = Date.now();
-        const tick = () => {
-          const elapsed = Date.now() - flightStart;
-          const p = Math.min(100, (elapsed / T.FLIGHT_MS) * 100);
-          setProgress(p);
-          if (p < 100) schedule(tick, 25);
-        };
-        schedule(tick, 25);
+        setSimState('receiving');
+        setProgress(100);
+
+        // 6. RECEIVED — laptop shows ✓ Received
         schedule(() => {
-          setSimState('received'); setProgress(100);
+          setSimState('received');
+
+          // 7. COMPLETE — both devices show completion
           schedule(() => {
             setSimState('complete');
+
+            // 8. RESET — fade, then next scene
             schedule(() => {
-              setSimState('idle'); setProgress(0);
-              const next = nextKind(sceneRef.current);
-              sceneRef.current = next; setTransferKind(next);
-              runMachine(next);
+              setSimState('resetting');
+              setProgress(0);
+
+              schedule(() => {
+                const next = nextKind(sceneRef.current);
+                sceneRef.current = next;
+                setTransferKind(next);
+                runMachine(next);
+              }, T.RESET_HOLD);
             }, T.COMPLETE_HOLD);
           }, T.RECEIVED_HOLD);
-        }, T.FLIGHT_MS);
-      }, T.PREPARING_HOLD);
-    }, T.IDLE_HOLD + T.PAIRING_HOLD + T.CONNECTING_HOLD + T.CONNECTED_HOLD);
+        }, T.RECEIVING_HOLD);
+      }, T.TRANSFER_MS);
+    }, afterIdle + T.PRESS_HOLD + T.SENDING_HOLD);
   }, [clearTimers, schedule]);
 
   simStateRef.current = simState;
@@ -382,6 +391,7 @@ export function HeroDemo() {
     return () => clearTimeout(t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Pause on scroll out, resume on scroll in
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -393,9 +403,10 @@ export function HeroDemo() {
     return () => io.disconnect();
   }, [clearTimers]);
 
+  // Hover — pause after intent delay
   const handleMouseEnter = useCallback(() => {
     hoverRef.current = true;
-    hoverTimerRef.current = setTimeout(() => { if (hoverRef.current) clearTimers(); }, 300);
+    hoverTimerRef.current = setTimeout(() => { if (hoverRef.current) clearTimers(); }, 400);
   }, [clearTimers]);
 
   const handleContainerMouseLeave = useCallback(() => {
@@ -405,15 +416,25 @@ export function HeroDemo() {
     setMousePos({ x: 0, y: 0 });
   }, []);
 
-  // Derived states
-  const isSending = simState === 'preparing' || simState === 'transferring';
-  const isReceiving = simState === 'transferring' || simState === 'received';
-  const isDone = simState === 'received' || simState === 'complete';
-  const senderStatus: 'connected' | 'sending' | 'sent' = isSending ? 'sending' : isDone ? 'sent' : 'connected';
-  const receiverStatus: 'connected' | 'receiving' | 'received' = isReceiving ? (isDone ? 'received' : 'receiving') : 'connected';
-  const item = TRANSFER_ITEMS[transferKind];
+  // ---- Derived states for UI ----
+  const isIdle = simState === 'idle';
+  const isPressing = simState === 'pressing';
+  const isSending = simState === 'sending' || simState === 'transferring';
+  const isReceiving = simState === 'transferring' || simState === 'receiving';
+  const isReceived = simState === 'received' || simState === 'complete';
+  const isResetting = simState === 'resetting';
 
-  // ---- Reduced motion ----
+  const senderStatus: 'connected' | 'sending' | 'sent' =
+    isSending ? 'sending' : isReceived ? 'sent' : 'connected';
+  const receiverStatus: 'connected' | 'receiving' | 'received' =
+    isReceiving ? (isReceived ? 'received' : 'receiving') : 'connected';
+
+  const item = TRANSFER_ITEMS[transferKind];
+  const showComposer = isIdle || isPressing;
+  const showSendingStatus = simState === 'sending' || simState === 'transferring' || simState === 'receiving';
+  const showSentStatus = simState === 'received' || simState === 'complete';
+
+  // ---- Reduced motion — static snapshot ----
   if (reduced) {
     return (
       <div ref={containerRef} data-testid="hero-demo" role="img"
@@ -426,6 +447,9 @@ export function HeroDemo() {
               <MiniHeader status="sent" />
               <div className="flex-1 flex flex-col justify-end gap-1 px-[5px] sm:px-1.5 pb-1">
                 <MiniCard obj={item} />
+              </div>
+              <div className="border-t border-black/[0.08] dark:border-white/[0.1] px-[5px] sm:px-1.5 py-1 flex items-center justify-between">
+                <span className="text-[5px] sm:text-[6px] text-apple-ink-muted/60 font-medium">Sent ✓</span>
               </div>
             </div>
           </PhoneDevice>
@@ -458,30 +482,33 @@ export function HeroDemo() {
       onMouseEnter={handleMouseEnter}
     >
       <div className="flex items-end justify-center gap-4 sm:gap-8 lg:gap-12">
+
         {/* ============ PHONE — the sender ============ */}
         <motion.div
-          animate={{ x: mousePos.x * -0.5, y: mousePos.y * -0.3 }}
-          transition={{ type: 'spring', stiffness: 150, damping: 20 }}
+          animate={{ x: mousePos.x * -0.5, y: mousePos.y * -0.3, opacity: isResetting ? 0.6 : 1 }}
+          transition={{ type: 'spring', stiffness: 150, damping: 20, opacity: { duration: 0.3 } }}
           className="relative z-10"
         >
           <PhoneDevice className="w-[140px] sm:w-[160px] lg:w-[180px]">
             <div className="w-full h-full flex flex-col bg-white dark:bg-[#0a0a0c]">
               <MiniHeader status={senderStatus} />
-              {/* Chat area */}
+
+              {/* Chat area — sent message appears here after sending */}
               <div className="flex-1 flex flex-col justify-end gap-1 px-[5px] sm:px-1.5 pb-1 overflow-hidden">
                 <AnimatePresence initial={false}>
-                  {isDone && (
-                    <motion.div key="sent" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                  {(showSentStatus || simState === 'received' || simState === 'complete') && (
+                    <motion.div key="sent-msg" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}>
                       <MiniCard obj={item} />
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
-              {/* Composer or status */}
+
+              {/* Composer — shows content ready to send, with send button */}
               <div className="border-t border-black/[0.08] dark:border-white/[0.1] px-[5px] sm:px-1.5 py-1">
                 <AnimatePresence mode="wait">
-                  {simState === 'connected' || simState === 'idle' || simState === 'complete' ? (
+                  {showComposer && (
                     <motion.div key="composer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       transition={{ duration: 0.15 }}
                       className="flex items-center gap-1"
@@ -491,65 +518,97 @@ export function HeroDemo() {
                           {transferKind === 'text' ? 'Meeting tomorrow…' : TRANSFER_ITEMS[transferKind].name}
                         </span>
                       </div>
-                      <button type="button" className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-azure-600 flex items-center justify-center shadow-[0_1px_4px_rgba(10,102,240,0.3)]">
+                      {/* Send button — the visual affordance */}
+                      <motion.button
+                        type="button"
+                        animate={isPressing ? { scale: 0.88 } : { scale: 1 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                        className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-azure-600 flex items-center justify-center shadow-[0_1px_4px_rgba(10,102,240,0.3)]"
+                      >
                         <Send className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-white" strokeWidth={3} />
-                      </button>
+                      </motion.button>
                     </motion.div>
-                  ) : (
-                    <motion.div key="status" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  )}
+
+                  {showSendingStatus && (
+                    <motion.div key="sending-status" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       transition={{ duration: 0.12 }}
                       className="flex items-center justify-between px-[5px] sm:px-1.5 py-[3px]"
                     >
                       <span className="text-[5px] sm:text-[6px] text-apple-ink-muted/60 dark:text-white/40 font-medium">
-                        {simState === 'preparing' ? 'Preparing…' : simState === 'transferring' ? `Sending… ${Math.round(progress)}%` : simState === 'received' ? 'Sent ✓' : 'Connecting…'}
+                        Sending… {simState === 'transferring' ? `${Math.round(progress)}%` : ''}
                       </span>
+                    </motion.div>
+                  )}
+
+                  {showSentStatus && (
+                    <motion.div key="sent-status" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      transition={{ duration: 0.12 }}
+                      className="flex items-center justify-between px-[5px] sm:px-1.5 py-[3px]"
+                    >
+                      <span className="text-[5px] sm:text-[6px] text-status-success font-medium">Sent ✓</span>
+                    </motion.div>
+                  )}
+
+                  {simState === 'resetting' && (
+                    <motion.div key="reset" initial={{ opacity: 0 }} animate={{ opacity: 0.3 }}
+                      transition={{ duration: 0.2 }}
+                      className="px-[5px] sm:px-1.5 py-[3px]"
+                    >
+                      <span className="text-[5px] sm:text-[6px] text-apple-ink-muted/40 font-medium">…</span>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
             </div>
           </PhoneDevice>
-          <p className="text-center mt-2 sm:mt-3 text-[10px] sm:text-[11px] font-medium text-apple-ink-muted dark:text-white/50">Your phone</p>
         </motion.div>
 
         {/* ============ LAPTOP — the receiver ============ */}
         <motion.div
-          animate={{ x: mousePos.x * 0.3, y: mousePos.y * 0.2 }}
-          transition={{ type: 'spring', stiffness: 150, damping: 20 }}
+          animate={{ x: mousePos.x * 0.3, y: mousePos.y * 0.2, opacity: isResetting ? 0.6 : 1 }}
+          transition={{ type: 'spring', stiffness: 150, damping: 20, opacity: { duration: 0.3 } }}
           className="relative z-0"
         >
           <LaptopDevice className="w-[240px] sm:w-[300px] lg:w-[340px]">
             <div className="w-full h-full flex flex-col bg-white dark:bg-[#0a0a0c]">
               <MiniHeader status={receiverStatus} />
-              {/* Content area */}
+
+              {/* Content area — the main visual story */}
               <div className="flex-1 flex flex-col items-center justify-center px-2 overflow-hidden">
                 <AnimatePresence mode="wait">
-                  {/* Pairing */}
-                  {simState === 'pairing' && (
-                    <motion.div key="pairing" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }}
-                      transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-                      className="flex flex-col items-center gap-1.5"
+
+                  {/* IDLE / PRESSING — laptop waits */}
+                  {(isIdle || isPressing) && (
+                    <motion.div key="waiting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="flex flex-col items-center gap-1 text-apple-ink-muted/40 dark:text-white/25"
                     >
-                      <span className="text-[6px] sm:text-[7px] font-medium text-apple-ink dark:text-white">Enter pairing code</span>
-                      <div className="flex gap-0.5">
-                        {['8','4','7','2','9','1'].map((d, i) => (
-                          <motion.span key={i} initial={{ opacity: 0, y: 2 }} animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.03, duration: 0.15 }}
-                            className="w-4 h-5 sm:w-5 sm:h-6 rounded-[3px] bg-apple-parchment dark:bg-white/[0.08] border border-black/[0.08] dark:border-white/[0.1] flex items-center justify-center text-[8px] sm:text-[10px] font-mono font-bold text-apple-ink dark:text-white"
-                          >{d}</motion.span>
-                        ))}
-                      </div>
+                      <Send className="w-3 h-3 sm:w-4 sm:h-4 opacity-30" />
+                      <span className="text-[6px] sm:text-[7px] font-medium">Waiting for something…</span>
                     </motion.div>
                   )}
 
-                  {/* Transferring */}
-                  {simState === 'transferring' && !isDone && (
-                    <motion.div key="progress" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -3 }}
+                  {/* SENDING — laptop starts to react */}
+                  {simState === 'sending' && (
+                    <motion.div key="connecting" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -3 }}
+                      transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+                      className="flex flex-col items-center gap-1 text-apple-ink-muted/50 dark:text-white/35"
+                    >
+                      <span className="text-[6px] sm:text-[7px] font-medium">Receiving…</span>
+                    </motion.div>
+                  )}
+
+                  {/* TRANSFERRING — laptop shows content at partial opacity + progress */}
+                  {simState === 'transferring' && (
+                    <motion.div key="progress" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -3 }}
                       transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
                       className="w-full max-w-[160px] flex flex-col items-center gap-1.5"
                     >
                       <div className="w-full relative">
-                        <div className="opacity-50"><MiniCard obj={item} /></div>
+                        <div className="opacity-40"><MiniCard obj={item} /></div>
                         <div className="absolute bottom-0 left-0 right-0 px-1 pb-1"><MiniProgress progress={progress} /></div>
                       </div>
                       <span className="text-[5px] sm:text-[6px] font-medium text-apple-ink-muted flex items-center gap-0.5">
@@ -558,10 +617,22 @@ export function HeroDemo() {
                     </motion.div>
                   )}
 
-                  {/* Received */}
-                  {isDone && (
-                    <motion.div key={`received-${transferKind}`} initial={{ opacity: 0, y: 6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
+                  {/* RECEIVING — content materializes */}
+                  {simState === 'receiving' && (
+                    <motion.div key="materialize" initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
                       transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                      className="w-full flex flex-col items-center gap-1"
+                    >
+                      <MiniCard obj={item} received />
+                      <span className="text-[5px] sm:text-[6px] font-medium text-apple-ink-muted">Processing…</span>
+                    </motion.div>
+                  )}
+
+                  {/* RECEIVED — content is confirmed + action button */}
+                  {(simState === 'received' || simState === 'complete') && (
+                    <motion.div key={`received-${transferKind}`} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
                       className="w-full flex flex-col items-center gap-1"
                     >
                       <MiniCard obj={item} received />
@@ -569,8 +640,7 @@ export function HeroDemo() {
                       <AnimatePresence>
                         {simState === 'received' && (
                           <motion.div initial={{ opacity: 0, y: 2 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                            transition={{ delay: 0.15, duration: 0.15 }}
-                          >
+                            transition={{ delay: 0.15, duration: 0.15 }}>
                             <button type="button" className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-azure-600/10 text-azure-600 text-[5px] sm:text-[6px] font-medium">
                               {transferKind === 'text' ? <><Copy className="w-1.5 h-1.5" /> Copy</> : <><Download className="w-1.5 h-1.5" /> Download</>}
                             </button>
@@ -580,21 +650,19 @@ export function HeroDemo() {
                     </motion.div>
                   )}
 
-                  {/* Waiting */}
-                  {!isSending && !isReceiving && !isDone && simState !== 'pairing' && (
-                    <motion.div key="waiting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      transition={{ duration: 0.15 }}
-                      className="flex flex-col items-center gap-1 text-apple-ink-muted/40 dark:text-white/25"
+                  {/* RESETTING — brief fade */}
+                  {simState === 'resetting' && (
+                    <motion.div key="reset-laptop" initial={{ opacity: 0.3 }} animate={{ opacity: 0 }}
+                      transition={{ duration: 0.4 }}
+                      className="flex flex-col items-center gap-1 text-apple-ink-muted/20 dark:text-white/15"
                     >
-                      <Send className="w-3 h-3 sm:w-4 sm:h-4 opacity-30" />
-                      <span className="text-[6px] sm:text-[7px] font-medium">Waiting for something…</span>
+                      <span className="text-[6px] sm:text-[7px] font-medium">…</span>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
             </div>
           </LaptopDevice>
-          <p className="text-center mt-2 sm:mt-3 text-[10px] sm:text-[11px] font-medium text-apple-ink-muted dark:text-white/50">Your computer</p>
         </motion.div>
       </div>
     </div>
