@@ -144,8 +144,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
 
   return (
     <div data-app-state="receiver-entering-code" className="flex flex-col min-h-screen bg-apple-canvas dark:bg-night-950 p-6 relative selection:bg-azure-600/20 sm:justify-center overflow-hidden">
-      {/* Ambient warmth */}
-      <div className="absolute inset-x-0 top-0 h-[380px] bg-[radial-gradient(60%_80%_at_50%_-5%,rgba(10,102,240,0.06),transparent_60%)] pointer-events-none" aria-hidden />
+
 
       {/* Back */}
       <div className="absolute top-5 left-5 z-10">

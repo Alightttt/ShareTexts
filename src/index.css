@@ -255,29 +255,7 @@
   background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.03) 100%);
 }
 
-/* Connecting screen animations — used by ConnectingVisual */
-@keyframes beam-travel {
-  from { transform: translateY(-50%) translateX(0); opacity: 0; }
-  8% { opacity: 1; }
-  92% { opacity: 1; }
-  to { transform: translateY(-50%) translateX(var(--travel, 176px)); opacity: 0; }
-}
-.animate-beam { animation: beam-travel 1.6s linear infinite; }
-.animate-beam-delayed { animation: beam-travel 1.6s linear 0.8s infinite; }
 
-@keyframes ring-pulse {
-  0% { transform: translate(-50%, -50%) scale(0.7); opacity: 0.55; }
-  70% { transform: translate(-50%, -50%) scale(1.7); opacity: 0; }
-  100% { transform: translate(-50%, -50%) scale(1.7); opacity: 0; }
-}
-.animate-ring-pulse { animation: ring-pulse 2.2s ease-out infinite; }
-
-@keyframes float-soft {
-  0%, 100% { transform: translateY(-50%); }
-  50% { transform: translateY(calc(-50% - 5px)); }
-}
-.animate-float-soft { animation: float-soft 4s ease-in-out infinite; }
-.animate-float-soft-delayed { animation: float-soft 4s ease-in-out 2s infinite; }
 
 /* Live-users dot */
 @keyframes live-dot-pulse {

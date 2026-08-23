@@ -216,8 +216,7 @@ function AppContent() {
         transition={{ duration: 0.3 }}
         className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black p-6 text-center relative overflow-hidden"
       >
-        {/* The same ambient warmth as the app's screens */}
-        <div className="absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(70%_90%_at_50%_-10%,rgba(46,139,255,0.10),transparent_65%)] pointer-events-none" aria-hidden />
+
         <div className="w-20 h-20 bg-apple-parchment dark:bg-apple-tile-1 rounded-[24px] flex items-center justify-center mb-6 shadow-sm">
           <ShareTextLogo size={34} className="text-apple-blue" />
         </div>

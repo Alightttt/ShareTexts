@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { HeroDemo } from '../components/HeroDemo';
 import { Send, Inbox } from 'lucide-react';
-import { SendIcon } from 'lucide-animated';
+
 import { LiveUsers } from '../components/LiveUsers';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { InstallPrompt } from '../components/InstallPrompt';
@@ -62,7 +62,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
     <div className="min-h-screen relative bg-apple-canvas dark:bg-night-950 font-sans selection:bg-azure-500/20 flex flex-col overflow-x-clip animate-[fadeIn_0.4s_ease-out]">
 
       {/* ── HEADER ── */}
-      <header className="sticky top-0 z-40 bg-apple-canvas/90 dark:bg-night-950/90 backdrop-blur-md border-b border-apple-divider dark:border-white/[0.06]">
+      <header className="sticky top-0 z-40 bg-apple-canvas dark:bg-night-950 border-b border-apple-divider dark:border-white/[0.06]">
         <div className="max-w-5xl mx-auto px-5 h-12 sm:h-14 flex items-center">
           <a href="/" className="flex items-center gap-2 shrink-0" aria-label="ShareText">
             <ShareTextLogo size={18} className="text-apple-ink dark:text-white" />
@@ -119,9 +119,9 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 {isCreating ? (
                   <span>Cancel</span>
                 ) : createError ? (
-                  <><SendIcon size={16} animateOnHover /> <span>Try Again</span></>
+                  <><Send size={16} /> <span>Try Again</span></>
                 ) : (
-                  <><SendIcon size={16} animateOnHover /> <span>Send something</span></>
+                  <><Send size={16} /> <span>Send something</span></>
                 )}
               </motion.button>
               <motion.button
@@ -134,20 +134,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               </motion.button>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center justify-center lg:justify-start gap-x-4 gap-y-1.5 text-[12px] font-medium text-apple-ink-muted/50 dark:text-white/35">
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#0A66F0]" />
-                Immediate
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#B26A00]" />
-                Temporary
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#1C9A61]" />
-                Any two devices
-              </span>
-            </div>
+
 
             {createError && (
               <div role="alert" data-testid="error-message" className="mt-4 space-y-2">
@@ -230,8 +217,8 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               { title: 'Phone → Laptop', desc: 'A photo from your pocket to your screen.', illust: <IllustPhoneToLaptop className="w-full" /> },
               { title: 'Laptop → Phone', desc: 'A link or text without emailing it to yourself.', illust: <IllustLaptopToPhone className="w-full" /> },
               { title: 'Text handoff', desc: 'Move notes or code between your machines.', illust: <IllustTextHandoff className="w-full" /> },
-              { title: 'Work', desc: 'Move an error log or code snippet between your machines.' },
-              { title: 'Private', desc: 'Transfer temporary content without a permanent cloud copy.' },
+              { title: 'Work', desc: 'Move an error log or code snippet between your machines.', illust: <IllustPairing className="w-full" /> },
+              { title: 'Private', desc: 'Transfer temporary content without a permanent cloud copy.', illust: <IllustPrivate className="w-full" /> },
             ].map((item, i) => (
               <motion.div
                 key={item.title}
@@ -241,7 +228,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 transition={{ duration: 0.4, delay: i * 0.06, ease: EASE }}
                 className="rounded-[12px] bg-white dark:bg-surface-dark border border-apple-divider/60 dark:border-white/[0.06] text-left overflow-hidden"
               >
-                {'illust' in item && item.illust && (
+                {item.illust && (
                   <div className="px-4 pt-4 pb-2">
                     {item.illust}
                   </div>
@@ -282,7 +269,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               whileTap={{ scale: 0.98 }}
               className="px-7 py-3 bg-azure-600 hover:bg-azure-500 text-white rounded-[10px] text-[15px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60 transition-all duration-150"
             >
-              {isCreating ? 'Creating…' : createError ? 'Try Again' : (<><SendIcon size={16} animateOnHover /> Send something</>)}
+              {isCreating ? 'Creating…' : createError ? 'Try Again' : (<><Send size={16} /> Send something</>)}
             </motion.button>
             <motion.button
               data-testid="join-session"
