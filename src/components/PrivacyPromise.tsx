@@ -1,31 +1,27 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ShieldCheck, EyeOff, RotateCcw } from 'lucide-react';
-import { cn } from '../lib/utils';
 
 /**
  * The trust wedge. "What happens to your text?" is the question every
  * first-time visitor is quietly asking; the answer — "nothing, that's the
- * point" — is the product's whole reason to exist, and the reason people
- * share it. Three specifics, each true and each verifiable in the app,
- * then the 2-6-0-0-0 strip: tiny setup, zero cost. The zeros are the point.
+ * point" — is the product's whole reason to exist.
+ *
+ * Cards removed. Now an inline editorial list — same style as "Three steps."
+ * The zeros are the point, rendered in neutral color (not green).
  */
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 const PROMISES = [
   {
-    icon: ShieldCheck,
     title: 'Encrypted end to end',
     body: 'Content is encrypted between devices using the browser. Connection setup may use service infrastructure.',
   },
   {
-    icon: EyeOff,
     title: 'Temporary by design',
     body: 'No account, no permanent history, no cloud copy. When the session ends, the room closes automatically.',
   },
   {
-    icon: RotateCcw,
     title: 'Transfer integrity',
     body: 'Every file is verified with SHA-256. What you send is exactly what arrives.',
   },
@@ -41,71 +37,60 @@ const STATS = [
 
 export function PrivacyPromise() {
   return (
-    <section className="px-6 py-24 sm:py-32 bg-apple-parchment dark:bg-night-950">
+    <section className="px-5 sm:px-6 py-20 sm:py-28 bg-apple-parchment/40 dark:bg-night-950/40">
       <div className="max-w-3xl mx-auto">
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 14 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-80px' }}
-          transition={{ duration: 0.7, ease: EASE }}
-          className="text-center max-w-xl mx-auto"
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.5, ease: EASE }}
+          className="mb-12"
         >
-          <p className="font-mono text-[12px] text-apple-ink-muted dark:text-white/60 uppercase tracking-[0.14em] mb-3">
+          <p className="font-mono text-[12px] text-apple-ink-muted dark:text-white/50 uppercase tracking-[0.14em] mb-3">
             Private by design
           </p>
-          <h2 id="privacy-heading" className="text-[30px] sm:text-[40px] font-semibold text-apple-ink dark:text-white tracking-[-0.03em] leading-[1.08]">
+          <h2 id="privacy-heading" className="text-[28px] sm:text-[36px] font-semibold text-apple-ink dark:text-white tracking-[-0.03em] leading-[1.1]">
             What happens to your text?
           </h2>
-          <p className="mt-4 text-[15px] sm:text-[16px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed">
+          <p className="mt-3 text-[15px] sm:text-[16px] text-apple-ink-muted dark:text-white/55 font-medium leading-relaxed">
             Nothing. It goes from one device to the other, and stops there.
           </p>
         </motion.div>
 
-        <div className="mt-12 grid gap-4 sm:grid-cols-3">
+        {/* Inline editorial list — no cards, no icon circles */}
+        <div className="space-y-8">
           {PROMISES.map((p, i) => (
             <motion.div
               key={p.title}
-              initial={{ opacity: 0, y: 18 }}
+              initial={{ opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.6, delay: i * 0.08, ease: EASE }}
-              className="bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-white/[0.06] rounded-[16px] p-5 sm:p-6"
+              viewport={{ once: true, margin: '-40px' }}
+              transition={{ duration: 0.4, delay: i * 0.06, ease: EASE }}
+              className="flex gap-5 items-start"
             >
-              <span className="w-10 h-10 rounded-[10px] bg-azure-50 dark:bg-azure-500/12 flex items-center justify-center">
-                <p.icon className="w-[18px] h-[18px] text-azure-600 dark:text-azure-400" strokeWidth={1.8} />
-              </span>
-              <h3 className="mt-4 text-[15px] sm:text-[16px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">
-                {p.title}
-              </h3>
-              <p className="mt-1.5 text-[13px] sm:text-[14px] text-apple-ink-muted dark:text-white/55 font-medium leading-relaxed">
-                {p.body}
-              </p>
+              <div className="mt-1">
+                <h3 className="text-[16px] font-semibold text-apple-ink dark:text-white">{p.title}</h3>
+                <p className="mt-1 text-[14px] text-apple-ink-muted dark:text-white/55 leading-relaxed max-w-[48ch]">{p.body}</p>
+              </div>
             </motion.div>
           ))}
         </div>
 
-        {/* The strip — tiny setup, zero cost. The zeros are the story.
-            One contained card, equal cells, hairline dividers on desktop; a
-            clean two-column wrap on mobile. */}
+        {/* Stats strip — neutral color for all numbers, including zeros */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 14 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.7, ease: EASE }}
-          className="mt-14 bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-white/[0.06] rounded-[20px] shadow-card overflow-hidden"
+          transition={{ duration: 0.5, ease: EASE }}
+          className="mt-14 border-t border-apple-divider/60 dark:border-white/[0.08] pt-10"
         >
-          <div className="grid grid-cols-2 sm:grid-cols-5 divide-x divide-y sm:divide-y-0 divide-apple-divider dark:divide-white/[0.06]">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-6 sm:gap-0 sm:divide-x sm:divide-apple-divider dark:sm:divide-white/[0.08]">
             {STATS.map((s) => (
-              <div key={s.label} className="px-4 py-7 sm:py-8 text-center">
-                <p className={cn(
-                  'text-[40px] sm:text-[52px] font-semibold tracking-[-0.05em] leading-none tabular-nums',
-                  s.n === '0'
-                    ? 'bg-[linear-gradient(180deg,#34c759,#1f9d44)] bg-clip-text text-transparent'
-                    : 'text-apple-ink dark:text-white'
-                )}>
+              <div key={s.label} className="text-center sm:px-4">
+                <p className="text-[36px] sm:text-[44px] font-semibold tracking-[-0.04em] leading-none tabular-nums text-apple-ink dark:text-white">
                   {s.n}
                 </p>
-                <p className="mt-2.5 text-[12px] sm:text-[13px] text-apple-ink-muted dark:text-white/55 font-medium">
+                <p className="mt-2 text-[12px] sm:text-[13px] text-apple-ink-muted dark:text-white/50 font-medium">
                   {s.label}
                 </p>
               </div>

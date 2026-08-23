@@ -85,12 +85,12 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
         className="px-5 sm:px-6 min-h-[calc(100dvh-48px)] sm:min-h-0 flex items-center py-10 sm:py-16 lg:py-20 relative z-10"
         aria-labelledby="hero-title"
       >
-        <div className="max-w-5xl mx-auto w-full grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-12 items-center">
+        <div className="max-w-5xl mx-auto w-full grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] md:gap-12 items-center">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: EASE }}
-            className="text-center lg:text-left flex flex-col items-center lg:items-start"
+            className="text-center md:text-left flex flex-col items-center md:items-start"
           >
             <h1
               id="hero-title"
@@ -111,7 +111,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 className={`group px-6 py-3 text-[15px] font-semibold rounded-[10px] flex items-center justify-center gap-2 transition-all duration-150 ${
                   isCreating
                     ? 'bg-apple-ink-muted hover:bg-apple-ink-muted/80 text-white'
-                    : 'bg-azure-600 hover:bg-azure-500 text-white shadow-sm hover:shadow-md'
+                    : 'bg-azure-600 hover:bg-azure-500 text-white shadow-sm'
                 }`}
               >
                 {isCreating ? (
@@ -146,7 +146,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1, ease: EASE }}
-            className="mt-8 lg:mt-0 w-full flex justify-center"
+            className="mt-8 md:mt-0 w-full flex justify-center"
           >
             <HeroDemo />
           </motion.div>
@@ -194,7 +194,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
       </section>
 
       {/* ── WHAT YOU CAN MOVE — inline list, not cards ── */}
-      <section className="px-5 sm:px-6 py-20 sm:py-28 bg-apple-parchment/40 dark:bg-night-950/40 relative z-10">
+      <section className="px-5 sm:px-6 py-20 sm:py-28 bg-apple-parchment/40 dark:bg-night-950/40 relative z-10 border-t border-apple-divider/40 dark:border-white/[0.06]">
         <div className="max-w-3xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 14 }}
@@ -240,7 +240,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
       </Suspense>
 
       {/* ── CTA — the wrong-screen moment ── */}
-      <section className="px-5 sm:px-6 pb-24 sm:pb-32 pt-20 sm:pt-28 relative z-10">
+      <section className="px-5 sm:px-6 pb-20 sm:pb-28 pt-16 sm:pt-24 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           whileInView={{ opacity: 1, y: 0 }}
