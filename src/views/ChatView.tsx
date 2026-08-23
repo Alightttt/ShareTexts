@@ -287,7 +287,7 @@ export function ChatView() {
       const t = setTimeout(() => setShowConnected(false), 2800);
       return () => clearTimeout(t);
     } else if (session.connectionType === 'disconnected') {
-      setAnnouncement('Your other device disconnected');
+      setAnnouncement('Other device disconnected');
     }
   }, [session.partnerConnected, session.connectionType]);
 
@@ -455,18 +455,14 @@ export function ChatView() {
       {/* Screen-reader live region — invisible, announced on state changes */}
       <div aria-live="polite" role="status" className="sr-only">{announcement}</div>
 
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 p-4 sm:p-5 shrink-0 border-b border-apple-divider/50 dark:border-apple-tile-3/50 backdrop-blur-xl bg-apple-canvas/80 dark:bg-night-950/80 z-20 sticky top-0">
-        <button
-          onPointerDown={() => setShowConnectionDetails(!showConnectionDetails)}
-          aria-expanded={showConnectionDetails}
-          className="flex items-center gap-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue rounded-[10px] min-h-[40px] min-w-0 max-w-[50vw] sm:max-w-none"
-        >
-          {/* Show the OTHER device's icon — phone on PC, PC/laptop on phone */}
-          <PartnerDeviceIcon />
-          <span className="flex items-center gap-2 min-w-0">
-            {/* One line: name + live status chip together. */}
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold whitespace-nowrap bg-status-success/10 text-status-success">
+      {/* Header — device relationship, not chat */}
+      <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 shrink-0 border-b border-apple-divider/40 dark:border-white/[0.06] bg-apple-canvas/90 dark:bg-night-950/90 backdrop-blur-md z-20 sticky top-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <ShareTextLogo size={18} className="text-apple-ink dark:text-white shrink-0" />
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-[14px] font-semibold text-apple-ink dark:text-white truncate">ShareText</span>
+            <span className="w-px h-3.5 bg-apple-divider dark:bg-white/10" />
+            <span className="flex items-center gap-1.5 text-[12px] font-medium text-apple-ink-muted dark:text-white/50">
               <span className={cn(
                 "w-1.5 h-1.5 rounded-full",
                 disconnected ? "bg-apple-ink-muted" : "bg-status-success",
@@ -474,30 +470,28 @@ export function ChatView() {
               )} />
               {disconnected ? 'Offline' : 'Connected'}
             </span>
-            <Lock className="w-3.5 h-3.5 text-apple-ink-muted/70 shrink-0" aria-label="Encrypted between devices" />
-          </span>
-        </button>
+          </div>
+        </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           <ThemeToggle />
           <button
             data-testid="connection-details"
             onPointerDown={() => setShowConnectionDetails(!showConnectionDetails)}
-            title="Connection & encryption details"
+            title="Connection details"
             aria-label="Connection details"
-            className="hidden sm:flex items-center justify-center w-10 h-10 rounded-full text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-apple-tile-3/50 transition-colors active:scale-95"
+            className="hidden sm:flex items-center justify-center w-9 h-9 rounded-full text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/40 dark:hover:bg-white/[0.06] transition-colors"
           >
-            <ShieldCheck className="w-[18px] h-[18px]" />
+            <ShieldCheck className="w-[16px] h-[16px]" />
           </button>
           <button
             data-testid="end-session"
             onPointerDown={() => setConfirmClose(true)}
-            aria-label="End room"
-            title="End room"
-            className="flex items-center justify-center w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 rounded-full sm:rounded-[10px] text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-apple-tile-3/50 transition-colors active:scale-95 min-h-[44px] shrink-0"
+            aria-label="Disconnect"
+            className="flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 rounded-full sm:rounded-[8px] text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/40 dark:hover:bg-white/[0.06] transition-colors min-h-[36px] shrink-0"
           >
-            <LogOut className="w-[18px] h-[18px] sm:hidden" />
-            <span className="hidden sm:inline text-[14px] font-medium">End room</span>
+            <LogOut className="w-[16px] h-[16px] sm:hidden" />
+            <span className="hidden sm:inline text-[13px] font-medium">Disconnect</span>
           </button>
         </div>
 
@@ -515,10 +509,10 @@ export function ChatView() {
               aria-label="Connection details"
               onPointerDown={(e) => { if (e.target === e.currentTarget) setShowConnectionDetails(false); }}
             >
-              <div className="flex items-center justify-between gap-2 text-[13.5px] font-semibold text-apple-ink dark:text-white mb-1.5">
+              <div className="flex items-center justify-between gap-2 text-[13px] font-semibold text-apple-ink dark:text-white mb-1.5">
                 <span className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-status-success" />
-                  Encrypted between devices
+                  Secure connection
                 </span>
                 <button
                   onPointerDown={() => setShowConnectionDetails(false)}
@@ -529,13 +523,13 @@ export function ChatView() {
                 </button>
               </div>
               <div className="text-[13px] text-apple-ink-muted leading-relaxed">
-                {session.connectionType === 'relay' ? 'Connected securely through an encrypted relay — a direct connection wasn\u2019t available.' :
-                  session.connectionType === 'local' ? 'Connected directly between devices on the same network.' :
-                    session.connectionType === 'direct' ? 'Connected directly between devices.' :
+                {session.connectionType === 'relay' ? 'Connected through an encrypted relay.' :
+                  session.connectionType === 'local' ? 'Direct connection — same network.' :
+                    session.connectionType === 'direct' ? 'Direct connection between devices.' :
                       'Connecting…'}
               </div>
-              <div className="text-[13px] text-apple-ink-muted mt-2 pt-2 border-t border-apple-divider/50 dark:border-apple-tile-3">
-                Content is encrypted between devices. Rooms close automatically — temporary by design.
+              <div className="text-[12px] text-apple-ink-muted mt-2 pt-2 border-t border-apple-divider/50 dark:border-apple-tile-3">
+                Encrypted between devices. Temporary by design.
               </div>
               {/* The pairing code lives here now, not on screen: it\u2019s only
                   needed if the other device drops and has to rejoin, so it\u2019s
@@ -585,9 +579,9 @@ export function ChatView() {
               aria-modal="true"
               aria-labelledby="end-session-heading"
             >
-              <h3 id="end-session-heading" className="text-[19px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">End this room?</h3>
-              <p className="text-[15px] text-apple-ink-muted leading-relaxed mb-6">
-                Both devices will disconnect and this connection will be permanently closed.
+              <h3 id="end-session-heading" className="text-[18px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">Disconnect?</h3>
+              <p className="text-[14px] text-apple-ink-muted leading-relaxed mb-6">
+                Both devices will disconnect. This connection will be closed.
               </p>
               <div className="flex flex-col gap-2">
                 <button
@@ -596,14 +590,14 @@ export function ChatView() {
                   onPointerDown={() => setConfirmClose(false)}
                   className="w-full py-3.5 bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white rounded-[14px] text-[15px] font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
                 >
-                  Keep Room
+                  Keep connected
                 </button>
                 <button
                   data-testid="end-session-confirm"
                   onPointerDown={closeSession}
                   className="w-full py-3.5 bg-status-danger hover:bg-[#e0352b] text-white rounded-[14px] text-[15px] font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
                 >
-                  End room
+                  Disconnect
                 </button>
               </div>
             </motion.div>
@@ -624,7 +618,7 @@ export function ChatView() {
             <div data-testid="disconnect-banner" className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-2 text-[14px] font-medium text-status-warning-ink dark:text-status-warning-ink-dark">
               <span className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse shrink-0" />
-                Your other device disconnected — waiting to reconnect…
+                Other device disconnected — waiting to reconnect…
               </span>
               <button
                 data-testid="reconnect"
@@ -669,29 +663,22 @@ export function ChatView() {
       >
         <div        className="max-w-3xl mx-auto flex flex-col">
           {session.messages.length === 0 ? (
-            <div className="h-full min-h-[40vh] flex flex-col items-center justify-center text-center space-y-4 opacity-80">
-              <div className="w-14 h-14 rounded-[20px] bg-apple-parchment dark:bg-apple-tile-2 flex items-center justify-center mb-1">
-                <ShareTextLogo size={26} className="text-apple-ink dark:text-white" />
-              </div>
+            <div className="h-full min-h-[35vh] flex flex-col items-center justify-center text-center space-y-3">
               {disconnected ? (
                 <>
-                  <p className="text-[17px] font-semibold text-apple-ink dark:text-white tracking-tight">Your other device is offline</p>
-                  <p className="text-[14px] text-apple-ink-muted max-w-[280px] leading-relaxed">
-                    The room is still open — it will reconnect when the other device comes back.
+                  <p className="text-[16px] font-semibold text-apple-ink dark:text-white">Other device is offline</p>
+                  <p className="text-[13px] text-apple-ink-muted max-w-[260px] leading-relaxed">
+                    It will reconnect when the other device comes back.
                   </p>
                 </>
               ) : (
                 <>
-                  <p className="text-[17px] font-semibold text-apple-ink dark:text-white tracking-tight">Ready to send</p>
-                  <p className="text-[14px] text-apple-ink-muted max-w-[300px] leading-relaxed">
-                    Paste or type anything — text, links, photos, or files.
-                    It will appear on the other device instantly.
+                  <ShareTextLogo size={32} className="text-apple-ink/20 dark:text-white/15" />
+                  <p className="text-[16px] font-semibold text-apple-ink dark:text-white">Ready to send</p>
+                  <p className="text-[13px] text-apple-ink-muted max-w-[260px] leading-relaxed">
+                    Paste, drop a file, or type something.
+                    It appears on the other device instantly.
                   </p>
-                  <div className="flex items-center gap-3 mt-1 text-[12px] text-apple-ink-muted/70 dark:text-white/40">
-                    <span className="flex items-center gap-1.5"><span className="w-6 h-6 rounded-full bg-apple-divider/60 dark:bg-apple-tile-3 flex items-center justify-center"><ImageIcon className="w-3 h-3" /></span>Photo</span>
-                    <span className="flex items-center gap-1.5"><span className="w-6 h-6 rounded-full bg-apple-divider/60 dark:bg-apple-tile-3 flex items-center justify-center"><FileIcon className="w-3 h-3" /></span>File</span>
-                    <span className="flex items-center gap-1.5"><span className="w-6 h-6 rounded-full bg-apple-divider/60 dark:bg-apple-tile-3 flex items-center justify-center"><span className="text-[9px] font-bold">⌘V</span></span>Paste</span>
-                  </div>
                 </>
               )}
             </div>
@@ -756,31 +743,34 @@ export function ChatView() {
         )}
       </div>
 
-      {/* Contextual room rail — large desktops only. Uses the horizontal
-          space without becoming a dashboard: the connection path and a
-          one-line privacy note. No pairing code here — that lives in
-          Connection details now, so it\u2019s not continuously exposed. */}
-      <div className="hidden xl:flex absolute top-24 right-6 bottom-24 w-[228px] flex-col gap-4" aria-hidden>
-        <div className="rounded-[14px] bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 p-4 text-[12.5px] leading-relaxed text-apple-ink-muted">
-          <div className="flex items-center gap-2 mb-1.5">
+      {/* Device relationship panel */}
+      <div className="hidden xl:flex absolute top-20 right-6 bottom-24 w-[200px] flex-col gap-3" aria-hidden>
+        <div className="rounded-[12px] bg-white dark:bg-surface-dark border border-apple-divider/40 dark:border-white/[0.06] p-4 text-[12px] leading-relaxed text-apple-ink-muted">
+          <div className="flex items-center gap-2 mb-3">
             <span className={cn(
               "w-1.5 h-1.5 rounded-full",
-              session.connectionType === 'relay' ? "bg-status-warning" : "bg-status-success"
+              disconnected ? "bg-apple-ink-muted" : "bg-status-success"
             )} />
-            <span className="font-semibold text-apple-ink dark:text-white">
-              {session.connectionType === 'relay' ? 'Relay connection' : 'Direct connection'}
+            <span className="font-medium text-apple-ink dark:text-white">
+              {disconnected ? 'Offline' : 'Connected'}
             </span>
           </div>
-          <p>
-            {session.connectionType === 'relay'
-              ? 'Connected through an encrypted relay — a direct connection wasn’t available.'
-              : 'Connected directly between your two devices.'}
-          </p>
-          <div className="mt-3 pt-3 border-t border-apple-divider/60 dark:border-apple-tile-3">
-            Encrypted between devices · Rooms are temporary
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Smartphone className="w-3.5 h-3.5 text-apple-ink-muted" />
+              <span className="text-apple-ink dark:text-white/80">This device</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Monitor className="w-3.5 h-3.5 text-apple-ink-muted" />
+              <span className="text-apple-ink dark:text-white/80">Other device</span>
+            </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-apple-divider/40 dark:border-white/[0.04] text-[11px] text-apple-ink-muted/60 dark:text-white/30">
+            Encrypted · Temporary
           </div>
         </div>
       </div>
+
 
       {/* Input Area */}
       <div className="p-3 sm:p-5 bg-apple-canvas/90 dark:bg-night-950/90 backdrop-blur-xl border-t border-apple-divider/50 dark:border-apple-tile-3/50 z-10 pb-[env(safe-area-inset-bottom)] relative">
