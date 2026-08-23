@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { SessionState, ChatMessage, ConnectionType } from '../types';
 import { getSocket, devLog, signalingConfigIssue, resolveShortCode, refreshCode as refreshCodeRPC } from './socket';
 import { PeerManager, TransferCancelledError, hasSendProgress, clearAllTransferState, clearTransferState, getPartialInfo } from './webrtc';
+import { generateKey } from './crypto';
 import { humanizeError } from './errors';
 import { diag } from './diag';
 import { sanitizeFilename } from './utils';
@@ -228,6 +229,30 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const peerManagerRef = useRef<PeerManager | null>(null);
+  // Pre-computed crypto key: derived once per session secret, shared across
+  // PeerManager instances (saves ~100ms PBKDF2 on reconnect/refresh).
+  const cryptoKeyRef = useRef<Map<string, CryptoKey>>(new Map());
+
+  /** Get or derive the crypto key for a room secret. The key is cached so
+   *  reconnects skip the expensive PBKDF2 derivation (~100ms). */
+  const getCryptoKey = async (secret: string): Promise<CryptoKey> => {
+    const cached = cryptoKeyRef.current.get(secret);
+    if (cached) return cached;
+    const key = await generateKey(secret);
+    cryptoKeyRef.current.set(secret, key);
+    // Keep the cache bounded (most users only have 1–2 sessions).
+    if (cryptoKeyRef.current.size > 5) {
+      const oldest = cryptoKeyRef.current.keys().next().value;
+      if (oldest !== undefined) cryptoKeyRef.current.delete(oldest);
+    }
+    return key;
+  };
+
+  /** Create a PeerManager with a precomputed key for instant crypto. */
+  const createPeerManager = async (roomId: string, secret: string, isInitiator: boolean): Promise<PeerManager> => {
+    const key = await getCryptoKey(secret);
+    return new PeerManager(roomId, secret, isInitiator, key);
+  };
   // Last-published progress per transfer, for throttling onFileProgress.
   const progressRef = useRef<Map<string, number>>(new Map());
   // True while the user deliberately leaves the pairing screen: the room
@@ -311,9 +336,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // device rejoins and the remaining peer gets this event and re-offers.
       if (session.roomId && session.secret) {
         if (peerManagerRef.current) peerManagerRef.current.destroy();
-        peerManagerRef.current = new PeerManager(session.roomId, session.secret, true);
-        setupPeerManager(peerManagerRef.current);
-        peerManagerRef.current.initiateConnection(peerId);
+        void createPeerManager(session.roomId, session.secret, true).then(pm => {
+          peerManagerRef.current = pm;
+          setupPeerManager(pm);
+          pm.initiateConnection(peerId);
+        });
       }
     });
 
@@ -328,9 +355,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // Re-establish it from this side.
       if (session.roomId && session.secret && peerId) {
         if (peerManagerRef.current) peerManagerRef.current.destroy();
-        peerManagerRef.current = new PeerManager(session.roomId, session.secret, true);
-        setupPeerManager(peerManagerRef.current);
-        peerManagerRef.current.initiateConnection(peerId);
+        void createPeerManager(session.roomId, session.secret, true).then(pm => {
+          peerManagerRef.current = pm;
+          setupPeerManager(pm);
+          pm.initiateConnection(peerId);
+        });
       }
     });
 
@@ -817,8 +846,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           connectionType: 'connecting'
         }));
         if (peerManagerRef.current) peerManagerRef.current.destroy();
-        peerManagerRef.current = new PeerManager(stored.roomId, stored.secret, false);
-        setupPeerManager(peerManagerRef.current);
+        void createPeerManager(stored.roomId, stored.secret, false).then(pm => {
+          peerManagerRef.current = pm;
+          setupPeerManager(pm);
+        });
       } else if (res.error?.includes('two devices') && attempt < 3) {
         // The previous socket may not have been cleaned up yet; retry shortly.
         setTimeout(() => { if (!cancelled) void tryResume(attempt + 1); }, 1500);
@@ -940,8 +971,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       partnerName: null
     });
     if (peerManagerRef.current) peerManagerRef.current.destroy();
-    peerManagerRef.current = new PeerManager(roomId, secret, false);
-    setupPeerManager(peerManagerRef.current);
+    void createPeerManager(roomId, secret, false).then(pm => {
+      peerManagerRef.current = pm;
+      setupPeerManager(pm);
+    });
   };
 
   const sendMessage = async (text: string, attachment?: import('../types').Attachment, file?: File) => {
@@ -1184,8 +1217,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
     if (!res.success) return;
     if (peerManagerRef.current) peerManagerRef.current.destroy();
-    peerManagerRef.current = new PeerManager(roomId, secret, false);
-    setupPeerManager(peerManagerRef.current);
+    void createPeerManager(roomId, secret, false).then(pm => {
+      peerManagerRef.current = pm;
+      setupPeerManager(pm);
+    });
     setSession(s => ({ ...s, connectionType: 'connecting' }));
   };
   requestReconnectRef.current = requestReconnect;

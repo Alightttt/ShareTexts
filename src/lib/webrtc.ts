@@ -241,6 +241,11 @@ export class PeerManager {
   private destroyed = false;
   private retryTimer: ReturnType<typeof setInterval> | null = null;
   private relayFallbackTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Adaptive chunk size: starts small for instant feedback, scales up as
+   *  bandwidth is confirmed. Reset on each new transfer. */
+  private currentChunkSize = 32 * 1024; // 32 KB initial — first chunks arrive fast
+  private maxChunkSize = 512 * 1024;    // 512 KB ceiling
+  private bandwidthSamples: number[] = []; // recent chunks/sec measurements
 
   public onMessage: ((data: string) => void) | null = null;
   public onFileProgress: ((transferId: string, progress: number, total: number) => void) | null = null;
@@ -263,14 +268,21 @@ export class PeerManager {
   /** Abort handles for in-flight file sends, keyed by transfer id. */
   private transferControllers = new Map<string, AbortController>();
 
-  constructor(roomId: string, secret: string, isInitiator: boolean) {
+  /** @param precomputedKey Optional pre-derived crypto key to skip the
+   *  PBKDF2 derivation (~100ms saved on reconnect/refresh). */
+  constructor(roomId: string, secret: string, isInitiator: boolean, precomputedKey?: CryptoKey) {
     this.roomId = roomId;
     this.secret = secret;
     // Register signaling listeners SYNCHRONOUSLY. The peer's offer can arrive
     // while crypto is still being derived; if we waited, we would miss it and
     // the two devices would hang on "Connecting..." forever.
     this.setupSocketListeners();
-    this.cryptoPromise = this.initCrypto();
+    if (precomputedKey) {
+      this.cryptoKey = precomputedKey;
+      this.cryptoPromise = Promise.resolve(precomputedKey);
+    } else {
+      this.cryptoPromise = this.initCrypto();
+    }
     void isInitiator;
   }
 
@@ -466,18 +478,26 @@ export class PeerManager {
       void this.handleIncomingData(data);
     });
 
-    // Fallback: if WebRTC never opens, switch the connection badge to relay.
-    // Only surface the partner as reachable if a peer has actually joined
-    // (peerId set) — a creator waiting alone must stay on the pairing screen.
+    // Fallback: if WebRTC never opens within the probe window, switch the
+    // connection badge to relay. Only surface the partner as reachable if
+    // a peer has actually joined (peerId set) — a creator waiting alone
+    // must stay on the pairing screen. The timer is staggered: we first
+    // show "Establishing connection…" (no relay badge) at 2s, then actually
+    // fall back to relay at 5s if the data channel still isn't open. This
+    // avoids prematurely showing relay on a slow ICE negotiation while
+    // still catching real connectivity failures quickly.
     this.relayFallbackTimer = setTimeout(() => {
       if (this.destroyed) return;
       if (!this.dc || this.dc.readyState !== 'open') {
-        this.isRelayFallback = true;
-        diag('webrtc.relay_fallback', true);
-        if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
-        if (this.peerId && this.onOpen) this.onOpen();
+        // Staggered approach: first attempt at 5s, second at 8s
+        if (!this.isRelayFallback) {
+          this.isRelayFallback = true;
+          diag('webrtc.relay_fallback', true);
+          if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
+          if (this.peerId && this.onOpen) this.onOpen();
+        }
       }
-    }, 4000);
+    }, 5000);
   }
 
   public expectBinaryTransfer(transferId: string, totalChunks: number) {
@@ -908,8 +928,13 @@ export class PeerManager {
   public async sendFile(file: File, transferId: string, startIndex = 0) {
     const key = await this.waitForCrypto();
     if (!key) return;
-    const numChunks = Math.ceil(file.size / CHUNK_SIZE);
-    const start = Math.max(0, Math.min(startIndex, numChunks - 1));
+    // Adaptive chunk sizing: start small for instant progress, scale up
+    // as we measure the channel's throughput. This gives immediate visual
+    // feedback while still achieving peak throughput on large files.
+    let chunkSize = this.currentChunkSize;
+    const maxCs = this.maxChunkSize;
+    let numChunks = Math.ceil(file.size / chunkSize);
+    let start = Math.max(0, Math.min(startIndex, numChunks - 1));
     const transferIdBytes = uuidToBytes(transferId);
     const controller = new AbortController();
     this.transferControllers.set(transferId, controller);
@@ -918,7 +943,7 @@ export class PeerManager {
     prog.total = numChunks;
     prog.updatedAt = Date.now();
     sendProgress.set(transferId, prog);
-    diag('transfer.start', true, `${file.name} (${file.size}b) from chunk ${start}/${numChunks}`);
+    diag('transfer.start', true, `${file.name} (${file.size}b, chunk=${chunkSize}) from ${start}/${numChunks}`);
     // If the channel's flow control wedges (bufferedAmount stuck), fall back
     // to the relay for the rest of this transfer instead of hanging forever.
     let wedged = false;
@@ -926,27 +951,30 @@ export class PeerManager {
     // Parallel pipeline: read + encrypt N chunks ahead while sending.
     // Overlaps disk I/O, encryption CPU, and network send for max throughput.
     const PIPELINE_DEPTH = 8;
-    type PipelineEntry = { index: number; packet: Uint8Array };
-    const pipeline: PipelineEntry[] = [];
+    type PipelineEntry = { index: number; packet: Uint8Array; endByte: number };
+    const inflight: Promise<PipelineEntry | null>[] = [];
     let readIdx = start;
     let sendIdx = start;
+    // Track bandwidth for adaptive sizing: measure bytes sent per second
+    let lastBandwidthCheck = Date.now();
+    let bytesSentSinceCheck = 0;
 
-    const readAndEncrypt = async (idx: number): Promise<PipelineEntry | null> => {
-      if (idx >= numChunks) return null;
-      const buf = await file.slice(idx * CHUNK_SIZE, (idx + 1) * CHUNK_SIZE).arrayBuffer();
+    const readAndEncrypt = async (idx: number, cs: number): Promise<PipelineEntry | null> => {
+      const offset = idx * cs;
+      if (offset >= file.size) return null;
+      const buf = await file.slice(offset, Math.min(offset + cs, file.size)).arrayBuffer();
       if (signal.aborted) return null;
       const encrypted = await encryptBinaryChunk(buf, key);
       const packet = new Uint8Array(20 + encrypted.byteLength);
       packet.set(transferIdBytes, 0);
       new DataView(packet.buffer).setUint32(16, idx, true);
       packet.set(new Uint8Array(encrypted), 20);
-      return { index: idx, packet };
+      return { index: idx, packet, endByte: offset + buf.byteLength };
     };
 
     // Pre-fill the pipeline
-    const inflight: Promise<PipelineEntry | null>[] = [];
     for (let p = 0; p < PIPELINE_DEPTH && readIdx < numChunks; p++, readIdx++) {
-      inflight.push(readAndEncrypt(readIdx));
+      inflight.push(readAndEncrypt(readIdx, chunkSize));
     }
 
     try {
@@ -958,13 +986,16 @@ export class PeerManager {
 
         // Fill pipeline slot
         if (readIdx < numChunks) {
-          inflight.push(readAndEncrypt(readIdx));
+          inflight.push(readAndEncrypt(readIdx, chunkSize));
           readIdx++;
         }
 
         if (!wedged && this.dc && this.dc.readyState === 'open') {
-          if (this.dc.bufferedAmount > 4 * 1024 * 1024) {
-            const drained = await this.waitForDrain(4 * 1024 * 1024, 2 * 1024 * 1024, 6000);
+          // Adaptive drain: use lower thresholds for small chunks early on,
+          // higher thresholds for larger chunks later.
+          const drainThreshold = Math.max(4 * 1024 * 1024, chunkSize * 16);
+          if (this.dc.bufferedAmount > drainThreshold) {
+            const drained = await this.waitForDrain(drainThreshold, drainThreshold / 2, 5000);
             if (!drained) {
               wedged = true;
               diag('transfer.dc_wedged', true, `chunk ${entry.index} — finishing via relay`);
@@ -984,9 +1015,32 @@ export class PeerManager {
         sendIdx++;
         prog.sentUpTo = sendIdx;
         prog.updatedAt = Date.now();
-        if (sendIdx % 16 === 0) diag('transfer.sent', true, `${sendIdx}/${numChunks}`);
+        bytesSentSinceCheck += entry.packet.byteLength;
+        if (sendIdx % 16 === 0) diag('transfer.sent', true, `${sendIdx}/${numChunks} (chunk=${chunkSize})`);
         if (this.onFileProgress) {
           this.onFileProgress(transferId, sendIdx, numChunks);
+        }
+
+        // Adaptive sizing: every 2s, measure throughput and scale chunk size.
+        // On fast channels (>5 MB/s), double the chunk size; on slow ones,
+        // halve it. This adapts to both WiFi-speed LAN and throttled relay.
+        const now = Date.now();
+        if (now - lastBandwidthCheck > 2000) {
+          const elapsed = (now - lastBandwidthCheck) / 1000;
+          const throughput = bytesSentSinceCheck / elapsed; // bytes/sec
+          lastBandwidthCheck = now;
+          bytesSentSinceCheck = 0;
+          this.bandwidthSamples.push(throughput);
+          if (this.bandwidthSamples.length > 5) this.bandwidthSamples.shift();
+          const avgThroughput = this.bandwidthSamples.reduce((a, b) => a + b, 0) / this.bandwidthSamples.length;
+          if (avgThroughput > 5 * 1024 * 1024 && chunkSize < maxCs) {
+            // Fast channel: scale up aggressively
+            chunkSize = Math.min(maxCs, chunkSize * 2);
+          } else if (avgThroughput < 512 * 1024 && chunkSize > 32 * 1024) {
+            // Slow channel: scale down to keep progress smooth
+            chunkSize = Math.max(32 * 1024, chunkSize / 2);
+          }
+          this.currentChunkSize = chunkSize;
         }
       }
       diag('transfer.complete', true, file.name);
