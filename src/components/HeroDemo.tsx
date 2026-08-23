@@ -125,26 +125,16 @@ function LaptopDevice({ children, className }: { children: React.ReactNode; clas
           </div>
         </div>
       </div>
-      <div className="relative -mt-[0.5%] -mx-[5%] w-[110%] rounded-b-[10px] sm:rounded-b-[12px] bg-gradient-to-b from-[#c0c0c5] to-[#a5a5aa] dark:from-[#2a2a2e] dark:to-[#1e1e20] shadow-[0_12px_30px_-8px_rgba(0,0,0,0.15)] dark:shadow-[0_12px_30px_-8px_rgba(0,0,0,0.3)]"
-        style={{ clipPath: 'polygon(4% 0%, 96% 0%, 100% 100%, 0% 100%)' }}
-      >
-        <div className="absolute top-0 left-[4%] right-[4%] h-[0.5cqw] rounded-full bg-black/60 dark:bg-black/80" />
-        <div className="flex flex-col gap-[0.6cqw] pt-[1.5cqw] px-[5cqw]">
-          {Array.from({ length: 3 }).map((_, row) => (
-            <div key={row} className="flex gap-[0.6cqw]">
-              {Array.from({ length: row === 0 ? 12 : row === 1 ? 11 : 10 }).map((_, key) => (
-                <span key={key} className="h-[1.2cqw] flex-1 rounded-[0.3cqw] bg-gradient-to-b from-white/10 to-black/5 dark:from-white/5 dark:to-black/10" />
-              ))}
-            </div>
-          ))}
-          <div className="flex gap-[0.6cqw]">
-            <span className="h-[1.4cqw] w-[8cqw] rounded-[0.3cqw] bg-gradient-to-b from-white/10 to-black/5 dark:from-white/5 dark:to-black/10" />
-            <span className="h-[1.4cqw] flex-1 rounded-[0.3cqw] bg-gradient-to-b from-white/10 to-black/5 dark:from-white/5 dark:to-black/10" />
-            <span className="h-[1.4cqw] w-[8cqw] rounded-[0.3cqw] bg-gradient-to-b from-white/10 to-black/5 dark:from-white/5 dark:to-black/10" />
-          </div>
+      {/* Keyboard deck — simplified, realistic */}
+      <div className="relative -mt-[0.5%] -mx-[5%] w-[110%] rounded-b-[10px] sm:rounded-b-[12px] bg-gradient-to-b from-[#c0c0c5] to-[#a5a5aa] dark:from-[#2a2a2e] dark:to-[#1e1e20] shadow-[0_12px_30px_-8px_rgba(0,0,0,0.15)] dark:shadow-[0_12px_30px_-8px_rgba(0,0,0,0.3)]">
+        <div className="absolute top-0 left-[4%] right-[4%] h-[1px] rounded-full bg-black/40 dark:bg-black/60" />
+        {/* Keyboard — subtle texture, not individual keys */}
+        <div className="mx-[8%] mt-[8%] mb-[6%] rounded-[4px] bg-gradient-to-b from-black/[0.03] to-black/[0.06] dark:from-white/[0.04] dark:to-white/[0.02]">
+          <div className="h-[60%] bg-[repeating-linear-gradient(0deg,transparent,transparent_3px,rgba(0,0,0,0.02)_3px,rgba(0,0,0,0.02)_4px)] dark:bg-[repeating-linear-gradient(0deg,transparent,transparent_3px,rgba(255,255,255,0.03)_3px,rgba(255,255,255,0.03)_4px)]" />
         </div>
-        <div className="flex justify-center py-[1cqw]">
-          <div className="w-[22cqw] h-[2cqw] rounded-[0.8cqw] bg-gradient-to-b from-black/5 to-black/10 dark:from-white/5 dark:to-white/8" />
+        {/* Trackpad */}
+        <div className="flex justify-center pb-[10%]">
+          <div className="w-[30%] h-[12%] rounded-[3px] bg-gradient-to-b from-black/[0.03] to-black/[0.06] dark:from-white/[0.04] dark:to-white/[0.02] border border-black/[0.04] dark:border-white/[0.06]" />
         </div>
       </div>
     </div>
@@ -442,7 +432,7 @@ export function HeroDemo() {
         className="relative w-full max-w-[700px] mx-auto select-none"
       >
         <div className="flex items-end justify-center gap-4 sm:gap-8">
-          <PhoneDevice className="w-[140px] sm:w-[160px] lg:w-[180px]">
+          <PhoneDevice className="w-[120px] sm:w-[155px] lg:w-[175px]">
             <div className="w-full h-full flex flex-col bg-white dark:bg-[#0a0a0c]">
               <MiniHeader status="sent" />
               <div className="flex-1 flex flex-col justify-end gap-1 px-[5px] sm:px-1.5 pb-1">
@@ -453,7 +443,7 @@ export function HeroDemo() {
               </div>
             </div>
           </PhoneDevice>
-          <LaptopDevice className="w-[240px] sm:w-[300px] lg:w-[340px]">
+          <LaptopDevice className="w-[200px] sm:w-[290px] lg:w-[330px]">
             <div className="w-full h-full flex flex-col bg-white dark:bg-[#0a0a0c]">
               <MiniHeader status="received" />
               <div className="flex-1 flex flex-col items-center justify-center px-2">
@@ -481,7 +471,7 @@ export function HeroDemo() {
       onMouseLeave={handleContainerMouseLeave}
       onMouseEnter={handleMouseEnter}
     >
-      <div className="flex items-end justify-center gap-4 sm:gap-8 lg:gap-12">
+      <div className="flex items-end justify-center gap-2 sm:gap-6 lg:gap-10">
 
         {/* ============ PHONE — the sender ============ */}
         <motion.div
@@ -489,7 +479,7 @@ export function HeroDemo() {
           transition={{ type: 'spring', stiffness: 150, damping: 20, opacity: { duration: 0.3 } }}
           className="relative z-10"
         >
-          <PhoneDevice className="w-[140px] sm:w-[160px] lg:w-[180px]">
+          <PhoneDevice className="w-[120px] sm:w-[155px] lg:w-[175px]">
             <div className="w-full h-full flex flex-col bg-white dark:bg-[#0a0a0c]">
               <MiniHeader status={senderStatus} />
 
@@ -570,7 +560,7 @@ export function HeroDemo() {
           transition={{ type: 'spring', stiffness: 150, damping: 20, opacity: { duration: 0.3 } }}
           className="relative z-0"
         >
-          <LaptopDevice className="w-[240px] sm:w-[300px] lg:w-[340px]">
+          <LaptopDevice className="w-[200px] sm:w-[290px] lg:w-[330px]">
             <div className="w-full h-full flex flex-col bg-white dark:bg-[#0a0a0c]">
               <MiniHeader status={receiverStatus} />
 

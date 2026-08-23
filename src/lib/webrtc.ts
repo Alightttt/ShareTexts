@@ -43,7 +43,7 @@ function iceServers(): RTCIceServer[] {
   ];
 }
 
-const CHUNK_SIZE = 256 * 1024; // 256 KB — larger chunks = fewer awaits = faster transfer
+const CHUNK_SIZE = 512 * 1024; // 512 KB — fewer chunks = fewer encryption round-trips = faster transfer
 // 4 GB ceiling. Files stream in 64KB slices (never whole-file arrayBuffers),
 // so the sender's memory stays flat. The receiver assembles chunks in RAM for
 // files under OPFS_THRESHOLD; anything larger streams straight to the Origin
@@ -829,8 +829,8 @@ export class PeerManager {
 
       let sentViaDc = false;
       if (this.dc && this.dc.readyState === 'open') {
-        if (this.dc.bufferedAmount > 1024 * 1024) {
-          const drained = await this.waitForDrain(1024 * 1024, 512 * 1024, 6000);
+        if (this.dc.bufferedAmount > 2 * 1024 * 1024) {
+          const drained = await this.waitForDrain(2 * 1024 * 1024, 1024 * 1024, 8000);
           if (!drained) this.isRelayFallback = true;
         }
         if (this.dc.readyState === 'open') {
@@ -947,8 +947,8 @@ export class PeerManager {
         packet.set(new Uint8Array(encrypted), 20);
 
         if (!wedged && this.dc && this.dc.readyState === 'open') {
-          if (this.dc.bufferedAmount > 4 * 1024 * 1024) {
-            const drained = await this.waitForDrain(4 * 1024 * 1024, 2 * 1024 * 1024, 6000);
+          if (this.dc.bufferedAmount > 8 * 1024 * 1024) {
+            const drained = await this.waitForDrain(8 * 1024 * 1024, 4 * 1024 * 1024, 8000);
             if (!drained) {
               wedged = true;
               diag('transfer.dc_wedged', true, `chunk ${i} — finishing via relay`);
