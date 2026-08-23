@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useMotionValue, useTransform, useSpring } from 'motion/react';
 import { Send, Download, Copy, Lock } from 'lucide-react';
 import { ShareTextLogo } from './ShareTextLogo';
 import { DemoPhoto } from './DemoPhoto';
 import { FileTypeIcon } from './FileTypeIcon';
 import { cn } from '../lib/utils';
 
+// ─── Reduced motion hook ───
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
@@ -18,6 +19,7 @@ function useReducedMotion() {
   return reduced;
 }
 
+// ─── Transfer item types ───
 type Kind = 'text' | 'photo' | 'video' | 'file';
 
 interface TransferItem {
@@ -35,38 +37,43 @@ const TRANSFER_ITEMS: Record<Kind, TransferItem> = {
   file:  { kind: 'file',  name: 'presentation.pdf',   size: '2.8 MB' },
 };
 
-const SCENE_ORDER: Kind[] = ['text', 'photo', 'video', 'file'];
+const SCENE_ORDER: Kind[] = ['photo', 'text', 'file', 'video'];
 const nextKind = (k: Kind) => SCENE_ORDER[(SCENE_ORDER.indexOf(k) + 1) % SCENE_ORDER.length];
 
+// ─── State machine ───
 type SimState =
-  | 'idle'
-  | 'pressing'
-  | 'sending'
-  | 'transferring'
-  | 'receiving'
-  | 'received'
-  | 'complete'
-  | 'resetting';
+  | 'idle'        // Phone ready, laptop waiting
+  | 'selecting'   // Content appears on phone
+  | 'sending'     // Send button pressed
+  | 'transferring' // Content flying between devices
+  | 'receiving'   // Content arriving at laptop
+  | 'complete'    // Content settled, "Received ✓"
+  | 'resetting';  // Fade out, prepare next scene
 
+// ─── Timing (ms) ───
 const T = {
   IDLE_HOLD:      1800,
-  PRESS_HOLD:     200,
-  SENDING_HOLD:   500,
-  TRANSFER_MS:    1400,
-  RECEIVING_HOLD: 300,
-  RECEIVED_HOLD:  1600,
-  COMPLETE_HOLD:  1200,
-  RESET_HOLD:     500,
+  SELECT_HOLD:    400,
+  SEND_HOLD:      300,
+  TRANSFER_MS:    1000,
+  RECEIVE_HOLD:   400,
+  COMPLETE_HOLD:  2000,
+  RESET_HOLD:     600,
 };
 
-// ── Device frames — quiet, precise, not decorative ──
+// ═══════════════════════════════════════════════════════════════════════════
+// DEVICE FRAMES — realistic, restrained, not decorative
+// ═══════════════════════════════════════════════════════════════════════════
 
 function PhoneFrame({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={cn('relative shrink-0', className)}>
+      {/* Physical shell — thin bezel, subtle depth */}
       <div className="relative rounded-[26px] sm:rounded-[30px] p-[3%] bg-gradient-to-b from-[#e0e0e4] to-[#c8c8cc] dark:from-[#2a2a2e] dark:to-[#1a1a1e] shadow-[0_2px_12px_rgba(0,0,0,0.12)] dark:shadow-[0_2px_12px_rgba(0,0,0,0.4)]">
         <div className="relative rounded-[20px] sm:rounded-[24px] bg-[#0a0f1a] dark:bg-[#0a0a0c] overflow-hidden aspect-[9/19.5]">
+          {/* Dynamic island */}
           <div className="absolute top-[3%] left-1/2 -translate-x-1/2 w-[30%] h-[2.2%] min-h-[5px] bg-black rounded-full z-10" />
+          {/* Status bar */}
           <div className="absolute inset-x-0 top-[1.5%] z-10 flex items-center justify-between px-[6%] text-[clamp(4px,1.1vw,7px)] text-white/70">
             <span className="font-semibold">9:41</span>
             <div className="flex items-center gap-[0.3em]">
@@ -81,6 +88,7 @@ function PhoneFrame({ children, className }: { children: React.ReactNode; classN
               </span>
             </div>
           </div>
+          {/* Screen content */}
           <div className="relative w-full h-full z-[5]">{children}</div>
         </div>
       </div>
@@ -91,6 +99,7 @@ function PhoneFrame({ children, className }: { children: React.ReactNode; classN
 function LaptopFrame({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={cn('relative shrink-0', className)}>
+      {/* Screen frame */}
       <div className="relative rounded-[8px] sm:rounded-[10px] p-[1.5%] bg-gradient-to-b from-[#d0d0d5] to-[#b0b0b5] dark:from-[#333338] dark:to-[#252528] shadow-[0_2px_16px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_16px_rgba(0,0,0,0.3)]">
         <div className="absolute top-[2.5%] left-1/2 -translate-x-1/2 w-[1.8%] aspect-square rounded-full bg-[#1a1a1e] ring-[0.5px] ring-white/15 z-10" />
         <div className="relative rounded-[4px] sm:rounded-[6px] bg-[#1a1a1e] p-[1.2%]">
@@ -99,6 +108,7 @@ function LaptopFrame({ children, className }: { children: React.ReactNode; class
           </div>
         </div>
       </div>
+      {/* Keyboard deck — slim, realistic */}
       <div className="relative -mt-[0.3%] -mx-[2%] w-[104%] rounded-b-[8px] sm:rounded-b-[10px] bg-gradient-to-b from-[#c8c8cd] to-[#b0b0b5] dark:from-[#2a2a2e] dark:to-[#1e1e20] shadow-[0_4px_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_12px_-4px_rgba(0,0,0,0.25)]">
         <div className="mx-[30%] mt-[3%] h-[1px] rounded-full bg-black/[0.05] dark:bg-white/[0.05]" />
         <div className="mx-[8%] mt-[3%] rounded-[2px] bg-black/[0.02] dark:bg-white/[0.02]">
@@ -112,33 +122,19 @@ function LaptopFrame({ children, className }: { children: React.ReactNode; class
   );
 }
 
-// ── Mini UI components — rendered inside device screens ──
-
-function StatusPill({ state }: { state: 'connected' | 'sending' | 'sent' | 'receiving' | 'received' }) {
-  if (state === 'connected') {
-    return (
-      <span className="flex items-center gap-0.5 text-[7px] sm:text-[8px] font-semibold text-status-success">
-        <span className="w-1 h-1 rounded-full bg-status-success" />
-        Connected
-      </span>
-    );
-  }
-  const map: Record<string, { text: string; cls: string; pulse: boolean }> = {
-    sending:   { text: 'Sending…', cls: 'text-azure-600', pulse: true },
-    sent:      { text: 'Sent ✓', cls: 'text-status-success', pulse: false },
-    receiving: { text: 'Receiving…', cls: 'text-azure-600', pulse: true },
-    received:  { text: 'Received ✓', cls: 'text-status-success', pulse: false },
-  };
-  const s = map[state];
-  return (
-    <span className={cn('flex items-center gap-0.5 text-[7px] sm:text-[8px] font-medium', s.cls)}>
-      <span className={cn('w-1 h-1 rounded-full', state === 'sending' || state === 'receiving' ? 'bg-azure-600 animate-pulse' : 'bg-status-success')} />
-      {s.text}
-    </span>
-  );
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// MINI UI — real ShareText interface inside device screens
+// ═══════════════════════════════════════════════════════════════════════════
 
 function MiniHeader({ status }: { status: 'connected' | 'sending' | 'sent' | 'receiving' | 'received' }) {
+  const statusMap = {
+    connected: { text: 'Connected', cls: 'text-status-success', dot: 'bg-status-success' },
+    sending:   { text: 'Sending…', cls: 'text-azure-600', dot: 'bg-azure-600 animate-pulse' },
+    sent:      { text: 'Sent ✓', cls: 'text-status-success', dot: 'bg-status-success' },
+    receiving: { text: 'Receiving…', cls: 'text-azure-600', dot: 'bg-azure-600 animate-pulse' },
+    received:  { text: 'Received ✓', cls: 'text-status-success', dot: 'bg-status-success' },
+  };
+  const s = statusMap[status];
   return (
     <div className="flex items-center justify-between px-[6px] sm:px-2 pt-[14%] sm:pt-[10%] pb-[4px] sm:pb-1.5 border-b border-black/[0.06] dark:border-white/[0.08]">
       <div className="flex items-center gap-0.5">
@@ -146,85 +142,69 @@ function MiniHeader({ status }: { status: 'connected' | 'sending' | 'sent' | 're
         <span className="text-[6px] sm:text-[7px] font-semibold text-white/80">ShareText</span>
         <Lock className="w-[4px] h-[4px] text-status-success ml-0.5" />
       </div>
-      <StatusPill state={status} />
+      <span className={cn('flex items-center gap-0.5 text-[7px] sm:text-[8px] font-medium', s.cls)}>
+        <span className={cn('w-1 h-1 rounded-full', s.dot)} />
+        {s.text}
+      </span>
     </div>
   );
 }
 
-function MiniText({ obj, sent }: { obj: TransferItem; sent?: boolean }) {
-  return (
-    <div className={cn(
-      'rounded-[5px] sm:rounded-[6px] px-[5px] sm:px-1.5 py-[3px] sm:py-0.5 max-w-[80%] text-[5px] sm:text-[6px] leading-snug',
-      sent
-        ? 'bg-azure-600 text-white rounded-tr-[2px] ml-auto'
-        : 'bg-white/[0.08] border border-white/[0.06] text-white/80',
-    )}>
-      {obj.text}
-    </div>
-  );
-}
+// ─── Content cards — the actual objects that travel ───
 
-function MiniPhoto({ obj, received }: { obj: TransferItem; received?: boolean }) {
-  return (
-    <div className={cn(
-      'bg-white/[0.06] border border-white/[0.06] rounded-[5px] sm:rounded-[6px] overflow-hidden',
-      received && 'ring-1 ring-status-success/30',
-    )}>
-      <DemoPhoto className="w-full aspect-[4/3]" />
-      <div className="px-[4px] sm:px-1.5 py-[2px] sm:py-0.5 flex items-center justify-between">
-        <span className="text-[4.5px] sm:text-[5px] font-semibold text-white/80 truncate">{obj.name}</span>
-        <span className="text-[4px] sm:text-[4.5px] text-white/40">{obj.size}</span>
-      </div>
-    </div>
-  );
-}
-
-function MiniVideo({ obj, received }: { obj: TransferItem; received?: boolean }) {
-  return (
-    <div className={cn(
-      'bg-white/[0.06] border border-white/[0.06] rounded-[5px] sm:rounded-[6px] overflow-hidden',
-      received && 'ring-1 ring-status-success/30',
-    )}>
-      <div className="relative w-full aspect-[4/3] bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
-        <DemoPhoto className="w-full h-full opacity-40" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-white/80 flex items-center justify-center">
-            <div className="w-0 h-0 ml-px border-l-[4px] border-l-apple-ink border-y-[3px] border-y-transparent" />
+function ContentCard({ obj, received }: { obj: TransferItem; received?: boolean }) {
+  switch (obj.kind) {
+    case 'text':
+      return (
+        <div className={cn(
+          'rounded-[5px] sm:rounded-[6px] px-[5px] sm:px-1.5 py-[3px] sm:py-0.5 max-w-[80%] text-[5px] sm:text-[6px] leading-snug',
+          received
+            ? 'bg-white/[0.08] border border-white/[0.06] text-white/80'
+            : 'bg-azure-600 text-white rounded-tr-[2px] ml-auto'
+        )}>
+          {obj.text}
+        </div>
+      );
+    case 'photo':
+      return (
+        <div className={cn('bg-white/[0.06] border border-white/[0.06] rounded-[5px] sm:rounded-[6px] overflow-hidden', received && 'ring-1 ring-status-success/30')}>
+          <DemoPhoto className="w-full aspect-[4/3]" />
+          <div className="px-[4px] sm:px-1.5 py-[2px] sm:py-0.5 flex items-center justify-between">
+            <span className="text-[4.5px] sm:text-[5px] font-semibold text-white/80 truncate">{obj.name}</span>
+            <span className="text-[4px] sm:text-[4.5px] text-white/40">{obj.size}</span>
           </div>
         </div>
-        <span className="absolute bottom-0.5 right-0.5 px-0.5 py-px rounded text-[3.5px] sm:text-[4px] font-bold bg-black/60 text-white">{obj.duration}</span>
-      </div>
-      <div className="px-[4px] sm:px-1.5 py-[2px] sm:py-0.5 flex items-center justify-between">
-        <span className="text-[4.5px] sm:text-[5px] font-semibold text-white/80 truncate">{obj.name}</span>
-        <span className="text-[4px] sm:text-[4.5px] text-white/40">{obj.size}</span>
-      </div>
-    </div>
-  );
-}
-
-function MiniFile({ obj, received }: { obj: TransferItem; received?: boolean }) {
-  return (
-    <div className={cn(
-      'bg-white/[0.06] border border-white/[0.06] rounded-[5px] sm:rounded-[6px] px-[4px] sm:px-1.5 py-[3px] sm:py-1 flex items-center gap-1',
-      received && 'ring-1 ring-status-success/30',
-    )}>
-      <span className="shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-[3px] bg-white/[0.08] flex items-center justify-center border border-white/[0.05]">
-        <FileTypeIcon name={obj.name || 'file.pdf'} size={7} />
-      </span>
-      <span className="min-w-0 flex-1 flex flex-col">
-        <span className="text-[4.5px] sm:text-[5.5px] font-semibold text-white/80 truncate">{obj.name}</span>
-        <span className="text-[3.5px] sm:text-[4px] text-white/40">{obj.size}</span>
-      </span>
-    </div>
-  );
-}
-
-function MiniCard({ obj, received }: { obj: TransferItem; received?: boolean }) {
-  switch (obj.kind) {
-    case 'text':  return <MiniText obj={obj} sent={!received} />;
-    case 'photo': return <MiniPhoto obj={obj} received={received} />;
-    case 'video': return <MiniVideo obj={obj} received={received} />;
-    case 'file':  return <MiniFile obj={obj} received={received} />;
+      );
+    case 'video':
+      return (
+        <div className={cn('bg-white/[0.06] border border-white/[0.06] rounded-[5px] sm:rounded-[6px] overflow-hidden', received && 'ring-1 ring-status-success/30')}>
+          <div className="relative w-full aspect-[4/3] bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center">
+            <DemoPhoto className="w-full h-full opacity-40" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-white/80 flex items-center justify-center">
+                <div className="w-0 h-0 ml-px border-l-[4px] border-l-apple-ink border-y-[3px] border-y-transparent" />
+              </div>
+            </div>
+            <span className="absolute bottom-0.5 right-0.5 px-0.5 py-px rounded text-[3.5px] sm:text-[4px] font-bold bg-black/60 text-white">{obj.duration}</span>
+          </div>
+          <div className="px-[4px] sm:px-1.5 py-[2px] sm:py-0.5 flex items-center justify-between">
+            <span className="text-[4.5px] sm:text-[5px] font-semibold text-white/80 truncate">{obj.name}</span>
+            <span className="text-[4px] sm:text-[4.5px] text-white/40">{obj.size}</span>
+          </div>
+        </div>
+      );
+    case 'file':
+      return (
+        <div className={cn('bg-white/[0.06] border border-white/[0.06] rounded-[5px] sm:rounded-[6px] px-[4px] sm:px-1.5 py-[3px] sm:py-1 flex items-center gap-1', received && 'ring-1 ring-status-success/30')}>
+          <span className="shrink-0 w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-[3px] bg-white/[0.08] flex items-center justify-center border border-white/[0.05]">
+            <FileTypeIcon name={obj.name || 'file.pdf'} size={7} />
+          </span>
+          <span className="min-w-0 flex-1 flex flex-col">
+            <span className="text-[4.5px] sm:text-[5.5px] font-semibold text-white/80 truncate">{obj.name}</span>
+            <span className="text-[3.5px] sm:text-[4px] text-white/40">{obj.size}</span>
+          </span>
+        </div>
+      );
   }
 }
 
@@ -243,15 +223,94 @@ function MiniProgress({ progress }: { progress: number }) {
   );
 }
 
-// ── Main HeroDemo — product simulation ──
+// ═══════════════════════════════════════════════════════════════════════════
+// FLYING CONTENT — the actual object that travels between devices
+// ═══════════════════════════════════════════════════════════════════════════
+
+function FlyingContent({
+  obj,
+  progress,
+  phoneRef,
+  laptopRef,
+  containerRef,
+}: {
+  obj: TransferItem;
+  progress: number;
+  phoneRef: React.RefObject<HTMLDivElement | null>;
+  laptopRef: React.RefObject<HTMLDivElement | null>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const [style, setStyle] = useState<{ left: number; top: number; opacity: number; scale: number }>({ left: 0, top: 0, opacity: 0, scale: 1 });
+
+  useEffect(() => {
+    const phone = phoneRef.current;
+    const laptop = laptopRef.current;
+    const container = containerRef.current;
+    if (!phone || !laptop || !container) return;
+
+    const phoneRect = phone.getBoundingClientRect();
+    const laptopRect = laptop.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+
+    // Start from phone's center-right edge
+    const startX = phoneRect.right - containerRect.left;
+    const startY = phoneRect.top + phoneRect.height * 0.4 - containerRect.top;
+
+    // End at laptop's center-left edge
+    const endX = laptopRect.left - containerRect.left;
+    const endY = laptopRect.top + laptopRect.height * 0.4 - containerRect.top;
+
+    // Ease the progress for natural motion
+    const eased = progress < 0.5
+      ? 2 * progress * progress
+      : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+    const x = startX + (endX - startX) * eased;
+    const y = startY + (endY - startY) * eased;
+
+    // Arc: lift up slightly in the middle
+    const arc = -30 * Math.sin(progress * Math.PI);
+
+    setStyle({
+      left: x,
+      top: y + arc,
+      opacity: progress < 0.05 ? progress / 0.05 : progress > 0.95 ? (1 - progress) / 0.05 : 1,
+      scale: 0.8 + 0.2 * Math.sin(progress * Math.PI),
+    });
+  }, [progress, phoneRef, laptopRef, containerRef]);
+
+  return (
+    <motion.div
+      className="absolute z-30 pointer-events-none"
+      style={{
+        left: style.left,
+        top: style.top,
+        opacity: style.opacity,
+        scale: style.scale,
+        transform: 'translate(-50%, -50%)',
+      }}
+    >
+      <div className="w-[80px] sm:w-[100px] shadow-[0_4px_20px_rgba(0,0,0,0.3)] rounded-[8px] overflow-hidden border border-white/10">
+        <ContentCard obj={obj} />
+      </div>
+    </motion.div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN HERO DEMO
+// ═══════════════════════════════════════════════════════════════════════════
 
 export function HeroDemo() {
   const reduced = useReducedMotion();
   const containerRef = useRef<HTMLDivElement>(null);
+  const phoneRef = useRef<HTMLDivElement>(null);
+  const laptopRef = useRef<HTMLDivElement>(null);
+
   const [simState, setSimState] = useState<SimState>('idle');
-  const [transferKind, setTransferKind] = useState<Kind>('text');
+  const [transferKind, setTransferKind] = useState<Kind>('photo');
   const [progress, setProgress] = useState(0);
-  const sceneRef = useRef<Kind>('text');
+  const sceneRef = useRef<Kind>('photo');
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const simStateRef = useRef<SimState>('idle');
   const runMachineRef = useRef<() => void>(() => {});
@@ -273,54 +332,66 @@ export function HeroDemo() {
     sceneRef.current = startKind;
     setTransferKind(startKind);
 
+    // IDLE — phone ready, laptop waiting
     setSimState('idle');
-    const afterIdle = T.IDLE_HOLD;
-
-    schedule(() => setSimState('pressing'), afterIdle);
-    schedule(() => setSimState('sending'), afterIdle + T.PRESS_HOLD);
 
     schedule(() => {
-      setSimState('transferring');
-      const flightStart = Date.now();
-      const tick = () => {
-        const elapsed = Date.now() - flightStart;
-        const p = Math.min(100, (elapsed / T.TRANSFER_MS) * 100);
-        setProgress(p);
-        if (p < 100) schedule(tick, 30);
-      };
-      schedule(tick, 30);
+      // SELECTING — content appears on phone
+      setSimState('selecting');
 
       schedule(() => {
-        setSimState('receiving');
-        setProgress(100);
+        // SENDING — send button pressed
+        setSimState('sending');
+
         schedule(() => {
-          setSimState('received');
+          // TRANSFERRING — content flies between devices
+          setSimState('transferring');
+          const flightStart = Date.now();
+          const tick = () => {
+            const elapsed = Date.now() - flightStart;
+            const p = Math.min(1, elapsed / T.TRANSFER_MS);
+            setProgress(p);
+            if (p < 1) schedule(tick, 16);
+          };
+          schedule(tick, 16);
+
           schedule(() => {
-            setSimState('complete');
+            // RECEIVING — content arrives at laptop
+            setSimState('receiving');
+            setProgress(1);
+
             schedule(() => {
-              setSimState('resetting');
-              setProgress(0);
+              // COMPLETE — "Received ✓"
+              setSimState('complete');
+
               schedule(() => {
-                const next = nextKind(sceneRef.current);
-                sceneRef.current = next;
-                setTransferKind(next);
-                runMachine(next);
-              }, T.RESET_HOLD);
-            }, T.COMPLETE_HOLD);
-          }, T.RECEIVED_HOLD);
-        }, T.RECEIVING_HOLD);
-      }, afterIdle + T.PRESS_HOLD + T.SENDING_HOLD + T.TRANSFER_MS);
-    }, afterIdle + T.PRESS_HOLD + T.SENDING_HOLD);
+                // RESETTING — fade out, prepare next
+                setSimState('resetting');
+                setProgress(0);
+
+                schedule(() => {
+                  const next = nextKind(sceneRef.current);
+                  sceneRef.current = next;
+                  setTransferKind(next);
+                  runMachine(next);
+                }, T.RESET_HOLD);
+              }, T.COMPLETE_HOLD);
+            }, T.RECEIVE_HOLD);
+          }, T.IDLE_HOLD + T.SELECT_HOLD + T.SEND_HOLD + T.TRANSFER_MS);
+        }, T.IDLE_HOLD + T.SELECT_HOLD + T.SEND_HOLD);
+      }, T.IDLE_HOLD + T.SELECT_HOLD);
+    }, T.IDLE_HOLD);
   }, [clearTimers, schedule]);
 
   simStateRef.current = simState;
   runMachineRef.current = () => runMachine(sceneRef.current);
 
   useEffect(() => {
-    const t = setTimeout(() => runMachine('text'), 300);
+    const t = setTimeout(() => runMachine('photo'), 300);
     return () => clearTimeout(t);
   }, []);
 
+  // Pause when offscreen
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -332,27 +403,29 @@ export function HeroDemo() {
     return () => io.disconnect();
   }, [clearTimers]);
 
+  // ─── Derived state ───
+  const item = TRANSFER_ITEMS[transferKind];
   const isIdle = simState === 'idle';
-  const isPressing = simState === 'pressing';
-  const isSending = simState === 'sending' || simState === 'transferring';
-  const isReceiving = simState === 'transferring' || simState === 'receiving';
-  const isReceived = simState === 'received' || simState === 'complete';
+  const isSelecting = simState === 'selecting';
+  const isSending = simState === 'sending';
+  const isTransferring = simState === 'transferring';
+  const isReceiving = simState === 'receiving';
+  const isComplete = simState === 'complete';
   const isResetting = simState === 'resetting';
 
-  const senderStatus: 'connected' | 'sending' | 'sent' =
-    isSending ? 'sending' : isReceived ? 'sent' : 'connected';
-  const receiverStatus: 'connected' | 'receiving' | 'received' =
-    isReceiving ? (isReceived ? 'received' : 'receiving') : 'connected';
+  const showPhoneContent = isSelecting || isSending || isTransferring || isReceiving || isComplete;
+  const showLaptopContent = isReceiving || isComplete;
+  const showFlyingContent = isTransferring;
+  const showProgressBar = isTransferring;
 
-  const item = TRANSFER_ITEMS[transferKind];
-  const showComposer = isIdle || isPressing;
-  const showSendingStatus = simState === 'sending' || simState === 'transferring' || simState === 'receiving';
-  const showSentStatus = simState === 'received' || simState === 'complete';
+  const phoneStatus = isSending || isTransferring ? 'sending' : isComplete ? 'sent' : 'connected';
+  const laptopStatus = isReceiving ? 'receiving' : isComplete ? 'received' : 'connected';
 
+  // ─── Reduced motion: static final state ───
   if (reduced) {
     return (
       <div ref={containerRef} data-testid="hero-demo" role="img"
-        aria-label="ShareText preview: transfer files between phone and computer"
+        aria-label="ShareText preview: a photo transferred from phone to computer"
         className="relative w-full max-w-[680px] mx-auto select-none"
       >
         <div className="flex items-end justify-center gap-3 sm:gap-8">
@@ -360,10 +433,10 @@ export function HeroDemo() {
             <div className="w-full h-full flex flex-col bg-[#0a0f1a]">
               <MiniHeader status="sent" />
               <div className="flex-1 flex flex-col justify-end gap-1 px-[5px] sm:px-1.5 pb-1">
-                <MiniCard obj={item} />
+                <ContentCard obj={item} />
               </div>
               <div className="border-t border-white/[0.06] px-[5px] sm:px-1.5 py-1">
-                <span className="text-[5px] sm:text-[5px] text-status-success font-medium">Sent ✓</span>
+                <span className="text-[5px] text-status-success font-medium">Sent ✓</span>
               </div>
             </div>
           </PhoneFrame>
@@ -371,8 +444,8 @@ export function HeroDemo() {
             <div className="w-full h-full flex flex-col bg-[#0a0f1a]">
               <MiniHeader status="received" />
               <div className="flex-1 flex flex-col items-center justify-center px-2">
-                <MiniCard obj={item} received />
-                <span className="mt-1 text-[5px] sm:text-[5px] text-status-success font-medium">✓ Received</span>
+                <ContentCard obj={item} received />
+                <span className="mt-1 text-[5px] text-status-success font-medium">✓ Received</span>
               </div>
             </div>
           </LaptopFrame>
@@ -381,6 +454,7 @@ export function HeroDemo() {
     );
   }
 
+  // ─── Animated version ───
   return (
     <div
       ref={containerRef}
@@ -388,76 +462,90 @@ export function HeroDemo() {
       data-sim-state={simState}
       data-transfer-kind={transferKind}
       role="img"
-      aria-label="Interactive preview: ShareText transfers content from phone to computer."
+      aria-label="Interactive preview: ShareText transfers a photo from phone to computer."
       className="relative w-full max-w-[700px] mx-auto select-none"
     >
       <div className="flex items-end justify-center gap-2 sm:gap-8 lg:gap-10">
 
-        {/* Phone */}
+        {/* ─── PHONE ─── */}
         <motion.div
-          animate={{ opacity: isResetting ? 0.5 : 1 }}
+          ref={phoneRef}
+          animate={{ opacity: isResetting ? 0.4 : 1 }}
           transition={{ duration: 0.3 }}
           className="relative z-10"
         >
           <PhoneFrame className="w-[110px] sm:w-[160px] lg:w-[180px]">
             <div className="w-full h-full flex flex-col bg-[#0a0f1a]">
-              <MiniHeader status={senderStatus} />
+              <MiniHeader status={phoneStatus} />
 
+              {/* Content area */}
               <div className="flex-1 flex flex-col justify-end gap-1 px-[5px] sm:px-1.5 pb-1 overflow-hidden">
                 <AnimatePresence initial={false}>
-                  {showSentStatus && (
-                    <motion.div key="sent-msg" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}>
-                      <MiniCard obj={item} />
+                  {showPhoneContent && (
+                    <motion.div
+                      key={`phone-content-${transferKind}`}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: isTransferring ? 0.3 : 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <ContentCard obj={item} />
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
 
+              {/* Bottom bar — composer / status */}
               <div className="border-t border-white/[0.06] px-[5px] sm:px-1.5 py-1">
                 <AnimatePresence mode="wait">
-                  {showComposer && (
+                  {(isIdle || isSelecting) && (
                     <motion.div key="composer" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       transition={{ duration: 0.12 }}
                       className="flex items-center gap-1"
                     >
-                      <div className="flex-1 rounded-[4px] bg-white/[0.04] border border-white/[0.06] px-[5px] sm:px-1.5 py-[2px] sm:py-0.5">
+                      <div className="flex-1 rounded-[4px] bg-white/[0.04] border border-white/[0.06] px-[5px] sm:px-1.5 py-[2px]">
                         <span className="text-[4.5px] sm:text-[5px] text-white/30 font-medium">
-                          {transferKind === 'text' ? 'Meeting tomorrow…' : TRANSFER_ITEMS[transferKind].name}
+                          {isSelecting ? (transferKind === 'text' ? item.text?.slice(0, 20) : item.name) : 'Paste or drop…'}
                         </span>
                       </div>
-                      <motion.button
-                        type="button"
-                        animate={isPressing ? { scale: 0.85 } : { scale: 1 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                      <motion.div
+                        animate={isSelecting ? { scale: [1, 1.1, 1] } : { scale: 1 }}
+                        transition={{ duration: 0.3 }}
                         className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-azure-600 flex items-center justify-center"
                       >
                         <Send className="w-1.5 h-1.5 sm:w-2 sm:h-2 text-white" strokeWidth={3} />
-                      </motion.button>
+                      </motion.div>
                     </motion.div>
                   )}
 
-                  {showSendingStatus && (
-                    <motion.div key="sending-status" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  {isSending && (
+                    <motion.div key="sending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       transition={{ duration: 0.1 }}
-                      className="flex items-center justify-between px-[5px] sm:px-1.5 py-[2px]"
+                      className="px-[5px] sm:px-1.5 py-[2px]"
                     >
-                      <span className="text-[4.5px] sm:text-[5px] text-white/30 font-medium">
-                        Sending… {simState === 'transferring' ? `${Math.round(progress)}%` : ''}
-                      </span>
+                      <span className="text-[4.5px] sm:text-[5px] text-azure-400 font-medium">Sending…</span>
                     </motion.div>
                   )}
 
-                  {showSentStatus && (
-                    <motion.div key="sent-status" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  {isTransferring && (
+                    <motion.div key="transferring" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       transition={{ duration: 0.1 }}
-                      className="flex items-center justify-between px-[5px] sm:px-1.5 py-[2px]"
+                      className="px-[5px] sm:px-1.5 py-[2px]"
+                    >
+                      <span className="text-[4.5px] sm:text-[5px] text-white/30 font-medium">Sending… {Math.round(progress * 100)}%</span>
+                    </motion.div>
+                  )}
+
+                  {(isReceiving || isComplete) && (
+                    <motion.div key="sent" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      transition={{ duration: 0.1 }}
+                      className="px-[5px] sm:px-1.5 py-[2px]"
                     >
                       <span className="text-[4.5px] sm:text-[5px] text-status-success font-medium">Sent ✓</span>
                     </motion.div>
                   )}
 
-                  {simState === 'resetting' && (
+                  {isResetting && (
                     <motion.div key="reset" initial={{ opacity: 0.2 }} animate={{ opacity: 0 }}
                       transition={{ duration: 0.3 }}
                       className="px-[5px] sm:px-1.5 py-[2px]"
@@ -471,20 +559,21 @@ export function HeroDemo() {
           </PhoneFrame>
         </motion.div>
 
-        {/* Laptop */}
+        {/* ─── LAPTOP ─── */}
         <motion.div
-          animate={{ opacity: isResetting ? 0.5 : 1 }}
+          ref={laptopRef}
+          animate={{ opacity: isResetting ? 0.4 : 1 }}
           transition={{ duration: 0.3 }}
           className="relative z-0"
         >
           <LaptopFrame className="w-[180px] sm:w-[280px] lg:w-[320px]">
             <div className="w-full h-full flex flex-col bg-[#0a0f1a]">
-              <MiniHeader status={receiverStatus} />
+              <MiniHeader status={laptopStatus} />
 
               <div className="flex-1 flex flex-col items-center justify-center px-2 overflow-hidden">
                 <AnimatePresence mode="wait">
 
-                  {(isIdle || isPressing) && (
+                  {(isIdle || isSelecting || isSending) && (
                     <motion.div key="waiting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       transition={{ duration: 0.12 }}
                       className="flex flex-col items-center gap-1 text-white/20"
@@ -494,25 +583,17 @@ export function HeroDemo() {
                     </motion.div>
                   )}
 
-                  {simState === 'sending' && (
-                    <motion.div key="connecting" initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -2 }}
-                      transition={{ duration: 0.15 }}
-                      className="flex flex-col items-center gap-1 text-white/30"
-                    >
-                      <span className="text-[5px] sm:text-[6px] font-medium">Receiving…</span>
-                    </motion.div>
-                  )}
-
-                  {simState === 'transferring' && (
+                  {isTransferring && (
                     <motion.div key="progress" initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -2 }}
                       transition={{ duration: 0.15 }}
                       className="w-full max-w-[140px] flex flex-col items-center gap-1"
                     >
                       <div className="w-full relative">
-                        <div className="opacity-30"><MiniCard obj={item} /></div>
-                        <div className="absolute bottom-0 left-0 right-0 px-1 pb-0.5"><MiniProgress progress={progress} /></div>
+                        <div className="opacity-20"><ContentCard obj={item} /></div>
+                        <div className="absolute bottom-0 left-0 right-0 px-1 pb-0.5">
+                          <MiniProgress progress={progress * 100} />
+                        </div>
                       </div>
                       <span className="text-[4px] sm:text-[5px] font-medium text-white/30 flex items-center gap-0.5">
                         <span className="w-0.5 h-0.5 rounded-full bg-azure-500 animate-pulse" /> Receiving…
@@ -520,38 +601,35 @@ export function HeroDemo() {
                     </motion.div>
                   )}
 
-                  {simState === 'receiving' && (
+                  {isReceiving && (
                     <motion.div key="materialize" initial={{ opacity: 0, y: 4, scale: 0.98 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ duration: 0.2 }}
+                      transition={{ duration: 0.25 }}
                       className="w-full flex flex-col items-center gap-1"
                     >
-                      <MiniCard obj={item} received />
+                      <ContentCard obj={item} received />
                       <span className="text-[4px] sm:text-[5px] font-medium text-white/30">Processing…</span>
                     </motion.div>
                   )}
 
-                  {(simState === 'received' || simState === 'complete') && (
-                    <motion.div key={`received-${transferKind}`} initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }}
+                  {isComplete && (
+                    <motion.div key="complete" initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.2 }}
                       className="w-full flex flex-col items-center gap-1"
                     >
-                      <MiniCard obj={item} received />
+                      <ContentCard obj={item} received />
                       <span className="text-[4px] sm:text-[5px] font-medium text-status-success">✓ Received</span>
-                      <AnimatePresence>
-                        {simState === 'received' && (
-                          <motion.div initial={{ opacity: 0, y: 1 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                            transition={{ delay: 0.1, duration: 0.12 }}>
-                            <button type="button" className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-azure-600/15 text-azure-400 text-[4px] sm:text-[5px] font-medium">
-                              {transferKind === 'text' ? <><Copy className="w-1 h-1" /> Copy</> : <><Download className="w-1 h-1" /> Save</>}
-                            </button>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                      <motion.div initial={{ opacity: 0, y: 1 }} animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15, duration: 0.15 }}
+                      >
+                        <button type="button" className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-azure-600/15 text-azure-400 text-[4px] sm:text-[5px] font-medium">
+                          {transferKind === 'text' ? <><Copy className="w-1 h-1" /> Copy</> : <><Download className="w-1 h-1" /> Save</>}
+                        </button>
+                      </motion.div>
                     </motion.div>
                   )}
 
-                  {simState === 'resetting' && (
+                  {isResetting && (
                     <motion.div key="reset-laptop" initial={{ opacity: 0.2 }} animate={{ opacity: 0 }}
                       transition={{ duration: 0.3 }}
                       className="flex flex-col items-center gap-1 text-white/10"
@@ -565,6 +643,19 @@ export function HeroDemo() {
           </LaptopFrame>
         </motion.div>
       </div>
+
+      {/* ─── FLYING CONTENT — the actual object traveling between devices ─── */}
+      <AnimatePresence>
+        {showFlyingContent && (
+          <FlyingContent
+            obj={item}
+            progress={progress}
+            phoneRef={phoneRef}
+            laptopRef={laptopRef}
+            containerRef={containerRef}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
