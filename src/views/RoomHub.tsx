@@ -135,8 +135,15 @@ export function RoomHub() {
           </p>
 
           {/* ── PAIRING CODE — the hero element ── */}
-          <div data-testid="pairing-code" className="mb-3">
+          <div data-testid="pairing-code" className="mb-4">
             <LiveCodeDisplay secret={session.secret} createdAt={session.createdAt} />
+          </div>
+
+          {/* ── Separator between code and actions ── */}
+          <div className="w-full flex items-center gap-3 py-1 mb-2">
+            <div className="flex-1 h-px bg-apple-divider dark:bg-white/[0.08]" />
+            <span className="text-[11px] font-medium text-apple-ink-muted/40 dark:text-white/25 uppercase tracking-widest">or</span>
+            <div className="flex-1 h-px bg-apple-divider dark:bg-white/[0.08]" />
           </div>
 
           {/* Connecting animation */}

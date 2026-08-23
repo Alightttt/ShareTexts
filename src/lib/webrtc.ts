@@ -43,7 +43,7 @@ function iceServers(): RTCIceServer[] {
   ];
 }
 
-const CHUNK_SIZE = 512 * 1024; // 512 KB — fewer chunks = fewer encryption round-trips = faster transfer
+const CHUNK_SIZE = 256 * 1024; // 256 KB — smaller chunks = smoother progress + better flow control on mobile
 // 4 GB ceiling. Files stream in 64KB slices (never whole-file arrayBuffers),
 // so the sender's memory stays flat. The receiver assembles chunks in RAM for
 // files under OPFS_THRESHOLD; anything larger streams straight to the Origin
@@ -384,6 +384,9 @@ export class PeerManager {
 
   private setupDataChannel(channel: RTCDataChannel) {
     channel.binaryType = 'arraybuffer';
+    // Hint to the browser: fire the bufferedamountlow event when the send
+    // buffer drops to 1 MB, so we can resume sending without polling.
+    channel.bufferedAmountLowThreshold = 1024 * 1024;
     channel.onopen = () => {
       this.isRelayFallback = false;
       diag('webrtc.channel_open', true);
@@ -474,7 +477,7 @@ export class PeerManager {
         if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
         if (this.peerId && this.onOpen) this.onOpen();
       }
-    }, 6000);
+    }, 4000);
   }
 
   public expectBinaryTransfer(transferId: string, totalChunks: number) {
@@ -920,56 +923,70 @@ export class PeerManager {
     // to the relay for the rest of this transfer instead of hanging forever.
     let wedged = false;
 
-    // Double-buffer pipeline: prepare the next chunk's ArrayBuffer while the
-    // current chunk is being encrypted. Overlaps disk read with CPU work.
-    let nextBuf: Promise<ArrayBuffer> | null = start < numChunks
-      ? file.slice(start * CHUNK_SIZE, (start + 1) * CHUNK_SIZE).arrayBuffer()
-      : null;
+    // Parallel pipeline: read + encrypt N chunks ahead while sending.
+    // Overlaps disk I/O, encryption CPU, and network send for max throughput.
+    const PIPELINE_DEPTH = 4;
+    type PipelineEntry = { index: number; packet: Uint8Array };
+    const pipeline: PipelineEntry[] = [];
+    let readIdx = start;
+    let sendIdx = start;
+
+    const readAndEncrypt = async (idx: number): Promise<PipelineEntry | null> => {
+      if (idx >= numChunks) return null;
+      const buf = await file.slice(idx * CHUNK_SIZE, (idx + 1) * CHUNK_SIZE).arrayBuffer();
+      if (signal.aborted) return null;
+      const encrypted = await encryptBinaryChunk(buf, key);
+      const packet = new Uint8Array(20 + encrypted.byteLength);
+      packet.set(transferIdBytes, 0);
+      new DataView(packet.buffer).setUint32(16, idx, true);
+      packet.set(new Uint8Array(encrypted), 20);
+      return { index: idx, packet };
+    };
+
+    // Pre-fill the pipeline
+    const inflight: Promise<PipelineEntry | null>[] = [];
+    for (let p = 0; p < PIPELINE_DEPTH && readIdx < numChunks; p++, readIdx++) {
+      inflight.push(readAndEncrypt(readIdx));
+    }
 
     try {
-      for (let i = start; i < numChunks; i++) {
+      while (sendIdx < numChunks) {
         if (signal.aborted) throw new TransferCancelledError();
 
-        const arrayBuffer = await nextBuf!;
+        const entry = await inflight.shift()!;
+        if (!entry || signal.aborted) throw new TransferCancelledError();
 
-        // Kick off next chunk read while we encrypt this one
-        const nextIdx = i + 1;
-        nextBuf = nextIdx < numChunks
-          ? file.slice(nextIdx * CHUNK_SIZE, (nextIdx + 1) * CHUNK_SIZE).arrayBuffer()
-          : null;
-
-        const encrypted = await encryptBinaryChunk(arrayBuffer, key);
-
-        const packet = new Uint8Array(20 + encrypted.byteLength);
-        packet.set(transferIdBytes, 0);
-        const view = new DataView(packet.buffer);
-        view.setUint32(16, i, true);
-        packet.set(new Uint8Array(encrypted), 20);
+        // Fill pipeline slot
+        if (readIdx < numChunks) {
+          inflight.push(readAndEncrypt(readIdx));
+          readIdx++;
+        }
 
         if (!wedged && this.dc && this.dc.readyState === 'open') {
-          if (this.dc.bufferedAmount > 8 * 1024 * 1024) {
-            const drained = await this.waitForDrain(8 * 1024 * 1024, 4 * 1024 * 1024, 8000);
+          if (this.dc.bufferedAmount > 4 * 1024 * 1024) {
+            const drained = await this.waitForDrain(4 * 1024 * 1024, 2 * 1024 * 1024, 6000);
             if (!drained) {
               wedged = true;
-              diag('transfer.dc_wedged', true, `chunk ${i} — finishing via relay`);
+              diag('transfer.dc_wedged', true, `chunk ${entry.index} — finishing via relay`);
             }
           }
         }
         let sentViaDc = false;
         if (!wedged && this.dc && this.dc.readyState === 'open') {
-          try { this.dc.send(packet.buffer); sentViaDc = true; } catch { /* channel closed mid-send — fall through to relay */ }
+          try { this.dc.send(entry.packet.buffer); sentViaDc = true; } catch { /* fall through */ }
         }
         if (!sentViaDc) {
           this.isRelayFallback = true;
           if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
-          getSocket().emit('relay_message', { roomId: this.roomId, data: packet.buffer });
+          getSocket().emit('relay_message', { roomId: this.roomId, data: entry.packet.buffer });
         }
 
-        prog.sentUpTo = i + 1;
+        sendIdx++;
+        prog.sentUpTo = sendIdx;
         prog.updatedAt = Date.now();
-        if (i % 16 === 0) diag('transfer.sent', true, `${i}/${numChunks}`);
+        if (sendIdx % 16 === 0) diag('transfer.sent', true, `${sendIdx}/${numChunks}`);
         if (this.onFileProgress) {
-          this.onFileProgress(transferId, i + 1, numChunks);
+          this.onFileProgress(transferId, sendIdx, numChunks);
         }
       }
       diag('transfer.complete', true, file.name);
@@ -991,7 +1008,7 @@ export class PeerManager {
         if (this.destroyed || !this.dc || this.dc.readyState !== 'open') { resolve(false); return; }
         if (this.dc.bufferedAmount <= min) { resolve(true); return; }
         if (Date.now() - started > maxMs) { resolve(false); return; }
-        setTimeout(check, 50);
+        setTimeout(check, 25);
       };
       check();
     });

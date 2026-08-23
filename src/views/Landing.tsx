@@ -118,7 +118,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           headline + CTA + a peek of both devices. ============ */}
       <section
         id="main-content"
-        className="px-6 min-h-[calc(100dvh-48px)] sm:min-h-0 flex items-center py-12 sm:py-16 lg:py-20 relative z-10"
+        className="px-4 sm:px-6 min-h-[calc(100dvh-48px)] sm:min-h-0 flex items-center py-8 sm:py-16 lg:py-20 relative z-10"
         aria-labelledby="hero-title"
       >
         <div className="max-w-6xl mx-auto w-full grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-10 items-center">
@@ -131,17 +131,17 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             {/* Hero headline — premium, editorial, device-first */}
             <h1
               id="hero-title"
-              className="text-[36px] sm:text-[44px] lg:text-[52px] font-semibold text-apple-ink dark:text-white tracking-[-0.035em] leading-[1.06] max-w-[14ch]"
+              className="text-[30px] sm:text-[44px] lg:text-[52px] font-semibold text-apple-ink dark:text-white tracking-[-0.035em] leading-[1.06] max-w-[14ch]"
             >
               Move anything between your devices.
             </h1>
             
             {/* Subtitle — the supporting promise */}
-            <p className="mt-4 text-[15px] sm:text-[16px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[42ch]">
+            <p className="mt-3 sm:mt-4 text-[14px] sm:text-[16px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[42ch]">
               One page, two screens. No app, no account, nothing kept in between.
             </p>
             {/* Primary actions */}
-            <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+            <div className="mt-5 sm:mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
               <motion.button
                 data-testid="hero-send"
                 onClick={isCreating ? () => { setIsCreating(false); setCreateError(null); } : handleCreate}
@@ -211,7 +211,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             initial={{ opacity: 0, y: 26 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.15, ease: EASE }}
-            className="mt-10 lg:mt-0 w-full flex justify-center"
+            className="mt-6 sm:mt-10 lg:mt-0 w-full flex justify-center overflow-hidden"
           >
             <HeroDemo />
           </motion.div>

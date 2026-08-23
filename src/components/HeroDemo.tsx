@@ -431,8 +431,8 @@ export function HeroDemo() {
         aria-label="ShareText preview: transfer files between phone and computer"
         className="relative w-full max-w-[700px] mx-auto select-none"
       >
-        <div className="flex items-end justify-center gap-4 sm:gap-8">
-          <PhoneDevice className="w-[120px] sm:w-[155px] lg:w-[175px]">
+        <div className="flex items-end justify-center gap-2 sm:gap-8">
+          <PhoneDevice className="w-[105px] sm:w-[155px] lg:w-[175px]">
             <div className="w-full h-full flex flex-col bg-white dark:bg-[#0a0a0c]">
               <MiniHeader status="sent" />
               <div className="flex-1 flex flex-col justify-end gap-1 px-[5px] sm:px-1.5 pb-1">
@@ -443,7 +443,7 @@ export function HeroDemo() {
               </div>
             </div>
           </PhoneDevice>
-          <LaptopDevice className="w-[200px] sm:w-[290px] lg:w-[330px]">
+          <LaptopDevice className="w-[170px] sm:w-[290px] lg:w-[330px]">
             <div className="w-full h-full flex flex-col bg-white dark:bg-[#0a0a0c]">
               <MiniHeader status="received" />
               <div className="flex-1 flex flex-col items-center justify-center px-2">
@@ -471,7 +471,7 @@ export function HeroDemo() {
       onMouseLeave={handleContainerMouseLeave}
       onMouseEnter={handleMouseEnter}
     >
-      <div className="flex items-end justify-center gap-2 sm:gap-6 lg:gap-10">
+      <div className="flex items-end justify-center gap-1 sm:gap-6 lg:gap-10">
 
         {/* ============ PHONE — the sender ============ */}
         <motion.div
@@ -479,7 +479,7 @@ export function HeroDemo() {
           transition={{ type: 'spring', stiffness: 150, damping: 20, opacity: { duration: 0.3 } }}
           className="relative z-10"
         >
-          <PhoneDevice className="w-[120px] sm:w-[155px] lg:w-[175px]">
+          <PhoneDevice className="w-[105px] sm:w-[155px] lg:w-[175px]">
             <div className="w-full h-full flex flex-col bg-white dark:bg-[#0a0a0c]">
               <MiniHeader status={senderStatus} />
 
@@ -560,7 +560,7 @@ export function HeroDemo() {
           transition={{ type: 'spring', stiffness: 150, damping: 20, opacity: { duration: 0.3 } }}
           className="relative z-0"
         >
-          <LaptopDevice className="w-[200px] sm:w-[290px] lg:w-[330px]">
+          <LaptopDevice className="w-[170px] sm:w-[290px] lg:w-[330px]">
             <div className="w-full h-full flex flex-col bg-white dark:bg-[#0a0a0c]">
               <MiniHeader status={receiverStatus} />
 
