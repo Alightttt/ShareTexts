@@ -2,223 +2,460 @@ import React from 'react';
 import { cn } from '../lib/utils';
 
 // ---------------------------------------------------------------------------
-// ShareText Illustration System
+// ShareText Illustration System — Consistent Visual Language
 // ---------------------------------------------------------------------------
-// Visual vocabulary: phone, laptop, clipboard, text, photo, link, transfer
-// These explain real product behavior, not abstract "technology"
+// Design principles:
+// - Every illustration answers "What is happening?" without text
+// - Shows real ShareText UI, not abstract symbols
+// - Same device proportions, stroke, shadow, color, density
+// - Brand blue for actions, neutral for surfaces, green for success
+// - High whitespace, restrained, premium feel
 // ---------------------------------------------------------------------------
 
-const BLUE = '#0A66F0';
-const INK = '#1D1D1F';
-const INK_M = '#6E6E73';
-const SUCCESS = '#1C9A61';
-const RED = '#E53E3E';
+const B = '#0A66F0';      // Brand blue — actions, connections
+const B_L = '#E8F0FE';    // Brand light — screen backgrounds
+const K = '#1D1D1F';      // Ink — device outlines, text
+const K_M = '#6E6E73';    // Ink muted — secondary elements
+const G = '#1C9A61';      // Green — success, received
+const W = '#FFFFFF';      // White — cards, screens
+const BG = '#F5F5F7';     // Background — light surfaces
+const BG_D = '#E5E5EA';   // Border — subtle dividers
 
-// Shared phone outline — clean, simple
+// ── Device primitives ──
+// Phone: 9:19.5 aspect, 18% corner radius
+// Laptop: 16:10 screen, subtle deck
+
 function Phone({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
   const r = w * 0.18;
+  const bezel = w * 0.06;
+  const notchW = w * 0.3;
+  const notchH = h * 0.018;
   return (
     <g>
-      <rect x={x} y={y} width={w} height={h} rx={r} fill="none" stroke={INK} strokeWidth={1.2} opacity={0.25} />
-      <rect x={x + w * 0.08} y={y + h * 0.06} width={w * 0.84} height={h * 0.84} rx={r * 0.6} fill="#0C1220" opacity={0.08} />
-      <rect x={x + w * 0.32} y={y + h * 0.04} width={w * 0.36} height={h * 0.02} rx={h * 0.01} fill={INK} opacity={0.15} />
+      {/* Shell */}
+      <rect x={x} y={y} width={w} height={h} rx={r} fill={W} stroke={BG_D} strokeWidth={1} />
+      {/* Screen */}
+      <rect x={x + bezel} y={y + h * 0.04} width={w - bezel * 2} height={h * 0.92} rx={r * 0.65} fill={B_L} />
+      {/* Notch */}
+      <rect x={x + (w - notchW) / 2} y={y + h * 0.025} width={notchW} height={notchH} rx={notchH / 2} fill={K} opacity={0.15} />
     </g>
   );
 }
 
-// Shared laptop outline — clean, simple
 function Laptop({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
   const screenH = h * 0.72;
   const deckH = h - screenH;
-  const r = w * 0.03;
+  const bezel = w * 0.035;
+  const r = w * 0.025;
   return (
     <g>
-      <rect x={x} y={y} width={w} height={screenH} rx={r} fill="none" stroke={INK} strokeWidth={1.2} opacity={0.25} />
-      <rect x={x + w * 0.04} y={y + h * 0.05} width={w * 0.92} height={screenH - h * 0.08} rx={r * 0.5} fill="#0C1220" opacity={0.08} />
-      <path d={`M${x - w * 0.04} ${y + screenH} L${x} ${y + screenH} L${x + w * 0.04} ${y + screenH + deckH * 0.3} L${x + w * 0.96} ${y + screenH + deckH * 0.3} L${x + w} ${y + screenH} L${x + w + w * 0.04} ${y + screenH} L${x + w + w * 0.04} ${y + h} L${x - w * 0.04} ${y + h} Z`}
-        fill="none" stroke={INK} strokeWidth={0.8} opacity={0.15} strokeLinejoin="round" />
+      {/* Screen frame */}
+      <rect x={x} y={y} width={w} height={screenH} rx={r} fill={W} stroke={BG_D} strokeWidth={1} />
+      {/* Screen */}
+      <rect x={x + bezel} y={y + h * 0.045} width={w - bezel * 2} height={screenH - h * 0.08} rx={r * 0.5} fill={B_L} />
+      {/* Camera dot */}
+      <circle cx={x + w / 2} cy={y + h * 0.02} r={w * 0.008} fill={K} opacity={0.12} />
+      {/* Deck */}
+      <path d={`M${x - w * 0.035} ${y + screenH} L${x} ${y + screenH} L${x + w * 0.04} ${y + screenH + deckH * 0.35} L${x + w * 0.96} ${y + screenH + deckH * 0.35} L${x + w} ${y + screenH} L${x + w + w * 0.035} ${y + screenH} L${x + w + w * 0.035} ${y + h} L${x - w * 0.035} ${y + h} Z`}
+        fill={W} stroke={BG_D} strokeWidth={0.8} strokeLinejoin="round" />
+      {/* Trackpad hint */}
+      <rect x={x + w * 0.35} y={y + screenH + deckH * 0.5} width={w * 0.3} height={deckH * 0.35} rx={2} fill={BG} opacity={0.5} />
+    </g>
+  );
+}
+
+// ── ShareText UI primitives ──
+
+/** ShareText header bar inside a device screen */
+function STHeader({ x, y, w, connected }: { x: number; y: number; w: number; connected?: boolean }) {
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={10} fill={W} opacity={0.6} />
+      <rect x={x + 3} y={y + 2.5} width={3} height={3} rx={1.5} fill={B} opacity={0.5} />
+      <text x={x + 8} y={y + 5.5} fill={K} fontSize={3} fontWeight={600} opacity={0.4}>ShareText</text>
+      {connected && (
+        <>
+          <circle cx={x + w - 5} cy={y + 5} r={1.5} fill={G} opacity={0.6} />
+          <text x={x + w - 3} y={y + 6} fill={G} fontSize={2.2} fontWeight={600} opacity={0.5}>Connected</text>
+        </>
+      )}
+    </g>
+  );
+}
+
+/** Code digits — the pairing code display */
+function CodeDigits({ x, y, w }: { x: number; y: number; w: number }) {
+  const digits = ['8', '1', '7', '1', '1', '9'];
+  const gap = 2;
+  const digitW = (w - gap * 2) / 6 - gap;
+  const digitH = digitW * 1.3;
+  return (
+    <g>
+      {digits.map((d, i) => {
+        const dx = x + i * (digitW + gap) + (i >= 3 ? gap * 2 : 0);
+        return (
+          <g key={i}>
+            <rect x={dx} y={y} width={digitW} height={digitH} rx={3} fill={BG} stroke={BG_D} strokeWidth={0.5} />
+            <text x={dx + digitW / 2} y={y + digitH * 0.68} textAnchor="middle" fill={K} fontSize={digitH * 0.55} fontWeight={700} fontFamily="monospace" opacity={0.7}>{d}</text>
+          </g>
+        );
+      })}
+      {/* Separator */}
+      <rect x={x + 3 * (digitW + gap) + gap / 2} y={y + digitH * 0.4} width={gap} height={2} rx={1} fill={K} opacity={0.15} />
+    </g>
+  );
+}
+
+/** QR code pattern — simplified but recognizable */
+function QRCode({ x, y, size }: { x: number; y: number; size: number }) {
+  const cell = size / 11;
+  // Simplified QR pattern — corner markers + data hints
+  const pattern = [
+    [1,1,1,1,1,1,1,0,1,0,1],
+    [1,0,0,0,0,0,1,0,0,1,0],
+    [1,0,1,1,1,0,1,0,1,0,1],
+    [1,0,1,1,1,0,1,0,0,1,1],
+    [1,0,1,1,1,0,1,0,1,1,0],
+    [1,0,0,0,0,0,1,0,0,0,1],
+    [1,1,1,1,1,1,1,0,1,0,1],
+    [0,0,0,0,0,0,0,0,1,1,0],
+    [1,0,1,0,1,1,1,0,0,1,1],
+    [0,1,0,1,0,0,0,0,1,0,1],
+    [1,1,1,0,1,0,1,0,1,1,1],
+  ];
+  return (
+    <g>
+      <rect x={x} y={y} width={size} height={size} rx={3} fill={W} />
+      {pattern.map((row, r) =>
+        row.map((cell, c) =>
+          cell ? (
+            <rect key={`${r}-${c}`} x={x + c * cell} y={y + r * cell} width={cell} height={cell} fill={K} opacity={0.6} rx={0.3} />
+          ) : null
+        )
+      )}
+    </g>
+  );
+}
+
+/** Message bubble — chat text */
+function MessageBubble({ x, y, w, h, sent, text }: { x: number; y: number; w: number; h: number; sent?: boolean; text?: string }) {
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={h} rx={4} fill={sent ? B : W} opacity={sent ? 0.85 : 0.8} stroke={sent ? 'none' : BG_D} strokeWidth={0.3} />
+      {text && <text x={x + 3} y={y + h * 0.65} fill={sent ? W : K} fontSize={2.8} fontWeight={500} opacity={0.7}>{text}</text>}
+    </g>
+  );
+}
+
+/** File card — shows a file being transferred */
+function FileCard({ x, y, w, h, name, size }: { x: number; y: number; w: number; h: number; name: string; size: string }) {
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={h} rx={4} fill={W} stroke={BG_D} strokeWidth={0.3} />
+      {/* File icon */}
+      <rect x={x + 3} y={y + 3} width={h - 6} height={h - 6} rx={2} fill={B_L} stroke={B} strokeWidth={0.4} opacity={0.6} />
+      <text x={x + 3 + (h - 6) / 2} y={y + 3 + (h - 6) * 0.65} textAnchor="middle" fill={B} fontSize={2.5} fontWeight={700} opacity={0.5}>PDF</text>
+      <text x={x + h + 1} y={y + h * 0.38} fill={K} fontSize={2.8} fontWeight={600} opacity={0.6}>{name}</text>
+      <text x={x + h + 1} y={y + h * 0.72} fill={K_M} fontSize={2.2} opacity={0.4}>{size}</text>
+    </g>
+  );
+}
+
+/** Photo card — image thumbnail */
+function PhotoCard({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
+  return (
+    <g>
+      <rect x={x} y={y} width={w} height={h} rx={4} fill={W} stroke={BG_D} strokeWidth={0.3} />
+      {/* Photo placeholder — gradient */}
+      <rect x={x + 2} y={y + 2} width={w - 4} height={h - 10} rx={3} fill={B_L} />
+      <circle cx={x + w * 0.35} cy={y + (h - 10) * 0.4} r={3} fill={B} opacity={0.15} />
+      <path d={`M${x + 2} ${y + h - 12} L${x + w * 0.3} ${y + h - 16} L${x + w * 0.55} ${y + h - 13} L${x + w - 2} ${y + h - 18} L${x + w - 2} ${y + h - 10} L${x + 2} ${y + h - 10} Z`} fill={G} opacity={0.12} />
+      <text x={x + 3} y={y + h - 3} fill={K} fontSize={2.5} fontWeight={600} opacity={0.5}>holiday.jpg</text>
+    </g>
+  );
+}
+
+/** Success checkmark */
+function Check({ x, y, r }: { x: number; y: number; r: number }) {
+  return (
+    <g>
+      <circle cx={x} cy={y} r={r} fill={G} opacity={0.12} />
+      <path d={`M${x - r * 0.4} ${y} L${x - r * 0.1} ${y + r * 0.35} L${x + r * 0.45} ${y - r * 0.3}`} stroke={G} strokeWidth={r * 0.15} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </g>
+  );
+}
+
+/** Directional arrow between devices */
+function Arrow({ x1, y1, x2, y2 }: { x1: number; y1: number; x2: number; y2: number }) {
+  const mx = (x1 + x2) / 2;
+  const my = (y1 + y2) / 2;
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const headLen = 3;
+  return (
+    <g>
+      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={B} strokeWidth={0.8} strokeDasharray="2 1.5" opacity={0.25} />
+      <path d={`M${x2 - Math.cos(angle) * headLen} ${y2 - Math.sin(angle) * headLen} L${x2} ${y2} L${x2 - Math.cos(angle - 0.5) * headLen} ${y2 - Math.sin(angle - 0.5) * headLen}`} stroke={B} strokeWidth={0.8} strokeLinecap="round" strokeLinejoin="round" fill="none" opacity={0.3} />
     </g>
   );
 }
 
 // ---------------------------------------------------------------------------
-// How It Works illustrations — real ShareText UI concepts
+// 8 CORE SCENES
 // ---------------------------------------------------------------------------
 
-/** Step 1: Open — ShareText open on both devices */
+/** 1. PHONE → LAPTOP: A photo moving from a phone to a laptop */
+export function IllustPhoneToLaptop({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 320 180" fill="none" className={cn('w-full', className)} role="img" aria-label="A photo moving from a phone to a laptop">
+      <Phone x={20} y={20} w={60} h={140} />
+      {/* Phone screen — ShareText with photo ready to send */}
+      <STHeader x={26} y={30} w={48} connected />
+      <PhotoCard x={28} y={50} w={44} h={32} />
+      {/* Send button */}
+      <circle cx={66} cy={140} r={5} fill={B} opacity={0.7} />
+      <text x={66} y={141.5} textAnchor="middle" fill={W} fontSize={3} fontWeight={700}>↑</text>
+
+      {/* Arrow */}
+      <Arrow x1={82} y1={80} x2={130} y2={80} />
+
+      <Laptop x={135} y={25} w={160} h={130} />
+      {/* Laptop screen — ShareText waiting, then receiving */}
+      <STHeader x={142} y={35} w={146} connected />
+      {/* Photo arriving on laptop */}
+      <PhotoCard x={148} y={55} w={134} h={40} />
+      {/* Success indicator */}
+      <Check x={280} y={60} r={6} />
+    </svg>
+  );
+}
+
+/** 2. LAPTOP → PHONE: A link moving from a laptop to a phone */
+export function IllustLaptopToPhone({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 320 180" fill="none" className={cn('w-full', className)} role="img" aria-label="A link moving from a laptop to a phone">
+      <Laptop x={20} y={25} w={160} h={130} />
+      {/* Laptop screen — link/text ready to send */}
+      <STHeader x={27} y={35} w={146} connected />
+      <MessageBubble x={32} y={55} w={130} h={14} sent text="https://example.com/important" />
+      {/* Send button */}
+      <circle cx={155} y={130} r={5} fill={B} opacity={0.7} />
+
+      {/* Arrow */}
+      <Arrow x1={185} y1={80} x2={220} y2={80} />
+
+      <Phone x={230} y={20} w={60} h={140} />
+      {/* Phone screen — receiving the link */}
+      <STHeader x={236} y={30} w={48} connected />
+      <MessageBubble x={238} y={52} w={44} h={12} text="https://example.com/important" />
+      <Check x={272} y={58} r={5} />
+    </svg>
+  );
+}
+
+/** 3. TEXT HANDOFF: A block of text moving between two devices */
+export function IllustTextHandoff({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 320 180" fill="none" className={cn('w-full', className)} role="img" aria-label="Text moving between two devices">
+      <Phone x={20} y={20} w={60} h={140} />
+      {/* Phone — text message sent */}
+      <STHeader x={26} y={30} w={48} connected />
+      <MessageBubble x={42} y={55} w={34} h={18} sent text="Meeting notes" />
+      <MessageBubble x={30} y={76} w={40} h={12} sent text="Tomorrow 4pm" />
+
+      {/* Arrow */}
+      <Arrow x1={82} y1={75} x2={130} y2={75} />
+
+      <Laptop x={135} y={25} w={160} h={130} />
+      {/* Laptop — received text messages */}
+      <STHeader x={142} y={35} w={146} connected />
+      <MessageBubble x={148} y={55} w={60} h={14} text="Meeting notes" />
+      <MessageBubble x={148} y={72} w={50} h={12} text="Tomorrow 4pm" />
+      <Check x={280} y={60} r={6} />
+    </svg>
+  );
+}
+
+/** 4. PAIRING: Two ShareText screens pairing with a short code */
+export function IllustPairing({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 320 180" fill="none" className={cn('w-full', className)} role="img" aria-label="Two devices pairing with a code">
+      <Phone x={20} y={20} w={60} h={140} />
+      {/* Phone — entering the pairing code */}
+      <STHeader x={26} y={30} w={48} />
+      <text x={50} y={52} textAnchor="middle" fill={K} fontSize={3.5} fontWeight={600} opacity={0.4}>Enter code</text>
+      <CodeDigits x={28} y={58} w={44} />
+      {/* "Connecting" indicator */}
+      <circle cx={50} cy={100} r={3} fill={B} opacity={0.15} />
+      <circle cx={50} cy={100} r={1.5} fill={B} opacity={0.4} />
+
+      {/* Dashed connection line between devices */}
+      <line x1="82" y1="90" x2="135" y2="90" stroke={B} strokeWidth={0.8} strokeDasharray="3 2" opacity={0.2} />
+
+      <Laptop x={140} y={25} w={160} h={130} />
+      {/* Laptop — showing the pairing code to enter */}
+      <STHeader x={147} y={35} w={146} />
+      <text x={220} y={55} textAnchor="middle" fill={K} fontSize={3.5} fontWeight={600} opacity={0.4}>Share this code</text>
+      <CodeDigits x={160} y={62} w={120} />
+      <text x={220} y={90} textAnchor="middle" fill={K_M} fontSize={2.5} opacity={0.3}>Code active · 58s</text>
+    </svg>
+  );
+}
+
+/** 5. QR: Phone scanning the ShareText pairing QR */
+export function IllustQR({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 320 180" fill="none" className={cn('w-full', className)} role="img" aria-label="Phone scanning a QR code">
+      <Laptop x={20} y={25} w={160} h={130} />
+      {/* Laptop — showing QR code */}
+      <STHeader x={27} y={35} w={146} />
+      <text x={100} y={55} textAnchor="middle" fill={K} fontSize={3.5} fontWeight={600} opacity={0.4}>Scan with other device</text>
+      <QRCode x={62} y={62} size={70} />
+
+      {/* Arrow from laptop to phone */}
+      <Arrow x1={185} y1={85} x2={215} y2={85} />
+
+      <Phone x={220} y={20} w={60} h={140} />
+      {/* Phone — camera scanning view */}
+      <rect x={226} y={30} width={48} height={120} rx={10} fill={K} opacity={0.08} />
+      {/* Viewfinder corners */}
+      <path d="M234 50 L234 44 L240 44" stroke={B} strokeWidth={1} strokeLinecap="round" fill="none" opacity={0.5} />
+      <path d="M266 50 L266 44 L260 44" stroke={B} strokeWidth={1} strokeLinecap="round" fill="none" opacity={0.5} />
+      <path d="M234 110 L234 116 L240 116" stroke={B} strokeWidth={1} strokeLinecap="round" fill="none" opacity={0.5} />
+      <path d="M266 110 L266 116 L260 116" stroke={B} strokeWidth={1} strokeLinecap="round" fill="none" opacity={0.5} />
+      {/* Scan line */}
+      <line x1={236} y1={80} x2={264} y2={80} stroke={B} strokeWidth={0.6} opacity={0.3} />
+      <text x={250} y={125} textAnchor="middle" fill={W} fontSize={2.5} fontWeight={500} opacity={0.4}>Scanning…</text>
+    </svg>
+  );
+}
+
+/** 6. RECEIVING: A file arriving on the second device */
+export function IllustReceiving({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 320 180" fill="none" className={cn('w-full', className)} role="img" aria-label="File arriving on the second device">
+      <Phone x={20} y={20} w={60} h={140} />
+      {/* Phone — file sent */}
+      <STHeader x={26} y={30} w={48} connected />
+      <FileCard x={28} y={50} w={44} h={18} name="report.pdf" size="2.8 MB" />
+      <text x={50} y={85} textAnchor="middle" fill={G} fontSize={2.8} fontWeight={600} opacity={0.5}>Sent ✓</text>
+
+      {/* Arrow */}
+      <Arrow x1={82} y1={70} x2={130} y2={70} />
+
+      <Laptop x={135} y={25} w={160} h={130} />
+      {/* Laptop — receiving with progress */}
+      <STHeader x={142} y={35} w={146} connected />
+      {/* Progress bar */}
+      <rect x={155} y={60} width={120} height={3} rx={1.5} fill={BG} />
+      <rect x={155} y={60} width={80} height={3} rx={1.5} fill={B} opacity={0.5} />
+      <text x={220} y={72} textAnchor="middle" fill={K_M} fontSize={2.5} opacity={0.4}>Receiving… 67%</text>
+      {/* File card appearing */}
+      <FileCard x={155} y={80} w={120} h={22} name="report.pdf" size="2.8 MB" />
+    </svg>
+  );
+}
+
+/** 7. COMPLETE: The transferred item appearing in the destination */
+export function IllustComplete({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 320 180" fill="none" className={cn('w-full', className)} role="img" aria-label="Transfer complete — item on destination">
+      <Phone x={20} y={20} w={60} h={140} />
+      {/* Phone — sent, showing completion */}
+      <STHeader x={26} y={30} w={48} connected />
+      <PhotoCard x={28} y={50} w={44} h={32} />
+      <text x={50} y={95} textAnchor="middle" fill={G} fontSize={2.8} fontWeight={600} opacity={0.5}>Sent ✓</text>
+
+      <Laptop x={135} y={25} w={160} h={130} />
+      {/* Laptop — received, photo fully loaded */}
+      <STHeader x={142} y={35} w={146} connected />
+      <PhotoCard x={148} y={55} w={134} h={45} />
+      {/* Success state */}
+      <Check x={280} y={60} r={7} />
+      <text x={215} y={115} textAnchor="middle" fill={G} fontSize={3} fontWeight={600} opacity={0.5}>✓ Received</text>
+      {/* Action buttons */}
+      <rect x={170} y={120} width={30} height={10} rx={5} fill={B} opacity={0.15} />
+      <text x={185} y={127} textAnchor="middle" fill={B} fontSize={2.5} fontWeight={600} opacity={0.5}>Save</text>
+      <rect x={205} y={120} width={30} height={10} rx={5} fill={BG} stroke={BG_D} strokeWidth={0.3} />
+      <text x={220} y={127} textAnchor="middle" fill={K_M} fontSize={2.5} fontWeight={600} opacity={0.4}>Share</text>
+    </svg>
+  );
+}
+
+/** 8. PRIVATE: Temporary transfer with no cloud storage */
+export function IllustPrivate({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 320 180" fill="none" className={cn('w-full', className)} role="img" aria-label="Private temporary transfer — no cloud storage">
+      <Phone x={20} y={20} w={60} h={140} />
+      {/* Phone — content sent */}
+      <STHeader x={26} y={30} w={48} connected />
+      <MessageBubble x={34} y={55} w={36} h={14} sent text="Secret note" />
+
+      {/* Direct connection — no cloud */}
+      <line x1={82} y1={90} x2={135} y2={90} stroke={B} strokeWidth={1} opacity={0.2} />
+      {/* Lock icon on the connection */}
+      <rect x={104} y={84} width={10} height={8} rx={2} fill={B} opacity={0.15} />
+      <path d="M107 84 L107 81 C107 79 109 78 109 78 C109 78 111 79 111 81 L111 84" fill="none" stroke={B} strokeWidth={0.6} opacity={0.3} />
+
+      <Laptop x={140} y={25} w={160} h={130} />
+      {/* Laptop — received, encrypted */}
+      <STHeader x={147} y={35} w={146} connected />
+      <MessageBubble x={155} y={55} w={50} h={14} text="Secret note" />
+
+      {/* "No cloud" indicator — crossed-out cloud */}
+      <path d="M220 100 C214 100 212 96 215 93 C213 89 218 86 223 87 C226 84 232 85 233 89 C237 89 239 93 236 96 C239 99 237 103 233 103 L220 100Z" fill="none" stroke={K_M} strokeWidth={0.6} opacity={0.15} />
+      <line x1={216} y1={90} x2={237} y2={102} stroke={K_M} strokeWidth={0.8} opacity={0.2} />
+
+      <text x={226} y={115} textAnchor="middle" fill={K_M} fontSize={2.5} fontWeight={500} opacity={0.3}>No cloud. Direct.</text>
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Legacy exports — keeping for backward compatibility
+// ---------------------------------------------------------------------------
+
 export function IllustOpen({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 160 140" fill="none" className={cn('w-24 h-24', className)} role="img" aria-label="Open ShareText on both devices">
-      <Phone x={18} y={14} w={38} h={80} />
-      {/* Phone screen — ShareText UI hint */}
-      <rect x={22} y={28} width={30} height={5} rx={2.5} fill={BLUE} opacity={0.15} />
-      <rect x={22} y={38} width={20} height={3} rx={1.5} fill={INK} opacity={0.08} />
-      <rect x={22} y={44} width={25} height={3} rx={1.5} fill={INK} opacity={0.06} />
-      <rect x={22} y={52} width={12} height={10} rx={3} fill={BLUE} opacity={0.1} />
-
-      <Laptop x={72} y={12} w={66} h={64} />
-      {/* Laptop screen — ShareText UI hint */}
-      <rect x={76} y={20} width={58} height={5} rx={2.5} fill={BLUE} opacity={0.15} />
-      <rect x={76} y={30} width={40} height={3} rx={1.5} fill={INK} opacity={0.08} />
-      <rect x={76} y={36} width={30} height={3} rx={1.5} fill={INK} opacity={0.06} />
-      <rect x={76} y={44} width={14} height={10} rx={3} fill={BLUE} opacity={0.1} />
-
-      {/* Active indicator — both devices open */}
-      <circle cx={37} cy={56} r={2} fill={BLUE} opacity={0.4} />
-      <circle cx={105} cy={48} r={2} fill={BLUE} opacity={0.4} />
-    </svg>
-  );
+  return <IllustPhoneToLaptop className={className} />;
 }
 
-/** Step 2: Connect — pairing code / QR interaction */
 export function IllustPair({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 160 140" fill="none" className={cn('w-24 h-24', className)} role="img" aria-label="Connect with a code or QR">
-      <Phone x={18} y={14} w={38} h={80} />
-      {/* Phone screen — code input */}
-      <rect x={22} y={28} width={30} height={5} rx={2.5} fill={BLUE} opacity={0.1} />
-      {/* Code digits hint */}
-      {[0, 1, 2].map(i => (
-        <rect key={i} x={24 + i * 8} y={40} width={6} height={8} rx={2} fill="none" stroke={BLUE} strokeWidth={0.6} opacity={0.25} />
-      ))}
-
-      {/* Connection line — the pairing bridge */}
-      <line x1="56" y1="52" x2="72" y2="40" stroke={BLUE} strokeWidth={1} strokeDasharray="3 2" opacity={0.3} />
-
-      <Laptop x={72} y={12} w={66} h={64} />
-      {/* Laptop screen — QR code hint */}
-      <rect x={90} y={22} width={20} height={20} rx={3} fill="none" stroke={BLUE} strokeWidth={0.6} opacity={0.2} />
-      <rect x={93} y={25} width={4} height={4} rx={1} fill={BLUE} opacity={0.15} />
-      <rect x={101} y={25} width={4} height={4} rx={1} fill={BLUE} opacity={0.15} />
-      <rect x={93} y={33} width={4} height={4} rx={1} fill={BLUE} opacity={0.15} />
-      <rect x={97} y={29} width={4} height={4} rx={1} fill={BLUE} opacity={0.25} />
-    </svg>
-  );
+  return <IllustPairing className={className} />;
 }
 
-/** Step 3: Move — content flowing between devices */
 export function IllustSend({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 160 140" fill="none" className={cn('w-24 h-24', className)} role="img" aria-label="Move content between devices">
-      <Phone x={18} y={14} w={38} h={80} />
-      {/* Phone screen — sent message */}
-      <rect x={28} y={50} width={22} height={8} rx={4} fill={BLUE} opacity={0.2} />
-      <text x={39} y={55.5} textAnchor="middle" fill={BLUE} fontSize="3.5" fontWeight="600" opacity={0.5}>Sent ✓</text>
-
-      {/* Content moving — just an arrow, nothing decorative */}
-      <path d="M56 50 L72 40" stroke={BLUE} strokeWidth={1} strokeLinecap="round" opacity={0.25} />
-      <path d="M70 38 L72 40 L70 42" stroke={BLUE} strokeWidth={1} strokeLinecap="round" strokeLinejoin="round" opacity={0.25} />
-
-      <Laptop x={72} y={12} w={66} h={64} />
-      {/* Laptop screen — received content */}
-      <rect x={80} y={24} width={44} height={16} rx={3} fill={SUCCESS} opacity={0.1} stroke={SUCCESS} strokeWidth={0.5} />
-      <path d="M94 32 L98 36 L106 28" stroke={SUCCESS} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <IllustTextHandoff className={className} />;
 }
 
-// ---------------------------------------------------------------------------
-// Feature illustrations — recognizable situations
-// ---------------------------------------------------------------------------
-
-/** Cross-platform — phone + laptop */
 export function IllustCrossPlatform({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 80 80" fill="none" className={cn('w-12 h-12', className)} role="img" aria-label="Works across any two devices">
-      <Phone x={8} y={14} w={22} h={44} />
-      <Laptop x={40} y={16} w={32} h={28} />
-      <path d="M30 36 L40 32" stroke={BLUE} strokeWidth={0.8} strokeDasharray="2 2" opacity={0.25} />
-      <path d="M38 31 L40 32 L38 33" stroke={BLUE} strokeWidth={0.8} strokeLinecap="round" strokeLinejoin="round" opacity={0.25} />
-    </svg>
-  );
+  return <IllustPhoneToLaptop className={className} />;
 }
 
-/** Fast transfer — speed */
 export function IllustFast({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 80 80" fill="none" className={cn('w-12 h-12', className)} role="img" aria-label="Fast transfers">
-      {/* Lightning bolt — simple, not decorative */}
-      <path d="M42 18 L34 42 L40 42 L36 62" stroke={INK} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" opacity={0.25} />
-    </svg>
-  );
+  return <IllustReceiving className={className} />;
 }
 
-/** Privacy — shield with check */
 export function IllustPrivacy({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 80 80" fill="none" className={cn('w-12 h-12', className)} role="img" aria-label="Private by design">
-      <path d="M40 14 L54 20 L54 36 C54 46 48 52 40 56 C32 52 26 46 26 36 L26 20 Z" fill="none" stroke={INK} strokeWidth={1.2} opacity={0.2} />
-      <path d="M34 36 L38 40 L48 30" stroke={SUCCESS} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <IllustPrivate className={className} />;
 }
 
-/** Encrypted — two devices with lock between */
 export function IllustEncrypted({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 120 120" fill="none" className={cn('w-24 h-24', className)} role="img" aria-label="End-to-end encrypted">
-      <Phone x={8} y={28} w={28} h={56} />
-      {/* Lock */}
-      <rect x={54} y={40} width={12} height={10} rx={2} fill={BLUE} opacity={0.2} />
-      <path d="M56 40 L56 36 C56 32 60 30 60 30 C60 30 64 32 64 36 L64 40" fill="none" stroke={BLUE} strokeWidth={1.2} opacity={0.3} />
-      <circle cx={60} cy={44} r={1.2} fill="white" opacity={0.5} />
-      <Phone x={84} y={28} w={28} h={56} />
-      {/* Connection lines */}
-      <path d="M36 56 L54 48" stroke={BLUE} strokeWidth={0.8} strokeDasharray="2 2" opacity={0.2} />
-      <path d="M66 48 L84 56" stroke={BLUE} strokeWidth={0.8} strokeDasharray="2 2" opacity={0.2} />
-    </svg>
-  );
+  return <IllustPrivate className={className} />;
 }
 
-/** Temporary — document dissolving */
 export function IllustTemporary({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 120 120" fill="none" className={cn('w-24 h-24', className)} role="img" aria-label="Temporary — nothing stored">
-      <rect x={38} y={18} width={28} height={36} rx={3} fill="none" stroke={INK} strokeWidth={1} opacity={0.15} />
-      <line x1={42} y1={28} x2={62} y2={28} stroke={INK} strokeWidth={0.6} opacity={0.1} />
-      <line x1={42} y1={34} x2={56} y2={34} stroke={INK} strokeWidth={0.6} opacity={0.08} />
-      <line x1={42} y1={40} x2={52} y2={40} stroke={INK} strokeWidth={0.6} opacity={0.06} />
-      {/* Fading strips */}
-      {[0, 1, 2].map(i => (
-        <rect key={i} x={44 + i * 5} y={58 + i * 5} width={2.5} height={6 - i * 1.5} rx={1} fill={INK} opacity={0.08 - i * 0.02} />
-      ))}
-      {/* Gone check */}
-      <circle cx={60} cy={88} r={8} fill="none" stroke={SUCCESS} strokeWidth={1} opacity={0.2} />
-      <path d="M56 88 L59 91 L65 85" stroke={SUCCESS} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <IllustPrivate className={className} />;
 }
 
-/** No storage — empty cloud with X */
 export function IllustNoStorage({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 120 120" fill="none" className={cn('w-24 h-24', className)} role="img" aria-label="No cloud storage">
-      <path d="M36 66 C26 66 22 58 28 52 C24 44 32 36 42 36 C46 28 56 24 66 26 C76 22 86 28 88 38 C98 38 102 48 96 56 C102 62 98 72 88 72 L36 66Z" fill="none" stroke={INK} strokeWidth={1} opacity={0.15} />
-      <line x1="50" y1="44" x2="70" y2="64" stroke={RED} strokeWidth={1.8} strokeLinecap="round" />
-      <line x1="70" y1="44" x2="50" y2="64" stroke={RED} strokeWidth={1.8} strokeLinecap="round" />
-    </svg>
-  );
+  return <IllustPrivate className={className} />;
 }
-
-// ---------------------------------------------------------------------------
-// Empty / error / 404 states
-// ---------------------------------------------------------------------------
 
 export function IllustWaiting({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 120 100" fill="none" className={cn('w-20 h-16', className)} role="img" aria-label="Waiting">
-      <Phone x={14} y={18} w={26} h={50} />
-      <Laptop x={68} y={20} w={36} h={32} />
-      <line x1="40" y1="42" x2="68" y2="38" stroke={INK} strokeWidth={0.6} strokeDasharray="3 3" opacity={0.1} />
-    </svg>
-  );
-}
-
-export function IllustComplete({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 120 100" fill="none" className={cn('w-20 h-16', className)} role="img" aria-label="Complete">
-      <circle cx="60" cy="44" r="20" fill="none" stroke={SUCCESS} strokeWidth={1.2} opacity={0.2} />
-      <path d="M50 44 L57 51 L72 37" stroke={SUCCESS} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <Phone x={10} y={10} w={36} h={80} />
+      <Laptop x={56} y={14} w={54} h={44} />
+      <line x1="46" y1="50" x2="56" y2="48" stroke={B} strokeWidth={0.6} strokeDasharray="2 2" opacity={0.15} />
     </svg>
   );
 }
@@ -226,12 +463,12 @@ export function IllustComplete({ className }: { className?: string }) {
 export function IllustError({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 120 100" fill="none" className={cn('w-20 h-16', className)} role="img" aria-label="Error">
-      <Phone x={14} y={22} w={26} h={48} />
-      <Laptop x={68} y={24} w={36} h={32} />
-      <line x1="40" y1="46" x2="68" y2="40" stroke={RED} strokeWidth={0.8} strokeDasharray="3 3" opacity={0.3} />
-      <circle cx="54" cy="42" r="6" fill="none" stroke={RED} strokeWidth={0.8} opacity={0.3} />
-      <line x1="54" y1="39" x2="54" y2="43" stroke={RED} strokeWidth={1.2} strokeLinecap="round" />
-      <circle cx="54" cy="45" r={0.6} fill={RED} opacity={0.3} />
+      <Phone x={10} y={14} w={36} h={72} />
+      <Laptop x={56} y={18} w={54} h={42} />
+      <line x1="46" y1="50" x2="56" y2="46" stroke="#E53E3E" strokeWidth={0.6} strokeDasharray="2 2" opacity={0.2} />
+      <circle cx={51} cy={48} r={4} fill="none" stroke="#E53E3E" strokeWidth={0.6} opacity={0.25} />
+      <line x1={51} y1={46} x2={51} y2={49} stroke="#E53E3E" strokeWidth={0.8} strokeLinecap="round" />
+      <circle cx={51} cy={50.5} r={0.5} fill="#E53E3E" opacity={0.25} />
     </svg>
   );
 }
@@ -239,48 +476,20 @@ export function IllustError({ className }: { className?: string }) {
 export function Illust404({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 160 120" fill="none" className={cn('w-32 h-24', className)} role="img" aria-label="Page not found">
-      <circle cx="72" cy="48" r="22" fill="none" stroke={INK} strokeWidth={1} opacity={0.12} />
-      <text x="72" y="55" textAnchor="middle" fill={INK} fontSize="20" fontWeight="600" opacity={0.12}>?</text>
-      <text x="80" y="106" textAnchor="middle" fill={INK} fontSize="10" fontWeight="600" opacity={0.08}>404</text>
+      <text x="80" y="65" textAnchor="middle" fill={K} fontSize="40" fontWeight="600" opacity={0.08}>?</text>
+      <text x="80" y="106" textAnchor="middle" fill={K} fontSize="12" fontWeight="600" opacity={0.06}>404</text>
     </svg>
   );
 }
 
-/** No app needed — browser window */
 export function IllustNoApp({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 80 80" fill="none" className={cn('w-12 h-12', className)} role="img" aria-label="Works in browser">
-      <rect x="10" y="14" width="60" height="46" rx="4" fill="none" stroke={INK} strokeWidth={1} opacity={0.15} />
-      <line x1="10" y1="24" x2="70" y2="24" stroke={INK} strokeWidth={0.5} opacity={0.1} />
-      <circle cx="17" cy="19" r="1.5" fill={INK} opacity={0.1} />
-      <circle cx="23" cy="19" r="1.5" fill={INK} opacity={0.1} />
-      <circle cx="29" cy="19" r="1.5" fill={INK} opacity={0.1} />
-    </svg>
-  );
+  return <IllustPhoneToLaptop className={className} />;
 }
 
-/** File types — document stack */
 export function IllustFileTypes({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 80 80" fill="none" className={cn('w-12 h-12', className)} role="img" aria-label="All file types">
-      <rect x="20" y="14" width="26" height="34" rx="3" fill="none" stroke={INK} strokeWidth={0.8} opacity={0.12} transform="rotate(-4 33 31)" />
-      <rect x="24" y="18" width="26" height="34" rx="3" fill="none" stroke={INK} strokeWidth={0.8} opacity={0.15} transform="rotate(2 37 35)" />
-      <rect x="28" y="22" width="26" height="34" rx="3" fill="none" stroke={INK} strokeWidth={1} opacity={0.2} />
-      <rect x={32} y={30} width={16} height={2.5} rx={1.25} fill={INK} opacity={0.08} />
-      <rect x={32} y={36} width={12} height={2.5} rx={1.25} fill={INK} opacity={0.06} />
-      <rect x={32} y={42} width={14} height={2.5} rx={1.25} fill={INK} opacity={0.05} />
-    </svg>
-  );
+  return <IllustReceiving className={className} />;
 }
 
-/** Troubleshoot — wrench */
 export function IllustTroubleshoot({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 80 80" fill="none" className={cn('w-12 h-12', className)} role="img" aria-label="Troubleshooting">
-      <path d="M32 48 L24 56" stroke={INK} strokeWidth={1.8} strokeLinecap="round" opacity={0.2} />
-      <circle cx="24" cy="56" r="5" fill="none" stroke={INK} strokeWidth={1.2} opacity={0.15} />
-      <path d="M48 32 L56 24" stroke={INK} strokeWidth={1.8} strokeLinecap="round" opacity={0.2} />
-      <circle cx="56" cy="24" r="5" fill="none" stroke={INK} strokeWidth={1.2} opacity={0.15} />
-    </svg>
-  );
+  return <IllustError className={className} />;
 }
