@@ -9,6 +9,7 @@ import { LiveUsers } from '../components/LiveUsers';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { InstallPrompt } from '../components/InstallPrompt';
 import { IllustTransfer, IllustConnect, IllustTextMove } from '../components/Illustrations';
+import { TactileButton } from '../components/TactileButton';
 
 const PrivacyPromise = lazy(() => import('../components/PrivacyPromise').then(m => ({ default: m.PrivacyPromise })));
 const Faq = lazy(() => import('../components/Faq').then(m => ({ default: m.Faq })));
@@ -106,32 +107,24 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             </p>
 
             <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-              <motion.button
+              <TactileButton
                 data-testid="hero-send"
                 onClick={isCreating ? () => { setIsCreating(false); setCreateError(null); } : handleCreate}
-                whileTap={{ scale: 0.98 }}
-                className={`group px-6 py-3 text-[15px] font-semibold rounded-[10px] flex items-center justify-center gap-2 transition-all duration-150 ${
-                  isCreating
-                    ? 'bg-apple-ink-muted hover:bg-apple-ink-muted/80 text-white'
-                    : 'bg-azure-600 hover:bg-azure-500 text-white shadow-sm hover:shadow-md'
-                }`}
+                variant="primary"
+                size="lg"
+                icon={isCreating ? undefined : <Send size={16} />}
               >
-                {isCreating ? (
-                  <span>Cancel</span>
-                ) : createError ? (
-                  <><Send size={16} /> <span>Try Again</span></>
-                ) : (
-                  <><Send size={16} /> <span>Send something</span></>
-                )}
-              </motion.button>
-              <motion.button
+                {isCreating ? 'Cancel' : createError ? 'Try Again' : 'Send something'}
+              </TactileButton>
+              <TactileButton
                 data-testid="hero-receive"
                 onClick={onJoinClick}
-                whileTap={{ scale: 0.98 }}
-                className="px-6 py-3 text-[15px] font-semibold rounded-[10px] flex items-center justify-center gap-2 bg-apple-ink text-white dark:bg-white dark:text-night-900 transition-all duration-150 hover:opacity-90"
+                variant="secondary"
+                size="lg"
+                icon={<Inbox size={16} />}
               >
-                <Inbox className="w-4 h-4" /> Receive something
-              </motion.button>
+                Receive something
+              </TactileButton>
             </div>
 
 
@@ -255,23 +248,25 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             When it's on the wrong screen.
           </h2>
           <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
-            <motion.button
+            <TactileButton
               data-testid="create-session"
               onClick={handleCreate}
               disabled={isCreating}
-              whileTap={{ scale: 0.98 }}
-              className="px-7 py-3 bg-azure-600 hover:bg-azure-500 text-white rounded-[10px] text-[15px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60 transition-all duration-150"
+              variant="primary"
+              size="lg"
+              icon={isCreating ? undefined : <Send size={16} />}
             >
-              {isCreating ? 'Creating…' : createError ? 'Try Again' : (<><Send size={16} /> Send something</>)}
-            </motion.button>
-            <motion.button
+              {isCreating ? 'Creating…' : createError ? 'Try Again' : 'Send something'}
+            </TactileButton>
+            <TactileButton
               data-testid="join-session"
               onClick={onJoinClick}
-              whileTap={{ scale: 0.98 }}
-              className="px-7 py-3 bg-apple-ink text-white dark:bg-white dark:text-night-900 rounded-[10px] text-[15px] font-semibold flex items-center justify-center gap-2 transition-all duration-150 hover:opacity-90"
+              variant="secondary"
+              size="lg"
+              icon={<Inbox size={16} />}
             >
-              <Inbox className="w-4 h-4" /> Receive something
-            </motion.button>
+              Receive something
+            </TactileButton>
           </div>
         </motion.div>
       </section>
