@@ -6,6 +6,7 @@ import {
   File as FileIcon, Play, Download, RefreshCw, AlertCircle, ChevronDown, ChevronUp, ArrowUp, Lock, ZoomIn, ShieldCheck, Terminal, Share2, LogOut, Smartphone, Monitor
 } from 'lucide-react';
 import { FileTypeIcon } from '../components/FileTypeIcon';
+import { AnimatedIcon } from '../components/AnimatedIcon';
 import { cn, formatBytes, sanitizeFilename } from '../lib/utils';
 import { ChatMessage, Attachment } from '../types';
 import { ShareTextLogo } from '../components/ShareTextLogo';
@@ -695,7 +696,7 @@ export function ChatView() {
                         : "bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white"
                     )}
                   >
-                    {copiedAll ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedAll ? <AnimatedIcon animate="check" active={copiedAll}><Check className="w-3.5 h-3.5" /></AnimatedIcon> : <AnimatedIcon animate="copy" active={copiedAll}><Copy className="w-3.5 h-3.5" /></AnimatedIcon>}
                     {copiedAll ? `Copied ${session.messages.length} items` : 'Copy All'}
                   </button>
                 </div>
@@ -868,7 +869,9 @@ export function ChatView() {
                 aria-label="Send"
                 className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-[0.92] bg-azure-600 hover:bg-azure-500 text-white disabled:opacity-25 disabled:bg-apple-divider dark:disabled:bg-apple-tile-2 disabled:text-apple-ink-muted dark:disabled:text-white/40 disabled:shadow-none"
               >
-                <ArrowUp className="w-5 h-5" strokeWidth={2.4} />
+                <AnimatedIcon animate="send" active={!((!inputText.trim() && attachments.length === 0) || !session.partnerConnected)}>
+                  <ArrowUp className="w-5 h-5" strokeWidth={2.4} />
+                </AnimatedIcon>
               </button>
 
               <AnimatePresence>

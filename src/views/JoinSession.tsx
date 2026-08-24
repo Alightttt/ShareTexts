@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { cn } from '../lib/utils';
+import { AnimatedIcon } from '../components/AnimatedIcon';
 
 const QRScanner = lazy(() => import('../components/QRScanner').then(m => ({ default: m.QRScanner })));
 
@@ -231,7 +232,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
             <motion.div key="done" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
               className="w-full flex flex-col items-center p-8 bg-white dark:bg-[#13161B] border border-[#E3E5E8] dark:border-[#272D36] rounded-[22px] shadow-[0_16px_48px_rgba(18,31,53,0.10)] dark:shadow-[0_20px_64px_rgba(0,0,0,0.28)] text-center">
               <div className="w-14 h-14 rounded-full bg-status-success/15 flex items-center justify-center mb-4">
-                <Check className="w-7 h-7 text-status-success" strokeWidth={2.5} />
+                <AnimatedIcon animate="check" active><Check className="w-7 h-7 text-status-success" strokeWidth={2.5} /></AnimatedIcon>
               </div>
               <h2 className="text-[20px] font-semibold text-apple-ink dark:text-white mb-1">
                 Connected to {session.partnerName || 'the other device'}
@@ -265,7 +266,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
             {activeTab === 'code' ? (
               <button onPointerDown={() => { setActiveTab('qr'); setError(null); }}
                 className="flex items-center gap-2 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white active:scale-95 transition-motion bg-apple-parchment dark:bg-surface-dark px-4 py-2.5 rounded-[10px] border border-apple-divider/50 dark:border-white/5 min-h-[44px]">
-                <QrCode className="w-4 h-4" /> Scan QR instead
+                <AnimatedIcon animate="qr"><QrCode className="w-4 h-4" /></AnimatedIcon> Scan QR instead
               </button>
             ) : (
               <button onPointerDown={() => { setActiveTab('code'); setError(null); }}

@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { HeroDemo } from '../components/HeroDemo';
 import { Send, Inbox } from 'lucide-react';
+import { SendIcon, InboxIcon } from '../components/AnimatedIcon';
 
 import { LiveUsers } from '../components/LiveUsers';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -112,7 +113,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 onClick={isCreating ? () => { setIsCreating(false); setCreateError(null); } : handleCreate}
                 variant="primary"
                 size="lg"
-                icon={isCreating ? undefined : <Send size={16} />}
+                icon={isCreating ? undefined : <SendIcon size={16} active={!isCreating} />}
               >
                 {isCreating ? 'Cancel' : createError ? 'Try Again' : 'Send something'}
               </TactileButton>
@@ -121,7 +122,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 onClick={onJoinClick}
                 variant="secondary"
                 size="lg"
-                icon={<Inbox size={16} />}
+                icon={<InboxIcon size={16} />}
               >
                 Receive something
               </TactileButton>
@@ -254,7 +255,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               disabled={isCreating}
               variant="primary"
               size="lg"
-              icon={isCreating ? undefined : <Send size={16} />}
+              icon={isCreating ? undefined : <SendIcon size={16} active={!isCreating} />}
             >
               {isCreating ? 'Creating…' : createError ? 'Try Again' : 'Send something'}
             </TactileButton>
@@ -263,7 +264,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               onClick={onJoinClick}
               variant="secondary"
               size="lg"
-              icon={<Inbox size={16} />}
+              icon={<InboxIcon size={16} />}
             >
               Receive something
             </TactileButton>

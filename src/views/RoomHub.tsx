@@ -5,6 +5,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Copy, QrCode, Check, Share2, ChevronLeft, Pencil, Link2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, shortCodeOf } from '../lib/utils';
+import { AnimatedIcon } from '../components/AnimatedIcon';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 
@@ -159,7 +160,7 @@ export function RoomHub() {
             {/* Share link — secondary */}
             <button data-testid="room-share-link" onPointerDown={shareLink}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 bg-white dark:bg-surface-dark border border-apple-divider/60 dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-surface-dark-2 rounded-[12px] text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.97] min-h-[44px]">
-              {copiedLink ? <Check className="w-4 h-4 text-status-success" /> : <Link2 className="w-4 h-4 text-apple-ink-muted" />}
+              {copiedLink ? <AnimatedIcon animate="check" active={copiedLink}><Check className="w-4 h-4 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="link"><Link2 className="w-4 h-4 text-apple-ink-muted" /></AnimatedIcon>}
               {copiedLink ? 'Copied' : 'Share link'}
             </button>
 
@@ -173,7 +174,7 @@ export function RoomHub() {
             {/* Copy code — least important action */}
             <button data-testid="room-copy-code" onPointerDown={copyCode}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-[10px] text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white/70 transition-colors active:scale-[0.98]">
-              {copiedCode ? <Check className="w-3.5 h-3.5 text-status-success" /> : <Copy className="w-3.5 h-3.5" />}
+              {copiedCode ? <AnimatedIcon animate="check" active={copiedCode}><Check className="w-3.5 h-3.5 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="copy"><Copy className="w-3.5 h-3.5" /></AnimatedIcon>}
               {copiedCode ? 'Code copied' : 'Copy code'}
             </button>
           </div>

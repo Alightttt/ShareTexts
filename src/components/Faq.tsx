@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { ChevronDown } from 'lucide-react';
+import { AnimatedIcon } from './AnimatedIcon';
 import { cn } from '../lib/utils';
 
 /**
@@ -65,13 +66,9 @@ function FaqItem({ item, index }: { item: typeof QA[number]; index: number; key?
           aria-label={`${item.q} — ${open ? 'collapse' : 'expand'}`}
         >
           <span>{item.q}</span>
-          <ChevronDown
-            className={cn(
-              "w-4 h-4 shrink-0 text-apple-ink-muted dark:text-white/50 transition-transform duration-200",
-              open && "rotate-180"
-            )}
-            aria-hidden
-          />
+          <AnimatedIcon animate="chevron" active={open} className="shrink-0 text-apple-ink-muted dark:text-white/50">
+            <ChevronDown className="w-4 h-4" aria-hidden />
+          </AnimatedIcon>
         </summary>
         <div className="pb-1 pt-1">
           <p className="text-[14px] sm:text-[15px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed">
