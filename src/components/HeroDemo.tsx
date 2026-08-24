@@ -62,35 +62,40 @@ const T = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// DEVICE FRAMES — realistic materials, restrained depth
+// DEVICE FRAMES — realistic physical devices
 // ═══════════════════════════════════════════════════════════════════════════
 
 function PhoneFrame({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={cn('relative shrink-0', className)}>
-      {/* Contact shadow — sits on the "surface" */}
-      <div className="absolute -bottom-[4%] left-[8%] right-[8%] h-[6%] bg-black/[0.08] dark:bg-black/[0.2] rounded-[50%] blur-[6px]" />
-      {/* Physical shell */}
-      <div className="relative rounded-[26px] sm:rounded-[30px] p-[3%] bg-gradient-to-b from-[#e8e8ec] via-[#d8d8dc] to-[#c8c8cc] dark:from-[#2e2e32] dark:via-[#262629] dark:to-[#1e1e21] shadow-[0_1px_2px_rgba(0,0,0,0.08),0_4px_16px_rgba(0,0,0,0.12)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_16px_rgba(0,0,0,0.4)]">
-        {/* Subtle edge highlight — top edge catches light */}
-        <div className="absolute inset-x-[12%] top-0 h-[1px] bg-white/60 dark:bg-white/10 rounded-full" />
-        <div className="relative rounded-[20px] sm:rounded-[24px] bg-[#0a0f1a] dark:bg-[#0a0a0c] overflow-hidden aspect-[9/19.5]">
-          {/* Screen glass — very subtle reflection */}
-          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.03] via-transparent to-transparent pointer-events-none z-20" />
+      {/* Contact shadow — sits on the surface */}
+      <div className="absolute -bottom-[3%] left-[10%] right-[10%] h-[5%] bg-black/[0.1] dark:bg-black/[0.25] rounded-[50%] blur-[8px]" />
+      {/* Physical shell — modern flat-edge design (like iPhone 15) */}
+      <div className="relative rounded-[22px] sm:rounded-[26px] bg-gradient-to-b from-[#eaeaee] via-[#dedee2] to-[#d2d2d6] dark:from-[#2a2a2e] dark:via-[#252528] dark:to-[#1e1e21] shadow-[0_1px_0_rgba(255,255,255,0.5)_inset,0_1px_2px_rgba(0,0,0,0.06),0_6px_20px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_1px_2px_rgba(0,0,0,0.2),0_6px_20px_rgba(0,0,0,0.4)]">
+        {/* Flat edge highlight — top catches light */}
+        <div className="absolute inset-x-[14%] top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 dark:via-white/10 to-transparent" />
+        {/* Side button hint — right edge */}
+        <div className="absolute right-0 top-[28%] w-[2px] h-[12%] rounded-r-sm bg-gradient-to-b from-[#c0c0c4] to-[#b0b0b4] dark:from-[#3a3a3e] dark:to-[#333336]" />
+        {/* Screen */}
+        <div className="relative rounded-[18px] sm:rounded-[22px] bg-[#080c18] dark:bg-[#0a0a0c] overflow-hidden aspect-[9/19.5] mx-[2.5%] mt-[1.5%] mb-[1.5%]">
+          {/* Screen glass — very subtle top reflection */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white/[0.025] via-transparent to-transparent pointer-events-none z-20" />
           {/* Dynamic island */}
-          <div className="absolute top-[3%] left-1/2 -translate-x-1/2 w-[30%] h-[2.2%] min-h-[5px] bg-black rounded-full z-10" />
+          <div className="absolute top-[2.8%] left-1/2 -translate-x-1/2 w-[28%] h-[2%] min-h-[5px] bg-[#000] rounded-full z-10 ring-[0.5px] ring-black/20" />
           {/* Status bar */}
-          <div className="absolute inset-x-0 top-[1.5%] z-10 flex items-center justify-between px-[6%] text-[clamp(4px,1.1vw,7px)] text-white/70">
-            <span className="font-semibold">9:41</span>
+          <div className="absolute inset-x-0 top-[1.2%] z-10 flex items-center justify-between px-[5.5%] text-[clamp(4px,1.1vw,7px)] text-white/65">
+            <span className="font-semibold tracking-tight">9:41</span>
             <div className="flex items-center gap-[0.3em]">
+              {/* Signal bars */}
               <span className="flex items-end gap-[0.06em]">
                 {[0.4, 0.6, 0.8, 1].map((h, i) => (
-                  <span key={i} className="w-[0.12em] rounded-[0.02em] bg-current" style={{ height: `${h * 0.45}em` }} />
+                  <span key={i} className="w-[0.11em] rounded-[0.02em] bg-current" style={{ height: `${h * 0.42}em` }} />
                 ))}
               </span>
-              <span className="relative flex items-center w-[1em] h-[0.45em] rounded-[0.14em] border-[0.05em] border-current/50 px-[0.05em]">
-                <span className="h-[65%] w-[75%] rounded-[0.08em] bg-current" />
-                <span className="absolute -right-[0.18em] w-[0.1em] h-[0.2em] rounded-r-[0.04em] bg-current/40" />
+              {/* Battery */}
+              <span className="relative flex items-center w-[0.95em] h-[0.42em] rounded-[0.12em] border-[0.045em] border-current/45 px-[0.05em]">
+                <span className="h-[65%] w-[78%] rounded-[0.06em] bg-current" />
+                <span className="absolute -right-[0.16em] w-[0.08em] h-[0.18em] rounded-r-[0.03em] bg-current/35" />
               </span>
             </div>
           </div>
@@ -105,30 +110,77 @@ function PhoneFrame({ children, className }: { children: React.ReactNode; classN
 function LaptopFrame({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={cn('relative shrink-0', className)}>
-      {/* Contact shadow */}
-      <div className="absolute -bottom-[2%] left-[4%] right-[4%] h-[4%] bg-black/[0.06] dark:bg-black/[0.15] rounded-[50%] blur-[8px]" />
-      {/* Screen frame */}
-      <div className="relative rounded-[8px] sm:rounded-[10px] p-[1.5%] bg-gradient-to-b from-[#d8d8dd] via-[#d0d0d5] to-[#b8b8bd] dark:from-[#363639] dark:via-[#333336] dark:to-[#2a2a2d] shadow-[0_1px_2px_rgba(0,0,0,0.06),0_4px_20px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.15),0_4px_20px_rgba(0,0,0,0.3)]">
-        {/* Top edge highlight */}
-        <div className="absolute inset-x-[15%] top-0 h-[1px] bg-white/50 dark:bg-white/8 rounded-full" />
-        <div className="absolute top-[2.5%] left-1/2 -translate-x-1/2 w-[1.8%] aspect-square rounded-full bg-[#1a1a1e] ring-[0.5px] ring-white/15 z-10" />
-        <div className="relative rounded-[4px] sm:rounded-[6px] bg-[#1a1a1e] p-[1.2%]">
-          <div className="relative rounded-[2px] sm:rounded-[3px] bg-[#0a0f1a] dark:bg-[#0a0a0c] overflow-hidden aspect-[16/10]">
-            {/* Screen glass reflection */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] via-transparent to-transparent pointer-events-none z-20" />
+      {/* Contact shadow — larger, softer, realistic */}
+      <div className="absolute -bottom-[2%] left-[6%] right-[6%] h-[5%] bg-black/[0.07] dark:bg-black/[0.18] rounded-[50%] blur-[10px]" />
+
+      {/* === SCREEN LID === */}
+      <div className="relative rounded-t-[8px] sm:rounded-t-[10px] bg-gradient-to-b from-[#dcdce0] via-[#d4d4d8] to-[#c8c8cc] dark:from-[#323235] dark:via-[#2e2e31] dark:to-[#262629] shadow-[0_1px_0_rgba(255,255,255,0.4)_inset,0_1px_2px_rgba(0,0,0,0.05)] dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_1px_2px_rgba(0,0,0,0.15)]">
+        {/* Top edge — catches light */}
+        <div className="absolute inset-x-[12%] top-0 h-[1px] bg-gradient-to-r from-transparent via-white/45 dark:via-white/8 to-transparent" />
+        {/* Webcam + notch */}
+        <div className="absolute top-[3%] left-1/2 -translate-x-1/2 flex items-center gap-[3%]">
+          <div className="w-[1.2%] aspect-square rounded-full bg-[#0d0d10] ring-[0.5px] ring-white/10" />
+          <div className="w-[1.5%] aspect-square rounded-full bg-[#0a0a0e] ring-[0.3px] ring-white/8 flex items-center justify-center">
+            <div className="w-[40%] h-[40%] rounded-full bg-[#1a3a5c]/30" />
+          </div>
+          <div className="w-[1.2%] aspect-square rounded-full bg-[#0d0d10] ring-[0.5px] ring-white/10" />
+        </div>
+        {/* Screen bezel */}
+        <div className="mx-[2%] mt-[6%] rounded-[4px] sm:rounded-[6px] bg-[#111115] p-[1%]">
+          {/* Actual screen */}
+          <div className="relative rounded-[2px] sm:rounded-[3px] bg-[#080c18] dark:bg-[#080a0e] overflow-hidden aspect-[16/10]">
+            {/* Screen glass — subtle corner reflection */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.015] via-transparent to-transparent pointer-events-none z-20" />
             {children}
           </div>
         </div>
       </div>
-      {/* Keyboard deck */}
-      <div className="relative -mt-[0.3%] -mx-[2%] w-[104%] rounded-b-[8px] sm:rounded-b-[10px] bg-gradient-to-b from-[#d0d0d5] via-[#c8c8cd] to-[#b8b8bd] dark:from-[#2e2e31] dark:via-[#2a2a2d] dark:to-[#222225] shadow-[0_4px_12px_-4px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_12px_-4px_rgba(0,0,0,0.2)]">
-        <div className="mx-[30%] mt-[3%] h-[1px] rounded-full bg-black/[0.04] dark:bg-white/[0.04]" />
-        <div className="mx-[8%] mt-[3%] rounded-[2px] bg-black/[0.015] dark:bg-white/[0.015]">
-          <div className="h-[45%] bg-[repeating-linear-gradient(0deg,transparent,transparent_5px,rgba(0,0,0,0.008)_5px,rgba(0,0,0,0.008)_6px)] dark:bg-[repeating-linear-gradient(0deg,transparent,transparent_5px,rgba(255,255,255,0.01)_5px,rgba(255,255,255,0.01)_6px)]" />
+
+      {/* === HINGE === */}
+      <div className="relative mx-[3%] h-[3px] bg-gradient-to-b from-[#b8b8bc] to-[#c0c0c4] dark:from-[#222225] dark:to-[#282830]">
+        {/* Subtle highlight on the hinge */}
+        <div className="absolute inset-x-[15%] top-0 h-[0.5px] bg-white/20 dark:bg-white/5" />
+      </div>
+
+      {/* === KEYBOARD DECK === */}
+      <div className="relative rounded-b-[8px] sm:rounded-b-[10px] bg-gradient-to-b from-[#d4d4d8] via-[#cccdd0] to-[#c0c0c4] dark:from-[#2c2c2f] dark:via-[#282830] dark:to-[#222225] shadow-[0_6px_20px_-6px_rgba(0,0,0,0.1),0_2px_4px_rgba(0,0,0,0.04)] dark:shadow-[0_6px_20px_-6px_rgba(0,0,0,0.25),0_2px_4px_rgba(0,0,0,0.08)]">
+        {/* Keyboard area — subtle key row hints */}
+        <div className="mx-[6%] mt-[8%] space-y-[2.5%]">
+          {/* Row 1 — function keys (slightly smaller) */}
+          <div className="flex gap-[1.5%] justify-center">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={`f${i}`} className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.025] dark:bg-white/[0.015] flex-1 max-w-[7%]" />
+            ))}
+          </div>
+          {/* Row 2 — number row */}
+          <div className="flex gap-[1.2%] justify-center">
+            {Array.from({ length: 14 }).map((_, i) => (
+              <div key={`n${i}`} className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.02] dark:bg-white/[0.012] flex-1 max-w-[6.5%]" />
+            ))}
+          </div>
+          {/* Row 3 — qwerty */}
+          <div className="flex gap-[1.2%] justify-center px-[2%]">
+            {Array.from({ length: 13 }).map((_, i) => (
+              <div key={`q${i}`} className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.02] dark:bg-white/[0.012] flex-1 max-w-[6.8%]" />
+            ))}
+          </div>
+          {/* Row 4 — asdf */}
+          <div className="flex gap-[1.2%] justify-center px-[3%]">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={`a${i}`} className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.02] dark:bg-white/[0.012] flex-1 max-w-[7.2%]" />
+            ))}
+          </div>
+          {/* Row 5 — spacebar row */}
+          <div className="flex gap-[1.2%] justify-center items-center">
+            <div className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.02] dark:bg-white/[0.012] w-[8%]" />
+            <div className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.02] dark:bg-white/[0.012] w-[6%]" />
+            <div className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.02] dark:bg-white/[0.012] w-[30%]" />
+            <div className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.02] dark:bg-white/[0.012] w-[6%]" />
+            <div className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.02] dark:bg-white/[0.012] w-[8%]" />
+          </div>
         </div>
-        <div className="flex justify-center pb-[7%] mt-[2%]">
-          <div className="w-[26%] h-[8%] rounded-[2px] bg-black/[0.01] dark:bg-white/[0.01] border border-black/[0.015] dark:border-white/[0.02]" />
-        </div>
+        {/* Trackpad — centered, realistic proportion */}
+        <div className="mx-auto mt-[6%] mb-[10%] w-[32%] aspect-[3/2] rounded-[3px] bg-black/[0.01] dark:bg-white/[0.008] border border-black/[0.015] dark:border-white/[0.015]" />
       </div>
     </div>
   );
@@ -148,7 +200,7 @@ function MiniHeader({ status }: { status: 'connected' | 'sending' | 'sent' | 're
   };
   const s = statusMap[status];
   return (
-    <div className="flex items-center justify-between px-[6px] sm:px-2 pt-[14%] sm:pt-[10%] pb-[4px] sm:pb-1.5 border-b border-black/[0.06] dark:border-white/[0.08]">
+    <div className="flex items-center justify-between px-[6px] sm:px-2 pt-[14%] sm:pt-[10%] pb-[4px] sm:pb-1.5 border-b border-white/[0.06]">
       <div className="flex items-center gap-0.5">
         <ShareTextLogo size={7} className="text-white" />
         <span className="text-[6px] sm:text-[7px] font-semibold text-white/80">ShareText</span>
@@ -433,7 +485,7 @@ export function HeroDemo() {
       >
         <div className="flex items-end justify-center gap-3 sm:gap-8">
           <PhoneFrame className="w-[110px] sm:w-[160px] lg:w-[180px]">
-            <div className="w-full h-full flex flex-col bg-[#0a0f1a]">
+            <div className="w-full h-full flex flex-col bg-[#080c18]">
               <MiniHeader status="sent" />
               <div className="flex-1 flex flex-col justify-end gap-1 px-[5px] sm:px-1.5 pb-1">
                 <ContentCard obj={item} />
@@ -444,7 +496,7 @@ export function HeroDemo() {
             </div>
           </PhoneFrame>
           <LaptopFrame className="w-[180px] sm:w-[280px] lg:w-[320px]">
-            <div className="w-full h-full flex flex-col bg-[#0a0f1a]">
+            <div className="w-full h-full flex flex-col bg-[#080c18]">
               <MiniHeader status="received" />
               <div className="flex-1 flex flex-col items-center justify-center px-2">
                 <ContentCard obj={item} received />
@@ -478,7 +530,7 @@ export function HeroDemo() {
           className="relative z-10"
         >
           <PhoneFrame className="w-[110px] sm:w-[160px] lg:w-[180px]">
-            <div className="w-full h-full flex flex-col bg-[#0a0f1a]">
+            <div className="w-full h-full flex flex-col bg-[#080c18]">
               <MiniHeader status={phoneStatus} />
 
               <div className="flex-1 flex flex-col justify-end gap-1 px-[5px] sm:px-1.5 pb-1 overflow-hidden">
@@ -569,7 +621,7 @@ export function HeroDemo() {
           className="relative z-0"
         >
           <LaptopFrame className="w-[180px] sm:w-[280px] lg:w-[320px]">
-            <div className="w-full h-full flex flex-col bg-[#0a0f1a]">
+            <div className="w-full h-full flex flex-col bg-[#080c18]">
               <MiniHeader status={laptopStatus} />
 
               <div className="flex-1 flex flex-col items-center justify-center px-2 overflow-hidden">

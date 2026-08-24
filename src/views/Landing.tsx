@@ -8,7 +8,7 @@ import { Send, Inbox } from 'lucide-react';
 import { LiveUsers } from '../components/LiveUsers';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { InstallPrompt } from '../components/InstallPrompt';
-import { IllustPhoneToLaptop, IllustLaptopToPhone, IllustPairing, IllustQR, IllustTextHandoff, IllustReceiving, IllustComplete, IllustPrivate } from '../components/Illustrations';
+import { IllustPhoneToLaptop, IllustPairing, IllustTextHandoff } from '../components/Illustrations';
 
 const PrivacyPromise = lazy(() => import('../components/PrivacyPromise').then(m => ({ default: m.PrivacyPromise })));
 const Faq = lazy(() => import('../components/Faq').then(m => ({ default: m.Faq })));
@@ -198,7 +198,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
       </section>
 
       {/* ── USE CASES — illustrated recognizable situations ── */}
-      <section className="px-5 sm:px-6 py-20 sm:py-28 bg-apple-parchment/40 dark:bg-night-950/40 relative z-10">
+      <section className="px-5 sm:px-6 py-20 sm:py-28 relative z-10">
         <div className="max-w-5xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 14 }}
@@ -212,31 +212,24 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             </h2>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6">
             {[
-              { title: 'Phone → Laptop', desc: 'A photo from your pocket to your screen.', illust: <IllustPhoneToLaptop className="w-full" /> },
-              { title: 'Laptop → Phone', desc: 'A link or text without emailing it to yourself.', illust: <IllustLaptopToPhone className="w-full" /> },
-              { title: 'Text handoff', desc: 'Move notes or code between your machines.', illust: <IllustTextHandoff className="w-full" /> },
-              { title: 'Work', desc: 'Move an error log or code snippet between your machines.', illust: <IllustPairing className="w-full" /> },
-              { title: 'Private', desc: 'Transfer temporary content without a permanent cloud copy.', illust: <IllustPrivate className="w-full" /> },
+              { title: 'Phone → Laptop', desc: 'A photo from your pocket to your screen.' },
+              { title: 'Laptop → Phone', desc: 'A link or text without emailing it to yourself.' },
+              { title: 'Text handoff', desc: 'Move notes or code between your machines.' },
+              { title: 'Quick handoff', desc: 'Send something without creating an account.' },
+              { title: 'Private', desc: 'Transfer temporary content without a permanent cloud copy.' },
             ].map((item, i) => (
               <motion.div
                 key={item.title}
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-30px' }}
-                transition={{ duration: 0.4, delay: i * 0.06, ease: EASE }}
-                className="rounded-[12px] bg-white dark:bg-surface-dark border border-apple-divider/60 dark:border-white/[0.06] text-left overflow-hidden"
+                transition={{ duration: 0.4, delay: i * 0.05, ease: EASE }}
+                className="text-left"
               >
-                {item.illust && (
-                  <div className="px-4 pt-4 pb-2">
-                    {item.illust}
-                  </div>
-                )}
-                <div className="p-5">
-                  <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-1">{item.title}</h3>
-                  <p className="text-[13px] text-apple-ink-muted dark:text-white/50 leading-relaxed">{item.desc}</p>
-                </div>
+                <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white">{item.title}</h3>
+                <p className="mt-0.5 text-[13px] text-apple-ink-muted dark:text-white/50 leading-relaxed">{item.desc}</p>
               </motion.div>
             ))}
           </div>
