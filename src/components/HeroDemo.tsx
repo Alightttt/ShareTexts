@@ -19,7 +19,7 @@ function useReducedMotion() {
   return reduced;
 }
 
-// ─── Mouse tracking with damping ───
+// ─── Mouse tracking with damping (Apple Design §3 — interruptible springs) ───
 function useMouseDamped() {
   const mx = useMotionValue(0);
   const my = useMotionValue(0);
@@ -28,8 +28,8 @@ function useMouseDamped() {
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
-      const nx = (e.clientX / window.innerWidth - 0.5) * 2;   // -1..1
-      const ny = (e.clientY / window.innerHeight - 0.5) * 2;  // -1..1
+      const nx = (e.clientX / window.innerWidth - 0.5) * 2;
+      const ny = (e.clientY / window.innerHeight - 0.5) * 2;
       mx.set(nx);
       my.set(ny);
     };
@@ -90,10 +90,10 @@ function PhoneFrame({ children, className, glow }: { children: React.ReactNode; 
   return (
     <div className={cn('relative shrink-0', className)}>
       {/* Contact shadow — sits on the surface */}
-      <div className="absolute -bottom-[3%] left-[10%] right-[10%] h-[5%] bg-black/[0.1] dark:bg-black/[0.25] rounded-[50%] blur-[8px]" />
-      {/* Physical shell — modern flat-edge design */}
+      <div className="absolute -bottom-[3%] left-[10%] right-[10%] h-[5%] bg-black/[0.12] dark:bg-black/[0.3] rounded-[50%] blur-[8px]" />
+      {/* Physical shell — modern flat-edge design (iPhone 15+) */}
       <div className="relative rounded-[22px] sm:rounded-[26px] bg-gradient-to-b from-[#eaeaee] via-[#dedee2] to-[#d2d2d6] dark:from-[#2a2a2e] dark:via-[#252528] dark:to-[#1e1e21] shadow-[0_1px_0_rgba(255,255,255,0.5)_inset,0_1px_2px_rgba(0,0,0,0.06),0_6px_20px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_1px_2px_rgba(0,0,0,0.2),0_6px_20px_rgba(0,0,0,0.4)]">
-        {/* Top edge highlight */}
+        {/* Top edge highlight — light catches the bezel */}
         <div className="absolute inset-x-[14%] top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 dark:via-white/10 to-transparent" />
         {/* Side button hint */}
         <div className="absolute right-0 top-[28%] w-[2px] h-[12%] rounded-r-sm bg-gradient-to-b from-[#c0c0c4] to-[#b0b0b4] dark:from-[#3a3a3e] dark:to-[#333336]" />
@@ -135,13 +135,13 @@ function LaptopFrame({ children, className, glow }: { children: React.ReactNode;
   return (
     <div className={cn('relative shrink-0', className)}>
       {/* Contact shadow */}
-      <div className="absolute -bottom-[2%] left-[6%] right-[6%] h-[5%] bg-black/[0.07] dark:bg-black/[0.18] rounded-[50%] blur-[10px]" />
+      <div className="absolute -bottom-[2%] left-[5%] right-[5%] h-[6%] bg-black/[0.08] dark:bg-black/[0.22] rounded-[50%] blur-[10px]" />
 
       {/* === SCREEN LID === */}
-      <div className="relative rounded-t-[8px] sm:rounded-t-[10px] bg-gradient-to-b from-[#dcdce0] via-[#d4d4d8] to-[#c8c8cc] dark:from-[#323235] dark:via-[#2e2e31] dark:to-[#262629] shadow-[0_1px_0_rgba(255,255,255,0.4)_inset,0_1px_2px_rgba(0,0,0,0.05)] dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_1px_2px_rgba(0,0,0,0.15)]">
+      <div className="relative rounded-t-[8px] sm:rounded-t-[10px] bg-gradient-to-b from-[#e0e0e4] via-[#d8d8dc] to-[#d0d0d4] dark:from-[#343438] dark:via-[#2e2e32] dark:to-[#282830] shadow-[0_1px_0_rgba(255,255,255,0.45)_inset,0_1px_2px_rgba(0,0,0,0.05)] dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_1px_2px_rgba(0,0,0,0.15)]">
         {/* Top edge highlight */}
         <div className="absolute inset-x-[12%] top-0 h-[1px] bg-gradient-to-r from-transparent via-white/45 dark:via-white/8 to-transparent" />
-        {/* Webcam cluster */}
+        {/* Webcam cluster — three dots (camera + flanking sensors) */}
         <div className="absolute top-[3%] left-1/2 -translate-x-1/2 flex items-center gap-[3%]">
           <div className="w-[1.2%] aspect-square rounded-full bg-[#0d0d10] ring-[0.5px] ring-white/10" />
           <div className="w-[1.5%] aspect-square rounded-full bg-[#0a0a0e] ring-[0.3px] ring-white/8 flex items-center justify-center">
@@ -149,11 +149,11 @@ function LaptopFrame({ children, className, glow }: { children: React.ReactNode;
           </div>
           <div className="w-[1.2%] aspect-square rounded-full bg-[#0d0d10] ring-[0.5px] ring-white/10" />
         </div>
-        {/* Screen bezel */}
+        {/* Screen bezel — thin dark frame */}
         <div className="mx-[2%] mt-[6%] rounded-[4px] sm:rounded-[6px] bg-[#111115] p-[1%]">
           {/* Actual screen */}
           <div className="relative rounded-[2px] sm:rounded-[3px] bg-[#080c18] dark:bg-[#080a0e] overflow-hidden aspect-[16/10]">
-            {/* Screen glass reflection */}
+            {/* Screen glass reflection — very subtle */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/[0.015] via-transparent to-transparent pointer-events-none z-20" />
             {/* Screen glow */}
             {(glow ?? 0) > 0 && (
@@ -165,38 +165,59 @@ function LaptopFrame({ children, className, glow }: { children: React.ReactNode;
         </div>
       </div>
 
-      {/* === HINGE === */}
-      <div className="relative mx-[3%] h-[3px] bg-gradient-to-b from-[#b8b8bc] to-[#c0c0c4] dark:from-[#222225] dark:to-[#282830]">
-        <div className="absolute inset-x-[15%] top-0 h-[0.5px] bg-white/20 dark:bg-white/5" />
+      {/* === HINGE — thin metallic strip separating screen from deck === */}
+      <div className="relative mx-[3%] h-[3px] bg-gradient-to-b from-[#c0c0c4] to-[#c8c8cc] dark:from-[#252528] dark:to-[#2c2c30] shadow-[0_1px_1px_rgba(0,0,0,0.04)]">
+        <div className="absolute inset-x-[15%] top-0 h-[0.5px] bg-white/25 dark:bg-white/5" />
       </div>
 
-      {/* === KEYBOARD DECK === */}
-      <div className="relative rounded-b-[8px] sm:rounded-b-[10px] bg-gradient-to-b from-[#d4d4d8] via-[#cccdd0] to-[#c0c0c4] dark:from-[#2c2c2f] dark:via-[#282830] dark:to-[#222225] shadow-[0_6px_20px_-6px_rgba(0,0,0,0.1),0_2px_4px_rgba(0,0,0,0.04)] dark:shadow-[0_6px_20px_-6px_rgba(0,0,0,0.25),0_2px_4px_rgba(0,0,0,0.08)]">
-        <div className="mx-[6%] pt-[4%] space-y-[1px]">
+      {/* === KEYBOARD DECK — real physical feel === */}
+      <div className="relative rounded-b-[8px] sm:rounded-b-[10px] bg-gradient-to-b from-[#d8d8dc] via-[#d0d0d4] to-[#c8c8cc] dark:from-[#2e2e32] dark:via-[#2a2a2e] dark:to-[#252528] shadow-[0_6px_20px_-6px_rgba(0,0,0,0.1),0_2px_4px_rgba(0,0,0,0.04)] dark:shadow-[0_6px_20px_-6px_rgba(0,0,0,0.3),0_2px_4px_rgba(0,0,0,0.1)]">
+        {/* Bottom edge — dark grounding line */}
+        <div className="absolute bottom-0 inset-x-0 h-[1px] bg-black/[0.06] dark:bg-white/[0.03]" />
+
+        {/* Keyboard area — 4 rows of faint key hints */}
+        <div className="mx-[6%] pt-[4%] space-y-[2px]">
+          {/* Row 1 — function keys (smaller) */}
           <div className="flex gap-[2px] justify-center">
             {Array.from({ length: 12 }).map((_, i) => (
-              <div key={`r1-${i}`} className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-black/[0.03] dark:bg-white/[0.018] flex-1" />
+              <div key={`r1-${i}`}
+                className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.04] to-black/[0.02] dark:from-white/[0.025] dark:to-white/[0.012] flex-1"
+              />
             ))}
           </div>
+          {/* Row 2 — QWERTY */}
           <div className="flex gap-[2px] justify-center px-[1%]">
             {Array.from({ length: 11 }).map((_, i) => (
-              <div key={`r2-${i}`} className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-black/[0.025] dark:bg-white/[0.015] flex-1" />
+              <div key={`r2-${i}`}
+                className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.035] to-black/[0.02] dark:from-white/[0.02] dark:to-white/[0.01] flex-1"
+              />
             ))}
           </div>
+          {/* Row 3 — ASDF */}
+          <div className="flex gap-[2px] justify-center px-[2%]">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={`r3-${i}`}
+                className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.03] to-black/[0.018] dark:from-white/[0.018] dark:to-white/[0.008] flex-1"
+              />
+            ))}
+          </div>
+          {/* Row 4 — ZXCV + spacebar */}
           <div className="flex gap-[2px] justify-center items-center">
-            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-black/[0.02] dark:bg-white/[0.012] w-[12%]" />
-            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-black/[0.02] dark:bg-white/[0.012] flex-1 max-w-[35%]" />
-            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-black/[0.02] dark:bg-white/[0.012] w-[12%]" />
+            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.025] to-black/[0.015] dark:from-white/[0.015] dark:to-white/[0.008] w-[12%]" />
+            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.025] to-black/[0.015] dark:from-white/[0.015] dark:to-white/[0.008] flex-1 max-w-[35%]" />
+            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.025] to-black/[0.015] dark:from-white/[0.015] dark:to-white/[0.008] w-[12%]" />
           </div>
         </div>
-        <div className="mx-auto mt-[3%] mb-[8%] w-[28%] aspect-[5/3] rounded-[2px] bg-black/[0.008] dark:bg-white/[0.006] border border-black/[0.012] dark:border-white/[0.012]" />
+
+        {/* Trackpad — centered, subtle recessed feel */}
+        <div className="mx-auto mt-[3%] mb-[8%] w-[28%] aspect-[5/3] rounded-[2px] bg-black/[0.008] dark:bg-white/[0.005] border border-black/[0.015] dark:border-white/[0.015]" />
       </div>
     </div>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// MINI UI — real ShareText interface
+// MINI UI — real ShareText interface inside devices
 // ═══════════════════════════════════════════════════════════════════════════
 
 function MiniHeader({ status }: { status: 'connected' | 'sending' | 'sent' | 'receiving' | 'received' }) {
@@ -341,7 +362,7 @@ function FlyingContent({
 
     // Arc with depth — lifts higher in the middle, slight rotation
     const arc = -30 * Math.sin(progress * Math.PI);
-    const rotate = Math.sin(progress * Math.PI * 2) * 3; // subtle tilt during flight
+    const rotate = Math.sin(progress * Math.PI * 2) * 3;
 
     // Fade in/out at edges
     const opacity = progress < 0.06 ? progress / 0.06 : progress > 0.94 ? (1 - progress) / 0.06 : 1;
@@ -391,7 +412,7 @@ export function HeroDemo() {
   const simStateRef = useRef<SimState>('idle');
   const runMachineRef = useRef<() => void>(() => {});
 
-  // Mouse-driven 3D
+  // Mouse-driven 3D (Apple Design §5 — subtle environmental response)
   const { mx, my } = useMouseDamped();
 
   // Device transforms based on mouse
@@ -473,7 +494,7 @@ export function HeroDemo() {
   useEffect(() => {
     const t = setTimeout(() => runMachine('photo'), 300);
     return () => clearTimeout(t);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const el = containerRef.current;

@@ -79,10 +79,10 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             <span className="font-semibold tracking-tight text-[14px] text-apple-ink dark:text-white">ShareText</span>
           </a>
           <nav className="hidden md:flex items-center justify-center gap-6 flex-1" aria-label="Page sections">
-            <a href="#how-it-works" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white transition-motion">How it works</a>
-            <a href="#private" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white transition-motion">Privacy</a>
-            <a href="#faq" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white transition-motion">Questions</a>
-            <a href="/docs" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white transition-motion">Docs</a>
+            <a href="#how-it-works" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white transition-colors">How it works</a>
+            <a href="#private" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white transition-colors">Privacy</a>
+            <a href="#faq" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white transition-colors">Questions</a>
+            <a href="/docs" className="text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white transition-colors">Docs</a>
           </nav>
           <div className="flex items-center gap-3 ml-auto shrink-0">
             <LiveUsers className="hidden lg:inline-flex" />
@@ -91,7 +91,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
         </div>
       </header>
 
-      {/* ── HERO — the product story starts here ── */}
+      {/* ── HERO ── */}
       <section
         id="main-content"
         className="px-5 sm:px-6 min-h-[calc(100dvh-48px)] sm:min-h-0 flex items-center py-10 sm:py-16 lg:py-20 relative z-10"
@@ -136,8 +136,6 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               </TactileButton>
             </div>
 
-
-
             {createError && (
               <div role="alert" data-testid="error-message" className="mt-4 space-y-2">
                 <p className="text-[14px] font-medium text-status-danger whitespace-pre-line leading-relaxed">{createError}</p>
@@ -159,22 +157,22 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
         </div>
       </section>
 
-      {/* ── HOW IT WORKS — three large illustrated demonstrations ── */}
-      <section id="how-it-works" className="px-5 sm:px-6 py-20 sm:py-28 relative z-10">
+      {/* ── HOW IT WORKS ── */}
+      <section id="how-it-works" className="px-5 sm:px-6 py-16 sm:py-24 relative z-10">
         <div className="max-w-5xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
             transition={{ duration: 0.5, ease: EASE }}
-            className="mb-14"
+            className="mb-12"
           >
             <h2 className="text-[28px] sm:text-[36px] font-semibold text-apple-ink dark:text-white tracking-[-0.03em]">
               Three steps.
             </h2>
           </motion.div>
 
-          <div className="grid sm:grid-cols-3 gap-10 sm:gap-8">
+          <div className="grid sm:grid-cols-3 gap-8 sm:gap-6">
             {[
               { n: '01', title: 'Open', desc: 'ShareText on both devices. Same page, any browser.', illust: <IllustTransfer className="w-full" /> },
               { n: '02', title: 'Connect', desc: 'Type the code or scan the QR. That\'s the whole pairing.', illust: <IllustConnect className="w-full" /> },
@@ -187,20 +185,20 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 viewport={{ once: true, margin: '-40px' }}
                 transition={{ duration: 0.5, delay: i * 0.08, ease: EASE }}
               >
-                <div className="mb-4 rounded-[10px] bg-apple-parchment/50 dark:bg-white/[0.03] border border-apple-divider/40 dark:border-white/[0.05] overflow-hidden">
+                <div className="mb-4 rounded-[10px] bg-apple-parchment/50 dark:bg-white/[0.02] border border-apple-divider/30 dark:border-white/[0.04] overflow-hidden">
                   {step.illust}
                 </div>
                 <span className="font-mono text-[12px] text-azure-600 dark:text-azure-400 tabular-nums">{step.n}</span>
-                <h3 className="mt-1.5 text-[18px] font-semibold text-apple-ink dark:text-white">{step.title}</h3>
-                <p className="mt-1.5 text-[14px] text-apple-ink-muted dark:text-white/55 leading-relaxed">{step.desc}</p>
+                <h3 className="mt-1.5 text-[17px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">{step.title}</h3>
+                <p className="mt-1.5 text-[14px] text-apple-ink-muted dark:text-white/50 leading-relaxed">{step.desc}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── USE CASES — illustrated recognizable situations ── */}
-      <section className="px-5 sm:px-6 py-20 sm:py-28 relative z-10">
+      {/* ── USE CASES ── */}
+      <section className="px-5 sm:px-6 py-16 sm:py-24 relative z-10">
         <div className="max-w-5xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 14 }}
@@ -244,8 +242,8 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
         <div id="faq" tabIndex={-1}><Faq /></div>
       </Suspense>
 
-      {/* ── CTA — the wrong-screen moment ── */}
-      <section className="px-5 sm:px-6 pb-24 sm:pb-32 pt-20 sm:pt-28 relative z-10">
+      {/* ── CTA ── */}
+      <section className="px-5 sm:px-6 pb-20 sm:pb-28 pt-16 sm:pt-24 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           whileInView={{ opacity: 1, y: 0 }}

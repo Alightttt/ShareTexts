@@ -3,19 +3,21 @@ import { motion, useSpring, useMotionValue, useTransform } from 'motion/react';
 import { cn } from '../lib/utils';
 
 // ---------------------------------------------------------------------------
-// TactileButton — physically responsive button
+// TactileButton — physically dimensional button
 // ---------------------------------------------------------------------------
-// Structure:
-//   base surface → subtle border → top highlight → depth/shadow → content
+// Structure (bottom to top):
+//   1. Shadow layer — sits below, gives depth
+//   2. Base surface — gradient from light (top) to darker (bottom)
+//   3. Top highlight — thin bright edge catching light
+//   4. Bottom edge — subtle darker edge for grounding
+//   5. Pointer light — radial highlight following cursor
+//   6. Content layer — text + icons
 //
-// States:
-//   idle    — subtle depth, soft shadow, quiet gradient
-//   hover   — rises ~2px, shadow expands, icon shifts
-//   press   — compresses ~2px, shadow tightens, content shifts down
-//   release — spring return
-//
-// Pointer light: radial highlight following cursor inside the button.
-// Uses useMotionValue + useTransform (no setState in useEffect).
+// The 3D illusion comes from:
+//   - Light source from ABOVE → top edge bright, bottom edge dark
+//   - Gradient surface → lighter at top, subtly darker at bottom
+//   - Shadow grows when lifted (hover), tightens when pressed
+//   - Content shifts down on press, up on hover
 // ---------------------------------------------------------------------------
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost';
@@ -37,25 +39,39 @@ interface TactileButtonProps {
 const SIZE_CLASSES: Record<ButtonSize, string> = {
   sm: 'px-4 py-2 text-[13px] gap-1.5 rounded-[8px]',
   md: 'px-5 py-2.5 text-[14px] gap-2 rounded-[10px]',
-  lg: 'px-6 py-3 text-[15px] gap-2 rounded-[10px]',
+  lg: 'px-6 py-3.5 text-[15px] gap-2 rounded-[10px]',
 };
 
-const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  primary: cn(
-    'bg-azure-600 text-white',
-    'shadow-[0_1px_2px_rgba(0,0,0,0.15),0_4px_12px_-2px_rgba(10,102,240,0.25),inset_0_1px_0_rgba(255,255,255,0.15)]',
-    'hover:shadow-[0_2px_4px_rgba(0,0,0,0.15),0_8px_20px_-2px_rgba(10,102,240,0.3),inset_0_1px_0_rgba(255,255,255,0.2)]',
-  ),
-  secondary: cn(
-    'bg-apple-ink text-white dark:bg-white dark:text-night-900',
-    'shadow-[0_1px_2px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.08)]',
-    'dark:shadow-[0_1px_2px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.1)]',
-    'hover:shadow-[0_2px_4px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.1)]',
-  ),
-  ghost: cn(
-    'bg-transparent text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white',
-    'hover:bg-apple-parchment dark:hover:bg-apple-tile-1',
-  ),
+// Each variant defines its own surface gradient + shadow layers
+const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; shadowHover: string; shadowPress: string; gradient: string }> = {
+  primary: {
+    base: 'text-white',
+    shadowIdle: '0 1px 2px rgba(0,0,0,0.2), 0 4px 12px -2px rgba(10,102,240,0.2)',
+    shadowHover: '0 4px 8px rgba(0,0,0,0.15), 0 12px 28px -4px rgba(10,102,240,0.35)',
+    shadowPress: '0 1px 2px rgba(0,0,0,0.2), 0 2px 6px -1px rgba(10,102,240,0.15)',
+    gradient: 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.0) 45%, rgba(0,0,0,0.08) 100%)',
+  },
+  secondary: {
+    base: 'bg-apple-ink text-white dark:bg-white dark:text-night-900',
+    shadowIdle: '0 1px 2px rgba(0,0,0,0.12), 0 3px 8px -2px rgba(0,0,0,0.08)',
+    shadowHover: '0 4px 8px rgba(0,0,0,0.12), 0 10px 20px -3px rgba(0,0,0,0.15)',
+    shadowPress: '0 1px 2px rgba(0,0,0,0.12), 0 2px 4px -1px rgba(0,0,0,0.08)',
+    gradient: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.0) 40%, rgba(0,0,0,0.1) 100%)',
+  },
+  ghost: {
+    base: 'bg-transparent text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-apple-parchment dark:hover:bg-apple-tile-1',
+    shadowIdle: '0 0 0 rgba(0,0,0,0)',
+    shadowHover: '0 1px 4px rgba(0,0,0,0.06)',
+    shadowPress: '0 0 0 rgba(0,0,0,0)',
+    gradient: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 50%, rgba(0,0,0,0.03) 100%)',
+  },
+};
+
+// Surface fill under the gradient overlay
+const SURFACE_FILLS: Record<ButtonVariant, string> = {
+  primary: 'bg-azure-600',
+  secondary: '',
+  ghost: '',
 };
 
 export function TactileButton({
@@ -72,6 +88,8 @@ export function TactileButton({
   const [isHovered, setIsHovered] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
 
+  const vs = VARIANT_STYLES[variant];
+
   // Pointer position for light effect (normalized 0-1 inside button)
   const px = useMotionValue(0.5);
   const py = useMotionValue(0.5);
@@ -83,11 +101,12 @@ export function TactileButton({
   // Light opacity — fades in on hover, out on leave
   const lightOpacity = useSpring(0, { stiffness: 200, damping: 20 });
 
-  // Y transform — rises on hover, compresses on press
+  // Y transform — rises on hover, compresses on press (Apple Design §4)
   const y = useSpring(0, { stiffness: 300, damping: 20 });
 
-  // Scale — very subtle
-  const scale = useSpring(1, { stiffness: 400, damping: 25 });
+  // Shadow animation — expanded on hover, tight on press
+  const shadowY = useSpring(0, { stiffness: 200, damping: 20 });
+  const shadowOpacity = useSpring(0, { stiffness: 200, damping: 20 });
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     const rect = ref.current?.getBoundingClientRect();
@@ -99,34 +118,61 @@ export function TactileButton({
   const handlePointerEnter = useCallback(() => {
     setIsHovered(true);
     lightOpacity.set(1);
-    if (!isPressed) y.set(-2);
-  }, [lightOpacity, y, isPressed]);
+    if (!isPressed) {
+      y.set(-2);
+      shadowY.set(4);
+      shadowOpacity.set(1);
+    }
+  }, [lightOpacity, y, shadowY, shadowOpacity, isPressed]);
 
   const handlePointerLeave = useCallback(() => {
     setIsHovered(false);
     lightOpacity.set(0);
     y.set(0);
+    shadowY.set(0);
+    shadowOpacity.set(0);
     setIsPressed(false);
-  }, [lightOpacity, y]);
+  }, [lightOpacity, y, shadowY, shadowOpacity]);
 
   const handlePointerDown = useCallback(() => {
     setIsPressed(true);
     y.set(1);
-    scale.set(0.98);
-  }, [y, scale]);
+    shadowY.set(0);
+    shadowOpacity.set(0.5);
+  }, [y, shadowY, shadowOpacity]);
 
   const handlePointerUp = useCallback(() => {
     setIsPressed(false);
-    if (isHovered) y.set(-2);
-    else y.set(0);
-    scale.set(1);
-  }, [y, scale, isHovered]);
+    if (isHovered) {
+      y.set(-2);
+      shadowY.set(4);
+      shadowOpacity.set(1);
+    } else {
+      y.set(0);
+      shadowY.set(0);
+      shadowOpacity.set(0);
+    }
+  }, [y, shadowY, shadowOpacity, isHovered]);
 
-  // Pointer light gradient — computed from spring-animated pointer position
+  // Pointer light gradient
   const lightGradient = useTransform(
     [lightX, lightY],
-    ([lx, ly]: number[]) => `radial-gradient(circle at ${lx * 100}% ${ly * 100}%, rgba(255,255,255,0.12) 0%, transparent 60%)`
+    ([lx, ly]: number[]) => `radial-gradient(ellipse at ${lx * 100}% ${ly * 100}%, rgba(255,255,255,0.15) 0%, transparent 55%)`
   );
+
+  // Compose shadow from spring values
+  const boxShadow = useTransform(
+    [shadowY, shadowOpacity],
+    ([sy, so]: number[]) => {
+      const base = isPressed ? vs.shadowPress : isHovered ? vs.shadowHover : vs.shadowIdle;
+      if (variant === 'ghost') return base;
+      // Interpolate shadow spread based on elevation
+      const spread = Math.round(sy);
+      return base + `, 0 ${spread}px ${spread * 3}px rgba(0,0,0,${0.08 * so})`;
+    }
+  );
+
+  const surfaceFill = SURFACE_FILLS[variant];
 
   return (
     <motion.button
@@ -134,14 +180,15 @@ export function TactileButton({
       disabled={disabled}
       className={cn(
         'relative overflow-hidden font-semibold select-none',
-        'transition-colors duration-150',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-azure-500',
+        'transition-[background-color] duration-150',
         SIZE_CLASSES[size],
-        VARIANT_CLASSES[variant],
+        vs.base,
+        surfaceFill,
         disabled && 'opacity-50 cursor-not-allowed',
         className,
       )}
-      style={{ y, scale, touchAction: 'manipulation' }}
+      style={{ y, touchAction: 'manipulation' as const }}
       onPointerMove={handlePointerMove}
       onPointerEnter={handlePointerEnter}
       onPointerLeave={handlePointerLeave}
@@ -149,24 +196,42 @@ export function TactileButton({
       onPointerUp={handlePointerUp}
       {...props}
     >
-      {/* Pointer light overlay — pure motion values, no setState in useEffect */}
+      {/* Shadow layer — sits behind the button, gives it physical depth */}
       <motion.div
-        className="absolute inset-0 pointer-events-none z-10 rounded-[inherit]"
+        className="absolute inset-0 rounded-[inherit] pointer-events-none"
+        style={{
+          boxShadow,
+          opacity: shadowOpacity,
+        }}
+      />
+
+      {/* Surface gradient — light from top, dark from bottom = 3D */}
+      <div
+        className="absolute inset-0 rounded-[inherit] pointer-events-none z-[1]"
+        style={{ background: vs.gradient }}
+      />
+
+      {/* Top highlight — thin bright edge where light catches */}
+      <div className="absolute inset-x-[2px] top-[1px] h-[1px] bg-gradient-to-r from-transparent via-white/[0.2] to-transparent pointer-events-none z-[2] rounded-t-[inherit]" />
+
+      {/* Bottom edge — subtle darker line for grounding */}
+      <div className="absolute inset-x-[2px] bottom-[1px] h-[1px] bg-gradient-to-r from-transparent via-black/[0.08] to-transparent pointer-events-none z-[2] rounded-b-[inherit]" />
+
+      {/* Pointer light overlay — follows cursor inside button */}
+      <motion.div
+        className="absolute inset-0 pointer-events-none z-[3] rounded-[inherit]"
         style={{
           background: lightGradient,
           opacity: lightOpacity,
         }}
       />
 
-      {/* Top highlight — catches light */}
-      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/[0.12] to-transparent pointer-events-none z-10 rounded-t-[inherit]" />
-
       {/* Content layer */}
-      <span className="relative z-20 flex items-center justify-center">
+      <span className="relative z-10 flex items-center justify-center">
         {icon && iconPosition === 'left' && (
           <motion.span
             className="shrink-0"
-            animate={isHovered ? { x: 1 } : { x: 0 }}
+            animate={isHovered ? { x: 1.5 } : { x: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
             {icon}
@@ -176,7 +241,7 @@ export function TactileButton({
         {icon && iconPosition === 'right' && (
           <motion.span
             className="shrink-0"
-            animate={isHovered ? { x: 1 } : { x: 0 }}
+            animate={isHovered ? { x: 1.5 } : { x: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
             {icon}
