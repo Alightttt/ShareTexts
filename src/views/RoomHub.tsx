@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { LiveCodeDisplay } from '../components/LiveCodeDisplay';
 import { QRCodeSVG } from 'qrcode.react';
-import { Copy, QrCode, Check, Share2, ChevronLeft, Pencil, Link2, X } from 'lucide-react';
+import { Copy, QrCode, Check, ChevronLeft, Pencil, Link2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, shortCodeOf } from '../lib/utils';
 import { AnimatedIcon } from '../components/AnimatedIcon';
@@ -99,7 +99,7 @@ export function RoomHub() {
   return (
     <div data-testid="room-shell" data-app-state="sender-waiting" className="min-h-screen flex flex-col bg-apple-canvas dark:bg-night-950 relative overflow-hidden">
       {/* Header */}
-      <header className="relative z-10 flex items-center gap-2 px-4 sm:px-6 pt-4 sm:pt-5">
+      <header className="relative z-10 flex items-center gap-2 px-4 sm:px-6 pt-4 sm:pt-5 bg-apple-canvas/80 dark:bg-night-950/80 backdrop-blur-xl backdrop-saturate-150">
         <button onPointerDown={abandonSession} aria-label="Back to home" className="flex items-center justify-center w-10 h-10 -ml-2 rounded-full text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-parchment dark:hover:bg-apple-tile-1 active:scale-95 transition-motion">
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -152,13 +152,13 @@ export function RoomHub() {
           {/* ── PRIMARY ACTIONS ── */}
           <div className="w-full space-y-2.5 mt-1">
             {/* Show QR — dominant action */}
-            <button data-testid="room-show-qr" onPointerDown={() => setShowQR(true)}
+            <button data-testid="room-show-qr" onPointerDown={() => setShowQR(true)} style={{ touchAction: 'manipulation' }}
               className="w-full flex items-center justify-center gap-2 px-5 py-3 sm:py-3.5 bg-azure-600 hover:bg-azure-500 text-white rounded-[10px] text-[14px] sm:text-[15px] font-semibold min-h-[46px] sm:min-h-[48px] transition-all duration-150 hover:opacity-90">
               <QrCode className="w-4 h-4" /> Show QR
             </button>
 
             {/* Share link — secondary */}
-            <button data-testid="room-share-link" onPointerDown={shareLink}
+            <button data-testid="room-share-link" onPointerDown={shareLink} style={{ touchAction: 'manipulation' }}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 bg-white dark:bg-surface-dark border border-apple-divider/60 dark:border-apple-tile-3 hover:bg-apple-parchment dark:hover:bg-surface-dark-2 rounded-[12px] text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.97] min-h-[44px]">
               {copiedLink ? <AnimatedIcon animate="check" active={copiedLink}><Check className="w-4 h-4 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="link"><Link2 className="w-4 h-4 text-apple-ink-muted" /></AnimatedIcon>}
               {copiedLink ? 'Copied' : 'Share link'}

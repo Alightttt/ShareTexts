@@ -457,7 +457,7 @@ export function ChatView() {
       <div aria-live="polite" role="status" className="sr-only">{announcement}</div>
 
       {/* Header — device relationship, not chat */}
-      <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 shrink-0 border-b border-apple-divider/40 dark:border-white/[0.06] bg-apple-canvas dark:bg-night-950 z-20 sticky top-0">
+      <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 shrink-0 border-b border-apple-divider/40 dark:border-white/[0.06] bg-apple-canvas/80 dark:bg-night-950/80 backdrop-blur-xl backdrop-saturate-150 z-20 sticky top-0">
         <div className="flex items-center gap-3 min-w-0">
           <ShareTextLogo size={18} className="text-apple-ink dark:text-white shrink-0" />
           <div className="flex items-center gap-2 min-w-0">
@@ -589,6 +589,7 @@ export function ChatView() {
                   ref={keepSessionRef}
                   data-testid="end-session-cancel"
                   onPointerDown={() => setConfirmClose(false)}
+                  style={{ touchAction: 'manipulation' }}
                   className="w-full py-3.5 bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white rounded-[14px] text-[15px] font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
                 >
                   Keep connected
@@ -596,6 +597,7 @@ export function ChatView() {
                 <button
                   data-testid="end-session-confirm"
                   onPointerDown={closeSession}
+                  style={{ touchAction: 'manipulation' }}
                   className="w-full py-3.5 bg-status-danger hover:bg-[#e0352b] text-white rounded-[14px] text-[15px] font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
                 >
                   Disconnect

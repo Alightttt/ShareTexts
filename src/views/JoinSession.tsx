@@ -149,7 +149,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
 
       {/* Back */}
       <div className="absolute top-5 left-5 z-10">
-        <button onPointerDown={onBack} className="flex items-center gap-1 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors text-[14px] font-medium active:scale-95 px-2 py-2 -m-2 min-h-[44px]">
+        <button onPointerDown={onBack} style={{ touchAction: 'manipulation' }} className="flex items-center gap-1 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors text-[14px] font-medium active:scale-95 px-2 py-2 -m-2 min-h-[44px]">
           <ChevronLeft className="w-5 h-5 -ml-1" /> Cancel
         </button>
       </div>
@@ -164,17 +164,17 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
           {/* ═══ INPUT PHASE — code entry or QR ═══ */}
           {phase === 'input' && activeTab === 'code' && (
             <motion.div key="code" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.25 }} className="w-full flex justify-center">
-              <div className="w-full p-6 sm:p-8 bg-white dark:bg-[#13161B] border border-[#E3E5E8] dark:border-[#272D36] rounded-[22px] shadow-[0_16px_48px_rgba(18,31,53,0.10)] dark:shadow-[0_20px_64px_rgba(0,0,0,0.28)]">
-                <h1 className="text-[22px] sm:text-[26px] font-semibold text-[#17191D] dark:text-[#F4F6F8] tracking-[-0.025em] mb-2 text-center">
+              <div className="w-full p-6 sm:p-8 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[22px] shadow-[0_16px_48px_rgba(18,31,53,0.10)] dark:shadow-[0_20px_64px_rgba(0,0,0,0.28)]">
+                <h1 className="text-[22px] sm:text-[26px] font-semibold text-apple-ink dark:text-white tracking-[-0.025em] mb-2 text-center">
                   Join a ShareText room
                 </h1>
-                <p className="text-[14px] text-[#6E737B] dark:text-[#9BA3AE] font-medium mb-8 text-center">
+                <p className="text-[14px] text-apple-ink-muted dark:text-white/55 font-medium mb-8 text-center">
                   Enter the six-digit code shown on the other device.
                 </p>
                 <LiveCodeInput onComplete={handleCodeComplete} isJoining={false} error={error} />
-                <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[12px] font-medium text-[#6E737B] dark:text-[#9BA3AE]">
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[12px] font-medium text-apple-ink-muted dark:text-white/55">
                   <span className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#1C9A61] dark:bg-[#55D18C]" /> Encrypted
+                    <span className="w-1.5 h-1.5 rounded-full bg-status-success" /> Encrypted
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-azure-600 dark:bg-azure-400" /> No account
@@ -202,8 +202,8 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
               className="w-full flex flex-col items-center p-8 bg-white dark:bg-surface-dark rounded-[22px] border border-apple-divider dark:border-apple-tile-3 shadow-sm text-center">
               <h3 className="text-[21px] font-semibold text-apple-ink dark:text-white mb-2 tracking-tight">Connect to this device?</h3>
               <p className="text-[14px] text-apple-ink-muted mb-8">The session is temporary — a handoff, not a history.</p>
-              <button onPointerDown={handleConfirm} disabled={!pendingLink && !pendingShortCode}
-                className="w-full py-3.5 bg-azure-600 hover:bg-azure-500 text-white rounded-[10px] text-[15px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60 min-h-[48px] transition-all duration-150">
+              <button onPointerDown={handleConfirm} disabled={!pendingLink && !pendingShortCode} style={{ touchAction: 'manipulation' }}
+                className="w-full py-3.5 bg-azure-600 hover:bg-azure-500 text-white rounded-[10px] text-[15px] font-semibold flex items-center justify-center gap-2 disabled:opacity-60 min-h-[48px] transition-all duration-150 active:scale-[0.97]">
                 Connect
               </button>
             </motion.div>
@@ -212,7 +212,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
           {/* ═══ CONNECTING PHASE — progress stepper ═══ */}
           {(phase === 'connecting' || phase === 'establishing') && (
             <motion.div key="progress" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full flex flex-col items-center p-8 bg-white dark:bg-[#13161B] border border-[#E3E5E8] dark:border-[#272D36] rounded-[22px] shadow-[0_16px_48px_rgba(18,31,53,0.10)] dark:shadow-[0_20px_64px_rgba(0,0,0,0.28)] text-center">
+              className="w-full flex flex-col items-center p-8 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[22px] shadow-[0_16px_48px_rgba(18,31,53,0.10)] dark:shadow-[0_20px_64px_rgba(0,0,0,0.28)] text-center">
               {/* Animated logo */}
               <div className="mb-6">
                 <ShareTextLogo size={48} motion="connecting" className="text-azure-600" />
@@ -230,7 +230,7 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
           {/* ═══ CONNECTED PHASE — success ═══ */}
           {phase === 'connected' && (
             <motion.div key="done" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-              className="w-full flex flex-col items-center p-8 bg-white dark:bg-[#13161B] border border-[#E3E5E8] dark:border-[#272D36] rounded-[22px] shadow-[0_16px_48px_rgba(18,31,53,0.10)] dark:shadow-[0_20px_64px_rgba(0,0,0,0.28)] text-center">
+              className="w-full flex flex-col items-center p-8 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[22px] shadow-[0_16px_48px_rgba(18,31,53,0.10)] dark:shadow-[0_20px_64px_rgba(0,0,0,0.28)] text-center">
               <div className="w-14 h-14 rounded-full bg-status-success/15 flex items-center justify-center mb-4">
                 <AnimatedIcon animate="check" active><Check className="w-7 h-7 text-status-success" strokeWidth={2.5} /></AnimatedIcon>
               </div>
@@ -246,14 +246,14 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
           {/* ═══ ERROR PHASE ═══ */}
           {phase === 'error' && (
             <motion.div key="error" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-              className="w-full flex flex-col items-center p-8 bg-white dark:bg-[#13161B] border border-[#E3E5E8] dark:border-[#272D36] rounded-[22px] shadow-[0_16px_48px_rgba(18,31,53,0.10)] dark:shadow-[0_20px_64px_rgba(0,0,0,0.28)] text-center">
+              className="w-full flex flex-col items-center p-8 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[22px] shadow-[0_16px_48px_rgba(18,31,53,0.10)] dark:shadow-[0_20px_64px_rgba(0,0,0,0.28)] text-center">
               <div className="w-14 h-14 rounded-full bg-status-danger/10 flex items-center justify-center mb-4">
                 <Wifi className="w-7 h-7 text-status-danger" />
               </div>
               <h2 className="text-[20px] font-semibold text-apple-ink dark:text-white mb-2">Couldn't connect</h2>
               <p className="text-[14px] text-apple-ink-muted dark:text-white/55 mb-6 max-w-[280px]">{error}</p>
-              <button onPointerDown={resetToInput}
-                className="px-6 py-3 bg-azure-600 hover:bg-azure-500 text-white rounded-[10px] text-[14px] font-semibold min-h-[44px] transition-all duration-150">
+              <button onPointerDown={resetToInput} style={{ touchAction: 'manipulation' }}
+                className="px-6 py-3 bg-azure-600 hover:bg-azure-500 text-white rounded-[10px] text-[14px] font-semibold min-h-[44px] transition-all duration-150 active:scale-[0.97]">
                 Try again
               </button>
             </motion.div>
@@ -264,12 +264,12 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
         {phase === 'input' && activeTab !== 'linkConfirm' && (
           <div className="mt-4 flex justify-center w-full">
             {activeTab === 'code' ? (
-              <button onPointerDown={() => { setActiveTab('qr'); setError(null); }}
+              <button onPointerDown={() => { setActiveTab('qr'); setError(null); }} style={{ touchAction: 'manipulation' }}
                 className="flex items-center gap-2 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white active:scale-95 transition-motion bg-apple-parchment dark:bg-surface-dark px-4 py-2.5 rounded-[10px] border border-apple-divider/50 dark:border-white/5 min-h-[44px]">
                 <AnimatedIcon animate="qr"><QrCode className="w-4 h-4" /></AnimatedIcon> Scan QR instead
               </button>
             ) : (
-              <button onPointerDown={() => { setActiveTab('code'); setError(null); }}
+              <button onPointerDown={() => { setActiveTab('code'); setError(null); }} style={{ touchAction: 'manipulation' }}
                 className="flex items-center gap-2 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white active:scale-95 transition-motion bg-apple-parchment dark:bg-surface-dark px-4 py-2.5 rounded-[10px] border border-apple-divider/50 dark:border-white/5 min-h-[44px]">
                 <Keyboard className="w-4 h-4" /> Enter code manually
               </button>
