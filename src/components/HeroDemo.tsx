@@ -142,45 +142,28 @@ function LaptopFrame({ children, className }: { children: React.ReactNode; class
         <div className="absolute inset-x-[15%] top-0 h-[0.5px] bg-white/20 dark:bg-white/5" />
       </div>
 
-      {/* === KEYBOARD DECK === */}
+      {/* === KEYBOARD DECK — thin, realistic proportion === */}
       <div className="relative rounded-b-[8px] sm:rounded-b-[10px] bg-gradient-to-b from-[#d4d4d8] via-[#cccdd0] to-[#c0c0c4] dark:from-[#2c2c2f] dark:via-[#282830] dark:to-[#222225] shadow-[0_6px_20px_-6px_rgba(0,0,0,0.1),0_2px_4px_rgba(0,0,0,0.04)] dark:shadow-[0_6px_20px_-6px_rgba(0,0,0,0.25),0_2px_4px_rgba(0,0,0,0.08)]">
-        {/* Keyboard area — subtle key row hints */}
-        <div className="mx-[6%] mt-[8%] space-y-[2.5%]">
-          {/* Row 1 — function keys (slightly smaller) */}
-          <div className="flex gap-[1.5%] justify-center">
+        <div className="mx-[6%] pt-[4%] space-y-[1px]">
+          {/* 3 key rows — enough to suggest a keyboard without dominating */}
+          <div className="flex gap-[2px] justify-center">
             {Array.from({ length: 12 }).map((_, i) => (
-              <div key={`f${i}`} className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.025] dark:bg-white/[0.015] flex-1 max-w-[7%]" />
+              <div key={`r1-${i}`} className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-black/[0.03] dark:bg-white/[0.018] flex-1" />
             ))}
           </div>
-          {/* Row 2 — number row */}
-          <div className="flex gap-[1.2%] justify-center">
-            {Array.from({ length: 14 }).map((_, i) => (
-              <div key={`n${i}`} className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.02] dark:bg-white/[0.012] flex-1 max-w-[6.5%]" />
+          <div className="flex gap-[2px] justify-center px-[1%]">
+            {Array.from({ length: 11 }).map((_, i) => (
+              <div key={`r2-${i}`} className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-black/[0.025] dark:bg-white/[0.015] flex-1" />
             ))}
           </div>
-          {/* Row 3 — qwerty */}
-          <div className="flex gap-[1.2%] justify-center px-[2%]">
-            {Array.from({ length: 13 }).map((_, i) => (
-              <div key={`q${i}`} className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.02] dark:bg-white/[0.012] flex-1 max-w-[6.8%]" />
-            ))}
-          </div>
-          {/* Row 4 — asdf */}
-          <div className="flex gap-[1.2%] justify-center px-[3%]">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={`a${i}`} className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.02] dark:bg-white/[0.012] flex-1 max-w-[7.2%]" />
-            ))}
-          </div>
-          {/* Row 5 — spacebar row */}
-          <div className="flex gap-[1.2%] justify-center items-center">
-            <div className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.02] dark:bg-white/[0.012] w-[8%]" />
-            <div className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.02] dark:bg-white/[0.012] w-[6%]" />
-            <div className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.02] dark:bg-white/[0.012] w-[30%]" />
-            <div className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.02] dark:bg-white/[0.012] w-[6%]" />
-            <div className="h-[5px] sm:h-[6px] rounded-[1px] bg-black/[0.02] dark:bg-white/[0.012] w-[8%]" />
+          <div className="flex gap-[2px] justify-center items-center">
+            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-black/[0.02] dark:bg-white/[0.012] w-[12%]" />
+            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-black/[0.02] dark:bg-white/[0.012] flex-1 max-w-[35%]" />
+            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-black/[0.02] dark:bg-white/[0.012] w-[12%]" />
           </div>
         </div>
-        {/* Trackpad — centered, realistic proportion */}
-        <div className="mx-auto mt-[6%] mb-[10%] w-[32%] aspect-[3/2] rounded-[3px] bg-black/[0.01] dark:bg-white/[0.008] border border-black/[0.015] dark:border-white/[0.015]" />
+        {/* Trackpad — centered, compact */}
+        <div className="mx-auto mt-[3%] mb-[8%] w-[28%] aspect-[5/3] rounded-[2px] bg-black/[0.008] dark:bg-white/[0.006] border border-black/[0.012] dark:border-white/[0.012]" />
       </div>
     </div>
   );
