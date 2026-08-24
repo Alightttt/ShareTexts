@@ -63,8 +63,16 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
   return (
     <div className="min-h-screen relative bg-apple-canvas dark:bg-night-950 font-sans selection:bg-azure-500/20 flex flex-col overflow-x-clip animate-[fadeIn_0.4s_ease-out]">
 
+      {/* Skip to content — keyboard accessibility */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-azure-600 focus:text-white focus:font-semibold focus:text-[14px] focus:shadow-lg"
+      >
+        Skip to content
+      </a>
+
       {/* ── HEADER ── */}
-      <header className="sticky top-0 z-40 bg-apple-canvas dark:bg-night-950 border-b border-apple-divider dark:border-white/[0.06]">
+      <header className="sticky top-0 z-40 bg-apple-canvas/80 dark:bg-night-950/80 backdrop-blur-xl backdrop-saturate-150 border-b border-apple-divider dark:border-white/[0.06]">
         <div className="max-w-5xl mx-auto px-5 h-12 sm:h-14 flex items-center">
           <a href="/" className="flex items-center gap-2 shrink-0" aria-label="ShareText">
             <ShareTextLogo size={18} className="text-apple-ink dark:text-white" />
@@ -89,12 +97,12 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
         className="px-5 sm:px-6 min-h-[calc(100dvh-48px)] sm:min-h-0 flex items-center py-10 sm:py-16 lg:py-20 relative z-10"
         aria-labelledby="hero-title"
       >
-        <div className="max-w-5xl mx-auto w-full grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:gap-12 items-center">
+        <div className="max-w-5xl mx-auto w-full grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] md:gap-10 lg:gap-12 items-center">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: EASE }}
-            className="text-center lg:text-left flex flex-col items-center lg:items-start"
+            className="text-center md:text-left flex flex-col items-center md:items-start"
           >
             <h1
               id="hero-title"
@@ -144,7 +152,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1, ease: EASE }}
-            className="mt-8 lg:mt-0 w-full flex justify-center"
+            className="mt-8 md:mt-0 w-full flex justify-center"
           >
             <HeroDemo />
           </motion.div>

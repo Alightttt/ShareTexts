@@ -1,6 +1,10 @@
 import React from 'react';
 import { motion, type Variants } from 'motion/react';
 import { cn } from '../lib/utils';
+import {
+  Send, Inbox, Check, Copy, Download, ChevronDown,
+  Share2, Lock, QrCode, Moon, Loader2, X, Pencil, Link2,
+} from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // AnimatedIcon — consistent micro-interactions for lucide icons
@@ -28,7 +32,7 @@ type AnimationType =
   | 'refresh'     // Spins once (Loader2/RefreshCw)
   | 'close'       // Scales down + rotates (X)
   | 'edit'        // Subtle bounce (Pencil)
-  | 'link'        // Copies toward clipboard (Link2);
+  | 'link';       // Copies toward clipboard (Link2);
 
 interface AnimatedIconProps {
   children: React.ReactNode;
@@ -182,16 +186,13 @@ export function AnimatedIcon({
 }
 
 // ---------------------------------------------------------------------------
-// Convenience wrappers for common icon + animation combos
+// Convenience wrappers — use actual lucide-react icons, not hand-rolled SVGs
 // ---------------------------------------------------------------------------
 
 export function SendIcon({ active, size = 16, className }: { active?: boolean; size?: number; className?: string }) {
   return (
     <AnimatedIcon animate="send" active={active} className={className}>
-      {/* Inline Send SVG to avoid extra import — same path as lucide */}
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 2 11 13" /><path d="m22 2-7 20-4-9-9-4Z" />
-      </svg>
+      <Send size={size} />
     </AnimatedIcon>
   );
 }
@@ -199,9 +200,7 @@ export function SendIcon({ active, size = 16, className }: { active?: boolean; s
 export function CheckIcon({ active, size = 16, className }: { active?: boolean; size?: number; className?: string }) {
   return (
     <AnimatedIcon animate="check" active={active} className={className}>
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20 6 9 17l-5-5" />
-      </svg>
+      <Check size={size} strokeWidth={2.5} />
     </AnimatedIcon>
   );
 }
@@ -209,9 +208,7 @@ export function CheckIcon({ active, size = 16, className }: { active?: boolean; 
 export function CopyIcon({ active, size = 16, className }: { active?: boolean; size?: number; className?: string }) {
   return (
     <AnimatedIcon animate="copy" active={active} className={className}>
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-      </svg>
+      <Copy size={size} />
     </AnimatedIcon>
   );
 }
@@ -219,9 +216,7 @@ export function CopyIcon({ active, size = 16, className }: { active?: boolean; s
 export function DownloadIcon({ active, size = 16, className }: { active?: boolean; size?: number; className?: string }) {
   return (
     <AnimatedIcon animate="download" active={active} className={className}>
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" />
-      </svg>
+      <Download size={size} />
     </AnimatedIcon>
   );
 }
@@ -229,9 +224,7 @@ export function DownloadIcon({ active, size = 16, className }: { active?: boolea
 export function ChevronIcon({ active, size = 16, className }: { active?: boolean; size?: number; className?: string }) {
   return (
     <AnimatedIcon animate="chevron" active={active} className={className}>
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="m6 9 6 6 6-6" />
-      </svg>
+      <ChevronDown size={size} />
     </AnimatedIcon>
   );
 }
@@ -239,9 +232,7 @@ export function ChevronIcon({ active, size = 16, className }: { active?: boolean
 export function InboxIcon({ active, size = 16, className }: { active?: boolean; size?: number; className?: string }) {
   return (
     <AnimatedIcon animate="receive" active={active} className={className}>
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
-      </svg>
+      <Inbox size={size} />
     </AnimatedIcon>
   );
 }

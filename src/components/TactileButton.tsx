@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback } from 'react';
-import { motion, useSpring, useMotionValue } from 'motion/react';
+import { motion, useSpring, useMotionValue, useTransform } from 'motion/react';
 import { cn } from '../lib/utils';
 
 // ---------------------------------------------------------------------------
@@ -15,6 +15,7 @@ import { cn } from '../lib/utils';
 //   release — spring return
 //
 // Pointer light: radial highlight following cursor inside the button.
+// Uses useMotionValue + useTransform (no setState in useEffect).
 // ---------------------------------------------------------------------------
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost';
@@ -68,8 +69,8 @@ export function TactileButton({
   ...props
 }: TactileButtonProps) {
   const ref = useRef<HTMLButtonElement>(null);
-  const [isPressed, setIsPressed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
 
   // Pointer position for light effect (normalized 0-1 inside button)
   const px = useMotionValue(0.5);
@@ -121,18 +122,11 @@ export function TactileButton({
     scale.set(1);
   }, [y, scale, isHovered]);
 
-  // Light gradient — computed from spring-animated pointer position
-  const [gradient, setGradient] = useState('radial-gradient(circle at 50% 50%, rgba(255,255,255,0) 0%, transparent 60%)');
-
-  // Update gradient when pointer moves
-  React.useEffect(() => {
-    const unsubX = lightX.on('change', () => {
-      const lx = lightX.get();
-      const ly = lightY.get();
-      setGradient(`radial-gradient(circle at ${lx * 100}% ${ly * 100}%, rgba(255,255,255,0.12) 0%, transparent 60%)`);
-    });
-    return unsubX;
-  }, [lightX, lightY]);
+  // Pointer light gradient — computed from spring-animated pointer position
+  const lightGradient = useTransform(
+    [lightX, lightY],
+    ([lx, ly]: number[]) => `radial-gradient(circle at ${lx * 100}% ${ly * 100}%, rgba(255,255,255,0.12) 0%, transparent 60%)`
+  );
 
   return (
     <motion.button
@@ -147,7 +141,7 @@ export function TactileButton({
         disabled && 'opacity-50 cursor-not-allowed',
         className,
       )}
-      style={{ y, scale }}
+      style={{ y, scale, touchAction: 'manipulation' }}
       onPointerMove={handlePointerMove}
       onPointerEnter={handlePointerEnter}
       onPointerLeave={handlePointerLeave}
@@ -155,11 +149,11 @@ export function TactileButton({
       onPointerUp={handlePointerUp}
       {...props}
     >
-      {/* Pointer light overlay */}
+      {/* Pointer light overlay — pure motion values, no setState in useEffect */}
       <motion.div
         className="absolute inset-0 pointer-events-none z-10 rounded-[inherit]"
         style={{
-          background: gradient,
+          background: lightGradient,
           opacity: lightOpacity,
         }}
       />

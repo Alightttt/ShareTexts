@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ShieldCheck, EyeOff, RotateCcw } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 /**
@@ -9,23 +8,23 @@ import { cn } from '../lib/utils';
  * point" — is the product's whole reason to exist, and the reason people
  * share it. Three specifics, each true and each verifiable in the app,
  * then the 2-6-0-0-0 strip: tiny setup, zero cost. The zeros are the point.
+ *
+ * Design: editorial format — no cards, no decorative icons.
+ * Bold labels with short descriptions, like a well-typeset article.
  */
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 const PROMISES = [
   {
-    icon: ShieldCheck,
     title: 'Encrypted end to end',
     body: 'Content is encrypted between devices using the browser. Connection setup may use service infrastructure.',
   },
   {
-    icon: EyeOff,
     title: 'Temporary by design',
     body: 'No account, no permanent history, no cloud copy. When the session ends, the room closes automatically.',
   },
   {
-    icon: RotateCcw,
     title: 'Transfer integrity',
     body: 'Every file is verified with SHA-256. What you send is exactly what arrives.',
   },
@@ -41,7 +40,7 @@ const STATS = [
 
 export function PrivacyPromise() {
   return (
-    <section className="px-6 py-24 sm:py-32 bg-apple-parchment dark:bg-night-950">
+    <section className="px-6 py-20 sm:py-28 bg-apple-parchment dark:bg-night-950">
       <div className="max-w-3xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -61,28 +60,25 @@ export function PrivacyPromise() {
           </p>
         </motion.div>
 
-        <div className="mt-12 grid gap-4 sm:grid-cols-3">
-          {PROMISES.map((p, i) => (
-            <motion.div
-              key={p.title}
-              initial={{ opacity: 0, y: 18 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.6, delay: i * 0.08, ease: EASE }}
-              className="bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-white/[0.06] rounded-[16px] p-5 sm:p-6"
-            >
-              <span className="w-10 h-10 rounded-[10px] bg-azure-50 dark:bg-azure-500/12 flex items-center justify-center">
-                <p.icon className="w-[18px] h-[18px] text-azure-600 dark:text-azure-400" strokeWidth={1.8} />
-              </span>
-              <h3 className="mt-4 text-[15px] sm:text-[16px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">
+        {/* Editorial list — no cards, no icon circles */}
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.6, delay: 0.08, ease: EASE }}
+          className="mt-12 max-w-lg mx-auto space-y-6"
+        >
+          {PROMISES.map((p) => (
+            <div key={p.title}>
+              <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">
                 {p.title}
               </h3>
-              <p className="mt-1.5 text-[13px] sm:text-[14px] text-apple-ink-muted dark:text-white/55 font-medium leading-relaxed">
+              <p className="mt-1 text-[14px] text-apple-ink-muted dark:text-white/55 font-medium leading-relaxed">
                 {p.body}
               </p>
-            </motion.div>
+            </div>
           ))}
-        </div>
+        </motion.div>
 
         {/* The strip — tiny setup, zero cost. The zeros are the story.
             One contained card, equal cells, hairline dividers on desktop; a
@@ -99,9 +95,7 @@ export function PrivacyPromise() {
               <div key={s.label} className="px-4 py-7 sm:py-8 text-center">
                 <p className={cn(
                   'text-[40px] sm:text-[52px] font-semibold tracking-[-0.05em] leading-none tabular-nums',
-                  s.n === '0'
-                    ? 'bg-[linear-gradient(180deg,#34c759,#1f9d44)] bg-clip-text text-transparent'
-                    : 'text-apple-ink dark:text-white'
+                  'text-apple-ink dark:text-white'
                 )}>
                   {s.n}
                 </p>
