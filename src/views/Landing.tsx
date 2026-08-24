@@ -8,7 +8,7 @@ import { Send, Inbox } from 'lucide-react';
 import { LiveUsers } from '../components/LiveUsers';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { InstallPrompt } from '../components/InstallPrompt';
-import { IllustPhoneToLaptop, IllustPairing, IllustTextHandoff } from '../components/Illustrations';
+import { IllustTransfer, IllustConnect, IllustTextMove } from '../components/Illustrations';
 
 const PrivacyPromise = lazy(() => import('../components/PrivacyPromise').then(m => ({ default: m.PrivacyPromise })));
 const Faq = lazy(() => import('../components/Faq').then(m => ({ default: m.Faq })));
@@ -174,9 +174,9 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
 
           <div className="grid sm:grid-cols-3 gap-10 sm:gap-8">
             {[
-              { n: '01', title: 'Open', desc: 'ShareText on both devices. Same page, any browser.', illust: <IllustPhoneToLaptop className="w-full" /> },
-              { n: '02', title: 'Connect', desc: 'Type the code or scan the QR. That\'s the whole pairing.', illust: <IllustPairing className="w-full" /> },
-              { n: '03', title: 'Move', desc: 'Text, photo, or file goes straight between devices. Done.', illust: <IllustTextHandoff className="w-full" /> },
+              { n: '01', title: 'Open', desc: 'ShareText on both devices. Same page, any browser.', illust: <IllustTransfer className="w-full" /> },
+              { n: '02', title: 'Connect', desc: 'Type the code or scan the QR. That\'s the whole pairing.', illust: <IllustConnect className="w-full" /> },
+              { n: '03', title: 'Move', desc: 'Text, photo, or file goes straight between devices. Done.', illust: <IllustTextMove className="w-full" /> },
             ].map((step, i) => (
               <motion.div
                 key={step.n}
