@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { HeroDemo } from '../components/HeroDemo';
 import { Send, Inbox } from 'lucide-react';
-import { SendIcon, InboxIcon } from '../components/AnimatedIcon';
+import { SendIcon, InboxIcon, AnimatedIcon } from '../components/AnimatedIcon';
 
 import { LiveUsers } from '../components/LiveUsers';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -179,9 +179,9 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
 
                     <div className="grid sm:grid-cols-3 gap-8 sm:gap-6">
             {[
-              { n: '01', title: 'Open', desc: 'ShareText on both devices. Same page, any browser.', icon: <Smartphone className="w-5 h-5" /> },
-              { n: '02', title: 'Connect', desc: 'Type the code or scan the QR. That\'s the whole pairing.', icon: <Wifi className="w-5 h-5" /> },
-              { n: '03', title: 'Move', desc: 'Text, photo, or file goes straight between devices. Done.', icon: <ArrowRight className="w-5 h-5" /> },
+              { n: '01', title: 'Open', desc: 'ShareText on both devices. Same page, any browser.', icon: <AnimatedIcon animate="receive"><Smartphone className="w-5 h-5" /></AnimatedIcon> },
+              { n: '02', title: 'Connect', desc: 'Type the code or scan the QR. That\'s the whole pairing.', icon: <AnimatedIcon animate="qr"><Wifi className="w-5 h-5" /></AnimatedIcon> },
+              { n: '03', title: 'Move', desc: 'Text, photo, or file goes straight between devices. Done.', icon: <AnimatedIcon animate="send"><ArrowRight className="w-5 h-5" /></AnimatedIcon> },
             ].map((step, i) => (
               <motion.div
                 key={step.n}

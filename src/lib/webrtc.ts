@@ -243,8 +243,8 @@ export class PeerManager {
   private relayFallbackTimer: ReturnType<typeof setTimeout> | null = null;
   /** Adaptive chunk size: starts small for instant feedback, scales up as
    *  bandwidth is confirmed. Reset on each new transfer. */
-  private currentChunkSize = 32 * 1024; // 32 KB initial — first chunks arrive fast
-  private maxChunkSize = 512 * 1024;    // 512 KB ceiling
+  private currentChunkSize = 64 * 1024; // 64 KB initial — first chunks arrive fast — first chunks arrive fast
+  private maxChunkSize = 1024 * 1024;   // 1 MB ceiling
   private bandwidthSamples: number[] = []; // recent chunks/sec measurements
 
   public onMessage: ((data: string) => void) | null = null;
@@ -950,7 +950,7 @@ export class PeerManager {
 
     // Parallel pipeline: read + encrypt N chunks ahead while sending.
     // Overlaps disk I/O, encryption CPU, and network send for max throughput.
-    const PIPELINE_DEPTH = 8;
+    const PIPELINE_DEPTH = 16;
     type PipelineEntry = { index: number; packet: Uint8Array; endByte: number };
     const inflight: Promise<PipelineEntry | null>[] = [];
     let readIdx = start;

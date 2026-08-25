@@ -227,7 +227,7 @@ export function TactileButton({
       />
 
       {/* Content layer */}
-      <span className="relative z-10 flex items-center justify-center">
+      <span className="relative z-10 flex items-center justify-center gap-2">
         {icon && iconPosition === 'left' && (
           <motion.span
             className="shrink-0"

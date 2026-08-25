@@ -416,12 +416,12 @@ export function HeroDemo() {
   const { mx, my } = useMouseDamped();
 
   // Device transforms based on mouse
-  const phoneRotateY = useTransform(mx, [-1, 1], [3, -3]);
-  const phoneRotateX = useTransform(my, [-1, 1], [-2, 2]);
-  const phoneTranslateZ = useTransform(my, [-1, 1], [6, -4]);
-  const laptopRotateY = useTransform(mx, [-1, 1], [-2, 2]);
+  const phoneRotateY = useTransform(mx, [-1, 1], [1.5, -1.5]);
+  const phoneRotateX = useTransform(my, [-1, 1], [-1, 1]);
+  const phoneTranslateZ = useTransform(my, [-1, 1], [4, -2]);
+  const laptopRotateY = useTransform(mx, [-1, 1], [-1, 1]);
   const laptopRotateX = useTransform(my, [-1, 1], [-1, 1]);
-  const laptopTranslateZ = useTransform(my, [-1, 1], [-4, 4]);
+  const laptopTranslateZ = useTransform(my, [-1, 1], [-2, 2]);
 
   // Screen glow intensity based on state
   const phoneGlow = simState === 'sending' || simState === 'transferring' ? 0.8 : simState === 'selecting' ? 0.4 : 0.15;
