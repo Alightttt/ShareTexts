@@ -79,7 +79,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
         <div className="flex gap-2 sm:gap-3 flex-1 justify-end">
           {digits.slice(0, 3).map((digit, i) => (
             <div key={i} className={cn(
-              "relative flex items-center justify-center rounded-[10px] sm:rounded-[14px] shadow-sm flex-1 max-w-[64px] aspect-[3/4] sm:w-[68px] sm:h-[96px] sm:max-w-none sm:aspect-auto lg:w-[80px] lg:h-[112px]",
+              "relative flex items-center justify-center rounded-[10px] sm:rounded-[14px] shadow-sm flex-1 max-w-[72px] aspect-[3/4] sm:w-[72px] sm:h-[100px] sm:max-w-none sm:aspect-auto lg:w-[84px] lg:h-[116px]",
               "bg-apple-parchment dark:bg-[#1a1a1e] border border-apple-divider/60 dark:border-[#2a2a2e]"
             )}>
               <AnimatePresence mode="popLayout">
@@ -89,7 +89,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -12, opacity: 0 }}
                   transition={{ type: 'spring', bounce: 0, duration: 0.2 }}
-                  className="text-[36px] sm:text-[52px] lg:text-[60px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
+                  className="text-[42px] sm:text-[56px] lg:text-[64px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
                 >
                   {digit}
                 </motion.span>
@@ -105,7 +105,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
         <div className="flex gap-2 sm:gap-3 flex-1 justify-start">
           {digits.slice(3, 6).map((digit, i) => (
             <div key={i + 3} className={cn(
-              "relative flex items-center justify-center rounded-[10px] sm:rounded-[14px] shadow-sm flex-1 max-w-[64px] aspect-[3/4] sm:w-[68px] sm:h-[96px] sm:max-w-none sm:aspect-auto lg:w-[80px] lg:h-[112px]",
+              "relative flex items-center justify-center rounded-[10px] sm:rounded-[14px] shadow-sm flex-1 max-w-[72px] aspect-[3/4] sm:w-[72px] sm:h-[100px] sm:max-w-none sm:aspect-auto lg:w-[84px] lg:h-[116px]",
               "bg-apple-parchment dark:bg-[#1a1a1e] border border-apple-divider/60 dark:border-[#2a2a2e]"
             )}>
               <AnimatePresence mode="popLayout">
@@ -115,7 +115,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -12, opacity: 0 }}
                   transition={{ type: 'spring', bounce: 0, duration: 0.2 }}
-                  className="text-[36px] sm:text-[52px] lg:text-[60px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
+                  className="text-[42px] sm:text-[56px] lg:text-[64px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
                 >
                   {digit}
                 </motion.span>

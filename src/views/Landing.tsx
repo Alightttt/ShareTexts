@@ -139,9 +139,6 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               </TactileButton>
             </div>
 
-            <p className="mt-4 text-[13px] text-apple-ink-muted/60 dark:text-white/35 font-medium flex items-center gap-1.5">
-              <Smartphone className="w-3.5 h-3.5" /> Works on any device with a browser
-            </p>
 
             {createError && (
               <div role="alert" data-testid="error-message" className="mt-4 space-y-2">
@@ -181,9 +178,9 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
 
                     <div className="grid sm:grid-cols-3 gap-8 sm:gap-6">
             {[
-              { n: '01', title: 'Open', desc: 'ShareText on both devices. Same page, any browser.', icon: <AnimatedIcon animate="receive"><Smartphone className="w-5 h-5" /></AnimatedIcon> },
-              { n: '02', title: 'Connect', desc: 'Type the code or scan the QR. That\'s the whole pairing.', icon: <AnimatedIcon animate="qr"><Wifi className="w-5 h-5" /></AnimatedIcon> },
-              { n: '03', title: 'Move', desc: 'Text, photo, or file goes straight between devices. Done.', icon: <AnimatedIcon animate="send"><ArrowRight className="w-5 h-5" /></AnimatedIcon> },
+              { n: '01', title: 'Open', desc: 'ShareText on both devices. Same page, any browser.', icon: <AnimatedIcon animate="qr" looping><Smartphone className="w-5 h-5" /></AnimatedIcon> },
+              { n: '02', title: 'Connect', desc: 'Type the code or scan the QR. That\'s the whole pairing.', icon: <AnimatedIcon animate="qr" looping><Wifi className="w-5 h-5" /></AnimatedIcon> },
+              { n: '03', title: 'Move', desc: 'Text, photo, or file goes straight between devices. Done.', icon: <AnimatedIcon animate="qr" looping><ArrowRight className="w-5 h-5" /></AnimatedIcon> },
             ].map((step, i) => (
               <motion.div
                 key={step.n}

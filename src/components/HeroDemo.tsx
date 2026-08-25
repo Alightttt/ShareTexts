@@ -73,12 +73,12 @@ type SimState =
 
 // ─── Timing (ms) — deliberate pacing ───
 const T = {
-  IDLE_HOLD:      2000,
+  IDLE_HOLD:      1500,
   SELECT_HOLD:    500,
   SEND_HOLD:      350,
   TRANSFER_MS:    1200,
   RECEIVE_HOLD:   500,
-  COMPLETE_HOLD:  2200,
+  COMPLETE_HOLD:  1800,
   RESET_HOLD:     700,
 };
 
@@ -181,7 +181,7 @@ function LaptopFrame({ children, className, glow }: { children: React.ReactNode;
           <div className="flex gap-[2px] justify-center">
             {Array.from({ length: 12 }).map((_, i) => (
               <div key={`r1-${i}`}
-                className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.04] to-black/[0.02] dark:from-white/[0.025] dark:to-white/[0.012] flex-1"
+                className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.06] to-black/[0.04] dark:from-white/[0.04] dark:to-white/[0.02] flex-1"
               />
             ))}
           </div>
@@ -189,7 +189,7 @@ function LaptopFrame({ children, className, glow }: { children: React.ReactNode;
           <div className="flex gap-[2px] justify-center px-[1%]">
             {Array.from({ length: 11 }).map((_, i) => (
               <div key={`r2-${i}`}
-                className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.035] to-black/[0.02] dark:from-white/[0.02] dark:to-white/[0.01] flex-1"
+                className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.05] to-black/[0.03] dark:from-white/[0.035] dark:to-white/[0.015] flex-1"
               />
             ))}
           </div>
@@ -197,15 +197,15 @@ function LaptopFrame({ children, className, glow }: { children: React.ReactNode;
           <div className="flex gap-[2px] justify-center px-[2%]">
             {Array.from({ length: 10 }).map((_, i) => (
               <div key={`r3-${i}`}
-                className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.03] to-black/[0.018] dark:from-white/[0.018] dark:to-white/[0.008] flex-1"
+                className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.045] to-black/[0.025] dark:from-white/[0.03] dark:to-white/[0.012] flex-1"
               />
             ))}
           </div>
           {/* Row 4 — ZXCV + spacebar */}
           <div className="flex gap-[2px] justify-center items-center">
-            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.025] to-black/[0.015] dark:from-white/[0.015] dark:to-white/[0.008] w-[12%]" />
-            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.025] to-black/[0.015] dark:from-white/[0.015] dark:to-white/[0.008] flex-1 max-w-[35%]" />
-            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.025] to-black/[0.015] dark:from-white/[0.015] dark:to-white/[0.008] w-[12%]" />
+            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.04] to-black/[0.02] dark:from-white/[0.025] dark:to-white/[0.01] w-[12%]" />
+            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.04] to-black/[0.02] dark:from-white/[0.025] dark:to-white/[0.01] flex-1 max-w-[35%]" />
+            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.04] to-black/[0.02] dark:from-white/[0.025] dark:to-white/[0.01] w-[12%]" />
           </div>
         </div>
 
@@ -383,7 +383,7 @@ function FlyingContent({
         scale: style.scale,
         rotate: style.rotate,
         transform: 'translate(-50%, -50%)',
-        filter: `drop-shadow(0 6px 16px rgba(0,0,0,0.3)) drop-shadow(0 16px 32px rgba(0,0,0,0.2))`,
+        filter: `drop-shadow(0 0 8px rgba(10,102,240,${0.3 * style.opacity})) drop-shadow(0 6px 16px rgba(0,0,0,0.3)) drop-shadow(0 16px 32px rgba(0,0,0,0.2))`,
       }}
     >
       <div className="w-[80px] sm:w-[100px] rounded-[8px] overflow-hidden border border-white/10 bg-white/[0.06]">
