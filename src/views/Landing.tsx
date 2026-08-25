@@ -102,7 +102,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: EASE }}
-            className="text-center md:text-left flex flex-col items-center md:items-start"
+            className="text-center md:text-left flex flex-col items-center md:items-start overflow-hidden"
           >
             <h1
               id="hero-title"
@@ -150,7 +150,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1, ease: EASE }}
-            className="mt-8 md:mt-0 w-full flex justify-center"
+            className="mt-8 md:mt-0 w-full flex justify-center overflow-hidden"
           >
             <HeroDemo />
           </motion.div>
