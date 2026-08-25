@@ -96,9 +96,14 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
       {/* ── HERO ── */}
       <section
         id="main-content"
-        className="px-5 sm:px-6 min-h-[calc(100dvh-48px)] sm:min-h-0 flex items-center py-10 sm:py-16 lg:py-20 relative z-10"
+        className="px-5 sm:px-6 min-h-[calc(100dvh-48px)] sm:min-h-0 flex items-center py-10 sm:py-16 lg:py-20 relative z-10 overflow-hidden"
         aria-labelledby="hero-title"
       >
+        {/* Ambient gradient wash */}
+        <div className="absolute inset-0 pointer-events-none" aria-hidden>
+          <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[80%] bg-azure-500/[0.04] dark:bg-azure-500/[0.06] rounded-full blur-[100px]" />
+          <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[60%] bg-azure-400/[0.03] dark:bg-azure-400/[0.04] rounded-full blur-[80px]" />
+        </div>
         <div className="max-w-5xl mx-auto w-full grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] md:gap-10 lg:gap-12 items-center relative">
           <div className="hero-glow" aria-hidden />
           <motion.div
@@ -109,22 +114,22 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           >
             <h1
               id="hero-title"
-              className="text-[36px] sm:text-[48px] lg:text-[60px] font-bold text-apple-ink dark:text-white tracking-[-0.045em] leading-[1.04] max-w-[12ch]"
+              className="text-[38px] sm:text-[52px] lg:text-[64px] font-bold tracking-[-0.045em] leading-[1.04] max-w-[12ch] text-apple-ink dark:text-white"
             >
               Move anything between your devices.
             </h1>
 
-            <p className="mt-5 text-[16px] sm:text-[17px] text-apple-ink-muted dark:text-white/50 font-medium leading-relaxed max-w-[36ch]">
+            <p className="mt-5 text-[16px] sm:text-[18px] text-apple-ink-muted dark:text-white/50 font-medium leading-relaxed max-w-[36ch]">
               One page, two screens. No app, no account. Temporary by design.
             </p>
 
-            <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+            <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 w-full sm:w-auto">
               <TactileButton
                 data-testid="hero-send"
                 onClick={isCreating ? () => { setIsCreating(false); setCreateError(null); } : handleCreate}
                 variant="primary"
                 size="lg"
-                icon={isCreating ? undefined : <SendIcon size={18} active={!isCreating} />}
+                icon={isCreating ? undefined : <SendIcon size={20} active={!isCreating} />}
               >
                 {isCreating ? 'Cancel' : createError ? 'Try Again' : 'Send something'}
               </TactileButton>
@@ -133,7 +138,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 onClick={onJoinClick}
                 variant="secondary"
                 size="lg"
-                icon={<InboxIcon size={18} />}
+                icon={<InboxIcon size={20} />}
               >
                 Receive something
               </TactileButton>
@@ -151,9 +156,9 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.1, ease: EASE }}
+            initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }}
+            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            transition={{ duration: 1, delay: 0.15, ease: EASE }}
             className="mt-8 md:mt-0 w-full min-w-0 overflow-hidden"
           >
             <HeroDemo />
@@ -171,16 +176,16 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             transition={{ duration: 0.5, ease: EASE }}
             className="mb-12"
           >
-            <h2 className="text-[28px] sm:text-[36px] font-semibold text-apple-ink dark:text-white tracking-[-0.03em]">
+            <h2 className="text-[30px] sm:text-[38px] font-semibold text-apple-ink dark:text-white tracking-[-0.035em] leading-[1.1]">
               Three steps.
             </h2>
           </motion.div>
 
                     <div className="grid sm:grid-cols-3 gap-8 sm:gap-6">
             {[
-              { n: '01', title: 'Open', desc: 'ShareText on both devices. Same page, any browser.', icon: <AnimatedIcon animate="qr" looping><Smartphone className="w-5 h-5" /></AnimatedIcon> },
-              { n: '02', title: 'Connect', desc: 'Type the code or scan the QR. That\'s the whole pairing.', icon: <AnimatedIcon animate="qr" looping><Wifi className="w-5 h-5" /></AnimatedIcon> },
-              { n: '03', title: 'Move', desc: 'Text, photo, or file goes straight between devices. Done.', icon: <AnimatedIcon animate="qr" looping><ArrowRight className="w-5 h-5" /></AnimatedIcon> },
+              { n: '01', title: 'Open', desc: 'ShareText on both devices. Same page, any browser.', icon: <AnimatedIcon animate="receive" looping><Smartphone className="w-5 h-5" /></AnimatedIcon> },
+              { n: '02', title: 'Connect', desc: 'Type the code or scan the QR. That\'s the whole pairing.', icon: <AnimatedIcon animate="lock" looping><Wifi className="w-5 h-5" /></AnimatedIcon> },
+              { n: '03', title: 'Move', desc: 'Text, photo, or file goes straight between devices. Done.', icon: <AnimatedIcon animate="send" looping><ArrowRight className="w-5 h-5" /></AnimatedIcon> },
             ].map((step, i) => (
               <motion.div
                 key={step.n}
@@ -188,13 +193,18 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-40px' }}
                 transition={{ duration: 0.5, delay: i * 0.08, ease: EASE }}
+                className="group"
               >
-                <div className="mb-4 w-10 h-10 rounded-[10px] bg-azure-600/10 dark:bg-azure-400/10 flex items-center justify-center text-azure-600 dark:text-azure-400">
+                <motion.div
+                  whileHover={{ scale: 1.08, rotate: 2 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                  className="mb-4 w-11 h-11 rounded-[12px] bg-gradient-to-br from-azure-500/15 to-azure-600/5 dark:from-azure-400/15 dark:to-azure-500/5 border border-azure-500/10 dark:border-azure-400/10 flex items-center justify-center text-azure-600 dark:text-azure-400 shadow-[0_2px_8px_rgba(10,102,240,0.08)]"
+                >
                   {step.icon}
-                </div>
+                </motion.div>
                 <span className="font-mono text-[12px] text-azure-600 dark:text-azure-400 tabular-nums">{step.n}</span>
-                <h3 className="mt-1.5 text-[17px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">{step.title}</h3>
-                <p className="mt-1.5 text-[14px] text-apple-ink-muted dark:text-white/50 leading-relaxed">{step.desc}</p>
+                <h3 className="mt-2 text-[18px] font-semibold text-apple-ink dark:text-white tracking-[-0.015em]">{step.title}</h3>
+                <p className="mt-2 text-[14.5px] text-apple-ink-muted dark:text-white/55 leading-relaxed">{step.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -210,7 +220,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             transition={{ duration: 0.5, ease: EASE }}
             className="mb-10"
           >
-            <h2 className="text-[28px] sm:text-[36px] font-semibold text-apple-ink dark:text-white tracking-[-0.03em]">
+            <h2 className="text-[30px] sm:text-[38px] font-semibold text-apple-ink dark:text-white tracking-[-0.035em] leading-[1.1]">
               What people move.
             </h2>
           </motion.div>
@@ -231,8 +241,8 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 transition={{ duration: 0.4, delay: i * 0.05, ease: EASE }}
                 className="text-left"
               >
-                <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white">{item.title}</h3>
-                <p className="mt-0.5 text-[13px] text-apple-ink-muted dark:text-white/50 leading-relaxed">{item.desc}</p>
+                <h3 className="text-[15.5px] font-semibold text-apple-ink dark:text-white">{item.title}</h3>
+                <p className="mt-1 text-[13.5px] text-apple-ink-muted dark:text-white/55 leading-relaxed">{item.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -254,10 +264,10 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           transition={{ duration: 0.5, ease: EASE }}
           className="text-center max-w-lg mx-auto"
         >
-          <h2 className="text-[28px] sm:text-[36px] font-semibold text-apple-ink dark:text-white tracking-[-0.03em] leading-[1.1]">
+          <h2 className="text-[30px] sm:text-[40px] font-semibold text-apple-ink dark:text-white tracking-[-0.035em] leading-[1.1]">
             When it's on the wrong screen.
           </h2>
-          <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
+          <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3.5">
             <TactileButton
               data-testid="create-session"
               onClick={handleCreate}

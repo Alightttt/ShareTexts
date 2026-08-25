@@ -58,7 +58,7 @@ const TRANSFER_ITEMS: Record<Kind, TransferItem> = {
   file:  { kind: 'file',  name: 'presentation.pdf',   size: '2.8 MB' },
 };
 
-const SCENE_ORDER: Kind[] = ['photo', 'text', 'file', 'video'];
+const SCENE_ORDER: Kind[] = ['photo', 'text', 'file'];
 const nextKind = (k: Kind) => SCENE_ORDER[(SCENE_ORDER.indexOf(k) + 1) % SCENE_ORDER.length];
 
 // ─── State machine ───
@@ -74,9 +74,9 @@ type SimState =
 // ─── Timing (ms) — deliberate pacing ───
 const T = {
   IDLE_HOLD:      1500,
-  SELECT_HOLD:    500,
-  SEND_HOLD:      350,
-  TRANSFER_MS:    1200,
+  SELECT_HOLD:    600,
+  SEND_HOLD:      400,
+  TRANSFER_MS:    1000,
   RECEIVE_HOLD:   500,
   COMPLETE_HOLD:  1800,
   RESET_HOLD:     700,
@@ -92,7 +92,7 @@ function PhoneFrame({ children, className, glow }: { children: React.ReactNode; 
       {/* Contact shadow — sits on the surface */}
       <div className="absolute -bottom-[3%] left-[10%] right-[10%] h-[5%] bg-black/[0.12] dark:bg-black/[0.3] rounded-[50%] blur-[8px]" />
       {/* Physical shell — modern flat-edge design (iPhone 15+) */}
-      <div className="relative rounded-[22px] sm:rounded-[26px] bg-gradient-to-b from-[#eaeaee] via-[#dedee2] to-[#d2d2d6] dark:from-[#2a2a2e] dark:via-[#252528] dark:to-[#1e1e21] shadow-[0_1px_0_rgba(255,255,255,0.5)_inset,0_1px_2px_rgba(0,0,0,0.06),0_6px_20px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_1px_2px_rgba(0,0,0,0.2),0_6px_20px_rgba(0,0,0,0.4)]">
+      <div className="relative rounded-[22px] sm:rounded-[26px] bg-gradient-to-b from-[#ececf0] via-[#e0e0e5] to-[#d4d4d9] dark:from-[#2c2c31] dark:via-[#27272c] dark:to-[#212126] shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_1px_3px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.12)] dark:shadow-[0_1px_0_rgba(255,255,255,0.08)_inset,0_1px_3px_rgba(0,0,0,0.25),0_8px_24px_rgba(0,0,0,0.45)]">
         {/* Top edge highlight — light catches the bezel */}
         <div className="absolute inset-x-[14%] top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 dark:via-white/10 to-transparent" />
         {/* Side button hint */}
@@ -138,7 +138,7 @@ function LaptopFrame({ children, className, glow }: { children: React.ReactNode;
       <div className="absolute -bottom-[2%] left-[5%] right-[5%] h-[6%] bg-black/[0.08] dark:bg-black/[0.22] rounded-[50%] blur-[10px]" />
 
       {/* === SCREEN LID === */}
-      <div className="relative rounded-t-[8px] sm:rounded-t-[10px] bg-gradient-to-b from-[#e0e0e4] via-[#d8d8dc] to-[#d0d0d4] dark:from-[#343438] dark:via-[#2e2e32] dark:to-[#282830] shadow-[0_1px_0_rgba(255,255,255,0.45)_inset,0_1px_2px_rgba(0,0,0,0.05)] dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_1px_2px_rgba(0,0,0,0.15)]">
+      <div className="relative rounded-t-[8px] sm:rounded-t-[10px] bg-gradient-to-b from-[#e8e8ec] via-[#dedee3] to-[#d4d4d9] dark:from-[#36363b] dark:via-[#303035] dark:to-[#2a2a2f] shadow-[0_1px_0_rgba(255,255,255,0.5)_inset,0_1px_3px_rgba(0,0,0,0.06),0_6px_18px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_0_rgba(255,255,255,0.07)_inset,0_1px_3px_rgba(0,0,0,0.18),0_6px_18px_rgba(0,0,0,0.35)]">
         {/* Top edge highlight */}
         <div className="absolute inset-x-[12%] top-0 h-[1px] bg-gradient-to-r from-transparent via-white/45 dark:via-white/8 to-transparent" />
         {/* Webcam cluster — three dots (camera + flanking sensors) */}
@@ -171,7 +171,7 @@ function LaptopFrame({ children, className, glow }: { children: React.ReactNode;
       </div>
 
       {/* === KEYBOARD DECK — real physical feel === */}
-      <div className="relative rounded-b-[8px] sm:rounded-b-[10px] bg-gradient-to-b from-[#d8d8dc] via-[#d0d0d4] to-[#c8c8cc] dark:from-[#2e2e32] dark:via-[#2a2a2e] dark:to-[#252528] shadow-[0_6px_20px_-6px_rgba(0,0,0,0.1),0_2px_4px_rgba(0,0,0,0.04)] dark:shadow-[0_6px_20px_-6px_rgba(0,0,0,0.3),0_2px_4px_rgba(0,0,0,0.1)]">
+      <div className="relative rounded-b-[8px] sm:rounded-b-[10px] bg-gradient-to-b from-[#dddde2] via-[#d5d5da] to-[#cdced2] dark:from-[#323237] dark:via-[#2d2d32] dark:to-[#28282d] shadow-[0_8px_24px_-6px_rgba(0,0,0,0.12),0_3px_6px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_24px_-6px_rgba(0,0,0,0.35),0_3px_6px_rgba(0,0,0,0.12)]">
         {/* Bottom edge — dark grounding line */}
         <div className="absolute bottom-0 inset-x-0 h-[1px] bg-black/[0.06] dark:bg-white/[0.03]" />
 
@@ -181,7 +181,7 @@ function LaptopFrame({ children, className, glow }: { children: React.ReactNode;
           <div className="flex gap-[2px] justify-center">
             {Array.from({ length: 12 }).map((_, i) => (
               <div key={`r1-${i}`}
-                className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.06] to-black/[0.04] dark:from-white/[0.04] dark:to-white/[0.02] flex-1"
+                className="h-[3px] sm:h-[4px] rounded-[0.5px] bg-gradient-to-b from-black/[0.08] to-black/[0.05] dark:from-white/[0.06] dark:to-white/[0.03] flex-1"
               />
             ))}
           </div>
@@ -189,7 +189,7 @@ function LaptopFrame({ children, className, glow }: { children: React.ReactNode;
           <div className="flex gap-[2px] justify-center px-[1%]">
             {Array.from({ length: 11 }).map((_, i) => (
               <div key={`r2-${i}`}
-                className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.05] to-black/[0.03] dark:from-white/[0.035] dark:to-white/[0.015] flex-1"
+                className="h-[3px] sm:h-[4px] rounded-[0.5px] bg-gradient-to-b from-black/[0.07] to-black/[0.04] dark:from-white/[0.05] dark:to-white/[0.025] flex-1"
               />
             ))}
           </div>
@@ -197,15 +197,15 @@ function LaptopFrame({ children, className, glow }: { children: React.ReactNode;
           <div className="flex gap-[2px] justify-center px-[2%]">
             {Array.from({ length: 10 }).map((_, i) => (
               <div key={`r3-${i}`}
-                className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.045] to-black/[0.025] dark:from-white/[0.03] dark:to-white/[0.012] flex-1"
+                className="h-[3px] sm:h-[4px] rounded-[0.5px] bg-gradient-to-b from-black/[0.06] to-black/[0.035] dark:from-white/[0.045] dark:to-white/[0.02] flex-1"
               />
             ))}
           </div>
           {/* Row 4 — ZXCV + spacebar */}
           <div className="flex gap-[2px] justify-center items-center">
-            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.04] to-black/[0.02] dark:from-white/[0.025] dark:to-white/[0.01] w-[12%]" />
-            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.04] to-black/[0.02] dark:from-white/[0.025] dark:to-white/[0.01] flex-1 max-w-[35%]" />
-            <div className="h-[2.5px] sm:h-[3px] rounded-[0.5px] bg-gradient-to-b from-black/[0.04] to-black/[0.02] dark:from-white/[0.025] dark:to-white/[0.01] w-[12%]" />
+            <div className="h-[3px] sm:h-[4px] rounded-[0.5px] bg-gradient-to-b from-black/[0.05] to-black/[0.03] dark:from-white/[0.035] dark:to-white/[0.015] w-[12%]" />
+            <div className="h-[3px] sm:h-[4px] rounded-[0.5px] bg-gradient-to-b from-black/[0.05] to-black/[0.03] dark:from-white/[0.035] dark:to-white/[0.015] flex-1 max-w-[35%]" />
+            <div className="h-[3px] sm:h-[4px] rounded-[0.5px] bg-gradient-to-b from-black/[0.05] to-black/[0.03] dark:from-white/[0.035] dark:to-white/[0.015] w-[12%]" />
           </div>
         </div>
 
@@ -361,8 +361,8 @@ function FlyingContent({
     const y = startY + (endY - startY) * eased;
 
     // Arc with depth — lifts higher in the middle, slight rotation
-    const arc = -30 * Math.sin(progress * Math.PI);
-    const rotate = Math.sin(progress * Math.PI * 2) * 3;
+    const arc = -50 * Math.sin(progress * Math.PI);
+    const rotate = Math.sin(progress * Math.PI * 2) * 4;
 
     // Fade in/out at edges
     const opacity = progress < 0.06 ? progress / 0.06 : progress > 0.94 ? (1 - progress) / 0.06 : 1;
@@ -383,10 +383,10 @@ function FlyingContent({
         scale: style.scale,
         rotate: style.rotate,
         transform: 'translate(-50%, -50%)',
-        filter: `drop-shadow(0 0 8px rgba(10,102,240,${0.3 * style.opacity})) drop-shadow(0 6px 16px rgba(0,0,0,0.3)) drop-shadow(0 16px 32px rgba(0,0,0,0.2))`,
+        filter: `drop-shadow(0 0 12px rgba(10,102,240,${0.4 * style.opacity})) drop-shadow(0 8px 20px rgba(0,0,0,0.35)) drop-shadow(0 20px 40px rgba(0,0,0,0.2))`,
       }}
     >
-      <div className="w-[80px] sm:w-[100px] rounded-[8px] overflow-hidden border border-white/10 bg-white/[0.06]">
+      <div className="w-[90px] sm:w-[110px] rounded-[10px] overflow-hidden border border-white/15 bg-white/[0.08] backdrop-blur-sm">
         <ContentCard obj={obj} />
       </div>
     </motion.div>
@@ -590,7 +590,7 @@ export function HeroDemo() {
             className="relative z-10"
             style={{ transformStyle: 'flat' }}
           >
-            <PhoneFrame className="w-[110px] sm:w-[160px] lg:w-[180px]" glow={phoneGlow}>
+            <PhoneFrame className="w-[120px] sm:w-[170px] lg:w-[195px]" glow={phoneGlow}>
               <div className="w-full h-full flex flex-col bg-[#080c18]">
                 <MiniHeader status={phoneStatus} />
 
@@ -696,7 +696,7 @@ export function HeroDemo() {
             className="relative z-0"
             style={{ transformStyle: 'flat' }}
           >
-            <LaptopFrame className="w-[180px] sm:w-[280px] lg:w-[320px]" glow={laptopGlow}>
+            <LaptopFrame className="w-[190px] sm:w-[300px] lg:w-[340px]" glow={laptopGlow}>
               <div className="w-full h-full flex flex-col bg-[#080c18]">
                 <MiniHeader status={laptopStatus} />
 

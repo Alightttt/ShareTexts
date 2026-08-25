@@ -89,7 +89,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -12, opacity: 0 }}
                   transition={{ type: 'spring', bounce: 0, duration: 0.2 }}
-                  className="text-[42px] sm:text-[56px] lg:text-[64px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
+                  className="text-[48px] sm:text-[60px] lg:text-[68px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
                 >
                   {digit}
                 </motion.span>
@@ -115,7 +115,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -12, opacity: 0 }}
                   transition={{ type: 'spring', bounce: 0, duration: 0.2 }}
-                  className="text-[42px] sm:text-[56px] lg:text-[64px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
+                  className="text-[48px] sm:text-[60px] lg:text-[68px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
                 >
                   {digit}
                 </motion.span>
