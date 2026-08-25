@@ -9,7 +9,7 @@ import { SendIcon, InboxIcon } from '../components/AnimatedIcon';
 import { LiveUsers } from '../components/LiveUsers';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { InstallPrompt } from '../components/InstallPrompt';
-import { IllustTransfer, IllustConnect, IllustTextMove } from '../components/Illustrations';
+import { Smartphone, Laptop, ArrowRight, Wifi, FileText, Lock } from 'lucide-react';
 import { TactileButton } from '../components/TactileButton';
 
 const PrivacyPromise = lazy(() => import('../components/PrivacyPromise').then(m => ({ default: m.PrivacyPromise })));
@@ -61,7 +61,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
   };
 
   return (
-    <div className="min-h-screen relative bg-apple-canvas dark:bg-night-950 font-sans selection:bg-azure-500/20 flex flex-col overflow-x-clip animate-[fadeIn_0.4s_ease-out]">
+    <div className="min-h-screen relative bg-apple-canvas dark:bg-night-950 font-sans selection:bg-azure-500/20 flex flex-col overflow-x-clip animate-[fadeIn_0.4s_ease-out] dot-bg">
 
       {/* Skip to content — keyboard accessibility */}
       <a
@@ -97,7 +97,8 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
         className="px-5 sm:px-6 min-h-[calc(100dvh-48px)] sm:min-h-0 flex items-center py-10 sm:py-16 lg:py-20 relative z-10"
         aria-labelledby="hero-title"
       >
-        <div className="max-w-5xl mx-auto w-full grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] md:gap-10 lg:gap-12 items-center">
+        <div className="max-w-5xl mx-auto w-full grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] md:gap-10 lg:gap-12 items-center relative">
+          <div className="hero-glow" aria-hidden />
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -106,7 +107,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           >
             <h1
               id="hero-title"
-              className="text-[34px] sm:text-[42px] lg:text-[50px] font-semibold text-apple-ink dark:text-white tracking-[-0.035em] leading-[1.08] max-w-[14ch]"
+              className="text-[32px] sm:text-[40px] lg:text-[52px] font-semibold text-apple-ink dark:text-white tracking-[-0.04em] leading-[1.06] max-w-[14ch]"
             >
               Move anything between your devices.
             </h1>
@@ -135,6 +136,10 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 Receive something
               </TactileButton>
             </div>
+
+            <p className="mt-4 text-[13px] text-apple-ink-muted/60 dark:text-white/35 font-medium flex items-center gap-1.5">
+              <Smartphone className="w-3.5 h-3.5" /> Works on any device with a browser
+            </p>
 
             {createError && (
               <div role="alert" data-testid="error-message" className="mt-4 space-y-2">
@@ -172,11 +177,11 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             </h2>
           </motion.div>
 
-          <div className="grid sm:grid-cols-3 gap-8 sm:gap-6">
+                    <div className="grid sm:grid-cols-3 gap-8 sm:gap-6">
             {[
-              { n: '01', title: 'Open', desc: 'ShareText on both devices. Same page, any browser.', illust: <IllustTransfer className="w-full" /> },
-              { n: '02', title: 'Connect', desc: 'Type the code or scan the QR. That\'s the whole pairing.', illust: <IllustConnect className="w-full" /> },
-              { n: '03', title: 'Move', desc: 'Text, photo, or file goes straight between devices. Done.', illust: <IllustTextMove className="w-full" /> },
+              { n: '01', title: 'Open', desc: 'ShareText on both devices. Same page, any browser.', icon: <Smartphone className="w-5 h-5" /> },
+              { n: '02', title: 'Connect', desc: 'Type the code or scan the QR. That\'s the whole pairing.', icon: <Wifi className="w-5 h-5" /> },
+              { n: '03', title: 'Move', desc: 'Text, photo, or file goes straight between devices. Done.', icon: <ArrowRight className="w-5 h-5" /> },
             ].map((step, i) => (
               <motion.div
                 key={step.n}
@@ -185,8 +190,8 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 viewport={{ once: true, margin: '-40px' }}
                 transition={{ duration: 0.5, delay: i * 0.08, ease: EASE }}
               >
-                <div className="mb-4 rounded-[10px] bg-apple-parchment/50 dark:bg-white/[0.02] border border-apple-divider/30 dark:border-white/[0.04] overflow-hidden">
-                  {step.illust}
+                <div className="mb-4 w-10 h-10 rounded-[10px] bg-azure-600/10 dark:bg-azure-400/10 flex items-center justify-center text-azure-600 dark:text-azure-400">
+                  {step.icon}
                 </div>
                 <span className="font-mono text-[12px] text-azure-600 dark:text-azure-400 tabular-nums">{step.n}</span>
                 <h3 className="mt-1.5 text-[17px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">{step.title}</h3>
@@ -194,8 +199,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               </motion.div>
             ))}
           </div>
-        </div>
-      </section>
+        </div>      </section>
 
       {/* ── USE CASES ── */}
       <section className="px-5 sm:px-6 py-16 sm:py-24 relative z-10">

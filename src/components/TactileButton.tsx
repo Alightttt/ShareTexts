@@ -37,9 +37,9 @@ interface TactileButtonProps {
 }
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
-  sm: 'px-4 py-2 text-[13px] gap-1.5 rounded-[8px]',
-  md: 'px-5 py-2.5 text-[14px] gap-2 rounded-[10px]',
-  lg: 'px-6 py-3.5 text-[15px] gap-2 rounded-[10px]',
+  sm: 'px-4 py-2 text-[13px] gap-2 rounded-[8px] min-h-[36px]',
+  md: 'px-5 py-2.5 text-[14px] gap-2.5 rounded-[10px] min-h-[40px]',
+  lg: 'px-6 py-3.5 text-[15px] gap-2.5 rounded-[10px] min-h-[48px]',
 };
 
 // Each variant defines its own surface gradient + shadow layers

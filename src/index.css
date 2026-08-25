@@ -52,10 +52,10 @@
   --color-apple-canvas: #ffffff;
   --color-apple-parchment: #f5f5f7;
   --color-apple-ink: #1d1d1f;
-  --color-apple-ink-muted: #7a7a7a;
+  --color-apple-ink-muted: #6e6e73;
   --color-apple-blue: #0066cc;
   --color-apple-blue-focus: #0071e3;
-  --color-apple-divider: #f0f0f0;
+  --color-apple-divider: #e8e8ed;
   --color-apple-hairline: #e0e0e0;
   --color-azure-50: #eef5ff;
   --color-azure-100: #d9e9ff;
@@ -192,6 +192,35 @@
     transition-duration: 160ms;
     transition-timing-function: var(--ease-out);
   }
+
+/* Dot background pattern */
+.dot-bg {
+  background-image: radial-gradient(circle, var(--color-apple-hairline) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+html.dark .dot-bg {
+  background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+
+/* Scroll reveal */
+@keyframes revealUp {
+  from { opacity: 0; transform: translateY(20px); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+.reveal-up { animation: revealUp 0.7s cubic-bezier(0.23, 1, 0.32, 1) both; }
+.reveal-up-delay-1 { animation-delay: 0.08s; }
+.reveal-up-delay-2 { animation-delay: 0.16s; }
+.reveal-up-delay-3 { animation-delay: 0.24s; }
+
+/* Hero glow */
+.hero-glow {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 60% 50%, rgba(10,102,240,0.06) 0%, transparent 60%);
+}
+html.dark .hero-glow {
+  background: radial-gradient(ellipse at 60% 50%, rgba(10,102,240,0.08) 0%, transparent 60%);
+}
 }
 
 /* ── Scrollbar — desktop only, quiet ─────────────────────────────────── */

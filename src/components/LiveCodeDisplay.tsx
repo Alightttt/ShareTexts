@@ -36,7 +36,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
       : `Code active · ${Math.ceil(remaining)}s`;
 
   return (
-    <div className="flex flex-col items-center px-4 py-5 sm:px-8 sm:py-8 bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 rounded-[14px] sm:rounded-[20px] shadow-card w-full">
+    <div className="flex flex-col items-center px-5 py-6 sm:px-10 sm:py-10 bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 rounded-[14px] sm:rounded-[20px] shadow-card w-full">
       {/* Countdown + status */}
       <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-5">
         <div className={cn("relative flex items-center justify-center transition-transform", isUrgent && "scale-105")}>
@@ -74,12 +74,12 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
       </div>
 
       {/* Pairing code — 6 digits, responsive */}
-      <div className="flex justify-center gap-1.5 sm:gap-2.5 w-full" role="group" aria-label="Pairing code">
+      <div className="flex justify-center gap-2 sm:gap-3 w-full" role="group" aria-label="Pairing code">
         {/* First group: 3 digits */}
-        <div className="flex gap-1.5 sm:gap-2.5 flex-1 justify-end">
+        <div className="flex gap-2 sm:gap-3 flex-1 justify-end">
           {digits.slice(0, 3).map((digit, i) => (
             <div key={i} className={cn(
-              "relative flex items-center justify-center rounded-[10px] sm:rounded-[14px] shadow-sm flex-1 max-w-[56px] aspect-[3/4] sm:w-[60px] sm:h-[84px] sm:max-w-none sm:aspect-auto lg:w-[68px] lg:h-[96px]",
+              "relative flex items-center justify-center rounded-[10px] sm:rounded-[14px] shadow-sm flex-1 max-w-[56px] aspect-[3/4] sm:w-[64px] sm:h-[92px] sm:max-w-none sm:aspect-auto lg:w-[76px] lg:h-[108px]",
               "bg-apple-parchment dark:bg-[#1a1a1e] border border-apple-divider/60 dark:border-[#2a2a2e]"
             )}>
               <AnimatePresence mode="popLayout">
@@ -89,7 +89,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -12, opacity: 0 }}
                   transition={{ type: 'spring', bounce: 0, duration: 0.2 }}
-                  className="text-[26px] sm:text-[40px] lg:text-[46px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
+                  className="text-[30px] sm:text-[48px] lg:text-[56px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
                 >
                   {digit}
                 </motion.span>
@@ -102,10 +102,10 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
           <div className="w-1.5 sm:w-2.5 h-[2px] rounded-full bg-apple-ink/15 dark:bg-white/15" />
         </div>
         {/* Second group: 3 digits */}
-        <div className="flex gap-1.5 sm:gap-2.5 flex-1 justify-start">
+        <div className="flex gap-2 sm:gap-3 flex-1 justify-start">
           {digits.slice(3, 6).map((digit, i) => (
             <div key={i + 3} className={cn(
-              "relative flex items-center justify-center rounded-[10px] sm:rounded-[14px] shadow-sm flex-1 max-w-[56px] aspect-[3/4] sm:w-[60px] sm:h-[84px] sm:max-w-none sm:aspect-auto lg:w-[68px] lg:h-[96px]",
+              "relative flex items-center justify-center rounded-[10px] sm:rounded-[14px] shadow-sm flex-1 max-w-[56px] aspect-[3/4] sm:w-[64px] sm:h-[92px] sm:max-w-none sm:aspect-auto lg:w-[76px] lg:h-[108px]",
               "bg-apple-parchment dark:bg-[#1a1a1e] border border-apple-divider/60 dark:border-[#2a2a2e]"
             )}>
               <AnimatePresence mode="popLayout">
@@ -115,7 +115,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -12, opacity: 0 }}
                   transition={{ type: 'spring', bounce: 0, duration: 0.2 }}
-                  className="text-[26px] sm:text-[40px] lg:text-[46px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
+                  className="text-[30px] sm:text-[48px] lg:text-[56px] font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum tracking-tighter"
                 >
                   {digit}
                 </motion.span>

@@ -14,7 +14,6 @@ import { ThemeToggle } from '../components/ThemeToggle';
 import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
 import { saveDraft, loadDraft, clearDraft, ComposerDraft } from '../lib/draftStore';
 import { useFocusTrap } from '../lib/useFocusTrap';
-
 /**
  * Detect if the current device is a mobile/touch device.
  * Used to show the opposite device icon in the header:
@@ -36,7 +35,6 @@ function useIsMobileDevice() {
   }, []);
   return mobile;
 }
-
 /** Shows the connected partner's device icon — phone on PC, laptop on phone. */
 function PartnerDeviceIcon() {
   const isMobile = useIsMobileDevice();
@@ -44,10 +42,8 @@ function PartnerDeviceIcon() {
     ? <Monitor className="w-6 h-6 text-apple-ink dark:text-white shrink-0" aria-label="Connected to laptop" />
     : <Smartphone className="w-6 h-6 text-apple-ink dark:text-white shrink-0" aria-label="Connected to phone" />;
 }
-
 const LARGE_TEXT_THRESHOLD = 8000; // chars
 const LARGE_TEXT_PREVIEW = 1400;
-
 /**
  * Prepare an image blob for clipboard byte-copy. Chromium's ClipboardItem
  * accepts only 'image/png', so PNG passes through untouched and other raster
@@ -73,14 +69,12 @@ async function toPngClipboardBlob(blob: Blob): Promise<Blob | null> {
     return await new Promise<Blob | null>(res => canvas.toBlob(b => res(b), 'image/png'));
   } catch { return null; }
 }
-
 export function ChatView() {
   const { session, sendMessage, closeSession, cancelTransfer, requestReconnect } = useSession();
   const [inputText, setInputText] = useState('');
   // Multiple staged attachments per send (up to 20) — each file becomes its
   // own transfer bubble on send, but they're picked together in one message.
   const [attachments, setAttachments] = useState<(Attachment & { file: File })[]>([]);
-
   // ---- Draft persistence: text + attachments survive an accidental refresh.
   // Restore on mount, save (debounced) on every change, clear on send. The
   // draft is keyed by room, so switching rooms never mixes composers. A
@@ -98,7 +92,6 @@ export function ChatView() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.roomId]);
-
   useEffect(() => {
     if (!draftReady) return;
     const t = setTimeout(() => {
@@ -124,7 +117,6 @@ export function ChatView() {
   // room opens, so the creator sees the joiner arrive even when the
   // handshake was too fast to catch on the pairing screen.
   const [showConnected, setShowConnected] = useState(false);
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // Composer textarea — auto-grows as the user types (rows=1 + height sync),
   // capped at 30vh so long messages scroll instead of eating the screen.
@@ -140,7 +132,6 @@ export function ChatView() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const keepSessionRef = useRef<HTMLButtonElement>(null);
-
   // Focus the dialog's safe action on open. React's autoFocus is insufficient
   // here: the browser's default pointerdown focus on the opener button lands
   // AFTER React's autoFocus and steals focus back, so focus the keep button
@@ -152,7 +143,6 @@ export function ChatView() {
     }
   }, [confirmClose]);
   const audioInputRef = useRef<HTMLInputElement>(null);
-
   // Object URLs for staged image previews, keyed by attachment id; revoked
   // when the set changes (or on unmount) so we never leak blob URLs.
   const previewUrls = useMemo(() => {
@@ -165,13 +155,10 @@ export function ChatView() {
     }
     return map;
   }, [attachments]);
-
   useEffect(() => {
     return () => { previewUrls.forEach((u) => URL.revokeObjectURL(u)); };
   }, [previewUrls]);
-
   const disconnected = !session.partnerConnected && session.connectionType === 'disconnected';
-
   // Keep the composer exactly as tall as its content (1 line = 44px), growing
   // smoothly up to 30vh. Without this the textarea sits at its default
   // rows=2 height (68px), which is the "extra height / misaligned buttons"
@@ -184,7 +171,6 @@ export function ChatView() {
     const next = Math.min(el.scrollHeight, Math.round(window.innerHeight * 0.3));
     el.style.height = Math.max(44, next) + 'px';
   }, [inputText]);
-
   // Keyboard-safe height: when the on-screen keyboard opens, the visual
   // viewport shrinks while 100dvh doesn't. Track it so the composer stays
   // pinned above the keyboard (the primary mobile input surface).
@@ -224,7 +210,6 @@ export function ChatView() {
       window.removeEventListener('blur', onBlur);
     };
   }, []);
-
   const onMessagesScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
@@ -232,7 +217,6 @@ export function ChatView() {
     atBottomRef.current = nearBottom;
     if (nearBottom) setShowJump(false);
   };
-
   // Haptic feedback — a light tap when a message leaves this device, a
   // short double-tap when one arrives. Mobile-only, silently ignored
   // anywhere the API doesn't exist.
@@ -241,7 +225,6 @@ export function ChatView() {
       if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(pattern);
     } catch { /* unsupported */ }
   };
-
   useEffect(() => {
     const prev = prevCountRef.current;
     const count = session.messages.length;
@@ -260,7 +243,6 @@ export function ChatView() {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [session.messages, disconnected]);
-
   // Screen-reader live region: connection state + inbound transfers are
   // announced in plain words ("Connected", "Photo received", "Couldn't send
   // the file.") without any visual change.
@@ -279,7 +261,6 @@ export function ChatView() {
       setAnnouncement('Message received');
     }
   }, [session.messages]);
-
   useEffect(() => {
     if (session.partnerConnected && session.connectionType !== 'disconnected') {
       setAnnouncement('Connected');
@@ -291,7 +272,6 @@ export function ChatView() {
       setAnnouncement('Other device disconnected');
     }
   }, [session.partnerConnected, session.connectionType]);
-
   // Post-transfer moment: after the very first transfer, a quiet "That's it."
   // appears once, then the app gets out of the way. Direction-aware: sending
   // and receiving tell different truths ("it's on the other device" vs "it
@@ -306,7 +286,6 @@ export function ChatView() {
       return () => clearTimeout(t);
     }
   }, [session.messages.length]);
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -318,9 +297,7 @@ export function ChatView() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
   const MAX_ATTACHMENTS = 20;
-
   // Stage one or more files (menu pick or drag-drop) into the composer strip.
   // Per-file limits with honest messages: images above 100 MB can't preview
   // in the browser but still arrive as files; anything over 2 GB is rejected
@@ -333,7 +310,6 @@ export function ChatView() {
       setErrorMsg(`You can attach up to ${MAX_ATTACHMENTS} files in one message. Send this batch first.`);
       return;
     }
-
     const accepted: (Attachment & { file: File })[] = [];
     for (const file of list) {
       if (accepted.length >= roomLeft) {
@@ -363,20 +339,17 @@ export function ChatView() {
         status: 'draft'
       });
     }
-
     if (accepted.length > 0) {
       setErrorMsg(null);
       setAttachments(prev => [...prev, ...accepted]);
       setShowAttachmentMenu(false);
     }
   };
-
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'file' | 'video' | 'audio') => {
     if (!e.target.files || e.target.files.length === 0) return;
     addFiles(e.target.files, type);
     e.target.value = ''; // allow picking the same file again after removing
   };
-
   // Drag & drop: classify the first dropped file and stage it like the menu.
   const handleDragEnter = (e: React.DragEvent) => {
     if (!e.dataTransfer?.types.includes('Files')) return;
@@ -407,12 +380,10 @@ export function ChatView() {
           : 'file';
     addFiles(files, type);
   };
-
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!inputText.trim() && attachments.length === 0) return;
     if (disconnected) return;
-
     if (attachments.length > 0) {
       // Each staged file goes as its own transfer (its own bubble + progress
       // + resume), so 20 files become 20 reliable transfers — not one giant
@@ -424,17 +395,14 @@ export function ChatView() {
     } else {
       sendMessage(inputText);
     }
-
     setInputText('');
     setAttachments([]);
     void clearDraft(session.roomId);
     // On mobile, blur the textarea to dismiss the keyboard after sending.
     textareaRef.current?.blur();
   };
-
   const inputBytes = useMemo(() => new TextEncoder().encode(inputText).length, [inputText]);
   const isLargeInput = inputBytes > 50000;
-
   const copyAll = async () => {
     const texts = session.messages.map(m => m.text).filter(t => t.trim());
     if (texts.length === 0) return;
@@ -446,7 +414,6 @@ export function ChatView() {
       setErrorMsg("Couldn't copy. Select the text and copy manually.");
     }
   };
-
   return (
     <div
       data-app-state="connected"
@@ -455,7 +422,6 @@ export function ChatView() {
     >
       {/* Screen-reader live region — invisible, announced on state changes */}
       <div aria-live="polite" role="status" className="sr-only">{announcement}</div>
-
       {/* Header — device relationship, not chat */}
       <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 shrink-0 border-b border-apple-divider/40 dark:border-white/[0.06] bg-apple-canvas/80 dark:bg-night-950/80 backdrop-blur-xl backdrop-saturate-150 z-20 sticky top-0">
         <div className="flex items-center gap-3 min-w-0">
@@ -473,7 +439,6 @@ export function ChatView() {
             </span>
           </div>
         </div>
-
         <div className="flex items-center gap-1.5 shrink-0">
           <ThemeToggle />
           <button
@@ -495,7 +460,6 @@ export function ChatView() {
             <span className="hidden sm:inline text-[13px] font-medium">Disconnect</span>
           </button>
         </div>
-
         <AnimatePresence>
           {showConnectionDetails && (
             <motion.div
@@ -540,7 +504,6 @@ export function ChatView() {
           )}
         </AnimatePresence>
       </div>
-
       {/* Connected toast — the "alert" when the other device arrives. */}
       <AnimatePresence>
         {showConnected && (
@@ -557,7 +520,6 @@ export function ChatView() {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Close confirmation */}
       <AnimatePresence>
         {confirmClose && (
@@ -607,7 +569,6 @@ export function ChatView() {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Disconnect banner */}
       <AnimatePresence>
         {disconnected && (
@@ -634,7 +595,6 @@ export function ChatView() {
           </motion.div>
         )}
       </AnimatePresence>
-
       {/* Post-transfer moment — quiet, one-time */}
       <div className="shrink-0 flex justify-center">
         <AnimatePresence>
@@ -653,7 +613,6 @@ export function ChatView() {
           )}
         </AnimatePresence>
       </div>
-
       {/* Messages */}
       <div
         ref={scrollRef}
@@ -732,7 +691,6 @@ export function ChatView() {
           </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>
-
         {dragOver && (
           <div className="absolute inset-0 z-20 m-2 rounded-[20px] border-2 border-dashed border-apple-blue dark:border-azure-400 bg-apple-blue/10 dark:bg-azure-500/10 pointer-events-none flex items-center justify-center">
             <div className="flex flex-col items-center gap-2 px-8 py-6 bg-white dark:bg-surface-dark rounded-[20px] border border-apple-blue/20 dark:border-azure-400/20">
@@ -745,8 +703,6 @@ export function ChatView() {
           </div>
         )}
       </div>
-
-
       {/* Input Area */}
       <div className="p-3 sm:p-5 bg-apple-canvas dark:bg-night-950 border-t border-apple-divider/50 dark:border-apple-tile-3/50 z-10 pb-[env(safe-area-inset-bottom)] relative">
         <form onSubmit={handleSend} className="max-w-3xl mx-auto flex flex-col gap-2">
@@ -757,7 +713,6 @@ export function ChatView() {
             <kbd className="px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">Shift+Enter</kbd>
             <span>for a new line</span>
           </div>
-
           <AnimatePresence>
             {errorMsg && (
               <motion.div role="alert" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
@@ -767,14 +722,12 @@ export function ChatView() {
               </motion.div>
             )}
           </AnimatePresence>
-
           <div className="relative">
             <input type="file" ref={imageInputRef} accept="image/*" multiple className="hidden" onChange={(e) => handleFileSelect(e, 'image')} />
             <input type="file" ref={videoInputRef} accept="video/*" multiple className="hidden" onChange={(e) => handleFileSelect(e, 'video')} />
             <input type="file" ref={audioInputRef} accept="audio/*" multiple className="hidden" onChange={(e) => handleFileSelect(e, 'audio')} />
             <input type="file" ref={fileInputRef} multiple className="hidden" onChange={(e) => handleFileSelect(e, 'file')} />
           </div>
-
           <motion.div layout className="relative border border-apple-divider dark:border-apple-tile-3 rounded-[22px] bg-white dark:bg-surface-dark overflow-visible shadow-sm transition-motion focus-within:ring-2 focus-within:ring-apple-blue-focus/40 focus-within:border-apple-blue-focus z-20">
             {/* Multi-attachment preview strip — up to 20 files, each with a
                 circular remove button that's always visible and tappable. */}
@@ -829,7 +782,6 @@ export function ChatView() {
                 </motion.div>
               )}
             </AnimatePresence>
-
             <div className="flex items-end gap-0.5 p-1 relative">
               <button
                 type="button"
@@ -844,7 +796,6 @@ export function ChatView() {
               >
                 <Plus className="w-5 h-5 transition-transform" />
               </button>
-
               <textarea
                 ref={textareaRef}
                 data-testid="composer"
@@ -862,7 +813,6 @@ export function ChatView() {
                 title="Enter to send · Shift+Enter for a new line"
                 className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[9px] pl-0.5 pr-0.5 text-apple-ink dark:text-white placeholder:text-apple-ink-muted focus:outline-none text-[16px] leading-[26px]"
               />
-
               <button
                 type="button"
                 data-testid="send"
@@ -875,7 +825,6 @@ export function ChatView() {
                   <ArrowUp className="w-5 h-5" strokeWidth={2.4} />
                 </AnimatedIcon>
               </button>
-
               <AnimatePresence>
                 {showAttachmentMenu && (                    <motion.div
                     initial={{ opacity: 0, y: 10, scale: 0.9, transformOrigin: 'bottom left' }}
@@ -885,7 +834,6 @@ export function ChatView() {
                     className="absolute left-1 bottom-[calc(100%+8px)] bg-white dark:bg-surface-dark-2 border border-apple-divider dark:border-apple-tile-3 rounded-[20px] shadow-2xl p-2 w-[210px] flex flex-col gap-1 z-30"
                   >
                     <AttachmentOption icon={<ImageIcon className="w-5 h-5 text-apple-ink-muted" />} label="Photo" onClick={() => imageInputRef.current?.click()} />
-                    <AttachmentOption icon={<Play className="w-5 h-5 text-apple-ink-muted" />} label="Video" onClick={() => videoInputRef.current?.click()} />
                     <AttachmentOption icon={<FileIcon className="w-5 h-5 text-apple-ink-muted" />} label="File" onClick={() => fileInputRef.current?.click()} />
                   </motion.div>
                 )}
@@ -894,14 +842,12 @@ export function ChatView() {
           </motion.div>
         </form>
       </div>
-
       {showAttachmentMenu && (
         <div className="fixed inset-0 z-[5]" onPointerDown={() => setShowAttachmentMenu(false)} />
       )}
     </div>
   );
 }
-
 /** The circular ✕ that removes a staged attachment — always visible, tappable. */
 function RemoveAttachmentButton({ onClick }: { onClick: () => void }) {
   return (
@@ -915,7 +861,6 @@ function RemoveAttachmentButton({ onClick }: { onClick: () => void }) {
     </button>
   );
 }
-
 function AttachmentOption({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick: () => void }) {
   return (
     <button
@@ -927,9 +872,7 @@ function AttachmentOption({ icon, label, onClick }: { icon: React.ReactNode, lab
     </button>
   );
 }
-
 const timeOf = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
 /**
  * Delivery state for MY messages — a true receipt, never guessed:
  *   Sent      — the packet left this device
@@ -983,44 +926,16 @@ function DeliveryTick({ delivered, seen, onBlue }: { delivered?: boolean; seen?:
     </span>
   );
 }
-
 const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupStart?: boolean; isGroupEnd?: boolean }> = ({ msg, partnerName, isGroupStart = true, isGroupEnd = true }) => {
   const { retryTransfer, retryText, cancelTransfer, sendMessage } = useSession();
   const isMe = msg.sender === 'me';
   const a = msg.attachment;
-
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
-
-  // "Send back" — hand the same thing right back to the other device. Text
-  // re-sends the text; an attachment re-sends the exact bytes it received.
-  const sendBack = async () => {
-    if (a && a.url) {
-      try {
-        const res = await fetch(a.url);
-        const blob = await res.blob();
-        const file = new File([blob], a.name, { type: a.mimeType || blob.type || 'application/octet-stream' });
-        sendMessage('', {
-          id: crypto.randomUUID(),
-          type: a.type,
-          name: a.name,
-          size: a.size,
-          mimeType: a.mimeType,
-          status: 'draft'
-        }, file);
-      } catch {
-        // Bytes unavailable (e.g. the object URL was revoked) — nothing to send.
-      }
-    } else {
-      sendMessage(msg.text);
-    }
-  };
-
-  const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
+const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
   const preview = isLargeText && !expanded ? msg.text.slice(0, LARGE_TEXT_PREVIEW) : msg.text;
-
   const handleCopy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -1035,7 +950,6 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
-
   // Copy on a received image puts the actual image bytes on the clipboard so
   // pasting into a chat or document works. If byte-copy isn't supported, fall
   // back to the filename — never the raw blob: URL, which is dead outside this page.
@@ -1058,7 +972,6 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
     }
     await handleCopy(a.name);
   };
-
   const handleDownload = (url: string, filename: string) => {
     const safeName = sanitizeFilename(filename);
     const link = document.createElement('a');
@@ -1070,7 +983,6 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
     link.click();
     document.body.removeChild(link);
   };
-
   const [shared, setShared] = useState(false);
   // One-click Share: native sheet when the platform supports it (with the
   // actual file bytes attached), otherwise it degrades to a download — the
@@ -1100,7 +1012,6 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
       if ((e as Error)?.name !== 'AbortError') handleDownload(a.url, name);
     }
   };
-
   // Text-only message — a clean bubble with an in-bubble footer.
   // Psychology: messages from me feel "sent" (blue, right-aligned, tight),
   // messages from partner feel "received" (white, left-aligned, warm).
@@ -1174,16 +1085,7 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
                   )}
                   {' • '}{timeOf(msg.timestamp)}
                 </span>
-                {!isMe && (
-                  <button
-                    onPointerDown={(e) => { e.preventDefault(); void sendBack(); }}
-                    aria-label="Send back"
-                    title="Send back to the other device"
-                    className="flex items-center justify-center w-7 h-7 rounded-full transition-motion active:scale-90 text-apple-ink-muted hover:text-apple-blue dark:hover:text-azure-400 hover:bg-apple-divider/60 dark:hover:bg-apple-tile-3"
-                  >
-                    <ArrowUp className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                
                 <button
                   onPointerDown={() => handleCopy(msg.text)}
                   aria-label="Copy message"
@@ -1204,7 +1106,6 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
       </motion.div>
     );
   }
-
   // Attachment message — image/video/file card.
   // Defense-in-depth: a received file claiming image/video/audio but carrying
   // an active-content MIME (HTML/SVG/XML/JS) is NEVER rendered inline — it
@@ -1219,7 +1120,6 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
   // other device holds the file — "Sent" is truthful), partner files we
   // received become 'restoring' (re-requested from the peer on reconnect).
   const lost = a.status === 'complete' && !a.url;
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -1250,7 +1150,6 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
               {msg.text}
             </div>
           )}
-
           {/* Image — tap to view full quality */}
           {isImage && !lost && (
             <div className={cn("relative w-full overflow-hidden bg-black/5 dark:bg-white/5", msg.text && "border-t border-white/10 dark:border-apple-tile-3/50")}>
@@ -1261,7 +1160,11 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
                   className="block w-full cursor-zoom-in group relative"
                   aria-label={`View ${a.name}`}
                 >
-                  <img src={a.url} alt={a.name} className="w-full h-auto object-contain max-h-[60vh] block" />
+                  <img src={a.url} alt={a.name} className="w-full h-auto object-contain max-h-[60vh] block" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
+                  <div className="hidden w-full aspect-video flex flex-col items-center justify-center bg-apple-parchment dark:bg-surface-dark">
+                    <ImageIcon className="w-8 h-8 mb-2 opacity-50 text-apple-ink-muted" />
+                    <span className="text-[13px] text-apple-ink-muted">Preview unavailable</span>
+                  </div>
                   <span className="absolute bottom-2.5 right-2.5 flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-black/55 text-white text-[12px] font-semibold backdrop-blur opacity-90 group-hover:opacity-100 transition-opacity pointer-events-none">
                     <ZoomIn className="w-3.5 h-3.5" /> View
                   </span>
@@ -1274,7 +1177,6 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
               )}
             </div>
           )}
-
           {/* Video — plays inline */}
           {isVideo && !lost && (
             <div className="relative w-full aspect-video bg-black/90 flex items-center justify-center overflow-hidden">
@@ -1288,7 +1190,6 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
               )}
             </div>
           )}
-
           {/* File / Audio — plus active-content MIME (HTML/SVG/XML/JS) and
               restored attachments whose bytes died with the page: all render
               as the file row, never a broken or inline preview. */}
@@ -1301,14 +1202,12 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
               </div>
             </div>
           )}
-
           {/* Audio playback — plays once the transfer completes */}
           {a.type === 'audio' && complete && (
             <div className={cn("px-4 pb-4", isMe ? "bg-white/10" : "bg-apple-canvas/50 dark:bg-black/20")}>
               <audio src={a.url} controls className="w-full" preload="metadata" />
             </div>
           )}
-
           {/* Footer: status info on row 1, actions on row 2 */}
           <div className={cn(
             "px-3 py-2.5 border-t",
@@ -1338,14 +1237,10 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
                 </span>
               )}
             </div>
-
             {/* Row 2: action buttons — separate row, never fights with text */}
             <div className="flex items-center gap-1.5 mt-2 flex-wrap">
               {complete && (
                 <>
-                  {!isMe && (
-                    <ActionButton icon={<ArrowUp />} label="Send back" onClick={() => { void sendBack(); }} onBlue={isMe} testId="send-back" />
-                  )}
                   {a.type === 'image' && (
                     <ActionButton icon={copied ? <Check /> : <Copy />} label={copied ? "Copied" : "Copy"} active={copied} onClick={() => { void copyAttachment(a); }} onBlue={isMe} testId="transfer-copy" />
                   )}
@@ -1361,7 +1256,6 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
               )}
             </div>
           </div>
-
           {/* Progress bar */}
           {a.status !== 'complete' && a.status !== 'draft' && a.status !== 'failed' && a.status !== 'cancelled' && (
             <div className={cn("w-full h-1 overflow-hidden", isMe ? "bg-white/20" : "bg-apple-divider dark:bg-apple-tile-3")}>
@@ -1369,7 +1263,6 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
             </div>
           )}
         </div>
-
         {viewerOpen && complete && (
           <ImageViewer src={a.url!} name={a.name} onClose={() => setViewerOpen(false)} />
         )}
@@ -1377,7 +1270,6 @@ const MessageCard: React.FC<{ msg: ChatMessage; partnerName?: string; isGroupSta
     </motion.div>
   );
 };
-
 function ProgressState({ attachment: a, isMe, onBlue }: { attachment: Attachment, isMe: boolean, onBlue?: boolean }) {
   if (a.status === 'failed') return <span className={cn("font-medium", onBlue ? "text-white" : "text-status-danger")}>{a.note === 'resend-unavailable' ? "The other device no longer has this file — ask them to send it again." : a.note === 'checksum-mismatch' ? "The file didn't arrive intact — send it again." : "Couldn't send this file."}</span>;
   if (a.status === 'cancelled') return <span className={cn("font-medium", onBlue ? "text-white/80" : "text-apple-ink-muted")}>Cancelled</span>;
@@ -1392,7 +1284,6 @@ function ProgressState({ attachment: a, isMe, onBlue }: { attachment: Attachment
     </span>
   );
 }
-
 function ActionButton({ icon, label, onClick, active, primary, onBlue, testId }: { icon: React.ReactNode, label: string, onClick: () => void, active?: boolean, primary?: boolean, onBlue?: boolean, testId?: string }) {
   return (
     <button
@@ -1424,7 +1315,6 @@ function ActionButton({ icon, label, onClick, active, primary, onBlue, testId }:
     </button>
   );
 }
-
 /**
  * Full-screen image viewer — same original quality, zoomable.
  * Wheel / pinch to zoom, drag to pan, double-tap or double-click to toggle,
@@ -1436,9 +1326,7 @@ function ImageViewer({ src, name, onClose }: { src: string; name: string; onClos
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinchDist = useRef<number | null>(null);
   const lastTap = useRef(0);
-
   const clampScale = (s: number) => Math.min(6, Math.max(1, s));
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -1451,13 +1339,11 @@ function ImageViewer({ src, name, onClose }: { src: string; name: string; onClos
       document.body.style.overflow = '';
     };
   }, [onClose]);
-
   const onWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const factor = e.deltaY < 0 ? 1.18 : 1 / 1.18;
     setScale(s => clampScale(s * factor));
   };
-
   const onPointerDown = (e: React.PointerEvent) => {
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -1471,14 +1357,12 @@ function ImageViewer({ src, name, onClose }: { src: string; name: string; onClos
     }
     lastTap.current = now;
   };
-
   const onPointerMove = (e: React.PointerEvent) => {
     const p = pointers.current.get(e.pointerId);
     if (!p) return;
     const dx = e.clientX - p.x;
     const dy = e.clientY - p.y;
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
     if (pointers.current.size === 1 && scale > 1) {
       setPos(pp => ({ x: pp.x + dx, y: pp.y + dy }));
     } else if (pointers.current.size === 2) {
@@ -1489,12 +1373,10 @@ function ImageViewer({ src, name, onClose }: { src: string; name: string; onClos
       if (prev > 0) setScale(s => clampScale(s * (dist / prev)));
     }
   };
-
   const onPointerUp = (e: React.PointerEvent) => {
     pointers.current.delete(e.pointerId);
     if (pointers.current.size < 2) pinchDist.current = null;
   };
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -1522,7 +1404,6 @@ function ImageViewer({ src, name, onClose }: { src: string; name: string; onClos
           style={{ transform: `translate(${pos.x}px, ${pos.y}px) scale(${scale})`, transition: scale === 1 ? 'transform 0.25s ease' : 'none' }}
         />
       </div>
-
       <button
         onPointerDown={(e) => { e.stopPropagation(); onClose(); }}
         aria-label="Close image"
@@ -1530,7 +1411,6 @@ function ImageViewer({ src, name, onClose }: { src: string; name: string; onClos
       >
         <X className="w-5 h-5" />
       </button>
-
       <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-black/55 border border-white/15 text-white/90 text-[13px] font-medium backdrop-blur max-w-[90vw]">
         <span className="truncate max-w-[220px]">{name}</span>
         <span className="w-px h-3.5 bg-white/25" />
@@ -1541,7 +1421,6 @@ function ImageViewer({ src, name, onClose }: { src: string; name: string; onClos
     </motion.div>
   );
 }
-
 /** Compact live pairing code — used inside Connection details, so a dropped
  *  device can rejoin without reopening the Connect screen, without exposing
  *  the code continuously on screen. Re-ticks every second. */

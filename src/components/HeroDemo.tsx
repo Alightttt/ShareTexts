@@ -383,7 +383,7 @@ function FlyingContent({
         scale: style.scale,
         rotate: style.rotate,
         transform: 'translate(-50%, -50%)',
-        filter: `drop-shadow(0 4px 12px rgba(0,0,0,0.25)) drop-shadow(0 12px 24px rgba(0,0,0,0.15))`,
+        filter: `drop-shadow(0 6px 16px rgba(0,0,0,0.3)) drop-shadow(0 16px 32px rgba(0,0,0,0.2))`,
       }}
     >
       <div className="w-[80px] sm:w-[100px] rounded-[8px] overflow-hidden border border-white/10 bg-white/[0.06]">
