@@ -49,7 +49,7 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black p-6 text-center"
+      className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#0a0e18] p-6 text-center"
     >
       <ShareTextLogo
         size={56}
@@ -127,7 +127,7 @@ function ConnectingWait({ onRetry }: { onRetry: () => void; key?: React.Key }) {
 // Uses an untyped class because React 19 ships no .d.ts and @types/react is absent.
 function ErrorFallback({ onReset }: { onReset: () => void }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-night-900 p-6 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#0a0e18] p-6 text-center">
       <div className="w-16 h-16 bg-apple-parchment dark:bg-apple-tile-1 rounded-[20px] flex items-center justify-center mb-6">
         <ShareTextLogo size={28} className="text-apple-ink-muted" />
       </div>
@@ -194,7 +194,7 @@ function AppContent() {
 
   if (typeof window !== 'undefined' && !window.RTCPeerConnection) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black p-6 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#0a0e18] p-6 text-center">
         <div className="w-16 h-16 bg-apple-parchment dark:bg-apple-tile-1 rounded-[20px] flex items-center justify-center mb-6">
           <WifiOff className="w-7 h-7 text-apple-ink-muted" strokeWidth={1.8} />
         </div>
@@ -205,7 +205,7 @@ function AppContent() {
   }
 
   if (typeof window !== 'undefined' && window.location.pathname === '/docs') {
-    return <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-black" />}><Docs /></Suspense>;
+    return <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-[#0a0e18]" />}><Docs /></Suspense>;
   }
 
   if (typeof window !== 'undefined' && !/^(\/|\/s\/[0-9a-f]{8})$/i.test(window.location.pathname)) {
@@ -214,7 +214,7 @@ function AppContent() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
-        className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black p-6 text-center relative overflow-hidden"
+        className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#0a0e18] p-6 text-center relative overflow-hidden"
       >
 
         <div className="w-20 h-20 bg-apple-parchment dark:bg-apple-tile-1 rounded-[24px] flex items-center justify-center mb-6 shadow-sm">
@@ -289,8 +289,7 @@ function AppContent() {
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
         >
-          {session.partnerConnected ? <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-black" />}><ChatView /></Suspense> : session.isCreator ? <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-black" />}><RoomHub /></Suspense> : (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-black px-6 text-center">
+          {session.partnerConnected ? <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-[#0a0e18]" />}><ChatView /></Suspense> : session.isCreator ? <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-[#0a0e18]" />}><RoomHub /></Suspense> : (              <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#0a0e18] px-6 text-center">
               <div className="flex flex-col items-center">
                 {waitingForReconnect ? (
                   <>
@@ -329,7 +328,7 @@ function AppContent() {
 
 
   return (
-    <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-black" /> }>
+    <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-[#0a0e18]" /> }>
       <AnimatePresence mode="wait">
         <motion.div
           key={view}

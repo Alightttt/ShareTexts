@@ -531,7 +531,7 @@ export function HeroDemo() {
         className="relative w-full max-w-[680px] mx-auto select-none"
       >
         <div className="flex items-center justify-center gap-3 sm:gap-8">
-          <PhoneFrame className="w-[110px] sm:w-[160px] lg:w-[180px]">
+          <PhoneFrame className="w-[90px] sm:w-[130px] lg:w-[150px]">
             <div className="w-full h-full flex flex-col bg-[#080c18]">
               <MiniHeader status="sent" />
               <div className="flex-1 flex flex-col justify-end gap-1 px-[5px] sm:px-1.5 pb-1">
@@ -590,7 +590,7 @@ export function HeroDemo() {
             className="relative z-10"
             style={{ transformStyle: 'flat' }}
           >
-            <PhoneFrame className="w-[120px] sm:w-[170px] lg:w-[195px]" glow={phoneGlow}>
+            <PhoneFrame className="w-[100px] sm:w-[140px] lg:w-[160px]" glow={phoneGlow}>
               <div className="w-full h-full flex flex-col bg-[#080c18]">
                 <MiniHeader status={phoneStatus} />
 
