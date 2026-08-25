@@ -62,8 +62,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
     }
   };
 
-  return (
-    <div className="min-h-screen relative bg-apple-canvas dark:bg-night-950 font-sans selection:bg-azure-500/20 flex flex-col overflow-x-clip animate-[fadeIn_0.4s_ease-out] dot-bg">
+  return (      <div className="min-h-screen relative bg-apple-canvas dark:bg-[#0a0e18] font-sans selection:bg-azure-500/20 flex flex-col overflow-x-clip animate-[fadeIn_0.4s_ease-out] dot-bg">
 
       {/* Skip to content — keyboard accessibility */}
       <a
@@ -74,7 +73,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
       </a>
 
       {/* ── HEADER ── */}
-      <header className="sticky top-0 z-40 bg-apple-canvas/80 dark:bg-night-950/80 backdrop-blur-xl backdrop-saturate-150 border-b border-apple-divider dark:border-white/[0.06]">
+      <header className="sticky top-0 z-40 bg-apple-canvas/80 dark:bg-[#0a0e18]/80 backdrop-blur-xl backdrop-saturate-150 border-b border-apple-divider dark:border-white/[0.06]">
         <div className="max-w-5xl mx-auto px-5 h-12 sm:h-14 flex items-center">
           <a href="/" className="flex items-center gap-2 shrink-0" aria-label="ShareText">
             <ShareTextLogo size={18} className="text-apple-ink dark:text-white" />

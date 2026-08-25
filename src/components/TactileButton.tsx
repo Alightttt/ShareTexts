@@ -230,14 +230,14 @@ export function TactileButton({
       <span className="relative z-10 flex items-center justify-center gap-2 whitespace-nowrap">
         {icon && iconPosition === 'left' && (
           <motion.span
-            className="shrink-0"
+            className="shrink-0 flex items-center justify-center leading-none"
             animate={isHovered ? { x: 1.5 } : { x: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
             {icon}
           </motion.span>
         )}
-        {children}
+        <span className="leading-none flex items-center">{children}</span>
         {icon && iconPosition === 'right' && (
           <motion.span
             className="shrink-0"

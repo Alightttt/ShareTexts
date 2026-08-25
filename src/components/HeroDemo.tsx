@@ -530,7 +530,7 @@ export function HeroDemo() {
         aria-label="ShareText preview: a photo transferred from phone to computer"
         className="relative w-full max-w-[680px] mx-auto select-none"
       >
-        <div className="flex items-end justify-center gap-3 sm:gap-8">
+        <div className="flex items-center justify-center gap-3 sm:gap-8">
           <PhoneFrame className="w-[110px] sm:w-[160px] lg:w-[180px]">
             <div className="w-full h-full flex flex-col bg-[#080c18]">
               <MiniHeader status="sent" />
@@ -573,7 +573,7 @@ export function HeroDemo() {
         className="relative"
         style={{ perspective: 'none' }}
       >
-        <div className="flex items-end justify-center gap-2 sm:gap-8 lg:gap-10"
+        <div className="flex items-center justify-center gap-2 sm:gap-8 lg:gap-10"
           style={{ transformStyle: 'flat' }}
         >
 

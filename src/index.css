@@ -25,17 +25,17 @@
   --color-text-muted: #aeaeb2;
 
   /* ── Surface ────────────────────────────────────────────────────────── */
-  --color-bg: #ffffff;
-  --color-bg-secondary: #f5f5f7;
-  --color-bg-elevated: #fafafc;
+  --color-bg: #fafafa;
+  --color-bg-secondary: #f2f2f5;
+  --color-bg-elevated: #ffffff;
   --color-surface: #ffffff;
-  --color-surface-secondary: #f5f5f7;
-  --color-surface-elevated: #fafafc;
+  --color-surface-secondary: #f2f2f5;
+  --color-surface-elevated: #ffffff;
 
   /* ── Border ─────────────────────────────────────────────────────────── */
-  --color-border: #e5e5ea;
-  --color-border-subtle: #f0f0f5;
-  --color-border-strong: #c7c7cc;
+  --color-border: #e0e0e5;
+  --color-border-subtle: #ececef;
+  --color-border-strong: #c0c0c5;
 
   /* ── Status ─────────────────────────────────────────────────────────── */
   --color-success: #34c759;
@@ -49,14 +49,14 @@
   --color-focus: #0a66f0;
 
   /* ── Semantic aliases ───────────────────────────────────────────────── */
-  --color-apple-canvas: #ffffff;
-  --color-apple-parchment: #f5f5f7;
+  --color-apple-canvas: #fafafa;
+  --color-apple-parchment: #f2f2f5;
   --color-apple-ink: #1d1d1f;
   --color-apple-ink-muted: #6e6e73;
   --color-apple-blue: #0066cc;
   --color-apple-blue-focus: #0071e3;
-  --color-apple-divider: #e8e8ed;
-  --color-apple-hairline: #e0e0e0;
+  --color-apple-divider: #e0e0e5;
+  --color-apple-hairline: #d8d8dd;
   --color-azure-50: #eef5ff;
   --color-azure-100: #d9e9ff;
   --color-azure-200: #b7d4ff;
@@ -133,18 +133,18 @@
 
   /* ── Dark mode ────────────────────────────────────────────────────── */
   html.dark {
-    --color-bg: #080c16;
-    --color-bg-secondary: #0c1220;
-    --color-bg-elevated: #141c2e;
-    --color-surface: #141c2e;
-    --color-surface-secondary: #1a2438;
-    --color-surface-elevated: #212c42;
-    --color-text: #e8ecf2;
-    --color-text-secondary: #9aa5b8;
-    --color-text-muted: #5c6a80;
-    --color-border: #253050;
-    --color-border-subtle: #1c2840;
-    --color-border-strong: #304060;
+    --color-bg: #0a0e18;
+    --color-bg-secondary: #0f1422;
+    --color-bg-elevated: #161e30;
+    --color-surface: #161e30;
+    --color-surface-secondary: #1c2640;
+    --color-surface-elevated: #222e48;
+    --color-text: #edf0f5;
+    --color-text-secondary: #94a0b8;
+    --color-text-muted: #5a6882;
+    --color-border: #1e2c48;
+    --color-border-subtle: #162038;
+    --color-border-strong: #2a3c5c;
     --color-brand: #4d9dff;
     --color-brand-strong: #72aaff;
     --color-brand-light: #0d2040;
@@ -154,12 +154,12 @@
     --color-warning-light: #2a1c08;
     --color-error: #ff6b6b;
     --color-error-light: #2a0d0d;
-    --color-apple-canvas: #080c16;
-    --color-apple-parchment: #0c1220;
-    --color-apple-divider: #253050;
-    --color-apple-hairline: #304060;
-    --color-apple-ink: #e8ecf2;
-    --color-apple-ink-muted: #7a869a;
+    --color-apple-canvas: #0a0e18;
+    --color-apple-parchment: #0f1422;
+    --color-apple-divider: #1e2c48;
+    --color-apple-hairline: #263450;
+    --color-apple-ink: #edf0f5;
+    --color-apple-ink-muted: #8894ac;
     --color-azure-400: #6aafff;
     --color-azure-500: #4d9dff;
     --color-azure-600: #4d9dff;
