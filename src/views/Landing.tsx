@@ -104,7 +104,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           <div className="absolute top-[-20%] right-[-10%] w-[60%] h-[80%] bg-azure-500/[0.04] dark:bg-azure-500/[0.06] rounded-full blur-[100px]" />
           <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[60%] bg-azure-400/[0.03] dark:bg-azure-400/[0.04] rounded-full blur-[80px]" />
         </div>
-        <div className="max-w-5xl mx-auto w-full grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] md:gap-10 lg:gap-12 items-center relative">
+        <div className="max-w-6xl mx-auto w-full grid md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)] md:gap-8 lg:gap-12 items-center relative">
           <div className="hero-glow" aria-hidden />
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -114,7 +114,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           >
             <h1
               id="hero-title"
-              className="text-[38px] sm:text-[52px] lg:text-[64px] font-bold tracking-[-0.045em] leading-[1.04] max-w-[12ch] text-apple-ink dark:text-white"
+              className="text-[38px] sm:text-[52px] lg:text-[64px] font-bold tracking-[-0.045em] leading-[1.04] text-apple-ink dark:text-white"
             >
               Move anything between your devices.
             </h1>
@@ -123,7 +123,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               One page, two screens. No app, no account. Temporary by design.
             </p>
 
-            <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 w-full sm:w-auto">
+            <div className="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 w-full sm:w-fit">
               <TactileButton
                 data-testid="hero-send"
                 onClick={isCreating ? () => { setIsCreating(false); setCreateError(null); } : handleCreate}

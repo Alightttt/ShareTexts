@@ -227,10 +227,10 @@ export function TactileButton({
       />
 
       {/* Content layer */}
-      <span className="relative z-10 flex items-center justify-center gap-2.5">
+      <span className="relative z-10 flex items-center justify-center gap-2 whitespace-nowrap">
         {icon && iconPosition === 'left' && (
           <motion.span
-            className="shrink-0 mr-1.5"
+            className="shrink-0"
             animate={isHovered ? { x: 1.5 } : { x: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
