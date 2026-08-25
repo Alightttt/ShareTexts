@@ -150,7 +150,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1, ease: EASE }}
-            className="mt-8 md:mt-0 w-full flex justify-center overflow-hidden"
+            className="mt-8 md:mt-0 w-full min-w-0 overflow-hidden"
           >
             <HeroDemo />
           </motion.div>

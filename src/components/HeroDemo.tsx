@@ -565,7 +565,7 @@ export function HeroDemo() {
       data-transfer-kind={transferKind}
       role="img"
       aria-label="Interactive preview: ShareText transfers a photo from phone to computer."
-      className="relative w-full max-w-[700px] mx-auto select-none"
+      className="relative w-full min-w-0 select-none"
     >
       {/* ─── 3D PERSPECTIVE SCENE ─── */}
       <div
