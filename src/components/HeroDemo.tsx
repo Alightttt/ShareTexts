@@ -416,12 +416,12 @@ export function HeroDemo() {
   const { mx, my } = useMouseDamped();
 
   // Device transforms based on mouse
-  const phoneRotateY = useTransform(mx, [-1, 1], [1.5, -1.5]);
-  const phoneRotateX = useTransform(my, [-1, 1], [-1, 1]);
-  const phoneTranslateZ = useTransform(my, [-1, 1], [4, -2]);
-  const laptopRotateY = useTransform(mx, [-1, 1], [-1, 1]);
-  const laptopRotateX = useTransform(my, [-1, 1], [-1, 1]);
-  const laptopTranslateZ = useTransform(my, [-1, 1], [-2, 2]);
+  const phoneRotateY = useTransform(mx, [-1, 1], [0, 0]);
+  const phoneRotateX = useTransform(my, [-1, 1], [0, 0]);
+  const phoneTranslateZ = useTransform(my, [-1, 1], [3, -1]);
+  const laptopRotateY = useTransform(mx, [-1, 1], [0, 0]);
+  const laptopRotateX = useTransform(my, [-1, 1], [0, 0]);
+  const laptopTranslateZ = useTransform(my, [-1, 1], [-1, 1]);
 
   // Screen glow intensity based on state
   const phoneGlow = simState === 'sending' || simState === 'transferring' ? 0.8 : simState === 'selecting' ? 0.4 : 0.15;
@@ -571,10 +571,10 @@ export function HeroDemo() {
       <div
         ref={sceneRef}
         className="relative"
-        style={{ perspective: '1200px', perspectiveOrigin: '50% 50%' }}
+        style={{ perspective: 'none' }}
       >
         <div className="flex items-end justify-center gap-2 sm:gap-8 lg:gap-10"
-          style={{ transformStyle: 'preserve-3d' }}
+          style={{ transformStyle: 'flat' }}
         >
 
           {/* ─── PHONE ─── */}
@@ -588,7 +588,7 @@ export function HeroDemo() {
             }}
             transition={{ opacity: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }}
             className="relative z-10"
-            style={{ transformStyle: 'preserve-3d' }}
+            style={{ transformStyle: 'flat' }}
           >
             <PhoneFrame className="w-[110px] sm:w-[160px] lg:w-[180px]" glow={phoneGlow}>
               <div className="w-full h-full flex flex-col bg-[#080c18]">
@@ -694,7 +694,7 @@ export function HeroDemo() {
             }}
             transition={{ opacity: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }}
             className="relative z-0"
-            style={{ transformStyle: 'preserve-3d' }}
+            style={{ transformStyle: 'flat' }}
           >
             <LaptopFrame className="w-[180px] sm:w-[280px] lg:w-[320px]" glow={laptopGlow}>
               <div className="w-full h-full flex flex-col bg-[#080c18]">

@@ -11,6 +11,7 @@ import { ThemeToggle } from '../components/ThemeToggle';
 import { InstallPrompt } from '../components/InstallPrompt';
 import { Smartphone, Laptop, ArrowRight, Wifi, FileText, Lock } from 'lucide-react';
 import { TactileButton } from '../components/TactileButton';
+import { signalingConfigIssue } from '../lib/socket';
 
 const PrivacyPromise = lazy(() => import('../components/PrivacyPromise').then(m => ({ default: m.PrivacyPromise })));
 const Faq = lazy(() => import('../components/Faq').then(m => ({ default: m.Faq })));
@@ -53,7 +54,8 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
       setIsCreating(false);
       const msg = e.message || "Couldn't start the connection.";
       if (msg.includes('trouble connecting') || msg.includes('reach ShareText') || msg.includes('signaling') || msg.includes('configured') || msg.includes('connection service')) {
-        setCreateError("Couldn't reach the connection service. Check your internet and try again.");
+        const cfg = signalingConfigIssue();
+        setCreateError(cfg || "Couldn't reach the connection service. Check your internet and try again.");
       } else {
         setCreateError(msg);
       }
@@ -107,12 +109,12 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
           >
             <h1
               id="hero-title"
-              className="text-[32px] sm:text-[40px] lg:text-[52px] font-semibold text-apple-ink dark:text-white tracking-[-0.04em] leading-[1.06] max-w-[14ch]"
+              className="text-[36px] sm:text-[48px] lg:text-[60px] font-bold text-apple-ink dark:text-white tracking-[-0.045em] leading-[1.04] max-w-[12ch]"
             >
               Move anything between your devices.
             </h1>
 
-            <p className="mt-4 text-[15px] sm:text-[16px] text-apple-ink-muted dark:text-white/55 font-medium leading-relaxed max-w-[38ch]">
+            <p className="mt-5 text-[16px] sm:text-[17px] text-apple-ink-muted dark:text-white/50 font-medium leading-relaxed max-w-[36ch]">
               One page, two screens. No app, no account. Temporary by design.
             </p>
 
@@ -122,7 +124,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 onClick={isCreating ? () => { setIsCreating(false); setCreateError(null); } : handleCreate}
                 variant="primary"
                 size="lg"
-                icon={isCreating ? undefined : <SendIcon size={16} active={!isCreating} />}
+                icon={isCreating ? undefined : <SendIcon size={18} active={!isCreating} />}
               >
                 {isCreating ? 'Cancel' : createError ? 'Try Again' : 'Send something'}
               </TactileButton>
@@ -131,7 +133,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
                 onClick={onJoinClick}
                 variant="secondary"
                 size="lg"
-                icon={<InboxIcon size={16} />}
+                icon={<InboxIcon size={18} />}
               >
                 Receive something
               </TactileButton>
@@ -265,7 +267,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               disabled={isCreating}
               variant="primary"
               size="lg"
-              icon={isCreating ? undefined : <SendIcon size={16} active={!isCreating} />}
+              icon={isCreating ? undefined : <SendIcon size={18} active={!isCreating} />}
             >
               {isCreating ? 'Creating…' : createError ? 'Try Again' : 'Send something'}
             </TactileButton>
@@ -274,7 +276,7 @@ export function Landing({ onJoinClick }: { onJoinClick: () => void }) {
               onClick={onJoinClick}
               variant="secondary"
               size="lg"
-              icon={<InboxIcon size={16} />}
+              icon={<InboxIcon size={18} />}
             >
               Receive something
             </TactileButton>

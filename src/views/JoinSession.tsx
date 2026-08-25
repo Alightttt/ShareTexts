@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { cn } from '../lib/utils';
+import { signalingConfigIssue } from '../lib/socket';
 import { AnimatedIcon } from '../components/AnimatedIcon';
 
 const QRScanner = lazy(() => import('../components/QRScanner').then(m => ({ default: m.QRScanner })));
@@ -78,7 +79,8 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
     } catch {
       clearTimeout(safetyTimer);
       setPhase('error');
-      setError("Couldn't reach ShareText. Check your connection and try again.");
+      const configIssue = signalingConfigIssue();
+          setError(configIssue || "Couldn't reach ShareText. Check your connection and try again.");
     }
   };
 
@@ -101,7 +103,8 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
     } catch {
       clearTimeout(safetyTimer);
       setPhase('error');
-      setError("Couldn't reach ShareText. Check your connection and try again.");
+      const configIssue2 = signalingConfigIssue();
+          setError(configIssue2 || "Couldn't reach ShareText. Check your connection and try again.");
     }
   };
 
@@ -122,7 +125,8 @@ export function JoinSession({ onBack }: { onBack: () => void }) {
     } catch {
       clearTimeout(safetyTimer);
       setPhase('error');
-      setError("Couldn't reach ShareText. Check your connection and try again.");
+      const configIssue3 = signalingConfigIssue();
+          setError(configIssue3 || "Couldn't reach ShareText. Check your connection and try again.");
     }
   };
 
