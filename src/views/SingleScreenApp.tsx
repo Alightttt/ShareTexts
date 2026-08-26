@@ -184,14 +184,14 @@ export function SingleScreenApp() {
                 {session.partnerConnecting && !session.partnerConnected && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-4">
                     <p className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60 flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#8b7cf0] animate-pulse" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#9d92f7] animate-pulse" />
                       {session.connectionType === 'establishing' ? 'Establishing secure connection...' : 'Connecting...'}
                     </p>
                   </motion.div>
                 )}
               </AnimatePresence>
               <div className="mt-5 space-y-2">
-                <button onClick={() => setShowQROverlay(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-azure-600 hover:bg-azure-500 text-white rounded-full text-[14px] font-semibold min-h-[46px] transition-all duration-150 active:scale-[0.97]">
+                <button onClick={() => setShowQROverlay(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-[#9d92f7] hover:bg-[#9286f0] text-white rounded-full text-[14px] font-semibold min-h-[46px] transition-all duration-150 active:scale-[0.97]">
                   <QrCode className="w-4 h-4" /> Show QR
                 </button>
                 <button onClick={shareLink} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-[#161e30] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-[#1c2640] rounded-full text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.97] min-h-[44px]">
@@ -212,7 +212,7 @@ export function SingleScreenApp() {
                 <button onClick={() => setPanelMode('idle')} className="flex items-center gap-1 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white px-3 py-1.5 rounded-full hover:bg-apple-parchment dark:hover:bg-white/5 active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
               </div>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/50 font-medium mb-5">Enter the code shown on the other device.</p>
-              <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-azure-600 hover:bg-azure-500 text-white rounded-full text-[14px] font-semibold min-h-[46px] transition-all duration-150 active:scale-[0.97]">
+              <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-[#9d92f7] hover:bg-[#9286f0] text-white rounded-full text-[14px] font-semibold min-h-[46px] transition-all duration-150 active:scale-[0.97]">
                 <QrCode className="w-4 h-4" /> Scan QR code
               </button>
               <div className="p-6 bg-white dark:bg-[#161e30] border border-apple-divider dark:border-white/10 rounded-[20px] shadow-card">
@@ -317,7 +317,7 @@ export function SingleScreenApp() {
           </Suspense>
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-center px-6">
-            <motion.div animate={{ scale: [1, 1.05, 1], opacity: [0.5, 0.7, 0.5] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} className="mb-5"><ShareTextLogo size={56} className="text-azure-600/20 dark:text-azure-400/15" /></motion.div>
+            <motion.div animate={{ scale: [1, 1.08, 1], opacity: [0.4, 0.6, 0.4] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }} className="mb-5 relative"><div className="absolute inset-0 rounded-full bg-[#9d92f7]/5 blur-xl scale-150" /><ShareTextLogo size={56} className="text-[#9d92f7]/25 dark:text-[#a89cf7]/20 relative z-10" /></motion.div>
             <p className="text-[16px] font-semibold text-apple-ink dark:text-white/80 mb-1.5">
               {panelMode === 'idle' ? 'Connect two devices' : panelMode === 'sending' ? 'Waiting for peer...' : 'Enter the code'}
             </p>

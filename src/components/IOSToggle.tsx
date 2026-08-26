@@ -34,13 +34,13 @@ export function IOSToggle({
       onClick={onToggle}
       className={cn(
         'relative shrink-0 rounded-full transition-colors duration-300 ease-out',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8b7cf0]',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9d92f7]',
         className
       )}
       style={{
         width: dims.w,
         height: dims.h,
-        backgroundColor: checked ? '#8b7cf0' : '#d8d8dd',
+        backgroundColor: checked ? '#9d92f7' : '#d8d8dd',
         padding: 2,
       }}
     >
@@ -84,7 +84,7 @@ export function IOSToggle({
               transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
               className="absolute inset-0 flex items-center justify-center"
             >
-              <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="#6d5de0" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="#7c6be0" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
               </svg>
             </motion.div>

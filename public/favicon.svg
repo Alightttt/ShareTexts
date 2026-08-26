@@ -1,7 +1,7 @@
 <svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- ShareText mark: two device screens joined by a connection beam.
        Must match src/components/ShareTextLogo.tsx and scripts/render-brand.mjs. -->
-  <rect x="40" y="36" width="84" height="84" rx="24" fill="#8b7cf0"/>
-  <rect x="132" y="136" width="84" height="84" rx="24" fill="#8b7cf0"/>
-  <path d="M110 106 L146 142" stroke="#8b7cf0" stroke-width="28" stroke-linecap="round"/>
+  <rect x="40" y="36" width="84" height="84" rx="24" fill="#9d92f7"/>
+  <rect x="132" y="136" width="84" height="84" rx="24" fill="#9d92f7"/>
+  <path d="M110 106 L146 142" stroke="#9d92f7" stroke-width="28" stroke-linecap="round"/>
 </svg>

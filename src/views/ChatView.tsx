@@ -728,7 +728,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
             <input type="file" ref={audioInputRef} accept="audio/*" multiple className="hidden" onChange={(e) => handleFileSelect(e, 'audio')} />
             <input type="file" ref={fileInputRef} multiple className="hidden" onChange={(e) => handleFileSelect(e, 'file')} />
           </div>
-          <motion.div layout className="relative border border-apple-divider dark:border-apple-tile-3 rounded-[22px] bg-white dark:bg-surface-dark overflow-visible shadow-sm transition-motion focus-within:ring-2 focus-within:ring-apple-blue-focus/40 focus-within:border-apple-blue-focus z-20">
+          <motion.div layout className="relative border border-apple-divider dark:border-apple-tile-3 rounded-[22px] bg-white dark:bg-surface-dark overflow-visible shadow-sm transition-motion focus-within:ring-2 focus-within:ring-[#9d92f7]/40 focus-within:border-[#9d92f7] z-20">
             {/* Multi-attachment preview strip — up to 20 files, each with a
                 circular remove button that's always visible and tappable. */}
             <AnimatePresence>
@@ -791,7 +791,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 aria-expanded={showAttachmentMenu}
                 className={cn(
                   "w-11 h-11 rounded-full flex items-center justify-center shrink-0 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/60 dark:hover:bg-apple-tile-3 transition-motion active:scale-[0.92]",
-                  showAttachmentMenu && "text-azure-600 dark:text-azure-400 bg-azure-600/10 rotate-45"
+                  showAttachmentMenu && "text-[#9d92f7] dark:text-[#a89cf7] bg-[#9d92f7]/10 rotate-45"
                 )}
               >
                 <Plus className="w-5 h-5 transition-transform" />
@@ -819,7 +819,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 onPointerDown={handleSend}
                 disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
                 aria-label="Send"
-                className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-[0.92] bg-azure-600 hover:bg-azure-500 text-white disabled:opacity-25 disabled:bg-apple-divider dark:disabled:bg-apple-tile-2 disabled:text-apple-ink-muted dark:disabled:text-white/40 disabled:shadow-none"
+                className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-[0.92] bg-[#9d92f7] hover:bg-[#9286f0] text-white disabled:opacity-25 disabled:bg-apple-divider dark:disabled:bg-apple-tile-2 disabled:text-apple-ink-muted dark:disabled:text-white/40 disabled:shadow-none"
               >
                 <AnimatedIcon animate="send" active={!((!inputText.trim() && attachments.length === 0) || !session.partnerConnected)}>
                   <ArrowUp className="w-5 h-5" strokeWidth={2.4} />
@@ -1033,7 +1033,7 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
           "max-w-[85%] sm:max-w-[65%] px-[14px] py-[10px] rounded-[18px]",
           isMe
             ? "bg-azure-600 text-white"
-            : "bg-[#e9e9eb] dark:bg-[#1c1e22] text-apple-ink dark:text-white",
+            : "bg-[#f0eef9] dark:bg-[#1c1e22] text-apple-ink dark:text-white",
           isMe && isGroupEnd && "rounded-br-[4px]",
           !isMe && isGroupEnd && "rounded-bl-[4px]",
           isMe && !isGroupEnd && "rounded-br-[14px]",
@@ -1137,7 +1137,7 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
         <div className={cn(
           "flex flex-col w-full overflow-hidden rounded-[18px]",
           isMe
-            ? "bg-azure-600 text-white shadow-[0_1px_3px_rgba(10,102,240,0.18)]"
+            ? "bg-[#9d92f7] text-white shadow-[0_1px_3px_rgba(157,146,247,0.18)]"
             : "bg-white dark:bg-surface-dark border border-apple-divider/40 dark:border-apple-tile-3 shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
           isMe && isGroupEnd && "rounded-br-[4px]",
           !isMe && isGroupEnd && "rounded-bl-[4px]",

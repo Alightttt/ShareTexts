@@ -55,8 +55,8 @@ function CodeBlock({ code, language = 'bash' }: { code: string; language?: strin
 function StepCard({ number, title, description, icon }: { number: number; title: string; description: string; icon: React.ReactNode }) {
   return (
     <div className="flex gap-4 items-start">
-      <div className="shrink-0 w-10 h-10 rounded-full bg-azure-600/10 dark:bg-azure-400/10 flex items-center justify-center">
-        <span className="text-[14px] font-semibold text-azure-600 dark:text-azure-400">{number}</span>
+      <div className="shrink-0 w-10 h-10 rounded-full bg-[#9d92f7]/10 dark:bg-[#a89cf7]/10 flex items-center justify-center">
+        <span className="text-[14px] font-semibold text-[#9d92f7] dark:text-[#a89cf7]">{number}</span>
       </div>
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-1">
@@ -73,21 +73,21 @@ function OverviewSection() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">What is ShareText?</h2>
-        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-xl">
-          Move text, photos, and files between your devices. No app, no account, nothing kept.
+        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-1">ShareText</h2>
+        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-lg">
+          AirDrop for any device. Move text, photos, and files between your devices. No app, no account, nothing kept.
         </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         {[
-          { icon: <Zap className="w-5 h-5" />, title: 'Fast', desc: 'Direct device-to-device. No cloud middleman.' },
-          { icon: <Shield className="w-5 h-5" />, title: 'Private', desc: 'Encrypted and temporary. Close the tab, it’s gone.' },
-          { icon: <Monitor className="w-5 h-5" />, title: 'Any browser', desc: 'Works everywhere — phones, laptops, tablets.' },
-          { icon: <Lock className="w-5 h-5" />, title: 'Verified', desc: 'SHA-256 on every transfer. What you send is exactly what arrives.' },
+          { icon: <Zap className="w-5 h-5" />, title: 'Instant', desc: 'Direct device-to-device. No cloud.' },
+          { icon: <Shield className="w-5 h-5" />, title: 'Private', desc: 'Encrypted. Temporary. Gone when you close the tab.' },
+          { icon: <Monitor className="w-5 h-5" />, title: 'Universal', desc: 'Any browser, any device. No install.' },
+          { icon: <Lock className="w-5 h-5" />, title: 'Verified', desc: 'SHA-256 on every transfer. Bit-perfect.' },
         ].map((f, i) => (
           <div key={i} className="flex gap-3.5 p-4 rounded-[14px] bg-white dark:bg-apple-tile-1 border border-apple-divider/50 dark:border-apple-tile-3">
-            <div className="w-10 h-10 rounded-full bg-azure-600/10 dark:bg-azure-400/10 flex items-center justify-center shrink-0 text-azure-600 dark:text-azure-400">{f.icon}</div>
+            <div className="w-10 h-10 rounded-full bg-[#9d92f7]/10 dark:bg-[#a89cf7]/10 flex items-center justify-center shrink-0 text-[#9d92f7] dark:text-[#a89cf7]">{f.icon}</div>
             <div>
               <p className="text-[14px] font-semibold text-apple-ink dark:text-white mb-0.5">{f.title}</p>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/55 leading-snug">{f.desc}</p>
@@ -103,21 +103,19 @@ function TransferSection() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">How to Transfer</h2>
-        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-xl">
-          Three steps. No installation.
-        </p>
+        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-1">How it works</h2>
+        <p className="text-[16px] text-apple-ink-muted dark:text-white/60">Three steps. Ten seconds.</p>
       </div>
 
       <div className="space-y-4">
         {[
-          { n: '1', title: 'Open on both devices', desc: 'Visit sharetexts.online on both devices.' },
-          { n: '2', title: 'Connect them', desc: 'One device taps Send, the other taps Receive and enters the code.' },
-          { n: '3', title: 'Transfer', desc: 'Type, paste, or attach. Content appears on the other device instantly.' },
+          { n: '1', title: 'Open on both devices', desc: 'Go to sharetexts.online on both.' },
+          { n: '2', title: 'Connect', desc: 'Tap Send on one, Receive on the other. Enter the 6-digit code.' },
+          { n: '3', title: 'Transfer', desc: 'Type, paste, or attach. It appears instantly on the other device.' },
         ].map((s, i) => (
           <div key={i} className="flex gap-4 items-start">
-            <div className="shrink-0 w-9 h-9 rounded-full bg-azure-600/10 dark:bg-azure-400/10 flex items-center justify-center">
-              <span className="text-[14px] font-bold text-azure-600 dark:text-azure-400">{s.n}</span>
+            <div className="shrink-0 w-9 h-9 rounded-full bg-[#9d92f7]/10 dark:bg-[#a89cf7]/10 flex items-center justify-center">
+              <span className="text-[14px] font-bold text-[#9d92f7] dark:text-[#a89cf7]">{s.n}</span>
             </div>
             <div>
               <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-0.5">{s.title}</h3>
@@ -128,8 +126,8 @@ function TransferSection() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {['Text', 'Links', 'Photos', 'Files', 'Any file type'].map((t) => (
-          <span key={t} className="px-3 py-1.5 rounded-full bg-apple-parchment dark:bg-apple-tile-2 text-[13px] font-medium text-apple-ink-muted dark:text-white/60">{t}</span>
+        {['Text', 'Links', 'Photos', 'Files'].map((t) => (
+          <span key={t} className="px-3 py-1.5 rounded-full bg-[#9d92f7]/8 dark:bg-[#9d92f7]/10 text-[13px] font-medium text-[#9d92f7] dark:text-[#a89cf7]">{t}</span>
         ))}
       </div>
     </div>
@@ -208,29 +206,27 @@ function PrivacySection() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-4">Privacy & Security</h2>
-        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-2xl">
-          ShareText is designed for temporary, private transfers. Your data moves directly between devices — nothing is stored on servers.
+        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-1">Privacy & Security</h2>
+        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-lg">
+          Your data moves directly between devices. Nothing stored.
         </p>
       </div>
 
-      <div className="space-y-6">
-        <div className="p-5 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3">
-          <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-2">Direct device-to-device transfer</h3>
-          <p className="text-[14px] text-apple-ink-muted dark:text-white/60 leading-relaxed">Content moves directly between your devices using encrypted peer-to-peer connections. ShareText servers only help devices find each other — they never see your files or messages.</p>
-        </div>
-        <div className="p-5 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3">
-          <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-2">No accounts, no history</h3>
-          <p className="text-[14px] text-apple-ink-muted dark:text-white/60 leading-relaxed">ShareText doesn't require an account. There's no transfer history, no cloud storage, and no tracking. When you close the tab, the room is gone.</p>
-        </div>
-        <div className="p-5 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3">
-          <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-2">Encrypted connections</h3>
-          <p className="text-[14px] text-apple-ink-muted dark:text-white/60 leading-relaxed">All transfers are encrypted using DTLS (built into WebRTC) and additional application-level encryption. Your data is protected in transit.</p>
-        </div>
-        <div className="p-5 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3">
-          <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-2">Temporary rooms</h3>
-          <p className="text-[14px] text-apple-ink-muted dark:text-white/60 leading-relaxed">Rooms expire automatically. If no devices are connected for a period of time, the room is destroyed. Your data is never stored long-term.</p>
-        </div>
+      <div className="space-y-3">
+        {[
+          { icon: <Lock className="w-4 h-4" />, title: 'Encrypted end-to-end', desc: 'DTLS + app-level encryption. ShareText never sees your content.' },
+          { icon: <Shield className="w-4 h-4" />, title: 'No accounts, no history', desc: 'No sign-up, no cloud, no tracking. Close the tab, it is gone.' },
+          { icon: <Clock className="w-4 h-4" />, title: 'Temporary rooms', desc: 'Rooms expire automatically. Your data is never stored long-term.' },
+          { icon: <Check className="w-4 h-4" />, title: 'Verified transfers', desc: 'SHA-256 on every transfer. What you send is exactly what arrives.' },
+        ].map((item, i) => (
+          <div key={i} className="flex gap-3.5 p-4 rounded-[14px] bg-white dark:bg-apple-tile-1 border border-apple-divider/50 dark:border-apple-tile-3">
+            <div className="text-status-success shrink-0 mt-0.5">{item.icon}</div>
+            <div>
+              <p className="text-[14px] font-semibold text-apple-ink dark:text-white mb-0.5">{item.title}</p>
+              <p className="text-[13px] text-apple-ink-muted dark:text-white/55 leading-snug">{item.desc}</p>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -306,15 +302,15 @@ function AgentSection() {
         <h3 className="text-[18px] font-semibold text-apple-ink dark:text-white mb-4">Getting the Agent Token</h3>
         <ol className="space-y-3 text-[14px] text-apple-ink-muted dark:text-white/60">
           <li className="flex gap-3">
-            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-azure-600">1</span>
+            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-[#9d92f7]">1</span>
             <span>Open ShareText and create a room (click "Send")</span>
           </li>
           <li className="flex gap-3">
-            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-azure-600">2</span>
+            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-[#9d92f7]">2</span>
             <span>Click the <Terminal className="w-4 h-4 inline" /> icon in the header to open the agent panel</span>
           </li>
           <li className="flex gap-3">
-            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-azure-600">3</span>
+            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-[#9d92f7]">3</span>
             <span>Copy the curl command or use the token directly</span>
           </li>
         </ol>
@@ -382,16 +378,16 @@ function APISection() {
             <div>
               <h4 className="text-[13px] font-semibold text-apple-ink dark:text-white mb-2">Headers</h4>
               <div className="space-y-1 text-[13px] font-mono text-apple-ink-muted dark:text-white/60">
-                <div><span className="text-azure-600">Authorization:</span> Bearer {'<token>'}</div>
-                <div><span className="text-azure-600">Content-Type:</span> application/json or application/octet-stream</div>
-                <div><span className="text-azure-600">X-File-Name:</span> (optional) filename for file transfers</div>
+                <div><span className="text-[#9d92f7]">Authorization:</span> Bearer {'<token>'}</div>
+                <div><span className="text-[#9d92f7]">Content-Type:</span> application/json or application/octet-stream</div>
+                <div><span className="text-[#9d92f7]">X-File-Name:</span> (optional) filename for file transfers</div>
               </div>
             </div>
             <div>
               <h4 className="text-[13px] font-semibold text-apple-ink dark:text-white mb-2">Body (JSON)</h4>
               <div className="space-y-1 text-[13px] font-mono text-apple-ink-muted dark:text-white/60">
-                <div><span className="text-azure-600">roomId:</span> string (required)</div>
-                <div><span className="text-azure-600">text:</span> string (for text transfers)</div>
+                <div><span className="text-[#9d92f7]">roomId:</span> string (required)</div>
+                <div><span className="text-[#9d92f7]">text:</span> string (for text transfers)</div>
               </div>
             </div>
           </div>
@@ -653,7 +649,7 @@ export function Docs() {
                     onClick={() => setActiveSection(item.id)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-[14px] font-medium transition-colors ${
                       activeSection === item.id
-                        ? 'bg-azure-600/10 text-azure-600 dark:text-azure-400'
+                        ? 'bg-azure-600/10 text-[#9d92f7] dark:text-[#a89cf7]'
                         : 'text-apple-ink-muted dark:text-white/60 hover:bg-apple-parchment dark:hover:bg-apple-tile-1'
                     }`}
                   >
@@ -673,7 +669,7 @@ export function Docs() {
                     onClick={() => setActiveSection(item.id)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-[14px] font-medium transition-colors ${
                       activeSection === item.id
-                        ? 'bg-azure-600/10 text-azure-600 dark:text-azure-400'
+                        ? 'bg-azure-600/10 text-[#9d92f7] dark:text-[#a89cf7]'
                         : 'text-apple-ink-muted dark:text-white/60 hover:bg-apple-parchment dark:hover:bg-apple-tile-1'
                     }`}
                   >
@@ -697,7 +693,7 @@ export function Docs() {
                   onClick={() => setActiveSection(item.id)}
                   className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors ${
                     activeSection === item.id
-                      ? 'bg-azure-600 text-white shadow-sm'
+                      ? 'bg-[#9d92f7] text-white shadow-sm'
                       : 'bg-apple-parchment dark:bg-apple-tile-2 text-apple-ink-muted dark:text-white/60'
                   }`}
                 >

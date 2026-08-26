@@ -46,17 +46,17 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
 const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; shadowHover: string; shadowPress: string; gradient: string }> = {
   primary: {
     base: 'text-white',
-    shadowIdle: '0 1px 2px rgba(0,0,0,0.2), 0 4px 12px -2px rgba(124,91,240,0.25)',
-    shadowHover: '0 4px 8px rgba(0,0,0,0.15), 0 12px 28px -4px rgba(124,91,240,0.4)',
-    shadowPress: '0 1px 2px rgba(0,0,0,0.2), 0 2px 6px -1px rgba(124,91,240,0.15)',
-    gradient: 'linear-gradient(135deg, #9588f5 0%, #8b7cf0 50%, #7c6be0 100%)',
+    shadowIdle: '0 1px 2px rgba(0,0,0,0.2), 0 4px 12px -2px rgba(141,124,247,0.25)',
+    shadowHover: '0 4px 8px rgba(0,0,0,0.15), 0 12px 28px -4px rgba(141,124,247,0.4)',
+    shadowPress: '0 1px 2px rgba(0,0,0,0.2), 0 2px 6px -1px rgba(141,124,247,0.15)',
+    gradient: 'linear-gradient(135deg, #aba0f8 0%, #9d92f7 50%, #8b7cf0 100%)',
   },
   secondary: {
     base: 'text-[#4c2baa] dark:text-[#7c6be0]',
-    shadowIdle: '0 1px 2px rgba(124,91,240,0.08), 0 3px 8px -2px rgba(124,91,240,0.06)',
-    shadowHover: '0 4px 8px rgba(124,91,240,0.12), 0 10px 20px -3px rgba(124,91,240,0.15)',
-    shadowPress: '0 1px 2px rgba(124,91,240,0.08), 0 2px 4px -1px rgba(124,91,240,0.06)',
-    gradient: 'linear-gradient(135deg, #f3f0ff 0%, #ede8ff 50%, #e2dcfe 100%)',
+    shadowIdle: '0 1px 2px rgba(141,124,247,0.08), 0 3px 8px -2px rgba(141,124,247,0.06)',
+    shadowHover: '0 4px 8px rgba(141,124,247,0.12), 0 10px 20px -3px rgba(141,124,247,0.15)',
+    shadowPress: '0 1px 2px rgba(141,124,247,0.08), 0 2px 4px -1px rgba(141,124,247,0.06)',
+    gradient: 'linear-gradient(135deg, #f5f3ff 0%, #f0ecff 50%, #e8e2fe 100%)',
   },
   ghost: {
     base: 'bg-transparent text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-apple-parchment dark:hover:bg-apple-tile-1',
