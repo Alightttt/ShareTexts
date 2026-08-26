@@ -117,14 +117,14 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
           <React.Fragment key={i}>
             <div className={cn(
               "flex-1 min-w-0 rounded-[10px] sm:rounded-[14px] flex items-center justify-center overflow-hidden transition-colors relative",
-              "h-[48px] sm:h-[64px]",
+              "h-[44px] sm:h-[60px]",
               code[i]
                 ? "bg-white dark:bg-apple-tile-3 border border-apple-divider dark:border-apple-tile-3"
                 : "bg-apple-parchment dark:bg-black border border-apple-divider/60 dark:border-apple-tile-3",
               error && "border-status-danger bg-red-50 dark:bg-red-900/20",
               !code[i] && !error && "focus-within:border-apple-blue/50"
             )}>
-              <span className="font-semibold text-apple-ink dark:text-white tracking-tighter font-mono leading-none select-none" style={{ fontSize: 'clamp(28px, 9vw, 48px)' }}>
+              <span className="font-semibold text-apple-ink dark:text-white tracking-tighter font-mono leading-none select-none" style={{ fontSize: 'clamp(24px, 8vw, 42px)' }}>
                 {code[i] || ''}
               </span>
               {!isJoining && code.length === i && (

@@ -12,7 +12,7 @@ const CHROME = 'C:/Users/DELL-PC/AppData/Local/ms-playwright/chromium-1208/chrom
 
 const logo = `<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect x="40" y="40" width="136" height="176" rx="24" stroke="#1D1D1F" stroke-width="20" stroke-linejoin="round"/>
-  <rect x="100" y="80" width="116" height="156" rx="24" fill="#0066CC"/>
+  <rect x="100" y="80" width="116" height="156" rx="24" fill="#6b84f0"/>
   <path d="M136 158H176L156 138M176 158L156 178" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
@@ -22,7 +22,7 @@ const maskableLogo = `<svg width="512" height="512" viewBox="0 0 512 512" fill="
   <rect width="512" height="512" fill="#FFFFFF"/>
   <g transform="translate(512,512) scale(1.5) translate(-256,-256)">
     <rect x="40" y="40" width="136" height="176" rx="24" stroke="#1D1D1F" stroke-width="20" stroke-linejoin="round"/>
-    <rect x="100" y="80" width="116" height="156" rx="24" fill="#0066CC"/>
+    <rect x="100" y="80" width="116" height="156" rx="24" fill="#6b84f0"/>
     <path d="M136 158H176L156 138M176 158L156 178" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 </svg>`;

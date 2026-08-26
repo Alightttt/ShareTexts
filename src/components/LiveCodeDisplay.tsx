@@ -38,7 +38,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
   const digitTileClass = cn(
     "relative flex items-center justify-center rounded-[10px] sm:rounded-[14px] shadow-sm",
     "flex-1 min-w-0",
-    "h-[48px] sm:h-[64px] lg:h-[72px]",
+    "h-[44px] sm:h-[60px] lg:h-[68px]",
     "bg-apple-parchment dark:bg-[#1a1a1e] border border-apple-divider/60 dark:border-[#2a2a2e]"
   );
 
@@ -81,7 +81,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
       </div>
 
       {/* Pairing code — 6 digits, mathematically constrained to never overflow */}
-      <div className="flex justify-center items-center gap-1.5 sm:gap-2 px-4 sm:px-6 pb-5 sm:pb-7" role="group" aria-label="Pairing code">
+      <div className="flex justify-center items-center gap-1.5 sm:gap-2 px-3 sm:px-5 pb-4 sm:pb-6 w-full" role="group" aria-label="Pairing code">
         {digits.slice(0, 3).map((digit, i) => (
           <div key={'a' + i} className={digitTileClass}>
             <AnimatePresence mode="popLayout">
@@ -92,7 +92,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
                 exit={{ y: -8, opacity: 0 }}
                 transition={{ type: 'spring', bounce: 0, duration: 0.2 }}
                 className="font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum leading-none select-none"
-                style={{ fontSize: 'clamp(28px, 9vw, 48px)' }}
+                style={{ fontSize: 'clamp(24px, 8vw, 42px)' }}
               >
                 {digit}
               </motion.span>
@@ -112,7 +112,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
                 exit={{ y: -8, opacity: 0 }}
                 transition={{ type: 'spring', bounce: 0, duration: 0.2 }}
                 className="font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum leading-none select-none"
-                style={{ fontSize: 'clamp(28px, 9vw, 48px)' }}
+                style={{ fontSize: 'clamp(24px, 8vw, 42px)' }}
               >
                 {digit}
               </motion.span>

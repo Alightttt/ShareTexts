@@ -224,7 +224,7 @@ export function SingleScreenApp() {
             <motion.div key="sending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md w-full overflow-hidden">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[22px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em]">Connect your other device.</h2>
-                <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white px-3 py-2 min-h-[40px] rounded-full hover:bg-apple-parchment dark:hover:bg-white/5 active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
+                <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-medium text-status-danger hover:bg-status-danger/10 px-3 py-2 min-h-[40px] rounded-full active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
               </div>
               {isCreating && !session.secret ? (
                 /* Room still being created — show immediate feedback */
@@ -267,7 +267,7 @@ export function SingleScreenApp() {
             <motion.div key="receiving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[22px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em]">Join a room.</h2>
-                <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white px-3 py-2 min-h-[40px] rounded-full hover:bg-apple-parchment dark:hover:bg-white/5 active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
+                <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-medium text-status-danger hover:bg-status-danger/10 px-3 py-2 min-h-[40px] rounded-full active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
               </div>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/50 font-medium mb-5">Enter the code shown on the other device.</p>
               <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-[#6b84f0] hover:bg-[#5a74e8] text-white rounded-full text-[14px] font-semibold min-h-[48px] transition-all duration-150 active:scale-[0.97] shadow-sm shadow-[#6b84f0]/20">
@@ -331,14 +331,14 @@ export function SingleScreenApp() {
       )}
 
       {/* Footer */}
-      <footer className="shrink-0 px-6 lg:px-10 py-3.5 border-t border-apple-divider/60 dark:border-white/[0.08] pb-[env(safe-area-inset-bottom)]">
+      <footer className="shrink-0 px-6 lg:px-10 py-3 border-t border-apple-divider/60 dark:border-white/[0.06] pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4 text-[12px] text-apple-ink-muted dark:text-white/40">
             <a href="/docs" className="hover:text-apple-ink dark:hover:text-white transition-colors">Docs</a>
             <a href="https://x.com/0xalyt" target="_blank" rel="noopener noreferrer" className="hover:text-apple-ink dark:hover:text-white transition-colors" aria-label="Follow on X"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg></a>
           </div>
-          <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-apple-ink-muted/50 dark:text-white/25">
-            <span>No app</span><span className="w-1 h-1 rounded-full bg-apple-hairline dark:bg-white/15" /><span>No account</span><span className="w-1 h-1 rounded-full bg-apple-hairline dark:bg-white/15" /><span>Temporary</span>
+          <div className="hidden sm:flex items-center gap-2 text-[11px] text-apple-ink-muted/50 dark:text-white/25">
+            <span>No app</span><span className="w-px h-3 bg-apple-hairline dark:bg-white/10" /><span>No account</span><span className="w-px h-3 bg-apple-hairline dark:bg-white/10" /><span>Temporary</span>
           </div>
         </div>
       </footer>
@@ -417,7 +417,7 @@ export function SingleScreenApp() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="h-full flex flex-col items-center justify-center text-center px-8"
+              className="h-full flex flex-col items-center justify-center text-center px-8 flex-1"
             >
               {/* Device relationship visual — two small device icons with dots */}
               <div className="flex items-center gap-3 mb-6">

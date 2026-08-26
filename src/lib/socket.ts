@@ -90,7 +90,7 @@ export function signalingConfigIssue(): string | null {
   if (import.meta.env.DEV) return null;
   if (mode === 'cloudflare' && url) return null;
   if (mode === 'socketio' && url) return null;
-  return "ShareText's connection service isn't configured for this deployment. The hosting environment is missing the signaling server URL.";
+  return "ShareText couldn't reach its connection server. Please try again later.";
 }
 
 let instance: SignalingSocket | null = null;
