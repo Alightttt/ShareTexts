@@ -14,10 +14,10 @@
   --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
 
   /* ── Brand ──────────────────────────────────────────────────────────── */
-  --color-brand: #9d92f7;
-  --color-brand-strong: #8b7cf0;
-  --color-brand-light: #f5f3ff;
-  --color-brand-dark: #b0a6fa;
+  --color-brand: #6b84f0;
+  --color-brand-strong: #5a74e8;
+  --color-brand-light: #f0f4ff;
+  --color-brand-dark: #94a8f8;
 
   /* ── Text ───────────────────────────────────────────────────────────── */
   --color-text: #1d1d1f;
@@ -46,26 +46,26 @@
   --color-error-light: #ffeaea;
 
   /* ── Focus ──────────────────────────────────────────────────────────── */
-  --color-focus: #9d92f7;
+  --color-focus: #6b84f0;
 
   /* ── Semantic aliases ───────────────────────────────────────────────── */
   --color-apple-canvas: #f8f7fc;
   --color-apple-parchment: #f0eff5;
   --color-apple-ink: #1d1d1f;
   --color-apple-ink-muted: #6e6e73;
-  --color-apple-blue: #9d92f7;
-  --color-apple-blue-focus: #8b7cf0;
+  --color-apple-blue: #6b84f0;
+  --color-apple-blue-focus: #5a74e8;
   --color-apple-divider: #e0e0e5;
   --color-apple-hairline: #d8d8dd;
-  --color-azure-50: #f3f0ff;
-  --color-azure-100: #e2dcfe;
-  --color-azure-200: #cac0fd;
-  --color-azure-400: #bbb0fc;
-  --color-azure-500: #aba0f8;
-  --color-azure-600: #9d92f7;
-  --color-azure-700: #8b7cf0;
-  --color-azure-800: #7c6be0;
-  --color-azure-900: #5a2d95;
+  --color-azure-50: #f0f4ff;
+  --color-azure-100: #e0e7fe;
+  --color-azure-200: #c7d4fc;
+  --color-azure-400: #94a8f8;
+  --color-azure-500: #7c94f5;
+  --color-azure-600: #6b84f0;
+  --color-azure-700: #5a74e8;
+  --color-azure-800: #4a64d8;
+  --color-azure-900: #3a4fb8;
   --color-status-success: #34c759;
   --color-status-warning: #ff9500;
   --color-status-warning-ink: #c77a00;
@@ -145,9 +145,9 @@
     --color-border: #1e2c48;
     --color-border-subtle: #162038;
     --color-border-strong: #2a3c5c;
-    --color-brand: #4d9dff;
-    --color-brand-strong: #72aaff;
-    --color-brand-light: #0d2040;
+    --color-brand: #8ca4f7;
+    --color-brand-strong: #a0b8fa;
+    --color-brand-light: #0d1a30;
     --color-success: #3dd68c;
     --color-success-light: #0d2a1a;
     --color-warning: #f0b84d;
@@ -160,10 +160,10 @@
     --color-apple-hairline: #263450;
     --color-apple-ink: #edf0f5;
     --color-apple-ink-muted: #8894ac;
-    --color-azure-400: #d0c8fd;
-    --color-azure-500: #b8affa;
-    --color-azure-600: #a89cf7;
-    --color-azure-700: #b8affa;
+    --color-azure-400: #b8c8fc;
+    --color-azure-500: #a0b4fa;
+    --color-azure-600: #8ca4f7;
+    --color-azure-700: #a0b4fa;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -196,11 +196,11 @@
 /* Dot background pattern */
 /* Dot background pattern — subtle lavender */
 .dot-bg {
-  background-image: radial-gradient(circle, rgba(157,146,247,0.12) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(107,132,240,0.10) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 html.dark .dot-bg {
-  background-image: radial-gradient(circle, rgba(157,146,247,0.06) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(107,132,240,0.05) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
@@ -217,10 +217,10 @@ html.dark .dot-bg {
 /* Hero glow */
 .hero-glow {
   position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(ellipse at 60% 50%, rgba(139,124,240,0.06) 0%, transparent 60%);
+  background: radial-gradient(ellipse at 60% 50%, rgba(107,132,240,0.06) 0%, transparent 60%);
 }
 html.dark .hero-glow {
-  background: radial-gradient(ellipse at 60% 50%, rgba(139,124,240,0.08) 0%, transparent 60%);
+  background: radial-gradient(ellipse at 60% 50%, rgba(107,132,240,0.08) 0%, transparent 60%);
 }
 }
 

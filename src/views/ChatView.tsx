@@ -728,7 +728,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
             <input type="file" ref={audioInputRef} accept="audio/*" multiple className="hidden" onChange={(e) => handleFileSelect(e, 'audio')} />
             <input type="file" ref={fileInputRef} multiple className="hidden" onChange={(e) => handleFileSelect(e, 'file')} />
           </div>
-          <motion.div layout className="relative rounded-[24px] bg-white dark:bg-[#1a1a22] overflow-visible shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] transition-motion focus-within:ring-2 focus-within:ring-[#9d92f7]/30 z-20 border border-black/[0.04] dark:border-white/[0.06]">
+          <motion.div layout className="relative rounded-[24px] bg-white dark:bg-[#1a1a22] overflow-visible shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] transition-motion focus-within:ring-2 focus-within:ring-[#6b84f0]/30 z-20 border border-black/[0.04] dark:border-white/[0.06]">
             {/* Multi-attachment preview strip — up to 20 files, each with a
                 circular remove button that's always visible and tappable. */}
             <AnimatePresence>
@@ -790,8 +790,8 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 aria-label="Add attachment"
                 aria-expanded={showAttachmentMenu}
                 className={cn(
-                  "w-[34px] h-[34px] rounded-full flex items-center justify-center shrink-0 text-[#9d92f7] dark:text-[#a89cf7] hover:bg-[#9d92f7]/10 dark:hover:bg-[#9d92f7]/10 transition-motion active:scale-90",
-                  showAttachmentMenu && "text-[#9d92f7] dark:text-[#a89cf7] bg-[#9d92f7]/10 rotate-45"
+                  "w-[34px] h-[34px] rounded-full flex items-center justify-center shrink-0 text-[#6b84f0] dark:text-[#8ca4f7] hover:bg-[#6b84f0]/10 dark:hover:bg-[#6b84f0]/10 transition-motion active:scale-90",
+                  showAttachmentMenu && "text-[#6b84f0] dark:text-[#8ca4f7] bg-[#6b84f0]/10 rotate-45"
                 )}
               >
                 <Plus className="w-5 h-5 transition-transform" />
@@ -819,7 +819,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 onPointerDown={handleSend}
                 disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
                 aria-label="Send"
-                className="w-[34px] h-[34px] rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-90 bg-[#9d92f7] hover:bg-[#9286f0] text-white disabled:opacity-30 disabled:bg-[#c8c4d8] dark:disabled:bg-[#3a3a42] disabled:shadow-none"
+                className="w-[34px] h-[34px] rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-90 bg-[#6b84f0] hover:bg-[#5a74e8] text-white disabled:opacity-30 disabled:bg-[#c0c8e0] dark:disabled:bg-[#3a3a42] disabled:shadow-none"
               >
                 <AnimatedIcon animate="send" active={!((!inputText.trim() && attachments.length === 0) || !session.partnerConnected)}>
                   <ArrowUp className="w-5 h-5" strokeWidth={2.4} />
@@ -1040,7 +1040,7 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
         <div className={cn(
           "max-w-[85%] sm:max-w-[65%] px-[14px] py-[10px] rounded-[18px]",
           isMe
-            ? "bg-[#9d92f7] text-white shadow-[0_1px_2px_rgba(157,146,247,0.2)]"
+            ? "bg-[#6b84f0] text-white shadow-[0_1px_2px_rgba(107,132,240,0.2)]"
             : "bg-[#e8e6f0] dark:bg-[#2a2a30] text-apple-ink dark:text-white",
           isMe && isGroupEnd && "rounded-br-[4px]",
           !isMe && isGroupEnd && "rounded-bl-[4px]",
@@ -1145,7 +1145,7 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
         <div className={cn(
           "flex flex-col w-full overflow-hidden rounded-[18px]",
           isMe
-            ? "bg-[#9d92f7] text-white shadow-[0_1px_3px_rgba(157,146,247,0.18)]"
+            ? "bg-[#6b84f0] text-white shadow-[0_1px_3px_rgba(107,132,240,0.18)]"
             : "bg-white dark:bg-surface-dark border border-apple-divider/40 dark:border-apple-tile-3 shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
           isMe && isGroupEnd && "rounded-br-[4px]",
           !isMe && isGroupEnd && "rounded-bl-[4px]",

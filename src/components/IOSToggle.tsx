@@ -35,7 +35,7 @@ export function IOSToggle({
 
   // Track gradient — lighter when off (gray), colored when on (lavender)
   const trackBg = checked
-    ? 'linear-gradient(135deg, #a89cf7 0%, #9d92f7 50%, #8b7cf0 100%)'
+    ? 'linear-gradient(135deg, #8ca4f7 0%, #6b84f0 50%, #5a74e8 100%)'
     : 'linear-gradient(135deg, #e8e8ec 0%, #d5d5da 50%, #c8c8cd 100%)';
 
   return (
@@ -46,7 +46,7 @@ export function IOSToggle({
       onClick={onToggle}
       className={cn(
         'relative shrink-0 rounded-full cursor-pointer',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#9d92f7]',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6b84f0]',
         'active:scale-95 transition-transform duration-100',
         className
       )}
@@ -57,7 +57,7 @@ export function IOSToggle({
         background: trackBg,
         // 3D recessed track — inset shadow creates depth
         boxShadow: checked
-          ? 'inset 0 2px 4px rgba(0,0,0,0.2), inset 0 -1px 2px rgba(255,255,255,0.15), 0 1px 3px rgba(157,146,247,0.3)'
+          ? 'inset 0 2px 4px rgba(0,0,0,0.2), inset 0 -1px 2px rgba(255,255,255,0.15), 0 1px 3px rgba(107,132,240,0.3)'
           : 'inset 0 2px 4px rgba(0,0,0,0.15), inset 0 -1px 2px rgba(255,255,255,0.4), 0 1px 2px rgba(0,0,0,0.08)',
       }}
     >
@@ -70,7 +70,7 @@ export function IOSToggle({
           // 3D raised knob — gradient + shadows
           background: 'linear-gradient(180deg, #ffffff 0%, #f8f8fa 60%, #efefef 100%)',
           boxShadow: checked
-            ? '0 2px 6px rgba(0,0,0,0.2), 0 4px 12px rgba(157,146,247,0.25), inset 0 1px 0 rgba(255,255,255,0.9)'
+            ? '0 2px 6px rgba(0,0,0,0.2), 0 4px 12px rgba(107,132,240,0.25), inset 0 1px 0 rgba(255,255,255,0.9)'
             : '0 2px 4px rgba(0,0,0,0.15), 0 3px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9)',
         }}
         animate={{ x: checked ? dims.travel : 0 }}
@@ -114,7 +114,7 @@ export function IOSToggle({
               transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
               className="absolute inset-0 flex items-center justify-center"
             >
-              <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="#6d5de0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="#5a74e8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
               </svg>
             </motion.div>
