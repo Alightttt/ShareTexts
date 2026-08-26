@@ -91,16 +91,16 @@ export function SingleScreenApp() {
     setIsCreating(true); setCreateError(null);
     const t = setTimeout(() => { setIsCreating(false); setCreateError('Taking too long. Check your connection.'); }, 12000);
     try { await createSession(); clearTimeout(t); }
-    catch (e: any) { clearTimeout(t); setIsCreating(false); const raw = e.message || "Could not start connection."; const msg = raw.includes('connection service') ? (signalingConfigIssue() || raw) : raw; setCreateError(msg.includes("having trouble") ? "Could not reach ShareText. Check your internet and try again." : msg); }
+    catch (e: any) { clearTimeout(t); setIsCreating(false); const raw = e.message || "Could not start a session."; const msg = raw.includes('connection service') ? (signalingConfigIssue() || raw) : raw; setCreateError(msg.includes("having trouble") ? "Could not reach ShareText. Check your internet and try again." : msg.includes("Taking too long") ? "Connection timed out. Check your internet and try again." : msg); }
   }, [isCreating, createSession]);
 
   const handleReceive = useCallback(() => { setPanelMode('receiving'); setCreateError(null); setJoinError(null); }, []);
 
   const handleCodeComplete = useCallback(async (code: string) => {
     if (isJoining) return; setIsJoining(true); setJoinError(null);
-    const t = setTimeout(() => { setIsJoining(false); setJoinError('Taking longer than expected.'); }, 10000);
-    try { const res = await joinWithCode(code); clearTimeout(t); setIsJoining(false); if (!res.success) setJoinError(res.error || "That code is not active."); }
-    catch { clearTimeout(t); setIsJoining(false); setJoinError(signalingConfigIssue() || "Could not reach ShareText."); }
+    const t = setTimeout(() => { setIsJoining(false); setJoinError('Connection is slow. Check your internet and try again.'); }, 10000);
+    try { const res = await joinWithCode(code); clearTimeout(t); setIsJoining(false); if (!res.success) setJoinError(res.error || "That code isn't active. Ask for a fresh one."); }
+    catch { clearTimeout(t); setIsJoining(false); setJoinError(signalingConfigIssue() || "Could not reach ShareText. Check your internet connection."); }
   }, [isJoining, joinWithCode]);
 
   const handleDisconnect = useCallback(() => { setPanelMode('idle'); abandonSession(); setCreateError(null); setIsCreating(false); setJoinError(null); }, [abandonSession]);

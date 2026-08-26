@@ -110,7 +110,7 @@ function TransferSection() {
       <div className="space-y-4">
         {[
           { n: '1', title: 'Open on both devices', desc: 'Go to sharetexts.online on both.' },
-          { n: '2', title: 'Connect', desc: 'Tap Send on one, Receive on the other. Enter the 6-digit code.' },
+          { n: '2', title: 'Connect', desc: 'Tap Send on one device, Receive on the other. Enter the 6-digit code.' },
           { n: '3', title: 'Transfer', desc: 'Type, paste, or attach. It appears instantly on the other device.' },
         ].map((s, i) => (
           <div key={i} className="flex gap-4 items-start">
@@ -147,8 +147,8 @@ function PairingSection() {
       <div className="space-y-4">
         <h3 className="text-[18px] font-semibold text-apple-ink dark:text-white">How pairing works</h3>
         <div className="space-y-3 text-[15px] text-apple-ink-muted dark:text-white/60 leading-relaxed">
-          <p><strong className="text-apple-ink dark:text-white">Sender:</strong> Click 'Send something' to create a room. You'll see a 6-digit code and a QR code.</p>
-          <p><strong className="text-apple-ink dark:text-white">Receiver:</strong> Click 'Receive something' and enter the 6-digit code, or scan the QR code with your camera.</p>
+          <p><strong className="text-apple-ink dark:text-white">Sender:</strong> Click <strong>Send</strong> to create a room. You'll see a 6-digit code and a QR code.</p>
+          <p><strong className="text-apple-ink dark:text-white">Receiver:</strong> Click <strong>Receive</strong> and enter the 6-digit code, or scan the QR code with your camera.</p>
           <p>Once both devices are connected, the pairing screen is replaced by the transfer workspace.</p>
         </div>
       </div>

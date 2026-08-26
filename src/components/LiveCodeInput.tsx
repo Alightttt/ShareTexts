@@ -26,13 +26,26 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
 
   // Normalize pasted input intelligently: extract only digits from any format
   // ("123 456", "123456", "Code: 123456", etc.)
+  const [validationMsg, setValidationMsg] = useState<string | null>(null);
+
   const normalizeCode = (raw: string): string => {
     return raw.replace(/\D/g, '').slice(0, 6);
   };
 
+  const showValidation = (msg: string) => {
+    setValidationMsg(msg);
+    setTimeout(() => setValidationMsg(null), 3000);
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isJoining) return;
-    const val = normalizeCode(e.target.value);
+    const raw = e.target.value;
+    // If user typed non-digit characters, show validation message
+    if (/\D/.test(raw) && raw.length > code.length) {
+      showValidation('Use six numbers, not text.');
+      return;
+    }
+    const val = normalizeCode(raw);
     setCode(val);
     setPasteHint(false);
     if (val.length === 6) {
@@ -44,14 +57,18 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
     if (isJoining) return;
     e.preventDefault();
     const pasted = e.clipboardData.getData('text');
+    const hasNonDigit = /\D/.test(pasted.trim());
     const normalized = normalizeCode(pasted);
+    if (normalized.length === 0 && hasNonDigit) {
+      showValidation('Use six numbers, not text.');
+      return;
+    }
     if (normalized.length > 0) {
       setCode(normalized);
       setPasteHint(false);
       if (normalized.length === 6) {
         onComplete(normalized);
       } else {
-        // Show hint that more digits are needed
         setPasteHint(true);
         setTimeout(() => setPasteHint(false), 2000);
       }
@@ -128,21 +145,33 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
         ))}
       </motion.div>
 
-      {!error && pasteHint && (
+      {!error && !validationMsg && pasteHint && (
         <div id="live-code-hint" role="status" className="mt-4 text-[13px] text-apple-ink-muted dark:text-white/50 font-medium">
           Enter all 6 digits to continue.
         </div>
       )}
 
-      {!error && !pasteHint && digitCount > 0 && digitCount < 6 && (
+      {validationMsg && (
+        <div role="alert" className="mt-4 text-[13px] text-status-warning font-medium">
+          {validationMsg}
+        </div>
+      )}
+
+      {!error && !validationMsg && !pasteHint && digitCount > 0 && digitCount < 6 && (
         <div role="status" className="mt-4 text-[13px] text-apple-ink-muted dark:text-white/50 font-medium">
           {digitCount} of 6 digits entered
         </div>
       )}
 
       {error && (
-        <div id="live-code-error" role="alert" className="mt-6 text-[14px] text-status-danger font-medium">
-          {error}
+        <div id="live-code-error" role="alert" className="mt-6 flex flex-col items-center gap-3">
+          <p className="text-[14px] text-status-danger font-medium">{error}</p>
+          <button
+            onClick={() => { setCode(''); if (inputRef.current) inputRef.current.focus(); }}
+            className="px-4 py-1.5 rounded-full text-[12px] font-semibold bg-status-danger/10 text-status-danger hover:bg-status-danger/20 transition-colors active:scale-95"
+          >
+            Try again
+          </button>
         </div>
       )}
 
