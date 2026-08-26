@@ -22,6 +22,7 @@ import { signalingConfigIssue } from '../lib/socket';
 import { cn, shortCodeOf } from '../lib/utils';
 import { ChevronDown, Maximize2, Minimize2, LogOut, QrCode, Link2, Copy, Check, Smartphone, Monitor, X } from 'lucide-react';
 import { generateTOTP } from '../lib/totp';
+import { useFocusTrap } from '../lib/useFocusTrap';
 const QRScanner = lazy(() => import('../components/QRScanner').then(m => ({ default: m.QRScanner })));
 const ChatView = lazy(() => import('./ChatView').then(m => ({ default: m.ChatView })));
 type PanelMode = 'idle' | 'sending' | 'receiving' | 'connected';
@@ -84,17 +85,30 @@ export function SingleScreenApp() {
     }
   }, [panelMode]);
 
+  // Focus traps for QR overlays
+  const qrScanTrapRef = useFocusTrap(showQRScan, () => setShowQRScan(false));
+  const qrDisplayTrapRef = useFocusTrap(showQROverlay, () => setShowQROverlay(false));
+
   /* --- handlers --- */
   const [retryCount, setRetryCount] = useState(0);
   const MAX_RETRIES = 2;
+  // Ref to abort stale createSession results after Cancel
+  const createAbortRef = useRef(0);
+
   const handleSend = useCallback(async () => {
     if (isCreating) return;
+    // Optimistic: show pairing UI IMMEDIATELY, room creation in background
+    setPanelMode('sending');
     setIsCreating(true);
     setCreateError(null);
+    const thisAttempt = ++createAbortRef.current;
     try {
       await createSession();
-      setRetryCount(0);
+      // Only reset retry count if this is still the current attempt
+      if (thisAttempt === createAbortRef.current) setRetryCount(0);
     } catch (e: any) {
+      // Ignore if user Cancelled or started a new attempt while we were in-flight
+      if (thisAttempt !== createAbortRef.current) return;
       const raw = e.message || "Could not start a session.";
       const msg = raw.includes("connection service")
         ? (signalingConfigIssue() || raw)
@@ -105,22 +119,38 @@ export function SingleScreenApp() {
         ? "Connection timed out. Check your internet and try again."
         : msg;
       setCreateError(friendly);
+      setPanelMode('idle');
     } finally {
-      setIsCreating(false);
+      if (thisAttempt === createAbortRef.current) setIsCreating(false);
     }
   }, [isCreating, createSession]);
 
   const handleReceive = useCallback(() => { setPanelMode('receiving'); setCreateError(null); setJoinError(null); }, []);
 
   const handleCodeComplete = useCallback(async (code: string) => {
-    if (isJoining) return; setIsJoining(true); setJoinError(null);
-    const t = setTimeout(() => { setIsJoining(false); setJoinError('Connection is slow. Check your internet and try again.'); }, 10000);
-    try { const res = await joinWithCode(code); clearTimeout(t); setIsJoining(false); if (!res.success) setJoinError(res.error || "That code isn't active. Ask for a fresh one."); }
-    catch { clearTimeout(t); setIsJoining(false); setJoinError(signalingConfigIssue() || "Could not reach ShareText. Check your internet connection."); }
+    if (isJoining) return;
+    setIsJoining(true);
+    setJoinError(null);
+    try {
+      const res = await joinWithCode(code);
+      setIsJoining(false);
+      if (!res.success) setJoinError(res.error || "That code isn't active. Ask for a fresh one.");
+    } catch {
+      setIsJoining(false);
+      setJoinError(signalingConfigIssue() || "Could not reach ShareText. Check your internet connection.");
+    }
   }, [isJoining, joinWithCode]);
 
   const handleDisconnect = useCallback(() => { setPanelMode('idle'); abandonSession(); setCreateError(null); setIsCreating(false); setJoinError(null); }, [abandonSession]);
-  const handleCancel = useCallback(() => { setPanelMode('idle'); abandonSession(); setCreateError(null); setIsCreating(false); setJoinError(null); }, [abandonSession]);
+  const handleCancel = useCallback(() => {
+    // Increment abort ref so any in-flight createSession ignores its result
+    createAbortRef.current++;
+    setPanelMode('idle');
+    abandonSession();
+    setCreateError(null);
+    setIsCreating(false);
+    setJoinError(null);
+  }, [abandonSession]);
 
   /* --- derived --- */
   const shareUrl = session.roomId ? `${window.location.origin}/s/${shortCodeOf(session.roomId)}` : '';
@@ -156,7 +186,7 @@ export function SingleScreenApp() {
   /*  LEFT / TOP PANEL — hero actions                                 */
   /* ---------------------------------------------------------------- */
   const leftPanel = (
-    <div className="flex flex-col h-full overflow-hidden bg-[#faf9f7] dark:bg-[#0e1220]">
+    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0e1220]">
       {/* Header */}
       <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
         <div className="flex items-center gap-2.5">
@@ -179,58 +209,68 @@ export function SingleScreenApp() {
               </h1>
               
               <div className="mt-7 flex gap-3 justify-center sm:justify-start">
-                <TactileButton onClick={handleSend} variant="primary" size="lg" icon={<SendCircleIcon size={18} />}>Send</TactileButton>
+                <TactileButton onClick={handleSend} variant="primary" size="lg" icon={<SendCircleIcon size={18} />} disabled={isCreating}>Send</TactileButton>
                 <TactileButton onClick={handleReceive} variant="secondary" size="lg" icon={<ReceiveCircleIcon size={18} />}>Receive</TactileButton>
               </div>
               {createError && (
                 <div role="alert" className="mt-4">
                   <p className="text-[13px] font-medium text-status-danger leading-relaxed">{createError}</p>
-                  <button onClick={handleSend} className="mt-2 px-4 py-1.5 rounded-full text-[12px] font-semibold bg-status-danger/10 text-status-danger hover:bg-status-danger/20 transition-colors">Try again</button>
+                  <button onClick={handleSend} className="mt-2 px-4 py-2 min-h-[36px] rounded-full text-[12px] font-semibold bg-status-danger/10 text-status-danger hover:bg-status-danger/20 transition-colors">Try again</button>
                 </div>
               )}
             </motion.div>
           )}
           {panelMode === 'sending' && (
-            <motion.div key="sending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md">
+            <motion.div key="sending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md w-full overflow-hidden">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[22px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em]">Connect your other device.</h2>
-                <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white px-3 py-1.5 rounded-full hover:bg-apple-parchment dark:hover:bg-white/5 active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
+                <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white px-3 py-2 min-h-[40px] rounded-full hover:bg-apple-parchment dark:hover:bg-white/5 active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
               </div>
-              <p className="text-[13px] text-apple-ink-muted dark:text-white/50 font-medium mb-5">Open ShareText on the other device and enter this code.</p>
-              {session.secret && <LiveCodeDisplay secret={session.secret} createdAt={session.createdAt} />}
-              <AnimatePresence>
-                {session.partnerConnecting && !session.partnerConnected && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-4">
-                    <p className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60 flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#6b84f0] animate-pulse" />
-                      {session.connectionType === 'establishing' ? 'Establishing secure connection...' : 'Connecting...'}
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <div className="mt-5 space-y-2">
-                <button onClick={() => setShowQROverlay(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-[#6b84f0] hover:bg-[#5a74e8] text-white rounded-full text-[14px] font-semibold min-h-[46px] transition-all duration-150 active:scale-[0.97]">
-                  <QrCode className="w-4 h-4" /> Show QR
-                </button>
-                <button onClick={shareLink} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/12 hover:bg-apple-parchment dark:hover:bg-white/10 rounded-full text-[13px] font-semibold text-apple-ink dark:text-white/90 transition-colors active:scale-[0.97] min-h-[44px]">
-                  {copiedLink ? <AnimatedIcon animate="check" active><Check className="w-4 h-4 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="link"><Link2 className="w-4 h-4 text-apple-ink-muted dark:text-white/50" /></AnimatedIcon>}
-                  {copiedLink ? 'Copied' : 'Share link'}
-                </button>
-                <button onClick={copyCode} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-white/[0.04] border border-apple-divider/40 dark:border-white/8 hover:bg-apple-parchment dark:hover:bg-white/8 rounded-full text-[13px] font-medium text-apple-ink dark:text-white/70 transition-colors active:scale-[0.98]">
-                  {copiedCode ? <AnimatedIcon animate="check" active><Check className="w-3.5 h-3.5 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="copy"><Copy className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /></AnimatedIcon>}
-                  {copiedCode ? 'Code copied' : 'Copy code'}
-                </button>
-              </div>
+              {isCreating && !session.secret ? (
+                /* Room still being created — show immediate feedback */
+                <div className="flex flex-col items-center py-8">
+                  <ShareTextLogo size={20} motion="connecting" className="text-azure-600 dark:text-azure-400 mb-4" />
+                  <p className="text-[14px] font-medium text-apple-ink-muted dark:text-white/50">Creating room…</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-[13px] text-apple-ink-muted dark:text-white/50 font-medium mb-5">Open ShareText on the other device and enter this code.</p>
+                  {session.secret && <LiveCodeDisplay secret={session.secret} createdAt={session.createdAt} />}
+                  <AnimatePresence>
+                    {session.partnerConnecting && !session.partnerConnected && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-4">
+                        <p className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60 flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#6b84f0] animate-pulse" />
+                          {session.connectionType === 'establishing' ? 'Establishing secure connection…' : 'Connecting…'}
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  <div className="mt-5 space-y-2">
+                    <button onClick={() => setShowQROverlay(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-[#6b84f0] hover:bg-[#5a74e8] text-white rounded-full text-[14px] font-semibold min-h-[48px] transition-all duration-150 active:scale-[0.97] shadow-sm shadow-[#6b84f0]/20">
+                      <QrCode className="w-4 h-4" /> Show QR
+                    </button>
+                    <button onClick={shareLink} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] rounded-full text-[13px] font-semibold text-apple-ink dark:text-white/90 transition-colors active:scale-[0.97] min-h-[44px]">
+                      {copiedLink ? <AnimatedIcon animate="check" active><Check className="w-4 h-4 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="link"><Link2 className="w-4 h-4 text-apple-ink-muted dark:text-white/50" /></AnimatedIcon>}
+                      {copiedLink ? 'Copied' : 'Share link'}
+                    </button>
+                    <button onClick={copyCode} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-white/[0.04] border border-apple-divider/40 dark:border-white/[0.06] hover:bg-apple-parchment dark:hover:bg-white/[0.06] rounded-full text-[13px] font-medium text-apple-ink dark:text-white/70 transition-colors active:scale-[0.98] min-h-[44px]">
+                      {copiedCode ? <AnimatedIcon animate="check" active><Check className="w-3.5 h-3.5 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="copy"><Copy className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /></AnimatedIcon>}
+                      {copiedCode ? 'Code copied' : 'Copy code'}
+                    </button>
+                  </div>
+                </>
+              )}
             </motion.div>
           )}
           {panelMode === 'receiving' && (
             <motion.div key="receiving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[22px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em]">Join a room.</h2>
-                <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white px-3 py-1.5 rounded-full hover:bg-apple-parchment dark:hover:bg-white/5 active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
+                <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white px-3 py-2 min-h-[40px] rounded-full hover:bg-apple-parchment dark:hover:bg-white/5 active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
               </div>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/50 font-medium mb-5">Enter the code shown on the other device.</p>
-              <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-[#6b84f0] hover:bg-[#5a74e8] text-white rounded-full text-[14px] font-semibold min-h-[46px] transition-all duration-150 active:scale-[0.97]">
+              <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-[#6b84f0] hover:bg-[#5a74e8] text-white rounded-full text-[14px] font-semibold min-h-[48px] transition-all duration-150 active:scale-[0.97] shadow-sm shadow-[#6b84f0]/20">
                 <QrCode className="w-4 h-4" /> Scan QR code
               </button>
               <div className="p-6 bg-white dark:bg-[#161e30] border border-apple-divider dark:border-white/10 rounded-[20px] shadow-card">
@@ -241,18 +281,15 @@ export function SingleScreenApp() {
           )}
           {panelMode === 'connected' && (
             <motion.div key="connected" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2, ease: EASE }} className="max-w-md mx-auto sm:mx-0">
-              <h1 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold tracking-[-0.03em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left">
-                Move anything<br />between your devices.
-              </h1>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }} className="mt-6 flex items-center gap-3 p-3.5 bg-status-success/8 border border-status-success/20 rounded-[14px]">
-                <div className="w-9 h-9 rounded-full bg-status-success/15 flex items-center justify-center shrink-0">
-                  <Check className="w-4.5 h-4.5 text-status-success" />
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }} className="flex items-center gap-3 p-4 bg-status-success/8 border border-status-success/15 rounded-[16px]">
+                <div className="w-10 h-10 rounded-full bg-status-success/12 flex items-center justify-center shrink-0">
+                  <Check className="w-5 h-5 text-status-success" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[14px] font-semibold text-apple-ink dark:text-white">Connected</p>
                   <p className="text-[12px] text-apple-ink-muted dark:text-white/50">Share text, photos, and files between your devices.</p>
                 </div>
-                <button onClick={handleDisconnect} className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full text-[12px] font-medium text-status-danger hover:bg-status-danger/10 transition-all active:scale-95">
+                <button onClick={handleDisconnect} className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full text-[12px] font-medium text-status-danger hover:bg-status-danger/10 transition-all active:scale-95 min-h-[36px]">
                   <LogOut className="w-3.5 h-3.5" /> Disconnect
                 </button>
               </motion.div>
@@ -264,29 +301,37 @@ export function SingleScreenApp() {
       {/* Info section — always visible on desktop, accordion on mobile */}
       {panelMode === 'idle' && (
         <>
-          {/* Desktop: always expanded */}
-          <div className="hidden lg:block shrink-0 px-6 lg:px-10 pb-3 space-y-2">
+          {/* Desktop: always expanded — editorial style */}
+          <div className="hidden lg:block shrink-0 px-6 lg:px-10 pb-4 space-y-3">
             <InfoCard title="What is it?">
-              Sending a link from your phone to your laptop? Sharing a photo from your computer to a friend? Copying a code snippet between devices? ShareText moves anything between any two devices instantly — no app install, no sign-up, no cable needed.
+              Need to move something from your phone to your computer? ShareText lets you send text, photos, and files directly between two devices — no app, no account, no cable.
             </InfoCard>
             <InfoCard title="How to connect?">
-              Open ShareText on both devices. Tap Send on the first one — you will see a 6-digit code. Enter that code on the second device. That is it: your devices are connected. Text, photos, files — just paste or drop them and they appear on the other screen.
+              <ol className="list-none space-y-1.5">
+                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#6b84f0]/10 dark:bg-[#8ca4f7]/10 text-[#6b84f0] dark:text-[#8ca4f7] text-[11px] font-bold flex items-center justify-center mt-0.5">1</span><span>Open ShareText on both devices.</span></li>
+                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#6b84f0]/10 dark:bg-[#8ca4f7]/10 text-[#6b84f0] dark:text-[#8ca4f7] text-[11px] font-bold flex items-center justify-center mt-0.5">2</span><span>Tap Send on one, Receive on the other. Use the code or QR.</span></li>
+                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#6b84f0]/10 dark:bg-[#8ca4f7]/10 text-[#6b84f0] dark:text-[#8ca4f7] text-[11px] font-bold flex items-center justify-center mt-0.5">3</span><span>Send anything. Paste, drop, or attach.</span></li>
+              </ol>
             </InfoCard>
           </div>
           {/* Mobile: collapsible accordion */}
           <div className="lg:hidden shrink-0 px-6 pb-3 space-y-1.5">
             <InfoSection title="What is it?" expanded={!!infoExpanded['what']} onToggle={() => setInfoExpanded(p => ({ ...p, what: !p.what }))}>
-              Sending a link from your phone to your laptop? Sharing a photo from your computer to a friend? Copying a code snippet between devices? ShareText moves anything between any two devices instantly — no app install, no sign-up, no cable needed.
+              Need to move something from your phone to your computer? ShareText lets you send text, photos, and files directly between two devices — no app, no account, no cable.
             </InfoSection>
             <InfoSection title="How to connect?" expanded={!!infoExpanded['how']} onToggle={() => setInfoExpanded(p => ({ ...p, how: !p.how }))}>
-              Open ShareText on both devices. Tap Send on the first one — you will see a 6-digit code. Enter that code on the second device. That is it: your devices are connected. Text, photos, files — just paste or drop them and they appear on the other screen.
+              <ol className="list-none space-y-1.5">
+                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#6b84f0]/10 dark:bg-[#8ca4f7]/10 text-[#6b84f0] dark:text-[#8ca4f7] text-[11px] font-bold flex items-center justify-center mt-0.5">1</span><span>Open ShareText on both devices.</span></li>
+                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#6b84f0]/10 dark:bg-[#8ca4f7]/10 text-[#6b84f0] dark:text-[#8ca4f7] text-[11px] font-bold flex items-center justify-center mt-0.5">2</span><span>Tap Send on one, Receive on the other. Use the code or QR.</span></li>
+                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#6b84f0]/10 dark:bg-[#8ca4f7]/10 text-[#6b84f0] dark:text-[#8ca4f7] text-[11px] font-bold flex items-center justify-center mt-0.5">3</span><span>Send anything. Paste, drop, or attach.</span></li>
+              </ol>
             </InfoSection>
           </div>
         </>
       )}
 
       {/* Footer */}
-      <footer className="shrink-0 px-6 lg:px-10 py-3.5 border-t border-apple-divider/60 dark:border-white/[0.08]">
+      <footer className="shrink-0 px-6 lg:px-10 py-3.5 border-t border-apple-divider/60 dark:border-white/[0.08] pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4 text-[12px] text-apple-ink-muted dark:text-white/40">
             <a href="/docs" className="hover:text-apple-ink dark:hover:text-white transition-colors">Docs</a>
@@ -305,16 +350,16 @@ export function SingleScreenApp() {
   /* ---------------------------------------------------------------- */
   const roomPanel = (
     <div className={cn(
-      "flex flex-col min-h-0 bg-[#f0eeeb] dark:bg-[#080c16]",
+      "flex flex-col min-h-0 bg-[#f2f0ed] dark:bg-[#080c16]",
       // desktop: fills the right half with a border
       // border handled by parent split container
       // mobile: 9:16 aspect ratio container
-      "max-lg:aspect-[9/16] max-lg:w-full max-lg:mx-auto max-lg:rounded-[20px] max-lg:border max-lg:border-apple-divider/50 max-lg:dark:border-white/[0.08] max-lg:overflow-hidden max-lg:shadow-card",
+      "max-lg:h-[60vh] max-lg:min-h-[360px] max-lg:max-h-[700px] max-lg:w-full max-lg:mx-auto max-lg:rounded-[20px] max-lg:border max-lg:border-apple-divider/50 max-lg:dark:border-white/[0.08] max-lg:overflow-hidden max-lg:shadow-card",
       // fullscreen override on mobile
       mobileRoomFullscreen && "max-lg:!fixed max-lg:inset-0 max-lg:z-50 max-lg:rounded-none max-lg:border-none max-lg:aspect-auto max-lg:shadow-none"
     )}>
       {/* Room header */}
-      <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black/[0.08] dark:border-white/[0.1] bg-[#f0eeeb]/80 dark:bg-[#080c16]/80 backdrop-blur-xl z-10">
+      <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-[#f2f0ed]/80 dark:bg-[#080c16]/80 backdrop-blur-xl z-10">
         <div className="flex items-center gap-2.5">
           <ShareTextLogo size={16} className="text-azure-600 dark:text-azure-400" />
           <span className="text-[13px] font-semibold text-apple-ink dark:text-white">Room</span>
@@ -322,7 +367,10 @@ export function SingleScreenApp() {
             <>
               <span className="w-px h-3 bg-apple-divider dark:bg-white/10" />
               <span className="flex items-center gap-1.5 text-[12px] font-medium text-apple-ink-muted dark:text-white/50">
-                <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" />Connected
+                <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" />
+                <Smartphone className="w-3 h-3" />
+                <span className="text-apple-ink-muted/40 dark:text-white/20">↔</span>
+                <Monitor className="w-3 h-3" />
               </span>
             </>
           )}
@@ -336,7 +384,7 @@ export function SingleScreenApp() {
           <button
             onClick={handleDisconnect}
             className={cn(
-              "flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-150",
+              "flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg transition-all duration-150",
               panelMode === 'connected'
                 ? "text-apple-ink-muted dark:text-white/60 hover:text-status-danger hover:bg-status-danger/10"
                 : "text-apple-ink-muted/40 dark:text-white/20"
@@ -348,7 +396,7 @@ export function SingleScreenApp() {
           </button>
           <button
             onClick={() => setMobileRoomFullscreen(!mobileRoomFullscreen)}
-            className="lg:hidden flex items-center justify-center w-8 h-8 rounded-full text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/40 dark:hover:bg-white/[0.06] transition-colors"
+            className="lg:hidden flex items-center justify-center min-w-[44px] min-h-[44px] rounded-full text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/40 dark:hover:bg-white/[0.06] transition-colors"
             aria-label={mobileRoomFullscreen ? 'Minimize' : 'Fullscreen'}
           >
             {mobileRoomFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -362,18 +410,38 @@ export function SingleScreenApp() {
             <ChatView panelMode="embedded" />
           </Suspense>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-center px-8">
-            <motion.div animate={{ scale: [1, 1.03, 1], opacity: [0.15, 0.35, 0.15] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} className="mb-6 relative">
-              <div className="absolute inset-0 rounded-full bg-[#6b84f0]/10 blur-3xl scale-[3]" />
-              <ShareTextLogo size={64} className="text-[#6b84f0]/35 dark:text-[#8ca4f7]/30 relative z-10" />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={panelMode}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="h-full flex flex-col items-center justify-center text-center px-8"
+            >
+              {/* Device relationship visual — two small device icons with dots */}
+              <div className="flex items-center gap-3 mb-6">
+                <Smartphone className="w-5 h-5 text-[#6b84f0]/30 dark:text-[#8ca4f7]/25" />
+                <div className="flex items-center gap-1">
+                  <span className="w-1 h-1 rounded-full bg-[#6b84f0]/20 dark:bg-[#8ca4f7]/20" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#6b84f0]/30 dark:bg-[#8ca4f7]/25" />
+                  <span className="w-1 h-1 rounded-full bg-[#6b84f0]/20 dark:bg-[#8ca4f7]/20" />
+                </div>
+                <Monitor className="w-5 h-5 text-[#6b84f0]/30 dark:text-[#8ca4f7]/25" />
+              </div>
+              {/* State-specific messaging */}
+              <p className="text-[15px] font-semibold text-apple-ink/70 dark:text-white/50 mb-1.5">
+                {panelMode === 'idle' && 'Connect two devices'}
+                {panelMode === 'sending' && (isCreating && !session.secret ? 'Creating room…' : 'Waiting for your other device')}
+                {panelMode === 'receiving' && 'Waiting for connection'}
+              </p>
+              <p className="text-[12.5px] text-apple-ink-muted/50 dark:text-white/25 max-w-[240px] leading-relaxed">
+                {panelMode === 'idle' && 'Then start sharing anything — text, photos, links, or files.'}
+                {panelMode === 'sending' && (isCreating && !session.secret ? 'Setting up your transfer room.' : 'Enter the code shown on this device.')}
+                {panelMode === 'receiving' && 'Enter the code from the other device.'}
+              </p>
             </motion.div>
-            <p className="text-[17px] font-semibold text-apple-ink dark:text-white/85 mb-2">
-              {panelMode === 'idle' ? 'Connect two devices' : panelMode === 'sending' ? 'Waiting for peer...' : 'Enter the code'}
-            </p>
-            <p className="text-[13px] text-apple-ink-muted/60 dark:text-white/30 max-w-[240px] leading-relaxed">
-              {panelMode === 'idle' ? 'Then start sharing anything — text, photos, files.' : panelMode === 'sending' ? 'Keep this screen open. The other device will connect automatically.' : 'Your messages and files will appear here.'}
-            </p>
-          </div>
+          </AnimatePresence>
         )}
       </div>
     </div>
@@ -386,8 +454,8 @@ export function SingleScreenApp() {
     <div className="h-dvh lg:h-dvh overflow-hidden bg-apple-canvas dark:bg-[#0a0e18] dot-bg">
       {/* Desktop: horizontal split */}
       <div className="hidden lg:flex h-full">
-        <div className="w-[42%] h-full overflow-y-auto border-r border-black/[0.08] dark:border-white/[0.08]">{leftPanel}</div>
-        <div className="w-[58%] h-full">{roomPanel}</div>
+        <div className="w-[42%] min-w-[380px] max-w-[480px] h-full overflow-y-auto border-r border-black/[0.06] dark:border-white/[0.06]">{leftPanel}</div>
+        <div className="flex-1 h-full min-w-0">{roomPanel}</div>
       </div>
       {/* Mobile: scrollable column */}
       <div className="lg:hidden h-full overflow-y-auto overscroll-contain">
@@ -400,8 +468,8 @@ export function SingleScreenApp() {
       <AnimatePresence>
         {showQRScan && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/50 dark:bg-black/70 flex items-center justify-center p-4" onClick={() => setShowQRScan(false)}>
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[360px] bg-white dark:bg-[#161e30] rounded-[24px] p-6 shadow-2xl relative">
-              <button onClick={() => setShowQRScan(false)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-apple-parchment dark:bg-white/5 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors z-10"><X className="w-4 h-4" /></button>
+            <motion.div ref={qrScanTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[360px] bg-white dark:bg-[#161e30] rounded-[24px] p-6 shadow-2xl relative" role="dialog" aria-modal="true" aria-label="Scan QR code">
+              <button onClick={() => setShowQRScan(false)} className="absolute top-3 right-3 min-w-[44px] min-h-[44px] rounded-full bg-apple-parchment dark:bg-white/5 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors z-10" aria-label="Close QR scanner"><X className="w-4 h-4" /></button>
               <h3 className="text-[16px] font-semibold text-apple-ink dark:text-white mb-2">Scan QR code</h3>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/50 mb-4">Point your camera at the QR code on the other device.</p>
               <Suspense fallback={<div className="w-full h-[280px] flex items-center justify-center rounded-[16px] bg-apple-parchment dark:bg-white/5 text-[13px] text-apple-ink-muted">Loading scanner...</div>}>
@@ -415,11 +483,11 @@ export function SingleScreenApp() {
       <AnimatePresence>
         {showQROverlay && session.roomId && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/50 dark:bg-black/70 flex items-center justify-center p-6" onClick={() => setShowQROverlay(false)}>
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[340px] bg-white dark:bg-[#161e30] rounded-[24px] p-6 shadow-2xl text-center relative">
-              <button onClick={() => setShowQROverlay(false)} className="absolute top-4 right-4 w-8 h-8 rounded-full bg-apple-parchment dark:bg-white/5 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors"><X className="w-4 h-4" /></button>
+            <motion.div ref={qrDisplayTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[340px] bg-white dark:bg-[#161e30] rounded-[24px] p-6 shadow-2xl text-center relative" role="dialog" aria-modal="true" aria-label="QR code">
+              <button onClick={() => setShowQROverlay(false)} className="absolute top-3 right-3 min-w-[44px] min-h-[44px] rounded-full bg-apple-parchment dark:bg-white/5 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors" aria-label="Close QR code"><X className="w-4 h-4" /></button>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/60 mb-4 leading-relaxed">Open ShareText on your other device, choose <strong className="text-apple-ink dark:text-white">Receive</strong>, then scan.</p>
               <div className="bg-white p-4 rounded-[18px] inline-flex items-center justify-center mb-4 shadow-sm border border-apple-divider/30"><QROverlayInner value={qrValue} /></div>
-              <button onClick={() => setShowQROverlay(false)} className="w-full py-2.5 bg-apple-parchment dark:bg-white/5 hover:bg-apple-divider dark:hover:bg-white/10 rounded-[12px] text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.98]">Close</button>
+              <button onClick={() => setShowQROverlay(false)} className="w-full py-2.5 min-h-[44px] bg-apple-parchment dark:bg-white/5 hover:bg-apple-divider dark:hover:bg-white/10 rounded-[12px] text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.98]">Close</button>
             </motion.div>
           </motion.div>
         )}
@@ -433,15 +501,31 @@ export function SingleScreenApp() {
 /* ------------------------------------------------------------------ */
 function InfoSection({ title, expanded, onToggle, children }: { title: string; expanded: boolean; onToggle: () => void; children: React.ReactNode }) {
   return (
-    <div className="border border-apple-divider/50 dark:border-white/[0.08] rounded-[14px] overflow-hidden">
-      <button onClick={onToggle} className="w-full flex items-center justify-between px-4 py-3 text-[14px] font-medium text-apple-ink dark:text-white/80 hover:bg-apple-parchment/50 dark:hover:bg-white/[0.03] transition-colors">
+    <div className="border border-apple-divider/40 dark:border-white/[0.06] rounded-[12px] overflow-hidden">
+      <button
+        onClick={onToggle}
+        aria-expanded={expanded}
+        className="w-full flex items-center justify-between px-4 py-2.5 text-[13px] font-medium text-apple-ink dark:text-white/80 hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors"
+      >
         {title}
-        <motion.span animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.2 }}><ChevronDown className="w-4 h-4 text-apple-ink-muted" /></motion.span>
+        <motion.span
+          animate={{ rotate: expanded ? 180 : 0 }}
+          transition={{ duration: 0.15, ease: 'easeInOut' }}
+          className="text-apple-ink-muted"
+        ><ChevronDown className="w-3.5 h-3.5" /></motion.span>
       </button>
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {expanded && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: EASE }} className="overflow-hidden">
-            <p className="px-4 pb-3 text-[13px] text-apple-ink-muted dark:text-white/50 leading-relaxed">{children}</p>
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-3 text-[12.5px] text-apple-ink-muted dark:text-white/50 leading-[1.6] space-y-1.5">
+              {children}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -451,9 +535,9 @@ function InfoSection({ title, expanded, onToggle, children }: { title: string; e
 
 function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border border-apple-divider/50 dark:border-white/[0.08] rounded-[14px] px-4 py-3">
-      <p className="text-[13px] font-semibold text-apple-ink dark:text-white/80 mb-1">{title}</p>
-      <p className="text-[12.5px] text-apple-ink-muted dark:text-white/50 leading-relaxed">{children}</p>
+    <div className="px-1">
+      <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-apple-ink-muted/60 dark:text-white/30 mb-1.5">{title}</h3>
+      <div className="text-[13px] text-apple-ink/80 dark:text-white/60 leading-[1.6] space-y-1.5">{children}</div>
     </div>
   );
 }

@@ -206,7 +206,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       isCreator: stored?.isCreator ?? false,
       partnerConnected: false,
       partnerConnecting: false,
-      connectionType: 'connecting',
+      connectionType: stored?.roomId ? 'waiting' : 'disconnected',
       messages: sanitizeStoredMessages(stored?.messages),
       deviceName: stored?.deviceName || guessDeviceName(),
       partnerName: stored?.partnerName ?? null
@@ -323,13 +323,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // the partner is "connected" yet: ChatView appears only once the data
       // channel actually opens (onOpen) or the relay fallback confirms a
       // working path, so the UI never shows a green badge on a dead link.
-      // The creator's pairing screen DOES see the joiner arrive instantly
-      // ("Your other device is connecting…") instead of staying silent.
       diag('peer.peer_joined', true, (peerId || '').slice(0, 8));
       setSession(s => ({
         ...s,
         partnerConnecting: true,
-        connectionType: s.connectionType === 'disconnected' ? 'connecting' : s.connectionType
+        // Transition from 'waiting' (room created, no peer) to 'connecting'
+        // (peer joined, WebRTC handshake starting).
+        connectionType: s.connectionType === 'disconnected' || s.connectionType === 'waiting' ? 'connecting' : s.connectionType
       }));
       // Whichever device is already in the room initiates the WebRTC
       // handshake. This also covers reconnects after a refresh: the refreshed
@@ -349,7 +349,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setSession(s => ({
         ...s,
         partnerConnecting: true,
-        connectionType: s.connectionType === 'disconnected' ? 'connecting' : s.connectionType
+        connectionType: s.connectionType === 'disconnected' || s.connectionType === 'waiting' ? 'connecting' : s.connectionType
       }));
       // The peer's transport came back, but the WebRTC connection is gone.
       // Re-establish it from this side.
@@ -522,7 +522,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     pm.onNegotiating = () => {
       setSession(s => ({
         ...s,
-        connectionType: s.connectionType === 'connecting' || s.connectionType === 'establishing' ? 'establishing' : s.connectionType,
+        connectionType: s.connectionType === 'waiting' || s.connectionType === 'connecting' || s.connectionType === 'establishing' ? 'establishing' : s.connectionType,
       }));
     };
 
@@ -859,7 +859,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setSession(s => ({ ...s, roomId: null, secret: null, isCreator: false, closedReason: 'expired' }));
       }
     };
-    void tryResume();
+    // Defer session restore until after first paint — don't block UI on networking.
+    // requestIdleCallback (with setTimeout fallback) ensures the shell renders first,
+    // then we attempt to resume any stored session in the background.
+    const scheduleRestore = typeof requestIdleCallback !== 'undefined'
+      ? (cb: () => void) => requestIdleCallback(cb, { timeout: 2000 })
+      : (cb: () => void) => setTimeout(cb, 0);
+    scheduleRestore(() => { if (!cancelled) void tryResume(); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -897,8 +903,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             isCreator: true,
             partnerConnected: false,
             partnerConnecting: false,
-            connectionType: 'connecting',
+            connectionType: 'waiting',
             messages: [],
+            closedReason: null,
             deviceName: session.deviceName,
             partnerName: null
           });
@@ -975,12 +982,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       secret,
       createdAt,
       isCreator: false,
-      // Not connected yet — the app shows "Connecting…" until the data
-      // channel opens (or the relay fallback confirms a working path).
       partnerConnected: false,
       partnerConnecting: false,
-      connectionType: 'connecting',
+      connectionType: 'waiting',
       messages: [],
+      closedReason: null,
       deviceName: session.deviceName,
       partnerName: null
     });

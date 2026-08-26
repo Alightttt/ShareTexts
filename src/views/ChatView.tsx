@@ -625,7 +625,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
       >
         <div        className="max-w-3xl mx-auto flex flex-col">
           {session.messages.length === 0 ? (
-            <div className="h-full min-h-[35vh] flex flex-col items-center justify-center text-center space-y-3">
+            <div className={cn("h-full flex flex-col items-center justify-center text-center space-y-3", panelMode === 'embedded' ? 'min-h-[20vh]' : 'min-h-[35vh]')}>
               {disconnected ? (
                 <>
                   <p className="text-[16px] font-semibold text-apple-ink dark:text-white">Other device is offline</p>

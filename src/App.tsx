@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect, lazy, Suspense, type ReactNode } from 'react';
 import { SessionProvider, useSession } from './lib/SessionContext';
-import { AnimatePresence, motion } from 'motion/react';
 import { WifiOff, Send, Home, Share2, Check } from 'lucide-react';
 import { ShareTextLogo } from './components/ShareTextLogo';
 import { ConnectingVisual } from './components/ConnectingVisual';
@@ -45,7 +44,7 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
   };
 
   return (
-    <motion.div
+    <div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -85,7 +84,7 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
         {shared ? <Check className="w-4 h-4 text-status-success" /> : <Share2 className="w-4 h-4" />}
         {shared ? 'Link copied — share ShareText free' : 'Share ShareText — it\u2019s free, forever'}
       </button>
-    </motion.div>
+    </div>
   );
 }
 
@@ -166,25 +165,25 @@ function AppContent() {
 
   if (typeof window !== 'undefined' && window.location.pathname !== '/' && !window.location.pathname.startsWith('/s/')) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}
+      <div
         className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#0a0e18] p-6 text-center">
         <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">This page does not exist.</h2>
         <p className="text-[16px] text-apple-ink-muted dark:text-white/60 font-medium max-w-sm mb-9">Nothing was shared to this address.</p>
         <button onClick={() => { window.location.href = '/'; }}
           className="px-7 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold active:scale-[0.97] min-h-[48px]">Go Home</button>
-      </motion.div>
+      </div>
     );
   }
 
   if (session.closedReason) {
     return (
-      <AnimatePresence mode="wait">
+      <>
         <SessionEndedScreen
           reason={session.closedReason}
           onNewSession={() => { leaveView(); void createSession(); }}
           onHome={() => { leaveView(); window.location.href = '/'; }}
         />
-      </AnimatePresence>
+      </>
     );
   }
 

@@ -1,4 +1,4 @@
-export type ConnectionType = 'connecting' | 'local' | 'direct' | 'relay' | 'disconnected';
+export type ConnectionType = 'connecting' | 'local' | 'direct' | 'relay' | 'disconnected' | 'waiting';
 
 export interface Attachment {
   id: string; // unique transfer id
