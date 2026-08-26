@@ -14,10 +14,10 @@
   --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
 
   /* ── Brand ──────────────────────────────────────────────────────────── */
-  --color-brand: #7c5bf0;
-  --color-brand-strong: #6d4de0;
-  --color-brand-light: #f0ecff;
-  --color-brand-dark: #9b80f8;
+  --color-brand: #8b7cf0;
+  --color-brand-strong: #7c6be0;
+  --color-brand-light: #f3f0ff;
+  --color-brand-dark: #a594f8;
 
   /* ── Text ───────────────────────────────────────────────────────────── */
   --color-text: #1d1d1f;
@@ -46,26 +46,26 @@
   --color-error-light: #ffeaea;
 
   /* ── Focus ──────────────────────────────────────────────────────────── */
-  --color-focus: #7c5bf0;
+  --color-focus: #8b7cf0;
 
   /* ── Semantic aliases ───────────────────────────────────────────────── */
   --color-apple-canvas: #fafafa;
   --color-apple-parchment: #f2f2f5;
   --color-apple-ink: #1d1d1f;
   --color-apple-ink-muted: #6e6e73;
-  --color-apple-blue: #7c5bf0;
-  --color-apple-blue-focus: #6d4de0;
+  --color-apple-blue: #8b7cf0;
+  --color-apple-blue-focus: #7c6be0;
   --color-apple-divider: #e0e0e5;
   --color-apple-hairline: #d8d8dd;
-  --color-azure-50: #f0ecff;
-  --color-azure-100: #ddd6fe;
-  --color-azure-200: #c4b5fd;
-  --color-azure-400: #a78bfa;
-  --color-azure-500: #8b5cf6;
-  --color-azure-600: #7c5bf0;
-  --color-azure-700: #6d4de0;
-  --color-azure-800: #5b3dc7;
-  --color-azure-900: #4c1d95;
+  --color-azure-50: #f3f0ff;
+  --color-azure-100: #e2dcfe;
+  --color-azure-200: #cac0fd;
+  --color-azure-400: #b09cfa;
+  --color-azure-500: #9580f6;
+  --color-azure-600: #8b7cf0;
+  --color-azure-700: #7c6be0;
+  --color-azure-800: #6a50c7;
+  --color-azure-900: #5a2d95;
   --color-status-success: #34c759;
   --color-status-warning: #ff9500;
   --color-status-warning-ink: #c77a00;
@@ -160,10 +160,10 @@
     --color-apple-hairline: #263450;
     --color-apple-ink: #edf0f5;
     --color-apple-ink-muted: #8894ac;
-    --color-azure-400: #c4b5fd;
-    --color-azure-500: #a78bfa;
-    --color-azure-600: #8b5cf6;
-    --color-azure-700: #a78bfa;
+    --color-azure-400: #cac0fd;
+    --color-azure-500: #b09cfa;
+    --color-azure-600: #9580f6;
+    --color-azure-700: #b09cfa;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -216,10 +216,10 @@ html.dark .dot-bg {
 /* Hero glow */
 .hero-glow {
   position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(ellipse at 60% 50%, rgba(10,102,240,0.06) 0%, transparent 60%);
+  background: radial-gradient(ellipse at 60% 50%, rgba(139,124,240,0.06) 0%, transparent 60%);
 }
 html.dark .hero-glow {
-  background: radial-gradient(ellipse at 60% 50%, rgba(10,102,240,0.08) 0%, transparent 60%);
+  background: radial-gradient(ellipse at 60% 50%, rgba(139,124,240,0.08) 0%, transparent 60%);
 }
 }
 
