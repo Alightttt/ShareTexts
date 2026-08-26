@@ -69,7 +69,7 @@ async function toPngClipboardBlob(blob: Blob): Promise<Blob | null> {
     return await new Promise<Blob | null>(res => canvas.toBlob(b => res(b), 'image/png'));
   } catch { return null; }
 }
-export function ChatView() {
+export function ChatView({ panelMode }: { panelMode?: string } = {}) {
   const { session, sendMessage, closeSession, cancelTransfer, requestReconnect } = useSession();
   const [inputText, setInputText] = useState('');
   // Multiple staged attachments per send (up to 20) — each file becomes its
@@ -417,12 +417,12 @@ export function ChatView() {
   return (
     <div
       data-app-state="connected"
-      className="relative flex flex-col h-dvh bg-apple-canvas dark:bg-night-950 font-sans"
+      className={cn("relative flex flex-col bg-apple-canvas dark:bg-night-950 font-sans", panelMode === "embedded" ? "h-full" : "h-dvh")}
       style={visualHeight ? { height: `${visualHeight}px` } : undefined}
     >
       {/* Screen-reader live region — invisible, announced on state changes */}
       <div aria-live="polite" role="status" className="sr-only">{announcement}</div>
-      {/* Header — device relationship, not chat */}
+      {panelMode !== "embedded" && (<> {/* Header — device relationship, not chat */}
       <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 shrink-0 border-b border-apple-divider/40 dark:border-white/[0.06] bg-apple-canvas/80 dark:bg-night-950/80 backdrop-blur-xl backdrop-saturate-150 z-20 sticky top-0">
         <div className="flex items-center gap-3 min-w-0">
           <ShareTextLogo size={18} className="text-apple-ink dark:text-white shrink-0" />
@@ -504,7 +504,7 @@ export function ChatView() {
           )}
         </AnimatePresence>
       </div>
-      {/* Connected toast — the "alert" when the other device arrives. */}
+      </>)} {/* Connected toast — the "alert" when the other device arrives. */}
       <AnimatePresence>
         {showConnected && (
           <motion.div
