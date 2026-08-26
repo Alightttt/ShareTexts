@@ -138,9 +138,9 @@ export function SingleScreenApp() {
   /*  LEFT / TOP PANEL — hero actions                                 */
   /* ---------------------------------------------------------------- */
   const leftPanel = (
-    <div className="flex flex-col min-h-0 lg:h-full lg:overflow-y-auto">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <header className="shrink-0 flex items-center justify-between px-5 sm:px-8 py-4">
+      <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
         <div className="flex items-center gap-2.5">
           <ShareTextLogo size={20} className="text-azure-600 dark:text-azure-400" />
           <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>
@@ -152,11 +152,11 @@ export function SingleScreenApp() {
       </header>
 
       {/* Hero */}
-      <div className="flex-1 flex flex-col justify-center px-5 sm:px-8 py-6 sm:py-10">
+      <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 py-6 sm:py-8 min-h-0">
         <AnimatePresence mode="wait">
           {panelMode === 'idle' && (
             <motion.div key="idle" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.3, ease: EASE }} className="max-w-md mx-auto sm:mx-0">
-              <h1 className="text-[36px] sm:text-[44px] lg:text-[52px] font-bold tracking-[-0.04em] leading-[1.06] text-apple-ink dark:text-white text-center sm:text-left">
+              <h1 className="text-[36px] sm:text-[44px] lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.05] text-apple-ink dark:text-white text-center sm:text-left">
                 Move anything<br />between your devices.
               </h1>
               
@@ -229,7 +229,7 @@ export function SingleScreenApp() {
 
       {/* Collapsible info — idle only */}
       {panelMode === 'idle' && (
-        <div className="shrink-0 px-5 sm:px-8 pb-4 space-y-1">
+        <div className="shrink-0 px-6 lg:px-10 pb-4 space-y-1.5">
           <InfoSection title="What is it?" expanded={!!infoExpanded['what']} onToggle={() => setInfoExpanded(p => ({ ...p, what: !p.what }))}>
             ShareText lets you move text, photos, and files between your devices. No app needed — just open in any browser. Temporary by design, nothing stored.
           </InfoSection>
@@ -240,7 +240,7 @@ export function SingleScreenApp() {
       )}
 
       {/* Footer */}
-      <footer className="shrink-0 px-5 sm:px-8 py-4 border-t border-apple-divider/50 dark:border-white/[0.06]">
+      <footer className="shrink-0 px-6 lg:px-10 py-3.5 border-t border-apple-divider/60 dark:border-white/[0.08]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4 text-[12px] text-apple-ink-muted dark:text-white/40">
             <a href="/docs" className="hover:text-apple-ink dark:hover:text-white transition-colors">Docs</a>
@@ -261,14 +261,14 @@ export function SingleScreenApp() {
     <div className={cn(
       "flex flex-col min-h-0 bg-white dark:bg-[#080c14]",
       // desktop: fills the right half with a border
-      "lg:border-l lg:border-apple-divider/50 lg:dark:border-white/[0.06]",
+      // border handled by parent split container
       // mobile: 9:16 aspect ratio container
       "max-lg:aspect-[9/16] max-lg:w-full max-lg:mx-auto max-lg:rounded-[20px] max-lg:border max-lg:border-apple-divider/50 max-lg:dark:border-white/[0.08] max-lg:overflow-hidden max-lg:shadow-card",
       // fullscreen override on mobile
       mobileRoomFullscreen && "max-lg:!fixed max-lg:inset-0 max-lg:z-50 max-lg:rounded-none max-lg:border-none max-lg:aspect-auto max-lg:shadow-none"
     )}>
       {/* Room header */}
-      <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-apple-divider/40 dark:border-white/[0.06] bg-white/80 dark:bg-[#080c14]/80 backdrop-blur-xl z-10">
+      <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-white/80 dark:bg-[#080c14]/80 backdrop-blur-xl z-10">
         <div className="flex items-center gap-2">
           <ShareTextLogo size={16} className="text-azure-600 dark:text-azure-400" />
           <span className="text-[13px] font-semibold text-apple-ink dark:text-white">Room</span>
@@ -316,12 +316,15 @@ export function SingleScreenApp() {
             <ChatView panelMode="embedded" />
           </Suspense>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-center px-6">
-            <motion.div animate={{ scale: [1, 1.08, 1], opacity: [0.4, 0.6, 0.4] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }} className="mb-5 relative"><div className="absolute inset-0 rounded-full bg-[#9d92f7]/5 blur-xl scale-150" /><ShareTextLogo size={56} className="text-[#9d92f7]/25 dark:text-[#a89cf7]/20 relative z-10" /></motion.div>
-            <p className="text-[16px] font-semibold text-apple-ink dark:text-white/80 mb-1.5">
+          <div className="h-full flex flex-col items-center justify-center text-center px-8">
+            <motion.div animate={{ scale: [1, 1.08, 1], opacity: [0.35, 0.55, 0.35] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} className="mb-6 relative">
+              <div className="absolute inset-0 rounded-full bg-[#9d92f7]/8 blur-2xl scale-[2]" />
+              <ShareTextLogo size={64} className="text-[#9d92f7]/30 dark:text-[#a89cf7]/25 relative z-10" />
+            </motion.div>
+            <p className="text-[17px] font-semibold text-apple-ink dark:text-white/85 mb-2">
               {panelMode === 'idle' ? 'Connect two devices' : panelMode === 'sending' ? 'Waiting for peer...' : 'Enter the code'}
             </p>
-            <p className="text-[13px] text-apple-ink-muted/60 dark:text-white/30 max-w-[220px] leading-relaxed">
+            <p className="text-[13.5px] text-apple-ink-muted/70 dark:text-white/35 max-w-[240px] leading-relaxed">
               {panelMode === 'idle' ? 'Send or receive to start sharing.' : panelMode === 'sending' ? 'The other device will connect once it enters the code.' : 'Once the code is verified, the chat will appear here.'}
             </p>
           </div>
@@ -337,8 +340,8 @@ export function SingleScreenApp() {
     <div className="h-dvh lg:h-dvh overflow-hidden bg-apple-canvas dark:bg-[#0a0e18] dot-bg">
       {/* Desktop: horizontal split */}
       <div className="hidden lg:flex h-full">
-        <div className="w-1/2 h-full overflow-y-auto">{leftPanel}</div>
-        <div className="w-1/2 h-full">{roomPanel}</div>
+        <div className="w-[45%] h-full overflow-y-auto border-r border-black/[0.06] dark:border-white/[0.06]">{leftPanel}</div>
+        <div className="w-[55%] h-full">{roomPanel}</div>
       </div>
       {/* Mobile: scrollable column */}
       <div className="lg:hidden h-full overflow-y-auto overscroll-contain">
