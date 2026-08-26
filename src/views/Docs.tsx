@@ -73,7 +73,7 @@ function OverviewSection() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-1">ShareText</h2>
+        <h1 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-1">ShareText</h1>
         <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-lg">
           AirDrop for any device. Move text, photos, and files between your devices. No app, no account, nothing kept.
         </p>
