@@ -213,15 +213,25 @@ export class CloudflareSocket implements SignalingSocket {
   private async classifyFailure(): Promise<string> {
     const generic = "Couldn't reach ShareText.";
     try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3000);
       const res = await fetch(`${this.httpBase}/health`, {
         method: 'GET',
         credentials: 'omit',
+        signal: controller.signal,
       });
+      clearTimeout(timer);
       if (res.status === 403) {
-        return "This browser isn't allowed to connect to the ShareText signaling server. Add this site's origin to ALLOWED_ORIGINS on the Cloudflare Worker, then redeploy the Worker.";
+        return "ShareText's server rejected this browser. The site may need to be added to the server's allow list.";
+      }
+      if (res.ok) {
+        return "ShareText's server is reachable but the connection dropped. Try again.";
       }
       return generic;
-    } catch {
+    } catch (err) {
+      if (err && err.name === "AbortError") {
+        return "ShareText's server responded slowly. Try again in a moment.";
+      }
       return generic;
     }
   }

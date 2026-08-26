@@ -4,7 +4,7 @@ import { getSocket, devLog, signalingConfigIssue, resolveShortCode, refreshCode 
 import { PeerManager, TransferCancelledError, hasSendProgress, clearAllTransferState, clearTransferState, getPartialInfo } from './webrtc';
 import { generateKey } from './crypto';
 import { humanizeError } from './errors';
-import { diag } from './diag';
+import { diag, roomCreateDiagStart, roomCreateDiagEnd } from './diag';
 import { sanitizeFilename } from './utils';
 
 function toHex(buf: ArrayBuffer): string {
@@ -866,21 +866,28 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const createSession = async () => {
     abandonedRef.current = false;
+    const requestId = crypto.randomUUID();
     devLog('Create Session clicked — connecting to socket…');
-    await ensureSocketConnected();
+    roomCreateDiagStart(requestId, 'socket');
+    try {
+      await ensureSocketConnected();
+    } catch (e) {
+      roomCreateDiagEnd(requestId, 'failure', 'CLIENT_INIT_FAILURE', String(e));
+      throw e;
+    }
     devLog('Socket connected — sending create request');
     return new Promise<void>((resolve, reject) => {
       const socket = getSocket();
 
-      const timeout = setTimeout(() => {
-        devLog('Create request timed out');
-        reject(new Error("Couldn't reach ShareText."));
-      }, 10000);
+      // No redundant timeout here — CloudflareSocket's own WS_OPEN_TIMEOUT
+      // (8s) + request timeout (4s) handles the total window. Adding a second
+      // timeout here creates confusing dual-timeout behavior where the outer
+      // timeout fires first and the inner one is orphaned.
 
       socket.emit('create_room', (res: { success: boolean; roomId?: string; secret?: string; createdAt?: number; error?: string; code?: string }) => {
-        clearTimeout(timeout);
         diag('room.create', !!res.success, res.success ? res.roomId : (res.error || 'unknown'));
         if (res.success && res.roomId && res.secret) {
+          roomCreateDiagEnd(requestId, 'success');
           devLog('Room created — navigating');
           saveStoredSession({ roomId: res.roomId, secret: res.secret, isCreator: true, createdAt: res.createdAt });
           setSession({
@@ -897,6 +904,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           });
           resolve();
         } else {
+          roomCreateDiagEnd(requestId, 'failure', 'ROOM_CREATE_REJECTED', res.code || res.error);
           devLog('Create request failed:', res.code || res.error);
           reject(new Error(configIssueMessage() || humanizeError(res.code, res.error || "Couldn't start a session.")));
         }
@@ -905,16 +913,22 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   };
 
   const joinWithCode = async (code: string) => {
+    const requestId = crypto.randomUUID();
+    roomCreateDiagStart(requestId, 'join');
     await ensureSocketConnected();
     return new Promise<{ success: boolean; error?: string }>((resolve) => {
       const timeout = setTimeout(() => {
+        roomCreateDiagEnd(requestId, 'failure', 'SIGNALING_TIMEOUT', 'join timed out');
         resolve({ success: false, error: "Couldn't reach ShareText." });
       }, 10000);
       getSocket().emit('join_with_code', { code }, (res: { success: boolean; roomId?: string; secret?: string; createdAt?: number; error?: string; code?: string }) => {
         clearTimeout(timeout);
         diag('room.join', !!res.success, res.success ? 'ok' : (res.code || res.error || 'unknown'));
         if (res.success) {
+          roomCreateDiagEnd(requestId, 'success');
           setupJoiner(res.roomId!, res.secret!, res.createdAt);
+        } else {
+          roomCreateDiagEnd(requestId, 'failure', 'ROOM_CREATE_REJECTED', res.code);
         }
         resolve({ ...res, error: humanJoinError(res.code, humanizeError(res.code, res.error || "Couldn't reach ShareText. Check your connection and try again.")) });
       });

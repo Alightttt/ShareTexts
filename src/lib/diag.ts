@@ -33,8 +33,68 @@ export function installDiagGlobal() {
   if (typeof window === 'undefined') return;
   try {
     (window as any).__sharetextDiag = {
+      roomDiags: getRoomDiags,
       events: RING,
       snapshot: diagSnapshot,
     };
   } catch { /* ignore */ }
+}
+
+/** Failure classification for room creation diagnostics. */
+export type FailureCategory =
+  | 'NETWORK_UNAVAILABLE'
+  | 'SIGNALING_UNREACHABLE'
+  | 'SIGNALING_TIMEOUT'
+  | 'ROOM_CREATE_REJECTED'
+  | 'ORIGIN_REJECTED'
+  | 'INVALID_RESPONSE'
+  | 'CLIENT_INIT_FAILURE'
+  | 'UNKNOWN';
+
+/** Structured room-create diagnostic record. */
+export interface RoomCreateDiag {
+  requestId: string;
+  transport: string;
+  startTime: number;
+  endTime?: number;
+  duration?: number;
+  category?: FailureCategory;
+  result: 'pending' | 'success' | 'failure';
+  detail?: string;
+}
+
+const roomDiags: RoomCreateDiag[] = [];
+const MAX_ROOM_DIAGS = 20;
+
+export function roomCreateDiagStart(requestId: string, transport: string): RoomCreateDiag {
+  const entry: RoomCreateDiag = {
+    requestId,
+    transport,
+    startTime: Date.now(),
+    result: 'pending',
+  };
+  roomDiags.push(entry);
+  if (roomDiags.length > MAX_ROOM_DIAGS) roomDiags.splice(0, roomDiags.length - MAX_ROOM_DIAGS);
+  return entry;
+}
+
+export function roomCreateDiagEnd(
+  requestId: string,
+  result: 'success' | 'failure',
+  category?: FailureCategory,
+  detail?: string
+) {
+  const entry = roomDiags.find(e => e.requestId === requestId);
+  if (!entry) return;
+  entry.endTime = Date.now();
+  entry.duration = entry.endTime - entry.startTime;
+  entry.result = result;
+  entry.category = category;
+  entry.detail = detail;
+  diag('room.create', result === 'success',
+      );
+}
+
+export function getRoomDiags(): RoomCreateDiag[] {
+  return roomDiags.map(e => ({ ...e }));
 }

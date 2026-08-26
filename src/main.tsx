@@ -9,6 +9,13 @@ import './index.css';
 // window.__sharetextDiag.snapshot() when a connect or transfer fails.
 installDiagGlobal();
 
+// Remove the branded loading shell now that React is painting
+const shell = document.getElementById("loading-shell");
+if (shell) {
+  shell.classList.add("fade-out");
+  setTimeout(() => shell.remove(), 350);
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {/* Respect prefers-reduced-motion: JS-driven animations (hero demo,

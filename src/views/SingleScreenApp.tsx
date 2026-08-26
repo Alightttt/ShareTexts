@@ -85,13 +85,29 @@ export function SingleScreenApp() {
   }, [panelMode]);
 
   /* --- handlers --- */
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 2;
   const handleSend = useCallback(async () => {
     if (isCreating) return;
-    // Optimistic: show sending UI immediately so the user sees instant feedback
-    setIsCreating(true); setCreateError(null);
-    const t = setTimeout(() => { setIsCreating(false); setCreateError('Taking too long. Check your connection.'); }, 12000);
-    try { await createSession(); clearTimeout(t); }
-    catch (e: any) { clearTimeout(t); setIsCreating(false); const raw = e.message || "Could not start a session."; const msg = raw.includes('connection service') ? (signalingConfigIssue() || raw) : raw; setCreateError(msg.includes("having trouble") ? "Could not reach ShareText. Check your internet and try again." : msg.includes("Taking too long") ? "Connection timed out. Check your internet and try again." : msg); }
+    setIsCreating(true);
+    setCreateError(null);
+    try {
+      await createSession();
+      setRetryCount(0);
+    } catch (e: any) {
+      const raw = e.message || "Could not start a session.";
+      const msg = raw.includes("connection service")
+        ? (signalingConfigIssue() || raw)
+        : raw;
+      const friendly = msg.includes("having trouble")
+        ? "Could not reach ShareText. Check your internet and try again."
+        : msg.includes("Taking too long")
+        ? "Connection timed out. Check your internet and try again."
+        : msg;
+      setCreateError(friendly);
+    } finally {
+      setIsCreating(false);
+    }
   }, [isCreating, createSession]);
 
   const handleReceive = useCallback(() => { setPanelMode('receiving'); setCreateError(null); setJoinError(null); }, []);
@@ -140,7 +156,7 @@ export function SingleScreenApp() {
   /*  LEFT / TOP PANEL — hero actions                                 */
   /* ---------------------------------------------------------------- */
   const leftPanel = (
-    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0e1220]">
+    <div className="flex flex-col h-full overflow-hidden bg-[#faf9f7] dark:bg-[#0e1220]">
       {/* Header */}
       <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
         <div className="flex items-center gap-2.5">
@@ -251,19 +267,19 @@ export function SingleScreenApp() {
           {/* Desktop: always expanded */}
           <div className="hidden lg:block shrink-0 px-6 lg:px-10 pb-3 space-y-2">
             <InfoCard title="What is it?">
-              ShareText lets you move text, photos, and files between your devices. No app needed — just open in any browser. Temporary by design, nothing stored.
+              Sending a link from your phone to your laptop? Sharing a photo from your computer to a friend? Copying a code snippet between devices? ShareText moves anything between any two devices instantly — no app install, no sign-up, no cable needed.
             </InfoCard>
             <InfoCard title="How to connect?">
-              One device creates a room and shows a 6-digit code. The other device enters that code. That is it — your devices are connected directly.
+              Open ShareText on both devices. Tap Send on the first one — you will see a 6-digit code. Enter that code on the second device. That is it: your devices are connected. Text, photos, files — just paste or drop them and they appear on the other screen.
             </InfoCard>
           </div>
           {/* Mobile: collapsible accordion */}
           <div className="lg:hidden shrink-0 px-6 pb-3 space-y-1.5">
             <InfoSection title="What is it?" expanded={!!infoExpanded['what']} onToggle={() => setInfoExpanded(p => ({ ...p, what: !p.what }))}>
-              ShareText lets you move text, photos, and files between your devices. No app needed — just open in any browser. Temporary by design, nothing stored.
+              Sending a link from your phone to your laptop? Sharing a photo from your computer to a friend? Copying a code snippet between devices? ShareText moves anything between any two devices instantly — no app install, no sign-up, no cable needed.
             </InfoSection>
             <InfoSection title="How to connect?" expanded={!!infoExpanded['how']} onToggle={() => setInfoExpanded(p => ({ ...p, how: !p.how }))}>
-              One device creates a room and shows a 6-digit code. The other device enters that code. That is it — your devices are connected directly.
+              Open ShareText on both devices. Tap Send on the first one — you will see a 6-digit code. Enter that code on the second device. That is it: your devices are connected. Text, photos, files — just paste or drop them and they appear on the other screen.
             </InfoSection>
           </div>
         </>
@@ -289,7 +305,7 @@ export function SingleScreenApp() {
   /* ---------------------------------------------------------------- */
   const roomPanel = (
     <div className={cn(
-      "flex flex-col min-h-0 bg-[#f0f2f7] dark:bg-[#080c16]",
+      "flex flex-col min-h-0 bg-[#f0eeeb] dark:bg-[#080c16]",
       // desktop: fills the right half with a border
       // border handled by parent split container
       // mobile: 9:16 aspect ratio container
@@ -298,7 +314,7 @@ export function SingleScreenApp() {
       mobileRoomFullscreen && "max-lg:!fixed max-lg:inset-0 max-lg:z-50 max-lg:rounded-none max-lg:border-none max-lg:aspect-auto max-lg:shadow-none"
     )}>
       {/* Room header */}
-      <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black/[0.08] dark:border-white/[0.1] bg-[#f0f2f7]/80 dark:bg-[#080c16]/80 backdrop-blur-xl z-10">
+      <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black/[0.08] dark:border-white/[0.1] bg-[#f0eeeb]/80 dark:bg-[#080c16]/80 backdrop-blur-xl z-10">
         <div className="flex items-center gap-2.5">
           <ShareTextLogo size={16} className="text-azure-600 dark:text-azure-400" />
           <span className="text-[13px] font-semibold text-apple-ink dark:text-white">Room</span>
@@ -355,7 +371,7 @@ export function SingleScreenApp() {
               {panelMode === 'idle' ? 'Connect two devices' : panelMode === 'sending' ? 'Waiting for peer...' : 'Enter the code'}
             </p>
             <p className="text-[13px] text-apple-ink-muted/60 dark:text-white/30 max-w-[240px] leading-relaxed">
-              {panelMode === 'idle' ? 'Send or receive to start sharing.' : panelMode === 'sending' ? 'The other device will connect once it enters the code.' : 'Once the code is verified, the chat will appear here.'}
+              {panelMode === 'idle' ? 'Then start sharing anything — text, photos, files.' : panelMode === 'sending' ? 'Keep this screen open. The other device will connect automatically.' : 'Your messages and files will appear here.'}
             </p>
           </div>
         )}

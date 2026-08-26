@@ -25,12 +25,12 @@
   --color-text-muted: #aeaeb2;
 
   /* ── Surface ────────────────────────────────────────────────────────── */
-  --color-bg: #f8f7fc;
+  --color-bg: #f5f3f0;
   --color-bg-secondary: #f0eff5;
   --color-bg-elevated: #ffffff;
-  --color-surface: #ffffff;
+  --color-surface: #faf9f7;
   --color-surface-secondary: #f2f2f5;
-  --color-surface-elevated: #ffffff;
+  --color-surface-elevated: #faf9f7;
 
   /* ── Border ─────────────────────────────────────────────────────────── */
   --color-border: #e0e0e5;
@@ -49,7 +49,7 @@
   --color-focus: #6b84f0;
 
   /* ── Semantic aliases ───────────────────────────────────────────────── */
-  --color-apple-canvas: #f8f7fc;
+  --color-apple-canvas: #f5f3f0;
   --color-apple-parchment: #f0eff5;
   --color-apple-ink: #1d1d1f;
   --color-apple-ink-muted: #6e6e73;

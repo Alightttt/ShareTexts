@@ -14,9 +14,11 @@ const ERROR_COPY: Record<string, string> = {
   ROOM_NOT_FOUND: "This room isn't active anymore.",
   RATE_LIMITED: 'Too many attempts. Try again in a minute.',
   UNSUPPORTED_VERSION: 'This app is out of date. Refresh to continue.',
-  ORIGIN_NOT_ALLOWED: "This browser isn't allowed to connect.",
+  ORIGIN_NOT_ALLOWED: "ShareText's server rejected this browser. The site may need to be added to the server's allow list.",
   INVALID_MESSAGE: 'Something went wrong with that request.',
   UNREACHABLE: "Couldn't reach ShareText.",
+  SIGNALING_TIMEOUT: "ShareText's server responded slowly. Try again in a moment.",
+  SIGNALING_UNREACHABLE: "ShareText's connection server is unreachable. Check your internet.",
 };
 
 export function humanizeError(code: string | undefined, fallback: string): string {

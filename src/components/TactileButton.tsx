@@ -119,7 +119,6 @@ export function TactileButton({
     setIsHovered(true);
     lightOpacity.set(1);
     if (!isPressed) {
-      y.set(-2);
       shadowY.set(4);
       shadowOpacity.set(1);
     }
@@ -229,23 +228,15 @@ export function TactileButton({
       {/* Content layer */}
       <span className="relative z-10 flex items-center justify-center gap-2 whitespace-nowrap">
         {icon && iconPosition === 'left' && (
-          <motion.span
-            className="shrink-0 flex items-center justify-center leading-none"
-            animate={isHovered ? { x: 1.5 } : { x: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-          >
+          <span className="shrink-0 flex items-center justify-center leading-none">
             {icon}
-          </motion.span>
+          </span>
         )}
         <span className="leading-none flex items-center">{children}</span>
         {icon && iconPosition === 'right' && (
-          <motion.span
-            className="shrink-0"
-            animate={isHovered ? { x: 1.5 } : { x: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-          >
+          <span className="shrink-0">
             {icon}
-          </motion.span>
+          </span>
         )}
       </span>
     </motion.button>

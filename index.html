@@ -147,7 +147,36 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <noscript>
+        <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f3f0;color:#1d1d1f">
+          <div style="text-align:center;padding:2rem">
+            <svg width="40" height="40" viewBox="0 0 256 256" fill="none" style="margin-bottom:1rem">
+              <rect x="40" y="36" width="84" height="84" rx="24" fill="currentColor"/><rect x="132" y="136" width="84" height="84" rx="24" fill="currentColor"/><path d="M110 106 L146 142" stroke="currentColor" stroke-width="28" stroke-linecap="round"/>
+            </svg>
+            <p style="font-size:16px;font-weight:600;margin:0 0 8px">ShareText requires JavaScript.</p>
+            <p style="font-size:14px;color:#6e6e73;margin:0">Please enable JavaScript in your browser settings.</p>
+          </div>
+        </div>
+      </noscript>
+      <div id="loading-shell" style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,sans-serif;transition:opacity 0.3s ease">
+        <style>
+          #loading-shell { opacity: 1; }
+          #loading-shell.fade-out { opacity: 0; }
+          .st-logo-pulse { animation: st-pulse 2s ease-in-out infinite; }
+          @keyframes st-pulse { 0%,100%{opacity:0.6;transform:scale(1)} 50%{opacity:1;transform:scale(1.03)} }
+          @media (prefers-color-scheme: dark) { #loading-shell { background: #080b14; } #loading-shell svg { color: #8ca4f7; } #loading-shell p { color: #a0aec0; } #loading-shell .st-brand { color: #f0f2f7; } }
+          @media (prefers-color-scheme: light) { #loading-shell { background: #f5f3f0; } #loading-shell svg { color: #6b84f0; } #loading-shell p { color: #6e6e73; } #loading-shell .st-brand { color: #1d1d1f; } }
+        </style>
+        <div style="text-align:center">
+          <svg class="st-logo-pulse" width="40" height="40" viewBox="0 0 256 256" fill="none" style="margin-bottom:14px;color:#6b84f0">
+            <rect x="40" y="36" width="84" height="84" rx="24" fill="currentColor"/><rect x="132" y="136" width="84" height="84" rx="24" fill="currentColor"/><path d="M110 106 L146 142" stroke="currentColor" stroke-width="28" stroke-linecap="round"/>
+          </svg>
+          <p class="st-brand" style="font-size:15px;font-weight:600;margin:0 0 4px;letter-spacing:-0.02em;color:#1d1d1f">ShareText</p>
+          <p style="font-size:13px;margin:0;color:#6e6e73">Loading...</p>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

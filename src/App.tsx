@@ -161,7 +161,7 @@ function AppContent() {
   const { session, leaveView, createSession, closeSession } = useSession();
 
   if (typeof window !== 'undefined' && window.location.pathname === '/docs') {
-    return <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-[#0a0e18]" />}><Docs /></Suspense>;
+    return <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-[#0a0e18] flex items-center justify-center"><ShareTextLogo size={32} motion="loading" className="text-azure-600 dark:text-azure-400 opacity-60" /></div>}><Docs /></Suspense>;
   }
 
   if (typeof window !== 'undefined' && window.location.pathname !== '/' && !window.location.pathname.startsWith('/s/')) {
@@ -189,7 +189,7 @@ function AppContent() {
   }
 
   return (
-    <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-[#0a0e18]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-[#0a0e18] flex items-center justify-center"><ShareTextLogo size={32} motion="loading" className="text-azure-600 dark:text-azure-400 opacity-60" /></div>}>
       <SingleScreenApp />
     </Suspense>
   );
