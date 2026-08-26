@@ -25,8 +25,8 @@
   --color-text-muted: #aeaeb2;
 
   /* ── Surface ────────────────────────────────────────────────────────── */
-  --color-bg: #fafafa;
-  --color-bg-secondary: #f2f2f5;
+  --color-bg: #f8f7fc;
+  --color-bg-secondary: #f0eff5;
   --color-bg-elevated: #ffffff;
   --color-surface: #ffffff;
   --color-surface-secondary: #f2f2f5;
@@ -49,8 +49,8 @@
   --color-focus: #9d92f7;
 
   /* ── Semantic aliases ───────────────────────────────────────────────── */
-  --color-apple-canvas: #fafafa;
-  --color-apple-parchment: #f2f2f5;
+  --color-apple-canvas: #f8f7fc;
+  --color-apple-parchment: #f0eff5;
   --color-apple-ink: #1d1d1f;
   --color-apple-ink-muted: #6e6e73;
   --color-apple-blue: #9d92f7;
@@ -122,7 +122,7 @@
   }
 
   html.dark body {
-    background: var(--color-apple-canvas);
+    background: #080b14;
     color: white;
   }
 
@@ -133,7 +133,7 @@
 
   /* ── Dark mode ────────────────────────────────────────────────────── */
   html.dark {
-    --color-bg: #0a0e18;
+    --color-bg: #080b14;
     --color-bg-secondary: #0f1422;
     --color-bg-elevated: #161e30;
     --color-surface: #161e30;
@@ -154,7 +154,7 @@
     --color-warning-light: #2a1c08;
     --color-error: #ff6b6b;
     --color-error-light: #2a0d0d;
-    --color-apple-canvas: #0a0e18;
+    --color-apple-canvas: #080b14;
     --color-apple-parchment: #0f1422;
     --color-apple-divider: #1e2c48;
     --color-apple-hairline: #263450;
@@ -194,12 +194,13 @@
   }
 
 /* Dot background pattern */
+/* Dot background pattern — subtle lavender */
 .dot-bg {
-  background-image: radial-gradient(circle, var(--color-apple-hairline) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(157,146,247,0.12) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 html.dark .dot-bg {
-  background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1.5px);
+  background-image: radial-gradient(circle, rgba(157,146,247,0.06) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 

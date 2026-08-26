@@ -155,12 +155,12 @@ export function SingleScreenApp() {
       <div className="flex-1 flex flex-col justify-center px-5 sm:px-8 py-6 sm:py-10">
         <AnimatePresence mode="wait">
           {panelMode === 'idle' && (
-            <motion.div key="idle" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.3, ease: EASE }} className="max-w-md">
-              <h1 className="text-[36px] sm:text-[44px] lg:text-[52px] font-bold tracking-[-0.04em] leading-[1.06] text-apple-ink dark:text-white">
+            <motion.div key="idle" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.3, ease: EASE }} className="max-w-md mx-auto sm:mx-0">
+              <h1 className="text-[36px] sm:text-[44px] lg:text-[52px] font-bold tracking-[-0.04em] leading-[1.06] text-apple-ink dark:text-white text-center sm:text-left">
                 Move anything<br />between your devices.
               </h1>
               
-              <div className="mt-8 flex gap-3">
+              <div className="mt-8 flex gap-3 justify-center sm:justify-start">
                 <TactileButton onClick={handleSend} variant="primary" size="lg" icon={<SendCircleIcon size={18} />}>Send</TactileButton>
                 <TactileButton onClick={handleReceive} variant="secondary" size="lg" icon={<ReceiveCircleIcon size={18} />}>Receive</TactileButton>
               </div>
@@ -334,7 +334,7 @@ export function SingleScreenApp() {
   /*  RENDER                                                          */
   /* ---------------------------------------------------------------- */
   return (
-    <div className="h-dvh lg:h-dvh overflow-hidden bg-apple-canvas dark:bg-[#0a0e18]">
+    <div className="h-dvh lg:h-dvh overflow-hidden bg-apple-canvas dark:bg-[#0a0e18] dot-bg">
       {/* Desktop: horizontal split */}
       <div className="hidden lg:flex h-full">
         <div className="w-1/2 h-full overflow-y-auto">{leftPanel}</div>
