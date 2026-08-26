@@ -160,9 +160,9 @@ export function SingleScreenApp() {
                 Move anything<br />between your devices.
               </h1>
               
-              <div className="mt-8 flex flex-col gap-3">
-                <TactileButton onClick={handleSend} variant="primary" size="lg" icon={<SendCircleIcon size={18} />}>Send something</TactileButton>
-                <TactileButton onClick={handleReceive} variant="secondary" size="lg" icon={<ReceiveCircleIcon size={18} />}>Receive something</TactileButton>
+              <div className="mt-8 flex gap-3">
+                <TactileButton onClick={handleSend} variant="primary" size="lg" icon={<SendCircleIcon size={18} />}>Send</TactileButton>
+                <TactileButton onClick={handleReceive} variant="secondary" size="lg" icon={<ReceiveCircleIcon size={18} />}>Receive</TactileButton>
               </div>
               {createError && (
                 <div role="alert" className="mt-4">
@@ -184,14 +184,14 @@ export function SingleScreenApp() {
                 {session.partnerConnecting && !session.partnerConnected && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-4">
                     <p className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60 flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#5e6ad2] animate-pulse" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#7c5bf0] animate-pulse" />
                       {session.connectionType === 'establishing' ? 'Establishing secure connection...' : 'Connecting...'}
                     </p>
                   </motion.div>
                 )}
               </AnimatePresence>
               <div className="mt-5 space-y-2">
-                <button onClick={() => setShowQROverlay(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-[#5e6ad2] hover:bg-[#6e7ae0] text-white rounded-full text-[14px] font-semibold min-h-[46px] transition-all duration-150 active:scale-[0.97]">
+                <button onClick={() => setShowQROverlay(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-[#7c5bf0] hover:bg-[#8b6ff5] text-white rounded-full text-[14px] font-semibold min-h-[46px] transition-all duration-150 active:scale-[0.97]">
                   <QrCode className="w-4 h-4" /> Show QR
                 </button>
                 <button onClick={shareLink} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-[#161e30] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-[#1c2640] rounded-full text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.97] min-h-[44px]">
@@ -212,7 +212,7 @@ export function SingleScreenApp() {
                 <button onClick={() => setPanelMode('idle')} className="flex items-center gap-1 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white px-3 py-1.5 rounded-full hover:bg-apple-parchment dark:hover:bg-white/5 active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
               </div>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/50 font-medium mb-5">Enter the code shown on the other device.</p>
-              <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-[#5e6ad2] hover:bg-[#6e7ae0] text-white rounded-full text-[14px] font-semibold min-h-[46px] transition-all duration-150 active:scale-[0.97]">
+              <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-[#7c5bf0] hover:bg-[#8b6ff5] text-white rounded-full text-[14px] font-semibold min-h-[46px] transition-all duration-150 active:scale-[0.97]">
                 <QrCode className="w-4 h-4" /> Scan QR code
               </button>
               <div className="p-6 bg-white dark:bg-[#161e30] border border-apple-divider dark:border-white/10 rounded-[20px] shadow-card">
@@ -244,10 +244,7 @@ export function SingleScreenApp() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4 text-[12px] text-apple-ink-muted dark:text-white/40">
             <a href="/docs" className="hover:text-apple-ink dark:hover:text-white transition-colors">Docs</a>
-            <a href="https://x.com/0xalyt" target="_blank" rel="noopener noreferrer" className="hover:text-apple-ink dark:hover:text-white transition-colors flex items-center gap-1">
-              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-              @0xalyt
-            </a>
+            <a href="https://x.com/0xalyt" target="_blank" rel="noopener noreferrer" className="hover:text-apple-ink dark:hover:text-white transition-colors" aria-label="Follow on X"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg></a>
           </div>
           <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-apple-ink-muted/50 dark:text-white/25">
             <span>No app</span><span className="w-1 h-1 rounded-full bg-apple-hairline dark:bg-white/15" /><span>No account</span><span className="w-1 h-1 rounded-full bg-apple-hairline dark:bg-white/15" /><span>Temporary</span>
@@ -315,7 +312,7 @@ export function SingleScreenApp() {
       {/* Room content */}
       <div className="flex-1 min-h-0 overflow-hidden">
         {panelMode === 'connected' ? (
-          <Suspense fallback={<div className="h-full flex items-center justify-center"><ShareTextLogo size={24} motion="connecting" className="text-[#5e6ad2]" /></div>}>
+          <Suspense fallback={<div className="h-full flex items-center justify-center"><ShareTextLogo size={24} motion="connecting" className="text-[#7c5bf0]" /></div>}>
             <ChatView panelMode="embedded" />
           </Suspense>
         ) : (

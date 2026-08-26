@@ -14,10 +14,10 @@
   --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
 
   /* ── Brand ──────────────────────────────────────────────────────────── */
-  --color-brand: #0a66f0;
-  --color-brand-strong: #0b55c9;
-  --color-brand-light: #eef5ff;
-  --color-brand-dark: #4d9dff;
+  --color-brand: #7c5bf0;
+  --color-brand-strong: #6d4de0;
+  --color-brand-light: #f0ecff;
+  --color-brand-dark: #9b80f8;
 
   /* ── Text ───────────────────────────────────────────────────────────── */
   --color-text: #1d1d1f;
@@ -46,26 +46,26 @@
   --color-error-light: #ffeaea;
 
   /* ── Focus ──────────────────────────────────────────────────────────── */
-  --color-focus: #0a66f0;
+  --color-focus: #7c5bf0;
 
   /* ── Semantic aliases ───────────────────────────────────────────────── */
   --color-apple-canvas: #fafafa;
   --color-apple-parchment: #f2f2f5;
   --color-apple-ink: #1d1d1f;
   --color-apple-ink-muted: #6e6e73;
-  --color-apple-blue: #0066cc;
-  --color-apple-blue-focus: #0071e3;
+  --color-apple-blue: #7c5bf0;
+  --color-apple-blue-focus: #6d4de0;
   --color-apple-divider: #e0e0e5;
   --color-apple-hairline: #d8d8dd;
-  --color-azure-50: #eef5ff;
-  --color-azure-100: #d9e9ff;
-  --color-azure-200: #b7d4ff;
-  --color-azure-400: #4d9dff;
-  --color-azure-500: #2e8bff;
-  --color-azure-600: #0a66f0;
-  --color-azure-700: #0b55c9;
-  --color-azure-800: #0a46a0;
-  --color-azure-900: #0a3d8f;
+  --color-azure-50: #f0ecff;
+  --color-azure-100: #ddd6fe;
+  --color-azure-200: #c4b5fd;
+  --color-azure-400: #a78bfa;
+  --color-azure-500: #8b5cf6;
+  --color-azure-600: #7c5bf0;
+  --color-azure-700: #6d4de0;
+  --color-azure-800: #5b3dc7;
+  --color-azure-900: #4c1d95;
   --color-status-success: #34c759;
   --color-status-warning: #ff9500;
   --color-status-warning-ink: #c77a00;
@@ -160,10 +160,10 @@
     --color-apple-hairline: #263450;
     --color-apple-ink: #edf0f5;
     --color-apple-ink-muted: #8894ac;
-    --color-azure-400: #6aafff;
-    --color-azure-500: #4d9dff;
-    --color-azure-600: #4d9dff;
-    --color-azure-700: #72aaff;
+    --color-azure-400: #c4b5fd;
+    --color-azure-500: #a78bfa;
+    --color-azure-600: #8b5cf6;
+    --color-azure-700: #a78bfa;
   }
 
   h1, h2, h3, h4, h5, h6 {

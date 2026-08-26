@@ -46,17 +46,17 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
 const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; shadowHover: string; shadowPress: string; gradient: string }> = {
   primary: {
     base: 'text-white',
-    shadowIdle: '0 1px 2px rgba(0,0,0,0.2), 0 4px 12px -2px rgba(10,102,240,0.2)',
-    shadowHover: '0 4px 8px rgba(0,0,0,0.15), 0 12px 28px -4px rgba(10,102,240,0.35)',
-    shadowPress: '0 1px 2px rgba(0,0,0,0.2), 0 2px 6px -1px rgba(10,102,240,0.15)',
-    gradient: 'linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.0) 45%, rgba(0,0,0,0.08) 100%)',
+    shadowIdle: '0 1px 2px rgba(0,0,0,0.2), 0 4px 12px -2px rgba(124,91,240,0.25)',
+    shadowHover: '0 4px 8px rgba(0,0,0,0.15), 0 12px 28px -4px rgba(124,91,240,0.4)',
+    shadowPress: '0 1px 2px rgba(0,0,0,0.2), 0 2px 6px -1px rgba(124,91,240,0.15)',
+    gradient: 'linear-gradient(135deg, #8b6ff5 0%, #7c5bf0 50%, #6d4de0 100%)',
   },
   secondary: {
-    base: 'bg-apple-ink text-white dark:bg-white dark:text-night-900',
-    shadowIdle: '0 1px 2px rgba(0,0,0,0.12), 0 3px 8px -2px rgba(0,0,0,0.08)',
-    shadowHover: '0 4px 8px rgba(0,0,0,0.12), 0 10px 20px -3px rgba(0,0,0,0.15)',
-    shadowPress: '0 1px 2px rgba(0,0,0,0.12), 0 2px 4px -1px rgba(0,0,0,0.08)',
-    gradient: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.0) 40%, rgba(0,0,0,0.1) 100%)',
+    base: 'text-[#4c2baa] dark:text-[#6d4de0]',
+    shadowIdle: '0 1px 2px rgba(124,91,240,0.08), 0 3px 8px -2px rgba(124,91,240,0.06)',
+    shadowHover: '0 4px 8px rgba(124,91,240,0.12), 0 10px 20px -3px rgba(124,91,240,0.15)',
+    shadowPress: '0 1px 2px rgba(124,91,240,0.08), 0 2px 4px -1px rgba(124,91,240,0.06)',
+    gradient: 'linear-gradient(135deg, #f0ecff 0%, #e8e0ff 50%, #ddd2fc 100%)',
   },
   ghost: {
     base: 'bg-transparent text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-apple-parchment dark:hover:bg-apple-tile-1',
@@ -70,7 +70,7 @@ const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; 
 // Surface fill under the gradient overlay
 const SURFACE_FILLS: Record<ButtonVariant, string> = {
   primary: 'bg-azure-600',
-  secondary: '',
+  secondary: 'bg-azure-100 dark:bg-azure-600/20',
   ghost: '',
 };
 

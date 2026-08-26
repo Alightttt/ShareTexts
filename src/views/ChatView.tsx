@@ -1033,7 +1033,7 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
           "max-w-[85%] sm:max-w-[65%] px-[14px] py-[10px] rounded-[18px]",
           isMe
             ? "bg-azure-600 text-white"
-            : "bg-white dark:bg-surface-dark text-apple-ink dark:text-white border border-apple-divider/40 dark:border-apple-tile-3",
+            : "bg-[#e9e9eb] dark:bg-[#1c1e22] text-apple-ink dark:text-white",
           isMe && isGroupEnd && "rounded-br-[4px]",
           !isMe && isGroupEnd && "rounded-bl-[4px]",
           isMe && !isGroupEnd && "rounded-br-[14px]",

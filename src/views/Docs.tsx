@@ -73,60 +73,27 @@ function OverviewSection() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-4">
-          What is ShareText?
-        </h2>
-        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-2xl">
-          ShareText is a temporary bridge between two devices. Move text, links, photos, videos, and files
-          directly from one screen to another. No app to install. No account to make. Temporary by design.
+        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">What is ShareText?</h2>
+        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-xl">
+          Move text, photos, and files between your devices. No app, no account, nothing kept.
         </p>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-4">
-        <div className="p-5 rounded-[16px] bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-azure-600/10 flex items-center justify-center">
-              <Zap className="w-5 h-5 text-azure-600" />
+      <div className="grid gap-3 sm:grid-cols-2">
+        {[
+          { icon: <Zap className="w-5 h-5" />, title: 'Fast', desc: 'Direct device-to-device. No cloud middleman.' },
+          { icon: <Shield className="w-5 h-5" />, title: 'Private', desc: 'Encrypted and temporary. Close the tab, it’s gone.' },
+          { icon: <Monitor className="w-5 h-5" />, title: 'Any browser', desc: 'Works everywhere — phones, laptops, tablets.' },
+          { icon: <Lock className="w-5 h-5" />, title: 'Verified', desc: 'SHA-256 on every transfer. What you send is exactly what arrives.' },
+        ].map((f, i) => (
+          <div key={i} className="flex gap-3.5 p-4 rounded-[14px] bg-white dark:bg-apple-tile-1 border border-apple-divider/50 dark:border-apple-tile-3">
+            <div className="w-10 h-10 rounded-full bg-azure-600/10 dark:bg-azure-400/10 flex items-center justify-center shrink-0 text-azure-600 dark:text-azure-400">{f.icon}</div>
+            <div>
+              <p className="text-[14px] font-semibold text-apple-ink dark:text-white mb-0.5">{f.title}</p>
+              <p className="text-[13px] text-apple-ink-muted dark:text-white/55 leading-snug">{f.desc}</p>
             </div>
-            <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white">Fast</h3>
           </div>
-          <p className="text-[14px] text-apple-ink-muted dark:text-white/60">
-            Direct device-to-device transfer when possible. No cloud storage middleman.
-          </p>
-        </div>
-        <div className="p-5 rounded-[16px] bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-azure-600/10 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-azure-600" />
-            </div>
-            <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white">Private</h3>
-          </div>
-          <p className="text-[14px] text-apple-ink-muted dark:text-white/60">
-            End-to-end encrypted. Temporary by design. No accounts, no history.
-          </p>
-        </div>
-        <div className="p-5 rounded-[16px] bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-azure-600/10 flex items-center justify-center">
-              <Monitor className="w-5 h-5 text-azure-600" />
-            </div>
-            <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white">Cross-Platform</h3>
-          </div>
-          <p className="text-[14px] text-apple-ink-muted dark:text-white/60">
-            Works in any modern browser. iOS, Android, Windows, macOS, Linux.
-          </p>
-        </div>
-        <div className="p-5 rounded-[16px] bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-azure-600/10 flex items-center justify-center">
-              <Lock className="w-5 h-5 text-azure-600" />
-            </div>
-            <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white">Verified</h3>
-          </div>
-          <p className="text-[14px] text-apple-ink-muted dark:text-white/60">
-            SHA-256 integrity verification. What you send is exactly what arrives.
-          </p>
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -136,41 +103,34 @@ function TransferSection() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-4">How to Transfer</h2>
-        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-2xl">
-          ShareText moves content between two devices through your browser. No app, no account, no cloud storage.
+        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">How to Transfer</h2>
+        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-xl">
+          Three steps. No installation.
         </p>
       </div>
 
-      <div className="space-y-6">
-        <StepCard number={1} title="Open ShareText on both devices" description="Visit sharetexts.online in any browser. Works on phones, laptops, tablets — any device with a modern browser." icon={<Monitor className="w-4 h-4 text-apple-ink-muted" />} />
-        <StepCard number={2} title="Connect the devices" description="Click 'Send' on one device to get a pairing code. Click 'Receive' on the other and enter the code. Or scan the QR code." icon={<QrCode className="w-4 h-4 text-apple-ink-muted" />} />
-        <StepCard number={3} title="Transfer" description="Type text, paste a link, or attach files. The content moves directly between devices. When you're done, close the tab." icon={<Send className="w-4 h-4 text-apple-ink-muted" />} />
-      </div>
-
-      <div className="p-5 rounded-[16px] bg-apple-parchment dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3">
-        <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-3">What you can transfer</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {['Text', 'Links', 'Photos', 'Videos', 'Audio', 'Documents', 'Code', 'Any file'].map((type) => (
-            <div key={type} className="flex items-center gap-2 text-[14px] text-apple-ink-muted dark:text-white/60">
-              <Check className="w-4 h-4 text-status-success" />{type}
+      <div className="space-y-4">
+        {[
+          { n: '1', title: 'Open on both devices', desc: 'Visit sharetexts.online on both devices.' },
+          { n: '2', title: 'Connect them', desc: 'One device taps Send, the other taps Receive and enters the code.' },
+          { n: '3', title: 'Transfer', desc: 'Type, paste, or attach. Content appears on the other device instantly.' },
+        ].map((s, i) => (
+          <div key={i} className="flex gap-4 items-start">
+            <div className="shrink-0 w-9 h-9 rounded-full bg-azure-600/10 dark:bg-azure-400/10 flex items-center justify-center">
+              <span className="text-[14px] font-bold text-azure-600 dark:text-azure-400">{s.n}</span>
             </div>
-          ))}
-        </div>
+            <div>
+              <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-0.5">{s.title}</h3>
+              <p className="text-[14px] text-apple-ink-muted dark:text-white/60">{s.desc}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
-      <div>
-        <h3 className="text-[18px] font-semibold text-apple-ink dark:text-white mb-4">Keyboard Shortcuts</h3>
-        <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <kbd className="px-2 py-1 rounded-[6px] bg-white dark:bg-apple-tile-2 border border-apple-divider dark:border-apple-tile-3 text-[13px] font-mono">Enter</kbd>
-            <span className="text-[14px] text-apple-ink-muted dark:text-white/60">Send message</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <kbd className="px-2 py-1 rounded-[6px] bg-white dark:bg-apple-tile-2 border border-apple-divider dark:border-apple-tile-3 text-[13px] font-mono">Shift + Enter</kbd>
-            <span className="text-[14px] text-apple-ink-muted dark:text-white/60">New line</span>
-          </div>
-        </div>
+      <div className="flex flex-wrap gap-2">
+        {['Text', 'Links', 'Photos', 'Files', 'Any file type'].map((t) => (
+          <span key={t} className="px-3 py-1.5 rounded-full bg-apple-parchment dark:bg-apple-tile-2 text-[13px] font-medium text-apple-ink-muted dark:text-white/60">{t}</span>
+        ))}
       </div>
     </div>
   );
