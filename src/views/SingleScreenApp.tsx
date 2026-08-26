@@ -140,7 +140,7 @@ export function SingleScreenApp() {
   /*  LEFT / TOP PANEL — hero actions                                 */
   /* ---------------------------------------------------------------- */
   const leftPanel = (
-    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0c1020]">
+    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0e1220]">
       {/* Header */}
       <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
         <div className="flex items-center gap-2.5">
@@ -196,12 +196,12 @@ export function SingleScreenApp() {
                 <button onClick={() => setShowQROverlay(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-[#6b84f0] hover:bg-[#5a74e8] text-white rounded-full text-[14px] font-semibold min-h-[46px] transition-all duration-150 active:scale-[0.97]">
                   <QrCode className="w-4 h-4" /> Show QR
                 </button>
-                <button onClick={shareLink} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-[#161e30] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-[#1c2640] rounded-full text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.97] min-h-[44px]">
-                  {copiedLink ? <AnimatedIcon animate="check" active><Check className="w-4 h-4 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="link"><Link2 className="w-4 h-4 text-apple-ink-muted" /></AnimatedIcon>}
+                <button onClick={shareLink} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/12 hover:bg-apple-parchment dark:hover:bg-white/10 rounded-full text-[13px] font-semibold text-apple-ink dark:text-white/90 transition-colors active:scale-[0.97] min-h-[44px]">
+                  {copiedLink ? <AnimatedIcon animate="check" active><Check className="w-4 h-4 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="link"><Link2 className="w-4 h-4 text-apple-ink-muted dark:text-white/50" /></AnimatedIcon>}
                   {copiedLink ? 'Copied' : 'Share link'}
                 </button>
-                <button onClick={copyCode} className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-full text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white/70 transition-colors active:scale-[0.98]">
-                  {copiedCode ? <AnimatedIcon animate="check" active><Check className="w-3.5 h-3.5 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="copy"><Copy className="w-3.5 h-3.5" /></AnimatedIcon>}
+                <button onClick={copyCode} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-white/[0.04] border border-apple-divider/40 dark:border-white/8 hover:bg-apple-parchment dark:hover:bg-white/8 rounded-full text-[13px] font-medium text-apple-ink dark:text-white/70 transition-colors active:scale-[0.98]">
+                  {copiedCode ? <AnimatedIcon animate="check" active><Check className="w-3.5 h-3.5 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="copy"><Copy className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /></AnimatedIcon>}
                   {copiedCode ? 'Code copied' : 'Copy code'}
                 </button>
               </div>
@@ -245,16 +245,28 @@ export function SingleScreenApp() {
         </AnimatePresence>
       </div>
 
-      {/* Collapsible info — idle only */}
+      {/* Info section — always visible on desktop, accordion on mobile */}
       {panelMode === 'idle' && (
-        <div className="shrink-0 px-6 lg:px-10 pb-3 space-y-1.5">
-          <InfoSection title="What is it?" expanded={!!infoExpanded['what']} onToggle={() => setInfoExpanded(p => ({ ...p, what: !p.what }))}>
-            ShareText lets you move text, photos, and files between your devices. No app needed — just open in any browser. Temporary by design, nothing stored.
-          </InfoSection>
-          <InfoSection title="How to connect?" expanded={!!infoExpanded['how']} onToggle={() => setInfoExpanded(p => ({ ...p, how: !p.how }))}>
-            One device creates a room and shows a 6-digit code. The other device enters that code. That is it — your devices are connected directly.
-          </InfoSection>
-        </div>
+        <>
+          {/* Desktop: always expanded */}
+          <div className="hidden lg:block shrink-0 px-6 lg:px-10 pb-3 space-y-2">
+            <InfoCard title="What is it?">
+              ShareText lets you move text, photos, and files between your devices. No app needed — just open in any browser. Temporary by design, nothing stored.
+            </InfoCard>
+            <InfoCard title="How to connect?">
+              One device creates a room and shows a 6-digit code. The other device enters that code. That is it — your devices are connected directly.
+            </InfoCard>
+          </div>
+          {/* Mobile: collapsible accordion */}
+          <div className="lg:hidden shrink-0 px-6 pb-3 space-y-1.5">
+            <InfoSection title="What is it?" expanded={!!infoExpanded['what']} onToggle={() => setInfoExpanded(p => ({ ...p, what: !p.what }))}>
+              ShareText lets you move text, photos, and files between your devices. No app needed — just open in any browser. Temporary by design, nothing stored.
+            </InfoSection>
+            <InfoSection title="How to connect?" expanded={!!infoExpanded['how']} onToggle={() => setInfoExpanded(p => ({ ...p, how: !p.how }))}>
+              One device creates a room and shows a 6-digit code. The other device enters that code. That is it — your devices are connected directly.
+            </InfoSection>
+          </div>
+        </>
       )}
 
       {/* Footer */}
@@ -277,7 +289,7 @@ export function SingleScreenApp() {
   /* ---------------------------------------------------------------- */
   const roomPanel = (
     <div className={cn(
-      "flex flex-col min-h-0 bg-[#f4f5f9] dark:bg-[#080c16]",
+      "flex flex-col min-h-0 bg-[#f0f2f7] dark:bg-[#080c16]",
       // desktop: fills the right half with a border
       // border handled by parent split container
       // mobile: 9:16 aspect ratio container
@@ -286,7 +298,7 @@ export function SingleScreenApp() {
       mobileRoomFullscreen && "max-lg:!fixed max-lg:inset-0 max-lg:z-50 max-lg:rounded-none max-lg:border-none max-lg:aspect-auto max-lg:shadow-none"
     )}>
       {/* Room header */}
-      <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-[#f4f5f9]/80 dark:bg-[#080c16]/80 backdrop-blur-xl z-10">
+      <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black/[0.08] dark:border-white/[0.1] bg-[#f0f2f7]/80 dark:bg-[#080c16]/80 backdrop-blur-xl z-10">
         <div className="flex items-center gap-2.5">
           <ShareTextLogo size={16} className="text-azure-600 dark:text-azure-400" />
           <span className="text-[13px] font-semibold text-apple-ink dark:text-white">Room</span>
@@ -308,15 +320,15 @@ export function SingleScreenApp() {
           <button
             onClick={handleDisconnect}
             className={cn(
-              "flex items-center justify-center w-7 h-7 rounded-md transition-all duration-150",
+              "flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-150",
               panelMode === 'connected'
-                ? "text-apple-ink-muted/70 dark:text-white/40 hover:text-status-danger hover:bg-status-danger/10"
-                : "text-apple-ink-muted/30 dark:text-white/15"
+                ? "text-apple-ink-muted dark:text-white/60 hover:text-status-danger hover:bg-status-danger/10"
+                : "text-apple-ink-muted/40 dark:text-white/20"
             )}
             disabled={panelMode !== 'connected'}
             aria-label="Disconnect"
           >
-            <LogOut className="w-3.5 h-3.5" />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </button>
           <button
             onClick={() => setMobileRoomFullscreen(!mobileRoomFullscreen)}
@@ -335,14 +347,14 @@ export function SingleScreenApp() {
           </Suspense>
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-center px-8">
-            <motion.div animate={{ scale: [1, 1.04, 1], opacity: [0.2, 0.4, 0.2] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} className="mb-6 relative">
-              <div className="absolute inset-0 rounded-full bg-[#6b84f0]/8 blur-3xl scale-[3]" />
-              <ShareTextLogo size={52} className="text-[#6b84f0]/30 dark:text-[#8ca4f7]/25 relative z-10" />
+            <motion.div animate={{ scale: [1, 1.03, 1], opacity: [0.15, 0.35, 0.15] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} className="mb-6 relative">
+              <div className="absolute inset-0 rounded-full bg-[#6b84f0]/10 blur-3xl scale-[3]" />
+              <ShareTextLogo size={64} className="text-[#6b84f0]/35 dark:text-[#8ca4f7]/30 relative z-10" />
             </motion.div>
-            <p className="text-[16px] font-semibold text-apple-ink/80 dark:text-white/70 mb-1.5">
+            <p className="text-[17px] font-semibold text-apple-ink dark:text-white/85 mb-2">
               {panelMode === 'idle' ? 'Connect two devices' : panelMode === 'sending' ? 'Waiting for peer...' : 'Enter the code'}
             </p>
-            <p className="text-[13px] text-apple-ink-muted/40 dark:text-white/20 max-w-[220px] leading-relaxed">
+            <p className="text-[13px] text-apple-ink-muted/60 dark:text-white/30 max-w-[240px] leading-relaxed">
               {panelMode === 'idle' ? 'Send or receive to start sharing.' : panelMode === 'sending' ? 'The other device will connect once it enters the code.' : 'Once the code is verified, the chat will appear here.'}
             </p>
           </div>
@@ -417,6 +429,15 @@ function InfoSection({ title, expanded, onToggle, children }: { title: string; e
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border border-apple-divider/50 dark:border-white/[0.08] rounded-[14px] px-4 py-3">
+      <p className="text-[13px] font-semibold text-apple-ink dark:text-white/80 mb-1">{title}</p>
+      <p className="text-[12.5px] text-apple-ink-muted dark:text-white/50 leading-relaxed">{children}</p>
     </div>
   );
 }
