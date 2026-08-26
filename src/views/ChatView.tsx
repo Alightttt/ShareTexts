@@ -826,15 +826,18 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 </AnimatedIcon>
               </button>
               <AnimatePresence>
-                {showAttachmentMenu && (                    <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.9, transformOrigin: 'bottom left' }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                    transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                    className="absolute left-1 bottom-[calc(100%+8px)] bg-white dark:bg-surface-dark-2 border border-apple-divider dark:border-apple-tile-3 rounded-[20px] shadow-2xl p-2 w-[210px] flex flex-col gap-1 z-30"
+                {showAttachmentMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.6, y: 8 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.6, y: 8 }}
+                    transition={{ type: 'spring', bounce: 0.3, duration: 0.35 }}
+                    className="absolute left-1 bottom-[calc(100%+10px)] z-30"
                   >
-                    <AttachmentOption icon={<ImageIcon className="w-5 h-5 text-apple-ink-muted" />} label="Photo" onClick={() => imageInputRef.current?.click()} />
-                    <AttachmentOption icon={<FileIcon className="w-5 h-5 text-apple-ink-muted" />} label="File" onClick={() => fileInputRef.current?.click()} />
+                    <div className="flex items-center gap-1 px-2 py-1.5 bg-[#1a1a22] dark:bg-[#2a2a32] rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.25)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+                      <PillIcon icon={<ImageIcon className="w-[18px] h-[18px]" />} label="Photo" delay={0} onClick={() => { imageInputRef.current?.click(); setShowAttachmentMenu(false); }} />
+                      <PillIcon icon={<FileIcon className="w-[18px] h-[18px]" />} label="File" delay={0.04} onClick={() => { fileInputRef.current?.click(); setShowAttachmentMenu(false); }} />
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -861,15 +864,20 @@ function RemoveAttachmentButton({ onClick }: { onClick: () => void }) {
     </button>
   );
 }
-function AttachmentOption({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick: () => void }) {
+function PillIcon({ icon, label, delay, onClick }: { icon: React.ReactNode; label: string; delay: number; onClick: () => void }) {
   return (
-    <button
+    <motion.button
       type="button"
-      onPointerDown={onClick}
-      className="flex items-center gap-3 w-full p-3 hover:bg-apple-divider/50 dark:hover:bg-white/10 rounded-[14px] text-[16px] font-medium text-apple-ink dark:text-white transition-colors active:bg-apple-divider dark:active:bg-white/20"
+      initial={{ opacity: 0, scale: 0.5 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: 'spring', bounce: 0.4, duration: 0.35, delay }}
+      onPointerDown={(e) => { e.stopPropagation(); onClick(); }}
+      aria-label={label}
+      title={label}
+      className="w-9 h-9 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/15 active:scale-90 transition-colors"
     >
-      {icon} {label}
-    </button>
+      {icon}
+    </motion.button>
   );
 }
 const timeOf = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
