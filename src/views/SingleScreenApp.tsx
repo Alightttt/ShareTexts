@@ -25,8 +25,9 @@ import { generateTOTP } from '../lib/totp';
 const QRScanner = lazy(() => import('../components/QRScanner').then(m => ({ default: m.QRScanner })));
 const ChatView = lazy(() => import('./ChatView').then(m => ({ default: m.ChatView })));
 type PanelMode = 'idle' | 'sending' | 'receiving' | 'connected';
-const EASE = [0.16, 1, 0.3, 1] as const;
-const SPRING = { type: 'spring' as const, bounce: 0, duration: 0.4 };
+const EASE = [0.22, 1, 0.36, 1] as const;
+const SPRING = { type: 'spring' as const, bounce: 0.15, duration: 0.35 };
+const FAST_SPRING = { type: 'spring' as const, bounce: 0.2, duration: 0.25 };
 
 /* ------------------------------------------------------------------ */
 /*  Tiny hooks                                                        */
@@ -86,10 +87,11 @@ export function SingleScreenApp() {
   /* --- handlers --- */
   const handleSend = useCallback(async () => {
     if (isCreating) return;
+    // Optimistic: show sending UI immediately so the user sees instant feedback
     setIsCreating(true); setCreateError(null);
     const t = setTimeout(() => { setIsCreating(false); setCreateError('Taking too long. Check your connection.'); }, 12000);
     try { await createSession(); clearTimeout(t); }
-    catch (e: any) { clearTimeout(t); setIsCreating(false); const msg = e.message || "Could not start connection."; setCreateError(msg.includes('connection service') ? (signalingConfigIssue() || msg) : msg); }
+    catch (e: any) { clearTimeout(t); setIsCreating(false); const raw = e.message || "Could not start connection."; const msg = raw.includes('connection service') ? (signalingConfigIssue() || raw) : raw; setCreateError(msg.includes("having trouble") ? "Could not reach ShareText. Check your internet and try again." : msg); }
   }, [isCreating, createSession]);
 
   const handleReceive = useCallback(() => { setPanelMode('receiving'); setCreateError(null); setJoinError(null); }, []);
@@ -101,8 +103,8 @@ export function SingleScreenApp() {
     catch { clearTimeout(t); setIsJoining(false); setJoinError(signalingConfigIssue() || "Could not reach ShareText."); }
   }, [isJoining, joinWithCode]);
 
-  const handleDisconnect = useCallback(() => { abandonSession(); setCreateError(null); setIsCreating(false); setJoinError(null); }, [abandonSession]);
-  const handleCancel = useCallback(() => { abandonSession(); setCreateError(null); setIsCreating(false); }, [abandonSession]);
+  const handleDisconnect = useCallback(() => { setPanelMode('idle'); abandonSession(); setCreateError(null); setIsCreating(false); setJoinError(null); }, [abandonSession]);
+  const handleCancel = useCallback(() => { setPanelMode('idle'); abandonSession(); setCreateError(null); setIsCreating(false); setJoinError(null); }, [abandonSession]);
 
   /* --- derived --- */
   const shareUrl = session.roomId ? `${window.location.origin}/s/${shortCodeOf(session.roomId)}` : '';
@@ -152,10 +154,10 @@ export function SingleScreenApp() {
       </header>
 
       {/* Hero */}
-      <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 py-6 sm:py-8 min-h-0">
-        <AnimatePresence mode="wait">
+      <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 py-4 sm:py-6 min-h-0">
+        <AnimatePresence mode="sync">
           {panelMode === 'idle' && (
-            <motion.div key="idle" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.3, ease: EASE }} className="max-w-md mx-auto sm:mx-0">
+            <motion.div key="idle" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2, ease: EASE }} className="max-w-md mx-auto sm:mx-0">
               <h1 className="text-[36px] sm:text-[44px] lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.05] text-apple-ink dark:text-white text-center sm:text-left">
                 Move anything<br />between your devices.
               </h1>
@@ -173,7 +175,7 @@ export function SingleScreenApp() {
             </motion.div>
           )}
           {panelMode === 'sending' && (
-            <motion.div key="sending" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.3, ease: EASE }} className="max-w-md">
+            <motion.div key="sending" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2, ease: EASE }} className="max-w-md">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[22px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em]">Connect your other device.</h2>
                 <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white px-3 py-1.5 rounded-full hover:bg-apple-parchment dark:hover:bg-white/5 active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
@@ -206,10 +208,10 @@ export function SingleScreenApp() {
             </motion.div>
           )}
           {panelMode === 'receiving' && (
-            <motion.div key="receiving" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.3, ease: EASE }} className="max-w-md">
+            <motion.div key="receiving" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2, ease: EASE }} className="max-w-md">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[22px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em]">Join a room.</h2>
-                <button onClick={() => setPanelMode('idle')} className="flex items-center gap-1 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white px-3 py-1.5 rounded-full hover:bg-apple-parchment dark:hover:bg-white/5 active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
+                <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:hover:text-white px-3 py-1.5 rounded-full hover:bg-apple-parchment dark:hover:bg-white/5 active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
               </div>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/50 font-medium mb-5">Enter the code shown on the other device.</p>
               <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-[#9d92f7] hover:bg-[#9286f0] text-white rounded-full text-[14px] font-semibold min-h-[46px] transition-all duration-150 active:scale-[0.97]">
@@ -222,14 +224,14 @@ export function SingleScreenApp() {
             </motion.div>
           )}
           {panelMode === 'connected' && (
-            <motion.div key="connected" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={SPRING} className="flex items-center gap-3 p-4 bg-status-success/5 border border-status-success/15 rounded-[16px]"><div className="w-10 h-10 rounded-full bg-status-success/15 flex items-center justify-center shrink-0"><Check className="w-5 h-5 text-status-success" /></div><div className="flex-1 min-w-0"><p className="text-[14px] font-semibold text-apple-ink dark:text-white">Connected</p><p className="text-[12px] text-apple-ink-muted dark:text-white/50">You can now share between your devices.</p></div><button onClick={handleDisconnect} className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium text-status-danger hover:bg-status-danger/10 transition-all active:scale-95"><LogOut className="w-3.5 h-3.5" /> Disconnect</button></motion.div>
+            <motion.div key="connected" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={FAST_SPRING} className="flex items-center gap-3 p-4 bg-status-success/5 border border-status-success/15 rounded-[16px]"><div className="w-10 h-10 rounded-full bg-status-success/15 flex items-center justify-center shrink-0"><Check className="w-5 h-5 text-status-success" /></div><div className="flex-1 min-w-0"><p className="text-[14px] font-semibold text-apple-ink dark:text-white">Connected</p><p className="text-[12px] text-apple-ink-muted dark:text-white/50">You can now share between your devices.</p></div><button onClick={handleDisconnect} className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium text-status-danger hover:bg-status-danger/10 transition-all active:scale-95"><LogOut className="w-3.5 h-3.5" /> Disconnect</button></motion.div>
             )}
         </AnimatePresence>
       </div>
 
       {/* Collapsible info — idle only */}
       {panelMode === 'idle' && (
-        <div className="shrink-0 px-6 lg:px-10 pb-4 space-y-1.5">
+        <div className="shrink-0 px-6 lg:px-10 pb-3 space-y-1.5">
           <InfoSection title="What is it?" expanded={!!infoExpanded['what']} onToggle={() => setInfoExpanded(p => ({ ...p, what: !p.what }))}>
             ShareText lets you move text, photos, and files between your devices. No app needed — just open in any browser. Temporary by design, nothing stored.
           </InfoSection>
@@ -317,14 +319,14 @@ export function SingleScreenApp() {
           </Suspense>
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-center px-8">
-            <motion.div animate={{ scale: [1, 1.08, 1], opacity: [0.35, 0.55, 0.35] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} className="mb-6 relative">
-              <div className="absolute inset-0 rounded-full bg-[#9d92f7]/8 blur-2xl scale-[2]" />
-              <ShareTextLogo size={64} className="text-[#9d92f7]/30 dark:text-[#a89cf7]/25 relative z-10" />
+            <motion.div animate={{ scale: [1, 1.06, 1], opacity: [0.3, 0.5, 0.3] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }} className="mb-5 relative">
+              <div className="absolute inset-0 rounded-full bg-[#9d92f7]/10 blur-2xl scale-[2.5]" />
+              <ShareTextLogo size={56} className="text-[#9d92f7]/35 dark:text-[#a89cf7]/30 relative z-10" />
             </motion.div>
-            <p className="text-[17px] font-semibold text-apple-ink dark:text-white/85 mb-2">
+            <p className="text-[16px] font-semibold text-apple-ink dark:text-white/85 mb-1.5">
               {panelMode === 'idle' ? 'Connect two devices' : panelMode === 'sending' ? 'Waiting for peer...' : 'Enter the code'}
             </p>
-            <p className="text-[13.5px] text-apple-ink-muted/70 dark:text-white/35 max-w-[240px] leading-relaxed">
+            <p className="text-[13px] text-apple-ink-muted/60 dark:text-white/30 max-w-[220px] leading-relaxed">
               {panelMode === 'idle' ? 'Send or receive to start sharing.' : panelMode === 'sending' ? 'The other device will connect once it enters the code.' : 'Once the code is verified, the chat will appear here.'}
             </p>
           </div>
