@@ -8,14 +8,15 @@
  * Mobile (<1024px): single scrollable column.
  *   Header → heading → buttons → collapsible info → room (9:16) → footer
  */
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { LiveCodeDisplay } from '../components/LiveCodeDisplay';
 import { LiveCodeInput } from '../components/LiveCodeInput';
-import { AnimatedIcon, SendIcon, InboxIcon } from '../components/AnimatedIcon';
+import { AnimatedIcon } from '../components/AnimatedIcon';
+import { SendCircleIcon, ReceiveCircleIcon } from '../components/TransferIcons';
 import { TactileButton } from '../components/TactileButton';
 import { signalingConfigIssue } from '../lib/socket';
 import { cn, shortCodeOf } from '../lib/utils';
@@ -25,6 +26,7 @@ const QRScanner = lazy(() => import('../components/QRScanner').then(m => ({ defa
 const ChatView = lazy(() => import('./ChatView').then(m => ({ default: m.ChatView })));
 type PanelMode = 'idle' | 'sending' | 'receiving' | 'connected';
 const EASE = [0.16, 1, 0.3, 1] as const;
+const SPRING = { type: 'spring' as const, bounce: 0, duration: 0.4 };
 
 /* ------------------------------------------------------------------ */
 /*  Tiny hooks                                                        */
@@ -64,6 +66,7 @@ export function SingleScreenApp() {
   const [isJoining, setIsJoining] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const messageInputRef = useRef<HTMLInputElement>(null);
 
   /* --- panel mode sync --- */
   useEffect(() => {
@@ -72,6 +75,13 @@ export function SingleScreenApp() {
     else if (session.roomId && !session.isCreator) setPanelMode('receiving');
     else if (!session.roomId) setPanelMode('idle');
   }, [session.roomId, session.isCreator, session.partnerConnected]);
+
+  useEffect(() => {
+    if (panelMode === 'connected') {
+      const t = setTimeout(() => messageInputRef.current?.focus(), 400);
+      return () => clearTimeout(t);
+    }
+  }, [panelMode]);
 
   /* --- handlers --- */
   const handleSend = useCallback(async () => {
@@ -149,10 +159,10 @@ export function SingleScreenApp() {
               <h1 className="text-[36px] sm:text-[44px] lg:text-[52px] font-bold tracking-[-0.04em] leading-[1.06] text-apple-ink dark:text-white">
                 Move anything<br />between your devices.
               </h1>
-              <p className="mt-4 text-[15px] sm:text-[16px] text-apple-ink-muted dark:text-white/50 font-medium leading-relaxed">No app, no account. Temporary by design.</p>
+              
               <div className="mt-8 flex flex-col gap-3">
-                <TactileButton onClick={handleSend} variant="primary" size="lg" icon={<SendIcon size={18} active />}>Send something</TactileButton>
-                <TactileButton onClick={handleReceive} variant="secondary" size="lg" icon={<InboxIcon size={18} />}>Receive something</TactileButton>
+                <TactileButton onClick={handleSend} variant="primary" size="lg" icon={<SendCircleIcon size={18} />}>Send something</TactileButton>
+                <TactileButton onClick={handleReceive} variant="secondary" size="lg" icon={<ReceiveCircleIcon size={18} />}>Receive something</TactileButton>
               </div>
               {createError && (
                 <div role="alert" className="mt-4">
@@ -212,20 +222,8 @@ export function SingleScreenApp() {
             </motion.div>
           )}
           {panelMode === 'connected' && (
-            <motion.div key="connected" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.3, ease: EASE }} className="max-w-md">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-[#5e6ad2]/15 flex items-center justify-center"><Check className="w-5 h-5 text-[#5e6ad2]" /></div>
-                <div>
-                  <h2 className="text-[18px] font-semibold text-apple-ink dark:text-white">Connected</h2>
-                  <p className="text-[13px] text-apple-ink-muted dark:text-white/50">{session.partnerName ? `To ${session.partnerName}` : 'Devices paired'}</p>
-                </div>
-              </div>
-              <p className="text-[13px] text-apple-ink-muted dark:text-white/50 leading-relaxed mb-5">You can now send text, photos, and files between your devices.</p>
-              <button onClick={handleDisconnect} className="flex items-center gap-2 px-4 py-2.5 rounded-full text-[13px] font-medium text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white border border-apple-divider/60 dark:border-white/10 hover:border-apple-ink/30 dark:hover:border-white/20 transition-colors active:scale-[0.97]">
-                <LogOut className="w-4 h-4" /> Disconnect
-              </button>
-            </motion.div>
-          )}
+            <motion.div key="connected" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={SPRING} className="flex items-center gap-3 p-4 bg-status-success/5 border border-status-success/15 rounded-[16px]"><div className="w-10 h-10 rounded-full bg-status-success/15 flex items-center justify-center shrink-0"><Check className="w-5 h-5 text-status-success" /></div><div className="flex-1 min-w-0"><p className="text-[14px] font-semibold text-apple-ink dark:text-white">Connected</p><p className="text-[12px] text-apple-ink-muted dark:text-white/50">You can now share between your devices.</p></div><button onClick={handleDisconnect} className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium text-status-danger hover:bg-status-danger/10 transition-all active:scale-95"><LogOut className="w-3.5 h-3.5" /> Disconnect</button></motion.div>
+            )}
         </AnimatePresence>
       </div>
 
