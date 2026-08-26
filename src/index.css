@@ -134,11 +134,11 @@
   /* ── Dark mode ────────────────────────────────────────────────────── */
   html.dark {
     --color-bg: #080b14;
-    --color-bg-secondary: #0f1422;
-    --color-bg-elevated: #161e30;
-    --color-surface: #161e30;
-    --color-surface-secondary: #1c2640;
-    --color-surface-elevated: #222e48;
+    --color-bg-secondary: #0e1220;
+    --color-bg-elevated: #151d30;
+    --color-surface: #151d30;
+    --color-surface-secondary: #1a2540;
+    --color-surface-elevated: #202c48;
     --color-text: #edf0f5;
     --color-text-secondary: #94a0b8;
     --color-text-muted: #5a6882;

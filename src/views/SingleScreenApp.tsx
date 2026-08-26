@@ -140,7 +140,7 @@ export function SingleScreenApp() {
   /*  LEFT / TOP PANEL — hero actions                                 */
   /* ---------------------------------------------------------------- */
   const leftPanel = (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0c1020]">
       {/* Header */}
       <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
         <div className="flex items-center gap-2.5">
@@ -154,15 +154,15 @@ export function SingleScreenApp() {
       </header>
 
       {/* Hero */}
-      <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 py-4 sm:py-6 min-h-0">
+      <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 py-4 sm:py-6 min-h-0 overflow-hidden">
         <AnimatePresence mode="sync">
           {panelMode === 'idle' && (
             <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto sm:mx-0">
-              <h1 className="text-[36px] sm:text-[44px] lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.05] text-apple-ink dark:text-white text-center sm:text-left">
+              <h1 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold tracking-[-0.03em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left">
                 Move anything<br />between your devices.
               </h1>
               
-              <div className="mt-8 flex gap-3 justify-center sm:justify-start">
+              <div className="mt-7 flex gap-3 justify-center sm:justify-start">
                 <TactileButton onClick={handleSend} variant="primary" size="lg" icon={<SendCircleIcon size={18} />}>Send</TactileButton>
                 <TactileButton onClick={handleReceive} variant="secondary" size="lg" icon={<ReceiveCircleIcon size={18} />}>Receive</TactileButton>
               </div>
@@ -225,10 +225,10 @@ export function SingleScreenApp() {
           )}
           {panelMode === 'connected' && (
             <motion.div key="connected" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2, ease: EASE }} className="max-w-md mx-auto sm:mx-0">
-              <h1 className="text-[36px] sm:text-[44px] lg:text-[56px] font-bold tracking-[-0.04em] leading-[1.05] text-apple-ink dark:text-white text-center sm:text-left">
+              <h1 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold tracking-[-0.03em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left">
                 Move anything<br />between your devices.
               </h1>
-              <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.25 }} className="mt-6 flex items-center gap-3 p-3.5 bg-status-success/8 border border-status-success/20 rounded-[14px]">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }} className="mt-6 flex items-center gap-3 p-3.5 bg-status-success/8 border border-status-success/20 rounded-[14px]">
                 <div className="w-9 h-9 rounded-full bg-status-success/15 flex items-center justify-center shrink-0">
                   <Check className="w-4.5 h-4.5 text-status-success" />
                 </div>
@@ -277,7 +277,7 @@ export function SingleScreenApp() {
   /* ---------------------------------------------------------------- */
   const roomPanel = (
     <div className={cn(
-      "flex flex-col min-h-0 bg-[#fafafe] dark:bg-[#0a0e18]",
+      "flex flex-col min-h-0 bg-[#f4f5f9] dark:bg-[#080c16]",
       // desktop: fills the right half with a border
       // border handled by parent split container
       // mobile: 9:16 aspect ratio container
@@ -286,14 +286,14 @@ export function SingleScreenApp() {
       mobileRoomFullscreen && "max-lg:!fixed max-lg:inset-0 max-lg:z-50 max-lg:rounded-none max-lg:border-none max-lg:aspect-auto max-lg:shadow-none"
     )}>
       {/* Room header */}
-      <div className="shrink-0 flex items-center justify-between px-4 py-2.5 border-b border-black/[0.04] dark:border-white/[0.06] bg-[#fafafe]/90 dark:bg-[#0a0e18]/90 backdrop-blur-xl z-10">
-        <div className="flex items-center gap-2">
-          <ShareTextLogo size={14} className="text-azure-600 dark:text-azure-400" />
-          <span className="text-[12.5px] font-semibold text-apple-ink dark:text-white/80">Room</span>
+      <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-[#f4f5f9]/80 dark:bg-[#080c16]/80 backdrop-blur-xl z-10">
+        <div className="flex items-center gap-2.5">
+          <ShareTextLogo size={16} className="text-azure-600 dark:text-azure-400" />
+          <span className="text-[13px] font-semibold text-apple-ink dark:text-white">Room</span>
           {panelMode === 'connected' && (
             <>
               <span className="w-px h-3 bg-apple-divider dark:bg-white/10" />
-              <span className="flex items-center gap-1.5 text-[11.5px] font-medium text-apple-ink-muted dark:text-white/50">
+              <span className="flex items-center gap-1.5 text-[12px] font-medium text-apple-ink-muted dark:text-white/50">
                 <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" />Connected
               </span>
             </>
@@ -301,22 +301,22 @@ export function SingleScreenApp() {
         </div>
         <div className="flex items-center gap-1">
           {panelMode === 'connected' && (
-            <div className="flex items-center gap-1.5 mr-1 text-[11px] text-apple-ink-muted dark:text-white/40">
+            <div className="flex items-center gap-1.5 mr-2 text-[12px] text-apple-ink-muted dark:text-white/50">
               <PartnerDeviceIcon />
             </div>
           )}
           <button
             onClick={handleDisconnect}
             className={cn(
-              "flex items-center justify-center w-8 h-8 rounded-full transition-all duration-150",
+              "flex items-center justify-center w-7 h-7 rounded-md transition-all duration-150",
               panelMode === 'connected'
-                ? "text-apple-ink-muted dark:text-white/50 hover:text-status-danger hover:bg-status-danger/10"
-                : "text-apple-parchment dark:text-white/20 cursor-not-allowed"
+                ? "text-apple-ink-muted/70 dark:text-white/40 hover:text-status-danger hover:bg-status-danger/10"
+                : "text-apple-ink-muted/30 dark:text-white/15"
             )}
             disabled={panelMode !== 'connected'}
             aria-label="Disconnect"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => setMobileRoomFullscreen(!mobileRoomFullscreen)}
@@ -334,15 +334,15 @@ export function SingleScreenApp() {
             <ChatView panelMode="embedded" />
           </Suspense>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-center px-6">
-            <motion.div animate={{ scale: [1, 1.05, 1], opacity: [0.25, 0.45, 0.25] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }} className="mb-5 relative">
-              <div className="absolute inset-0 rounded-full bg-[#6b84f0]/10 blur-2xl scale-[2.5]" />
-              <ShareTextLogo size={48} className="text-[#6b84f0]/40 dark:text-[#8ca4f7]/35 relative z-10" />
+          <div className="h-full flex flex-col items-center justify-center text-center px-8">
+            <motion.div animate={{ scale: [1, 1.04, 1], opacity: [0.2, 0.4, 0.2] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} className="mb-6 relative">
+              <div className="absolute inset-0 rounded-full bg-[#6b84f0]/8 blur-3xl scale-[3]" />
+              <ShareTextLogo size={52} className="text-[#6b84f0]/30 dark:text-[#8ca4f7]/25 relative z-10" />
             </motion.div>
-            <p className="text-[15px] font-semibold text-apple-ink dark:text-white/80 mb-1">
+            <p className="text-[16px] font-semibold text-apple-ink/80 dark:text-white/70 mb-1.5">
               {panelMode === 'idle' ? 'Connect two devices' : panelMode === 'sending' ? 'Waiting for peer...' : 'Enter the code'}
             </p>
-            <p className="text-[12.5px] text-apple-ink-muted/50 dark:text-white/25 max-w-[200px] leading-relaxed">
+            <p className="text-[13px] text-apple-ink-muted/40 dark:text-white/20 max-w-[220px] leading-relaxed">
               {panelMode === 'idle' ? 'Send or receive to start sharing.' : panelMode === 'sending' ? 'The other device will connect once it enters the code.' : 'Once the code is verified, the chat will appear here.'}
             </p>
           </div>
@@ -358,8 +358,8 @@ export function SingleScreenApp() {
     <div className="h-dvh lg:h-dvh overflow-hidden bg-apple-canvas dark:bg-[#0a0e18] dot-bg">
       {/* Desktop: horizontal split */}
       <div className="hidden lg:flex h-full">
-        <div className="w-[45%] h-full overflow-y-auto border-r border-black/[0.06] dark:border-white/[0.06]">{leftPanel}</div>
-        <div className="w-[55%] h-full">{roomPanel}</div>
+        <div className="w-[42%] h-full overflow-y-auto border-r border-black/[0.08] dark:border-white/[0.08]">{leftPanel}</div>
+        <div className="w-[58%] h-full">{roomPanel}</div>
       </div>
       {/* Mobile: scrollable column */}
       <div className="lg:hidden h-full overflow-y-auto overscroll-contain">
