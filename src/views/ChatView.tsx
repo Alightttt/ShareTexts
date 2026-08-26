@@ -423,7 +423,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
       {/* Screen-reader live region — invisible, announced on state changes */}
       <div aria-live="polite" role="status" className="sr-only">{announcement}</div>
       {panelMode !== "embedded" && (<> {/* Header — device relationship, not chat */}
-      <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 shrink-0 border-b border-apple-divider/40 dark:border-white/[0.06] bg-apple-canvas/80 dark:bg-night-950/80 backdrop-blur-xl backdrop-saturate-150 z-20 sticky top-0">
+      <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 shrink-0 border-b border-apple-divider/40 dark:border-white/[0.06] bg-white/60 dark:bg-[#0a0e18]/60 backdrop-blur-2xl backdrop-saturate-[1.8] z-20 sticky top-0">
         <div className="flex items-center gap-3 min-w-0">
           <ShareTextLogo size={18} className="text-apple-ink dark:text-white shrink-0" />
           <div className="flex items-center gap-2 min-w-0">
@@ -704,7 +704,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
         )}
       </div>
       {/* Input Area */}
-      <div className="p-3 sm:p-5 bg-apple-canvas dark:bg-night-950 border-t border-apple-divider/50 dark:border-apple-tile-3/50 z-10 pb-[env(safe-area-inset-bottom)] relative">
+      <div className="p-3 sm:p-5 bg-white/80 dark:bg-[#0a0e18]/80 border-t border-black/[0.06] dark:border-white/[0.04] z-10 pb-[env(safe-area-inset-bottom)] relative">
         <form onSubmit={handleSend} className="max-w-3xl mx-auto flex flex-col gap-2">
           <div className="hidden sm:flex items-center justify-end gap-1.5 text-[11px] font-medium text-apple-ink-muted/70 dark:text-white/40 px-1">
             <kbd className="px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">Enter</kbd>
@@ -728,7 +728,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
             <input type="file" ref={audioInputRef} accept="audio/*" multiple className="hidden" onChange={(e) => handleFileSelect(e, 'audio')} />
             <input type="file" ref={fileInputRef} multiple className="hidden" onChange={(e) => handleFileSelect(e, 'file')} />
           </div>
-          <motion.div layout className="relative border border-apple-divider dark:border-apple-tile-3 rounded-[22px] bg-white dark:bg-surface-dark overflow-visible shadow-sm transition-motion focus-within:ring-2 focus-within:ring-[#9d92f7]/40 focus-within:border-[#9d92f7] z-20">
+          <motion.div layout className="relative rounded-[24px] bg-white dark:bg-[#1a1a22] overflow-visible shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] transition-motion focus-within:ring-2 focus-within:ring-[#9d92f7]/30 z-20 border border-black/[0.04] dark:border-white/[0.06]">
             {/* Multi-attachment preview strip — up to 20 files, each with a
                 circular remove button that's always visible and tappable. */}
             <AnimatePresence>
@@ -790,7 +790,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 aria-label="Add attachment"
                 aria-expanded={showAttachmentMenu}
                 className={cn(
-                  "w-11 h-11 rounded-full flex items-center justify-center shrink-0 text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/60 dark:hover:bg-apple-tile-3 transition-motion active:scale-[0.92]",
+                  "w-[34px] h-[34px] rounded-full flex items-center justify-center shrink-0 text-[#9d92f7] dark:text-[#a89cf7] hover:bg-[#9d92f7]/10 dark:hover:bg-[#9d92f7]/10 transition-motion active:scale-90",
                   showAttachmentMenu && "text-[#9d92f7] dark:text-[#a89cf7] bg-[#9d92f7]/10 rotate-45"
                 )}
               >
@@ -811,7 +811,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 placeholder="Paste or drop anything…"
                 aria-label="Message"
                 title="Enter to send · Shift+Enter for a new line"
-                className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[9px] pl-0.5 pr-0.5 text-apple-ink dark:text-white placeholder:text-apple-ink-muted focus:outline-none text-[16px] leading-[26px]"
+                className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[9px] pl-0.5 pr-0.5 text-apple-ink dark:text-white placeholder:text-[#9a9aaa] dark:placeholder:text-white/25 focus:outline-none text-[16px] leading-[26px]"
               />
               <button
                 type="button"
@@ -819,7 +819,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 onPointerDown={handleSend}
                 disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
                 aria-label="Send"
-                className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-[0.92] bg-[#9d92f7] hover:bg-[#9286f0] text-white disabled:opacity-25 disabled:bg-apple-divider dark:disabled:bg-apple-tile-2 disabled:text-apple-ink-muted dark:disabled:text-white/40 disabled:shadow-none"
+                className="w-[34px] h-[34px] rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-90 bg-[#9d92f7] hover:bg-[#9286f0] text-white disabled:opacity-30 disabled:bg-[#c8c4d8] dark:disabled:bg-[#3a3a42] disabled:shadow-none"
               >
                 <AnimatedIcon animate="send" active={!((!inputText.trim() && attachments.length === 0) || !session.partnerConnected)}>
                   <ArrowUp className="w-5 h-5" strokeWidth={2.4} />
@@ -1032,8 +1032,8 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
         <div className={cn(
           "max-w-[85%] sm:max-w-[65%] px-[14px] py-[10px] rounded-[18px]",
           isMe
-            ? "bg-azure-600 text-white"
-            : "bg-[#f0eef9] dark:bg-[#1c1e22] text-apple-ink dark:text-white",
+            ? "bg-[#9d92f7] text-white shadow-[0_1px_2px_rgba(157,146,247,0.2)]"
+            : "bg-[#e8e6f0] dark:bg-[#2a2a30] text-apple-ink dark:text-white",
           isMe && isGroupEnd && "rounded-br-[4px]",
           !isMe && isGroupEnd && "rounded-bl-[4px]",
           isMe && !isGroupEnd && "rounded-br-[14px]",
