@@ -57,7 +57,7 @@ export function IOSToggle({
         background: trackBg,
         // 3D recessed track — inset shadow creates depth
         boxShadow: checked
-          ? 'inset 0 2px 4px rgba(0,0,0,0.2), inset 0 -1px 2px rgba(255,255,255,0.15), 0 1px 3px rgba(107,132,240,0.3)'
+          ? 'inset 0 2px 4px rgba(0,0,0,0.2), inset 0 -1px 2px rgba(255,255,255,0.15), 0 1px 3px rgba(139,124,246,0.3)'
           : 'inset 0 2px 4px rgba(0,0,0,0.15), inset 0 -1px 2px rgba(255,255,255,0.4), 0 1px 2px rgba(0,0,0,0.08)',
       }}
     >
@@ -70,7 +70,7 @@ export function IOSToggle({
           // 3D raised knob — gradient + shadows
           background: 'linear-gradient(180deg, #ffffff 0%, #f8f8fa 60%, #efefef 100%)',
           boxShadow: checked
-            ? '0 2px 6px rgba(0,0,0,0.2), 0 4px 12px rgba(107,132,240,0.25), inset 0 1px 0 rgba(255,255,255,0.9)'
+            ? '0 2px 6px rgba(0,0,0,0.2), 0 4px 12px rgba(139,124,246,0.25), inset 0 1px 0 rgba(255,255,255,0.9)'
             : '0 2px 4px rgba(0,0,0,0.15), 0 3px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9)',
         }}
         animate={{ x: checked ? dims.travel : 0 }}

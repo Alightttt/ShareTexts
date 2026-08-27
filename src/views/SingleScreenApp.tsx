@@ -1,12 +1,14 @@
 /**
  * SingleScreenApp — the entire app lives on one screen.
  *
- * Desktop (≥1024px): 50/50 horizontal split.
- *   Left  = branding · hero · info · footer
- *   Right = room panel (fills height)
+ * Desktop (≥1024px): two-panel horizontal split.
+ *   Left  = brand · action · context · footer
+ *   Right = the transfer room (fills height)
  *
  * Mobile (<1024px): single scrollable column.
- *   Header → heading → buttons → collapsible info → room (9:16) → footer
+ *   Header → heading → buttons → collapsible info → room → footer
+ *
+ * The experience: DEVICE → CONNECT → TRANSFER → RECEIVED
  */
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useSession } from '../lib/SessionContext';
@@ -20,15 +22,16 @@ import { SendCircleIcon, ReceiveCircleIcon } from '../components/TransferIcons';
 import { TactileButton } from '../components/TactileButton';
 import { signalingConfigIssue } from '../lib/socket';
 import { cn, shortCodeOf } from '../lib/utils';
-import { ChevronDown, Maximize2, Minimize2, LogOut, QrCode, Link2, Copy, Check, Smartphone, Monitor, X } from 'lucide-react';
+import {
+  ChevronDown, Maximize2, Minimize2, LogOut, QrCode, Link2, Copy, Check,
+  Smartphone, Monitor, X, Wifi, ArrowRightLeft
+} from 'lucide-react';
 import { generateTOTP } from '../lib/totp';
 import { useFocusTrap } from '../lib/useFocusTrap';
 const QRScanner = lazy(() => import('../components/QRScanner').then(m => ({ default: m.QRScanner })));
 const ChatView = lazy(() => import('./ChatView').then(m => ({ default: m.ChatView })));
 type PanelMode = 'idle' | 'sending' | 'receiving' | 'connected';
 const EASE = [0.22, 1, 0.36, 1] as const;
-const SPRING = { type: 'spring' as const, bounce: 0.15, duration: 0.35 };
-const FAST_SPRING = { type: 'spring' as const, bounce: 0.2, duration: 0.25 };
 
 /* ------------------------------------------------------------------ */
 /*  Tiny hooks                                                        */
@@ -47,9 +50,48 @@ function useIsMobileDevice() {
   }, []);
   return mobile;
 }
-function PartnerDeviceIcon() {
-  const isMobile = useIsMobileDevice();
-  return isMobile ? <Monitor className="w-5 h-5" /> : <Smartphone className="w-5 h-5" />;
+
+/* ------------------------------------------------------------------ */
+/*  Device pair illustration — explains the product visually           */
+/* ------------------------------------------------------------------ */
+function DevicePair({ state }: { state: 'idle' | 'connecting' | 'connected' }) {
+  const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+  const muted = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
+  const accent = isDark ? '#a78bfa' : '#8b7cf6';
+  const beamColor = state === 'connected' ? accent : muted;
+  const deviceColor = state === 'connected'
+    ? (isDark ? 'rgba(167,139,250,0.15)' : 'rgba(139,124,246,0.10)')
+    : muted;
+
+  return (
+    <svg width="120" height="80" viewBox="0 0 120 80" fill="none" className="select-none pointer-events-none">
+      {/* Phone (left) */}
+      <rect x="8" y="12" width="36" height="56" rx="8" fill={deviceColor} stroke={state === 'connected' ? accent : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')} strokeWidth="1.5" />
+      <rect x="14" y="18" width="24" height="38" rx="3" fill={state === 'connected' ? (isDark ? 'rgba(167,139,250,0.08)' : 'rgba(139,124,246,0.06)') : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)')} />
+      {/* Computer (right) */}
+      <rect x="76" y="8" width="36" height="48" rx="6" fill={deviceColor} stroke={state === 'connected' ? accent : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')} strokeWidth="1.5" />
+      <rect x="81" y="13" width="26" height="33" rx="2" fill={state === 'connected' ? (isDark ? 'rgba(167,139,250,0.08)' : 'rgba(139,124,246,0.06)') : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)')} />
+      <rect x="88" y="56" width="12" height="4" rx="1.5" fill={state === 'connected' ? accent : muted} />
+      <rect x="82" y="60" width="24" height="2.5" rx="1.25" fill={state === 'connected' ? accent : muted} />
+      {/* Connection beam */}
+      <line x1="44" y1="40" x2="76" y2="32" stroke={beamColor} strokeWidth="2" strokeDasharray={state === 'connecting' ? '4 3' : 'none'}>
+        {state === 'connecting' && (
+          <animate attributeName="stroke-dashoffset" from="0" to="-14" dur="1s" repeatCount="indefinite" />
+        )}
+      </line>
+      {/* Packet dot */}
+      {state === 'connected' && (
+        <circle r="3" fill={accent}>
+          <animateMotion dur="1.6s" repeatCount="indefinite" keyPoints="0;1;0" keyTimes="0;0.5;1" calcMode="linear" path="M 44 40 L 76 32" />
+        </circle>
+      )}
+      {state === 'connecting' && (
+        <circle r="2.5" fill={accent} opacity="0.6">
+          <animateMotion dur="1.2s" repeatCount="indefinite" keyPoints="0;1;0" keyTimes="0;0.5;1" calcMode="linear" path="M 44 40 L 76 32" />
+        </circle>
+      )}
+    </svg>
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -92,22 +134,18 @@ export function SingleScreenApp() {
   /* --- handlers --- */
   const [retryCount, setRetryCount] = useState(0);
   const MAX_RETRIES = 2;
-  // Ref to abort stale createSession results after Cancel
   const createAbortRef = useRef(0);
 
   const handleSend = useCallback(async () => {
     if (isCreating) return;
-    // Optimistic: show pairing UI IMMEDIATELY, room creation in background
     setPanelMode('sending');
     setIsCreating(true);
     setCreateError(null);
     const thisAttempt = ++createAbortRef.current;
     try {
       await createSession();
-      // Only reset retry count if this is still the current attempt
       if (thisAttempt === createAbortRef.current) setRetryCount(0);
     } catch (e: any) {
-      // Ignore if user Cancelled or started a new attempt while we were in-flight
       if (thisAttempt !== createAbortRef.current) return;
       const raw = e.message || "Could not start a session.";
       const msg = raw.includes("connection service")
@@ -143,13 +181,8 @@ export function SingleScreenApp() {
 
   const handleDisconnect = useCallback(() => { setPanelMode('idle'); abandonSession(); setCreateError(null); setIsCreating(false); setJoinError(null); }, [abandonSession]);
   const handleCancel = useCallback(() => {
-    // Increment abort ref so any in-flight createSession ignores its result
     createAbortRef.current++;
-    setPanelMode('idle');
-    abandonSession();
-    setCreateError(null);
-    setIsCreating(false);
-    setJoinError(null);
+    setPanelMode('idle'); abandonSession(); setCreateError(null); setIsCreating(false); setJoinError(null);
   }, [abandonSession]);
 
   /* --- derived --- */
@@ -159,31 +192,19 @@ export function SingleScreenApp() {
   const copyLink = async () => { try { await navigator.clipboard.writeText(shareUrl); } catch {} setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000); };
   const copyCode = async () => { const c = session.secret ? generateTOTP(session.secret, session.createdAt) : ''; try { await navigator.clipboard.writeText(c); } catch {} setCopiedCode(true); setTimeout(() => setCopiedCode(false), 2000); };
   const handleQRScan = useCallback((text: string) => {
-    // The QR value is a URL with ?c= param - extract the code
     try {
       const url = new URL(text);
       const code = url.searchParams.get('c');
-      if (code) {
-        setShowQRScan(false);
-        handleCodeComplete(code);
-      } else {
-        // Maybe it's just the code directly
-        if (/^\d{6}$/.test(text.trim())) {
-          setShowQRScan(false);
-          handleCodeComplete(text.trim());
-        }
-      }
+      if (code) { setShowQRScan(false); handleCodeComplete(code); }
+      else if (/^\d{6}$/.test(text.trim())) { setShowQRScan(false); handleCodeComplete(text.trim()); }
     } catch {
-      if (/^\d{6}$/.test(text.trim())) {
-        setShowQRScan(false);
-        handleCodeComplete(text.trim());
-      }
+      if (/^\d{6}$/.test(text.trim())) { setShowQRScan(false); handleCodeComplete(text.trim()); }
     }
   }, [handleCodeComplete]);
   const shareLink = async () => { if (navigator.share) { try { await navigator.share({ title: 'ShareText', url: shareUrl }); return; } catch {} } await copyLink(); };
 
   /* ---------------------------------------------------------------- */
-  /*  LEFT / TOP PANEL — hero actions                                 */
+  /*  LEFT / TOP PANEL                                                */
   /* ---------------------------------------------------------------- */
   const leftPanel = (
     <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0e1220]">
@@ -199,15 +220,15 @@ export function SingleScreenApp() {
         </div>
       </header>
 
-      {/* Hero */}
+      {/* Hero area */}
       <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 py-4 sm:py-6 min-h-0 overflow-hidden">
         <AnimatePresence mode="sync">
+          {/* ── IDLE ──────────────────────────────────────────────── */}
           {panelMode === 'idle' && (
             <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto sm:mx-0">
               <h1 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold tracking-[-0.03em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left">
                 Move anything<br />between your devices.
               </h1>
-              
               <div className="mt-7 flex gap-3 justify-center sm:justify-start">
                 <TactileButton onClick={handleSend} variant="primary" size="lg" icon={<SendCircleIcon size={18} />} disabled={isCreating}>Send</TactileButton>
                 <TactileButton onClick={handleReceive} variant="secondary" size="lg" icon={<ReceiveCircleIcon size={18} />}>Receive</TactileButton>
@@ -220,6 +241,8 @@ export function SingleScreenApp() {
               )}
             </motion.div>
           )}
+
+          {/* ── SENDING: pair the other device ────────────────────── */}
           {panelMode === 'sending' && (
             <motion.div key="sending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md w-full overflow-hidden">
               <div className="flex items-center justify-between mb-4">
@@ -227,7 +250,6 @@ export function SingleScreenApp() {
                 <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-semibold text-status-danger hover:bg-status-danger/15 px-3 py-2 min-h-[40px] rounded-full active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
               </div>
               {isCreating && !session.secret ? (
-                /* Room still being created — show immediate feedback */
                 <div className="flex flex-col items-center py-8">
                   <ShareTextLogo size={20} motion="connecting" className="text-azure-600 dark:text-azure-400 mb-4" />
                   <p className="text-[14px] font-medium text-apple-ink-muted dark:text-white/50">Creating room…</p>
@@ -263,6 +285,8 @@ export function SingleScreenApp() {
               )}
             </motion.div>
           )}
+
+          {/* ── RECEIVING: enter code ────────────────────────────── */}
           {panelMode === 'receiving' && (
             <motion.div key="receiving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md">
               <div className="flex items-center justify-between mb-4">
@@ -279,29 +303,76 @@ export function SingleScreenApp() {
               <p className="mt-4 text-[12px] text-apple-ink-muted/60 dark:text-white/35 text-center">Encrypted between devices. Temporary by design.</p>
             </motion.div>
           )}
+
+          {/* ── CONNECTED: device pair + ready to transfer ───────── */}
           {panelMode === 'connected' && (
-            <motion.div key="connected" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2, ease: EASE }} className="max-w-md mx-auto sm:mx-0">
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }} className="flex items-center gap-3 p-4 bg-status-success/8 border border-status-success/15 rounded-[16px]">
-                <div className="w-10 h-10 rounded-full bg-status-success/12 flex items-center justify-center shrink-0">
-                  <Check className="w-5 h-5 text-status-success" />
+            <motion.div key="connected" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25, ease: EASE }} className="max-w-md mx-auto sm:mx-0">
+              {/* Device pair visual */}
+              <div className="flex flex-col items-center sm:items-start mb-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className={cn(
+                      "w-12 h-12 rounded-[14px] flex items-center justify-center",
+                      "bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 border border-[#8b7cf6]/15 dark:border-[#a78bfa]/15"
+                    )}>
+                      <Smartphone className="w-5 h-5 text-[#8b7cf6] dark:text-[#a78bfa]" />
+                    </div>
+                    <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/40">This device</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <motion.div
+                      animate={{ opacity: [0.4, 1, 0.4] }}
+                      transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                      className="flex items-center gap-1"
+                    >
+                      <span className="w-1 h-1 rounded-full bg-[#8b7cf6]/40 dark:bg-[#a78bfa]/40" />
+                      <ArrowRightLeft className="w-4 h-4 text-[#8b7cf6] dark:text-[#a78bfa]" />
+                      <span className="w-1 h-1 rounded-full bg-[#8b7cf6]/40 dark:bg-[#a78bfa]/40" />
+                    </motion.div>
+                    <span className="text-[11px] font-medium text-status-success mt-1">Connected</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className={cn(
+                      "w-12 h-12 rounded-[14px] flex items-center justify-center",
+                      "bg-status-success/8 dark:bg-status-success/10 border border-status-success/15 dark:border-status-success/15"
+                    )}>
+                      <Monitor className="w-5 h-5 text-status-success" />
+                    </div>
+                    <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/40">Paired</span>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-semibold text-apple-ink dark:text-white">Connected</p>
-                  <p className="text-[12px] text-apple-ink-muted dark:text-white/50">Share text, photos, and files between your devices.</p>
+              </div>
+
+              {/* Ready message */}
+              <div className="mb-5">
+                <p className="text-[18px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em] mb-1">Ready to transfer</p>
+                <p className="text-[14px] text-apple-ink-muted dark:text-white/50 leading-relaxed">
+                  Send text, photos, or files from either device.<br />
+                  They arrive instantly.
+                </p>
+              </div>
+
+              {/* Connection type + disconnect */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-apple-parchment dark:bg-white/[0.05] border border-apple-divider/50 dark:border-white/[0.08]">
+                  <Wifi className="w-3 h-3 text-status-success" />
+                  <span className="text-[12px] font-medium text-apple-ink-muted dark:text-white/50">
+                    {session.connectionType === 'relay' ? 'Relay' : session.connectionType === 'local' ? 'Same network' : session.connectionType === 'direct' ? 'Direct' : 'Connected'}
+                  </span>
                 </div>
-                <button onClick={handleDisconnect} className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-full text-[12px] font-medium text-status-danger hover:bg-status-danger/10 transition-all active:scale-95 min-h-[36px]">
-                  <LogOut className="w-3.5 h-3.5" /> Disconnect
+                <button onClick={handleDisconnect} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold text-status-danger/80 hover:text-status-danger hover:bg-status-danger/8 transition-colors active:scale-95">
+                  <LogOut className="w-3 h-3" /> Disconnect
                 </button>
-              </motion.div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Info section — always visible on desktop, accordion on mobile */}
+      {/* Info section — visible on idle, compact */}
       {panelMode === 'idle' && (
         <>
-          {/* Desktop: always expanded — editorial style */}
+          {/* Desktop: always expanded */}
           <div className="hidden lg:block shrink-0 px-6 lg:px-10 pb-4 space-y-3">
             <InfoCard title="What is it?">
               Need to move something from your phone to your computer? ShareText lets you send text, photos, and files directly between two devices — no app, no account, no cable.
@@ -314,7 +385,7 @@ export function SingleScreenApp() {
               </ol>
             </InfoCard>
           </div>
-          {/* Mobile: collapsible accordion */}
+          {/* Mobile: collapsible */}
           <div className="lg:hidden shrink-0 px-6 pb-3 space-y-1.5">
             <InfoSection title="What is it?" expanded={!!infoExpanded['what']} onToggle={() => setInfoExpanded(p => ({ ...p, what: !p.what }))}>
               Need to move something from your phone to your computer? ShareText lets you send text, photos, and files directly between two devices — no app, no account, no cable.
@@ -328,6 +399,18 @@ export function SingleScreenApp() {
             </InfoSection>
           </div>
         </>
+      )}
+
+      {/* Connected state: show compact instructions below the hero */}
+      {panelMode === 'connected' && (
+        <div className="hidden lg:block shrink-0 px-6 lg:px-10 pb-4">
+          <InfoCard title="How to use">
+            <ol className="list-none space-y-1.5">
+              <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-status-success/10 text-status-success text-[11px] font-bold flex items-center justify-center mt-0.5">1</span><span>Type, paste, or drop files in the transfer area.</span></li>
+              <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-status-success/10 text-status-success text-[11px] font-bold flex items-center justify-center mt-0.5">2</span><span>They arrive on the other device instantly.</span></li>
+            </ol>
+          </InfoCard>
+        </div>
       )}
 
       {/* Footer */}
@@ -355,36 +438,27 @@ export function SingleScreenApp() {
   const roomPanel = (
     <div className={cn(
       "flex flex-col min-h-0 bg-[#f2f0ed] dark:bg-[#080c16]",
-      // desktop: fills the right half with a border
-      // border handled by parent split container
-      // mobile: 9:16 aspect ratio container
       "max-lg:h-[60vh] max-lg:min-h-[360px] max-lg:max-h-[700px] max-lg:w-full max-lg:mx-auto max-lg:rounded-[20px] max-lg:border max-lg:border-apple-divider/50 max-lg:dark:border-white/[0.08] max-lg:overflow-hidden max-lg:shadow-card",
-      // fullscreen override on mobile
       mobileRoomFullscreen && "max-lg:!fixed max-lg:inset-0 max-lg:z-50 max-lg:rounded-none max-lg:border-none max-lg:aspect-auto max-lg:shadow-none"
     )}>
       {/* Room header */}
       <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-[#f2f0ed]/80 dark:bg-[#080c16]/80 backdrop-blur-xl z-10">
         <div className="flex items-center gap-2.5">
           <ShareTextLogo size={16} className="text-azure-600 dark:text-azure-400" />
-          <span className="text-[13px] font-semibold text-apple-ink dark:text-white">Room</span>
+          <span className="text-[13px] font-semibold text-apple-ink dark:text-white">
+            {panelMode === 'connected' ? 'Transfer' : 'Room'}
+          </span>
           {panelMode === 'connected' && (
             <>
               <span className="w-px h-3 bg-apple-divider dark:bg-white/10" />
               <span className="flex items-center gap-1.5 text-[12px] font-medium text-apple-ink-muted dark:text-white/50">
                 <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" />
-                <Smartphone className="w-3 h-3" />
-                <span className="text-apple-ink-muted/40 dark:text-white/20">↔</span>
-                <Monitor className="w-3 h-3" />
+                Connected
               </span>
             </>
           )}
         </div>
         <div className="flex items-center gap-1">
-          {panelMode === 'connected' && (
-            <div className="flex items-center gap-1.5 mr-2 text-[12px] text-apple-ink-muted dark:text-white/50">
-              <PartnerDeviceIcon />
-            </div>
-          )}
           <button
             onClick={handleDisconnect}
             className={cn(
@@ -407,6 +481,7 @@ export function SingleScreenApp() {
           </button>
         </div>
       </div>
+
       {/* Room content */}
       <div className="flex-1 min-h-0 flex flex-col">
         {panelMode === 'connected' ? (
@@ -420,19 +495,16 @@ export function SingleScreenApp() {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.2, ease: EASE }}
               className="h-full flex flex-col items-center justify-center text-center px-8 flex-1"
             >
-              {/* Device relationship visual — two small device icons with dots */}
-              <div className="flex items-center gap-3 mb-6">
-                <Smartphone className="w-5 h-5 text-[#8b7cf6]/30 dark:text-[#a78bfa]/25" />
-                <div className="flex items-center gap-1">
-                  <span className="w-1 h-1 rounded-full bg-[#8b7cf6]/20 dark:bg-[#a78bfa]/20" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#8b7cf6]/30 dark:bg-[#a78bfa]/25" />
-                  <span className="w-1 h-1 rounded-full bg-[#8b7cf6]/20 dark:bg-[#a78bfa]/20" />
-                </div>
-                <Monitor className="w-5 h-5 text-[#8b7cf6]/30 dark:text-[#a78bfa]/25" />
+              {/* Device pair illustration */}
+              <div className="mb-5">
+                <DevicePair
+                  state={panelMode === 'sending' && session.partnerConnecting ? 'connecting' : panelMode === 'idle' ? 'idle' : 'connecting'}
+                />
               </div>
+
               {/* State-specific messaging */}
               <p className="text-[15px] font-semibold text-apple-ink/70 dark:text-white/50 mb-1.5">
                 {panelMode === 'idle' && 'Connect two devices'}

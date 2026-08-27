@@ -14,7 +14,7 @@
   --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
 
   /* ── Brand ──────────────────────────────────────────────────────────── */
-  --color-brand: #6b84f0;
+  --color-brand: #8b7cf6;
   --color-brand-strong: #5a74e8;
   --color-brand-light: #f0f4ff;
   --color-brand-dark: #94a8f8;
@@ -46,7 +46,7 @@
   --color-error-light: #ffeaea;
 
   /* ── Focus ──────────────────────────────────────────────────────────── */
-  --color-focus: #6b84f0;
+  --color-focus: #8b7cf6;
 
   /* ── Semantic aliases ───────────────────────────────────────────────── */
   --color-apple-canvas: #f5f3f0;
@@ -196,11 +196,11 @@
 /* Dot background pattern */
 /* Dot background pattern — subtle lavender */
 .dot-bg {
-  background-image: radial-gradient(circle, rgba(107,132,240,0.10) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(139,124,246,0.08) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 html.dark .dot-bg {
-  background-image: radial-gradient(circle, rgba(107,132,240,0.05) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(139,124,246,0.04) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
@@ -217,10 +217,10 @@ html.dark .dot-bg {
 /* Hero glow */
 .hero-glow {
   position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(ellipse at 60% 50%, rgba(107,132,240,0.06) 0%, transparent 60%);
+  background: radial-gradient(ellipse at 60% 50%, rgba(139,124,246,0.05) 0%, transparent 60%);
 }
 html.dark .hero-glow {
-  background: radial-gradient(ellipse at 60% 50%, rgba(107,132,240,0.08) 0%, transparent 60%);
+  background: radial-gradient(ellipse at 60% 50%, rgba(139,124,246,0.06) 0%, transparent 60%);
 }
 }
 

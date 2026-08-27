@@ -634,14 +634,13 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                   </p>
                 </>
               ) : (
-                <>
-                  <ShareTextLogo size={32} className="text-apple-ink/20 dark:text-white/15" />
-                  <p className="text-[16px] font-semibold text-apple-ink dark:text-white">Ready to send</p>
-                  <p className="text-[13px] text-apple-ink-muted max-w-[260px] leading-relaxed">
-                    Paste, drop a file, or type something.
-                    It appears on the other device instantly.
+                <div className="flex flex-col items-center">
+                  <EmptyRoomIllustration />
+                  <p className="text-[15px] font-semibold text-apple-ink dark:text-white mt-4">Connect another device</p>
+                  <p className="text-[13px] text-apple-ink-muted max-w-[260px] leading-relaxed mt-1">
+                    Then send text, photos, or files.
                   </p>
-                </>
+                </div>
               )}
             </div>
           ) : (
@@ -880,6 +879,25 @@ function PillIcon({ icon, label, delay, onClick }: { icon: React.ReactNode; labe
     </motion.button>
   );
 }
+/** Simple device-to-device illustration for the empty room state. */
+function EmptyRoomIllustration() {
+  return (
+    <svg width="120" height="72" viewBox="0 0 120 72" fill="none" className="select-none pointer-events-none" aria-hidden="true">
+      {/* Phone (left) */}
+      <rect x="10" y="10" width="30" height="52" rx="7" fill="currentColor" fillOpacity="0.07" stroke="currentColor" strokeOpacity="0.12" strokeWidth="1.2" />
+      <rect x="15" y="16" width="20" height="32" rx="2.5" fill="currentColor" fillOpacity="0.03" />
+      {/* Computer (right) */}
+      <rect x="80" y="8" width="30" height="42" rx="5" fill="currentColor" fillOpacity="0.07" stroke="currentColor" strokeOpacity="0.12" strokeWidth="1.2" />
+      <rect x="84" y="12" width="22" height="28" rx="2" fill="currentColor" opacity="0.03" />
+      <rect x="90" y="50" width="10" height="3.5" rx="1.5" fill="currentColor" opacity="0.12" />
+      <rect x="85" y="53.5" width="20" height="2" rx="1" fill="currentColor" opacity="0.12" />
+      {/* Connection dots — simple, calm */}
+      <circle cx="50" cy="32" r="2" fill="currentColor" opacity="0.15" />
+      <circle cx="56" cy="28" r="2.5" fill="currentColor" opacity="0.25" />
+      <circle cx="62" cy="32" r="2" fill="currentColor" opacity="0.15" />
+    </svg>
+  );
+}
 const timeOf = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 /**
  * Delivery state for MY messages — a true receipt, never guessed:
@@ -890,7 +908,7 @@ const timeOf = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-di
 function DeliveryTick({ delivered, seen, onBlue }: { delivered?: boolean; seen?: boolean; onBlue: boolean }) {
   if (seen) {
     return (
-      <span className={cn("flex items-center gap-1", onBlue ? "text-white/90" : "text-azure-600 dark:text-azure-400")}>
+      <span className="flex items-center gap-1 text-apple-blue">
         <motion.span
           initial={{ scale: 0.4, opacity: 0, rotate: -12 }}
           animate={{ scale: 1, opacity: 1, rotate: 0 }}
@@ -905,7 +923,7 @@ function DeliveryTick({ delivered, seen, onBlue }: { delivered?: boolean; seen?:
   }
   if (delivered) {
     return (
-      <span className={cn("flex items-center gap-1", onBlue ? "text-white/80" : "text-status-success")}>
+      <span className="flex items-center gap-1 text-status-success">
         {/* The check pops in when the peer's receipt arrives — a tiny
             confirmation that lands, not just a static icon. */}
         <motion.span
@@ -921,7 +939,7 @@ function DeliveryTick({ delivered, seen, onBlue }: { delivered?: boolean; seen?:
     );
   }
   return (
-    <span className={cn("flex items-center gap-1", onBlue ? "text-white/70" : "text-apple-ink-muted")}>
+    <span className="flex items-center gap-1 text-apple-ink-muted">
       <motion.span
         initial={{ scale: 0.4, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -1040,8 +1058,8 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
         <div className={cn(
           "max-w-[85%] sm:max-w-[65%] px-[14px] py-[10px] rounded-[18px]",
           isMe
-            ? "bg-[#8b7cf6] text-white shadow-[0_1px_2px_rgba(107,132,240,0.2)]"
-            : "bg-[#e8e6f0] dark:bg-[#2a2a30] text-apple-ink dark:text-white",
+            ? "bg-[#f0eef5] dark:bg-[#1e1e2a] text-apple-ink dark:text-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+            : "bg-white dark:bg-[#1a1a22] border border-apple-divider/40 dark:border-white/[0.06] text-apple-ink dark:text-white",
           isMe && isGroupEnd && "rounded-br-[4px]",
           !isMe && isGroupEnd && "rounded-bl-[4px]",
           isMe && !isGroupEnd && "rounded-br-[14px]",
@@ -1081,7 +1099,7 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
               </>
             ) : (
               <>
-                <span className={cn("text-[11.5px] font-medium flex items-center gap-1", isMe ? "text-white/75" : "text-apple-ink-muted")}>
+                <span className="text-[11.5px] font-medium flex items-center gap-1 text-apple-ink-muted">
                   {isMe ? (
                     <DeliveryTick delivered={msg.delivered} seen={msg.seen} onBlue />
                   ) : msg.source === 'push' ? (
@@ -1101,8 +1119,8 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
                   className={cn(
                     "flex items-center justify-center w-7 h-7 rounded-full transition-motion active:scale-90",
                     copied
-                      ? (isMe ? "text-white" : "text-status-success")
-                      : isMe ? "text-white/60 hover:text-white hover:bg-white/15" : "text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/60 dark:hover:bg-apple-tile-3"
+                      ? "text-status-success"
+                      : "text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/60 dark:hover:bg-apple-tile-3"
                   )}
                 >
                   {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
@@ -1144,9 +1162,7 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
         )}>
         <div className={cn(
           "flex flex-col w-full overflow-hidden rounded-[18px]",
-          isMe
-            ? "bg-[#8b7cf6] text-white shadow-[0_1px_3px_rgba(107,132,240,0.18)]"
-            : "bg-white dark:bg-surface-dark border border-apple-divider/40 dark:border-apple-tile-3 shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
+          "bg-white dark:bg-[#1a1a22] border border-apple-divider/40 dark:border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
           isMe && isGroupEnd && "rounded-br-[4px]",
           !isMe && isGroupEnd && "rounded-bl-[4px]",
           isMe && !isGroupEnd && "rounded-br-[14px]",
@@ -1154,7 +1170,7 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
         )}>
           {/* Text caption (if any) */}
           {msg.text && (
-            <div className={cn("px-4 py-3 text-[15.5px] whitespace-pre-wrap leading-relaxed break-words", isMe ? "text-white" : "text-apple-ink dark:text-white")}>
+            <div className="px-4 py-3 text-[15.5px] whitespace-pre-wrap leading-relaxed break-words text-apple-ink dark:text-white">
               {msg.text}
             </div>
           )}
@@ -1178,7 +1194,7 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
                   </span>
                 </button>
               ) : (
-                <div className={cn("w-full aspect-video flex flex-col items-center justify-center", isMe ? "text-white/80" : "text-apple-ink-muted")}>
+                <div className="w-full aspect-video flex flex-col items-center justify-center text-apple-ink-muted">
                   <ImageIcon className="w-8 h-8 mb-2 opacity-50" />
                   <ProgressState attachment={a} isMe={isMe} onBlue={isMe} />
                 </div>
@@ -1202,29 +1218,29 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
               restored attachments whose bytes died with the page: all render
               as the file row, never a broken or inline preview. */}
           {(a.type === 'file' || a.type === 'audio' || unsafePreview || lost) && (
-            <div className={cn("p-4 flex items-center gap-3.5", isMe ? "bg-white/10" : "bg-apple-canvas/50 dark:bg-black/20")}>
+            <div className="p-4 flex items-center gap-3.5 bg-apple-parchment/50 dark:bg-black/20">
               <FileTypeIcon name={a.name} mimeType={a.mimeType} size={20} />
               <div className="flex flex-col flex-1 truncate min-w-0">
-                <span className={cn("text-[14.5px] font-semibold truncate", isMe ? "text-white" : "text-apple-ink dark:text-white")}>{a.name}</span>
-                <span className={cn("text-[12.5px] font-medium", isMe ? "text-white/70" : "text-apple-ink-muted")}>{formatBytes(a.size)}</span>
+                <span className="text-[14.5px] font-semibold truncate text-apple-ink dark:text-white">{a.name}</span>
+                <span className="text-[12.5px] font-medium text-apple-ink-muted">{formatBytes(a.size)}</span>
               </div>
             </div>
           )}
           {/* Audio playback — plays once the transfer completes */}
           {a.type === 'audio' && complete && (
-            <div className={cn("px-4 pb-4", isMe ? "bg-white/10" : "bg-apple-canvas/50 dark:bg-black/20")}>
+            <div className="px-4 pb-4 bg-apple-parchment/50 dark:bg-black/20">
               <audio src={a.url} controls className="w-full" preload="metadata" />
             </div>
           )}
           {/* Footer: status info on row 1, actions on row 2 */}
           <div className={cn(
             "px-3 py-2.5 border-t",
-            isMe ? "border-white/15 bg-white/8" : "border-apple-divider/30 dark:border-apple-tile-3/50 bg-apple-canvas/20 dark:bg-black/5"
+            "border-apple-divider/30 dark:border-white/[0.06] bg-apple-canvas/30 dark:bg-black/5"
           )}>
             {/* Row 1: status / time — full width, no competing for space */}
             <div className="min-w-0">
               {a.status === 'complete' ? (
-                <span className={cn("text-[11px] font-medium flex items-center gap-1 flex-wrap break-words", isMe ? "text-white/75" : "text-apple-ink-muted")}>
+                <span className="text-[11px] font-medium flex items-center gap-1 flex-wrap break-words text-apple-ink-muted">
                   {isMe ? <DeliveryTick delivered={msg.delivered} seen={msg.seen} onBlue /> : msg.source === 'push' ? (
                     <span className="font-semibold flex items-center gap-1"><Terminal className="w-3 h-3" /> Sent from your computer</span>
                   ) : <span className="font-semibold">Received</span>}
@@ -1233,7 +1249,7 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
                   <span className="sm:hidden">{' • '}{formatBytes(a.size)}</span>
                 </span>
               ) : (
-                <span className={cn("text-[12.5px] font-semibold", a.status === 'failed' ? (isMe ? "text-white" : "text-status-danger") : a.status === 'cancelled' || a.status === 'interrupted' ? (isMe ? "text-white/80" : "text-apple-ink-muted") : isMe ? "text-white" : "text-apple-blue")}>
+                <span className={cn("text-[12.5px] font-semibold", a.status === 'failed' ? "text-status-danger" : a.status === 'cancelled' || a.status === 'interrupted' ? "text-apple-ink-muted" : "text-apple-blue")}>
                   {a.status === 'failed' ? (a.note === 'resend-unavailable' ? 'The other device no longer has this file — ask them to send it again.' : a.note === 'checksum-mismatch' ? "The file didn't arrive intact — send it again." : 'Couldn\u2019t send this file.') :
                     a.status === 'preparing' ? 'Preparing…' :
                       a.status === 'restoring' ? `Restoring file…${a.progress ? ` ${Math.round(a.progress * 100)}%` : ''}` :
@@ -1266,8 +1282,8 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
           </div>
           {/* Progress bar */}
           {a.status !== 'complete' && a.status !== 'draft' && a.status !== 'failed' && a.status !== 'cancelled' && (
-            <div className={cn("w-full h-1 overflow-hidden", isMe ? "bg-white/20" : "bg-apple-divider dark:bg-apple-tile-3")}>
-              <div className={cn("h-full origin-left transition-transform duration-300 ease-out", isMe ? "bg-white" : "bg-apple-blue")} style={{ transform: `scaleX(${a.progress || 0})` }} />
+            <div className="w-full h-1 overflow-hidden bg-apple-divider dark:bg-apple-tile-3">
+              <div className="h-full origin-left transition-transform duration-300 ease-out bg-apple-blue" style={{ transform: `scaleX(${a.progress || 0})` }} />
             </div>
           )}
         </div>
@@ -1279,15 +1295,15 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
   );
 };
 function ProgressState({ attachment: a, isMe, onBlue }: { attachment: Attachment, isMe: boolean, onBlue?: boolean }) {
-  if (a.status === 'failed') return <span className={cn("font-medium", onBlue ? "text-white" : "text-status-danger")}>{a.note === 'resend-unavailable' ? "The other device no longer has this file — ask them to send it again." : a.note === 'checksum-mismatch' ? "The file didn't arrive intact — send it again." : "Couldn't send this file."}</span>;
-  if (a.status === 'cancelled') return <span className={cn("font-medium", onBlue ? "text-white/80" : "text-apple-ink-muted")}>Cancelled</span>;
+  if (a.status === 'failed') return <span className="font-medium text-status-danger">{a.note === 'resend-unavailable' ? "The other device no longer has this file — ask them to send it again." : a.note === 'checksum-mismatch' ? "The file didn't arrive intact — send it again." : "Couldn't send this file."}</span>;
+  if (a.status === 'cancelled') return <span className="font-medium text-apple-ink-muted">Cancelled</span>;
   if (a.status === 'complete') return null;
-  if (a.status === 'preparing') return <span className={cn("font-medium animate-pulse", onBlue ? "text-white" : "text-apple-ink-muted")}>Preparing…</span>;
-  if (a.status === 'restoring') return <span className={cn("font-medium animate-pulse", onBlue ? "text-white" : "text-apple-ink-muted")}>Restoring file…</span>;
-  if (a.status === 'interrupted') return <span className={cn("font-medium", onBlue ? "text-white" : "text-apple-ink-muted")}>The other device disconnected</span>;
-  if (a.status === 'resuming') return <span className={cn("font-medium", onBlue ? "text-white" : "text-apple-blue")}>Resuming… {a.size && a.progress ? `${formatBytes(Math.floor(a.size * a.progress))} of ${formatBytes(a.size)}` : `${Math.round((a.progress || 0) * 100)}%`}</span>;
+  if (a.status === 'preparing') return <span className="font-medium animate-pulse text-apple-ink-muted">Preparing…</span>;
+  if (a.status === 'restoring') return <span className="font-medium animate-pulse text-apple-ink-muted">Restoring file…</span>;
+  if (a.status === 'interrupted') return <span className="font-medium text-apple-ink-muted">The other device disconnected</span>;
+  if (a.status === 'resuming') return <span className="font-medium text-apple-blue">Resuming… {a.size && a.progress ? `${formatBytes(Math.floor(a.size * a.progress))} of ${formatBytes(a.size)}` : `${Math.round((a.progress || 0) * 100)}%`}</span>;
   return (
-    <span className={cn("font-medium animate-pulse", onBlue ? "text-white" : "text-apple-ink-muted")}>
+    <span className="font-medium animate-pulse text-apple-ink-muted">
       {isMe ? 'Sending…' : 'Receiving…'} {a.size && a.progress ? `${formatBytes(Math.floor(a.size * a.progress))} of ${formatBytes(a.size)}` : `${Math.round((a.progress || 0) * 100)}%`}
     </span>
   );
@@ -1300,14 +1316,10 @@ function ActionButton({ icon, label, onClick, active, primary, onBlue, testId }:
       className={cn(
         "flex items-center gap-1.5 px-3 py-2 rounded-full text-[12.5px] font-semibold transition-motion active:scale-95 min-h-[40px]",
         active
-          ? onBlue ? "bg-white/25 text-white" : "bg-status-success/15 text-status-success"
+          ? "bg-status-success/15 text-status-success"
           : primary
-            ? onBlue
-              ? "bg-white text-azure-700 hover:bg-white/90"
-              : "bg-apple-blue hover:bg-apple-blue-focus text-white"
-            : onBlue
-              ? "bg-white/15 text-white hover:bg-white/25"
-              : "bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white"
+            ? "bg-apple-blue hover:bg-apple-blue-focus text-white"
+            : "bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white"
       )}
     >
       <motion.span
