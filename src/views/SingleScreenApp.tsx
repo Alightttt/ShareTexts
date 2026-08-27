@@ -114,9 +114,9 @@ export function SingleScreenApp() {
         ? (signalingConfigIssue() || raw)
         : raw;
       const friendly = msg.includes("having trouble")
-        ? "Could not reach ShareText. Check your internet and try again."
+        ? "ShareText couldn't connect right now. Please check your internet and try again."
         : msg.includes("Taking too long")
-        ? "Connection timed out. Check your internet and try again."
+        ? "Connection took too long. Please check your internet and try again."
         : msg;
       setCreateError(friendly);
       setPanelMode('idle');
@@ -137,7 +137,7 @@ export function SingleScreenApp() {
       if (!res.success) setJoinError(res.error || "That code isn't active. Ask for a fresh one.");
     } catch {
       setIsJoining(false);
-      setJoinError(signalingConfigIssue() || "Could not reach ShareText. Check your internet connection.");
+      setJoinError(signalingConfigIssue() || "ShareText couldn't connect. Please check your internet and try again.");
     }
   }, [isJoining, joinWithCode]);
 
@@ -224,7 +224,7 @@ export function SingleScreenApp() {
             <motion.div key="sending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md w-full overflow-hidden">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[22px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em]">Connect your other device.</h2>
-                <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-medium text-status-danger hover:bg-status-danger/10 px-3 py-2 min-h-[40px] rounded-full active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
+                <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-semibold text-status-danger hover:bg-status-danger/15 px-3 py-2 min-h-[40px] rounded-full active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
               </div>
               {isCreating && !session.secret ? (
                 /* Room still being created — show immediate feedback */
@@ -240,14 +240,14 @@ export function SingleScreenApp() {
                     {session.partnerConnecting && !session.partnerConnected && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-4">
                         <p className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#6b84f0] animate-pulse" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#8b7cf6] animate-pulse" />
                           {session.connectionType === 'establishing' ? 'Establishing secure connection…' : 'Connecting…'}
                         </p>
                       </motion.div>
                     )}
                   </AnimatePresence>
                   <div className="mt-5 space-y-2">
-                    <button onClick={() => setShowQROverlay(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-[#6b84f0] hover:bg-[#5a74e8] text-white rounded-full text-[14px] font-semibold min-h-[48px] transition-all duration-150 active:scale-[0.97] shadow-sm shadow-[#6b84f0]/20">
+                    <button onClick={() => setShowQROverlay(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-[#8b7cf6] hover:bg-[#5a74e8] text-white rounded-full text-[14px] font-semibold min-h-[48px] transition-all duration-150 active:scale-[0.97] shadow-sm shadow-[#8b7cf6]/20">
                       <QrCode className="w-4 h-4" /> Show QR
                     </button>
                     <button onClick={shareLink} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] rounded-full text-[13px] font-semibold text-apple-ink dark:text-white/90 transition-colors active:scale-[0.97] min-h-[44px]">
@@ -270,7 +270,7 @@ export function SingleScreenApp() {
                 <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-medium text-status-danger hover:bg-status-danger/10 px-3 py-2 min-h-[40px] rounded-full active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
               </div>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/50 font-medium mb-5">Enter the code shown on the other device.</p>
-              <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-[#6b84f0] hover:bg-[#5a74e8] text-white rounded-full text-[14px] font-semibold min-h-[48px] transition-all duration-150 active:scale-[0.97] shadow-sm shadow-[#6b84f0]/20">
+              <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-[#8b7cf6] hover:bg-[#5a74e8] text-white rounded-full text-[14px] font-semibold min-h-[48px] transition-all duration-150 active:scale-[0.97] shadow-sm shadow-[#8b7cf6]/20">
                 <QrCode className="w-4 h-4" /> Scan QR code
               </button>
               <div className="p-6 bg-white dark:bg-[#161e30] border border-apple-divider dark:border-white/10 rounded-[20px] shadow-card">
@@ -308,9 +308,9 @@ export function SingleScreenApp() {
             </InfoCard>
             <InfoCard title="How to connect?">
               <ol className="list-none space-y-1.5">
-                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#6b84f0]/10 dark:bg-[#8ca4f7]/10 text-[#6b84f0] dark:text-[#8ca4f7] text-[11px] font-bold flex items-center justify-center mt-0.5">1</span><span>Open ShareText on both devices.</span></li>
-                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#6b84f0]/10 dark:bg-[#8ca4f7]/10 text-[#6b84f0] dark:text-[#8ca4f7] text-[11px] font-bold flex items-center justify-center mt-0.5">2</span><span>Tap Send on one, Receive on the other. Use the code or QR.</span></li>
-                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#6b84f0]/10 dark:bg-[#8ca4f7]/10 text-[#6b84f0] dark:text-[#8ca4f7] text-[11px] font-bold flex items-center justify-center mt-0.5">3</span><span>Send anything. Paste, drop, or attach.</span></li>
+                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 text-[#8b7cf6] dark:text-[#a78bfa] text-[11px] font-bold flex items-center justify-center mt-0.5">1</span><span>Open ShareText on both devices.</span></li>
+                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 text-[#8b7cf6] dark:text-[#a78bfa] text-[11px] font-bold flex items-center justify-center mt-0.5">2</span><span>Tap Send on one, Receive on the other. Use the code or QR.</span></li>
+                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 text-[#8b7cf6] dark:text-[#a78bfa] text-[11px] font-bold flex items-center justify-center mt-0.5">3</span><span>Send anything. Paste, drop, or attach.</span></li>
               </ol>
             </InfoCard>
           </div>
@@ -321,9 +321,9 @@ export function SingleScreenApp() {
             </InfoSection>
             <InfoSection title="How to connect?" expanded={!!infoExpanded['how']} onToggle={() => setInfoExpanded(p => ({ ...p, how: !p.how }))}>
               <ol className="list-none space-y-1.5">
-                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#6b84f0]/10 dark:bg-[#8ca4f7]/10 text-[#6b84f0] dark:text-[#8ca4f7] text-[11px] font-bold flex items-center justify-center mt-0.5">1</span><span>Open ShareText on both devices.</span></li>
-                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#6b84f0]/10 dark:bg-[#8ca4f7]/10 text-[#6b84f0] dark:text-[#8ca4f7] text-[11px] font-bold flex items-center justify-center mt-0.5">2</span><span>Tap Send on one, Receive on the other. Use the code or QR.</span></li>
-                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#6b84f0]/10 dark:bg-[#8ca4f7]/10 text-[#6b84f0] dark:text-[#8ca4f7] text-[11px] font-bold flex items-center justify-center mt-0.5">3</span><span>Send anything. Paste, drop, or attach.</span></li>
+                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 text-[#8b7cf6] dark:text-[#a78bfa] text-[11px] font-bold flex items-center justify-center mt-0.5">1</span><span>Open ShareText on both devices.</span></li>
+                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 text-[#8b7cf6] dark:text-[#a78bfa] text-[11px] font-bold flex items-center justify-center mt-0.5">2</span><span>Tap Send on one, Receive on the other. Use the code or QR.</span></li>
+                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 text-[#8b7cf6] dark:text-[#a78bfa] text-[11px] font-bold flex items-center justify-center mt-0.5">3</span><span>Send anything. Paste, drop, or attach.</span></li>
               </ol>
             </InfoSection>
           </div>
@@ -331,14 +331,18 @@ export function SingleScreenApp() {
       )}
 
       {/* Footer */}
-      <footer className="shrink-0 px-6 lg:px-10 py-3 border-t border-apple-divider/60 dark:border-white/[0.06] pb-[env(safe-area-inset-bottom)]">
+      <footer className="shrink-0 px-6 lg:px-10 py-4 border-t border-apple-divider/60 dark:border-white/[0.06] pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 text-[12px] text-apple-ink-muted dark:text-white/40">
+          <div className="flex items-center gap-5 text-[12px] font-medium text-apple-ink-muted dark:text-white/40">
             <a href="/docs" className="hover:text-apple-ink dark:hover:text-white transition-colors">Docs</a>
-            <a href="https://x.com/0xalyt" target="_blank" rel="noopener noreferrer" className="hover:text-apple-ink dark:hover:text-white transition-colors" aria-label="Follow on X"><svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg></a>
+            <a href="https://x.com/0xalyt" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-apple-ink dark:hover:text-white transition-colors" aria-label="Follow on X">@0xalyt<svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg></a>
           </div>
-          <div className="hidden sm:flex items-center gap-2 text-[11px] text-apple-ink-muted/50 dark:text-white/25">
-            <span>No app</span><span className="w-px h-3 bg-apple-hairline dark:bg-white/10" /><span>No account</span><span className="w-px h-3 bg-apple-hairline dark:bg-white/10" /><span>Temporary</span>
+          <div className="hidden sm:flex items-center gap-2.5 text-[11px] text-apple-ink-muted/40 dark:text-white/20">
+            <span>No app</span>
+            <span className="text-apple-ink-muted/20 dark:text-white/10">·</span>
+            <span>No account</span>
+            <span className="text-apple-ink-muted/20 dark:text-white/10">·</span>
+            <span>Temporary</span>
           </div>
         </div>
       </footer>
@@ -404,7 +408,7 @@ export function SingleScreenApp() {
         </div>
       </div>
       {/* Room content */}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col">
         {panelMode === 'connected' ? (
           <Suspense fallback={<div className="h-full flex items-center justify-center"><ShareTextLogo size={24} motion="connecting" className="text-azure-600 dark:text-azure-400" /></div>}>
             <ChatView panelMode="embedded" />
@@ -421,13 +425,13 @@ export function SingleScreenApp() {
             >
               {/* Device relationship visual — two small device icons with dots */}
               <div className="flex items-center gap-3 mb-6">
-                <Smartphone className="w-5 h-5 text-[#6b84f0]/30 dark:text-[#8ca4f7]/25" />
+                <Smartphone className="w-5 h-5 text-[#8b7cf6]/30 dark:text-[#a78bfa]/25" />
                 <div className="flex items-center gap-1">
-                  <span className="w-1 h-1 rounded-full bg-[#6b84f0]/20 dark:bg-[#8ca4f7]/20" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#6b84f0]/30 dark:bg-[#8ca4f7]/25" />
-                  <span className="w-1 h-1 rounded-full bg-[#6b84f0]/20 dark:bg-[#8ca4f7]/20" />
+                  <span className="w-1 h-1 rounded-full bg-[#8b7cf6]/20 dark:bg-[#a78bfa]/20" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#8b7cf6]/30 dark:bg-[#a78bfa]/25" />
+                  <span className="w-1 h-1 rounded-full bg-[#8b7cf6]/20 dark:bg-[#a78bfa]/20" />
                 </div>
-                <Monitor className="w-5 h-5 text-[#6b84f0]/30 dark:text-[#8ca4f7]/25" />
+                <Monitor className="w-5 h-5 text-[#8b7cf6]/30 dark:text-[#a78bfa]/25" />
               </div>
               {/* State-specific messaging */}
               <p className="text-[15px] font-semibold text-apple-ink/70 dark:text-white/50 mb-1.5">

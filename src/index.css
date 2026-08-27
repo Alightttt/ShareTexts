@@ -53,16 +53,16 @@
   --color-apple-parchment: #f0eff5;
   --color-apple-ink: #1d1d1f;
   --color-apple-ink-muted: #6e6e73;
-  --color-apple-blue: #6b84f0;
-  --color-apple-blue-focus: #5a74e8;
+  --color-apple-blue: #8b7cf6;
+  --color-apple-blue-focus: #7c6de0;
   --color-apple-divider: #e0e0e5;
   --color-apple-hairline: #d8d8dd;
   --color-azure-50: #f0f4ff;
   --color-azure-100: #e0e7fe;
   --color-azure-200: #c7d4fc;
-  --color-azure-400: #94a8f8;
+  --color-azure-400: #a78bfa;
   --color-azure-500: #7c94f5;
-  --color-azure-600: #6b84f0;
+  --color-azure-600: #8b7cf6;
   --color-azure-700: #5a74e8;
   --color-azure-800: #4a64d8;
   --color-azure-900: #3a4fb8;
@@ -160,9 +160,9 @@
     --color-apple-hairline: #263450;
     --color-apple-ink: #edf0f5;
     --color-apple-ink-muted: #8894ac;
-    --color-azure-400: #b8c8fc;
+    --color-azure-400: #c4b5fd;
     --color-azure-500: #a0b4fa;
-    --color-azure-600: #8ca4f7;
+    --color-azure-600: #a78bfa;
     --color-azure-700: #a0b4fa;
   }
 

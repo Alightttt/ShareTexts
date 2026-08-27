@@ -36,9 +36,9 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
       : `Code active · ${Math.ceil(remaining)}s`;
 
   const digitTileClass = cn(
-    "relative flex items-center justify-center rounded-[10px] sm:rounded-[14px] shadow-sm",
+    "relative flex items-center justify-center rounded-[10px] sm:rounded-[14px] shadow-sm overflow-hidden",
     "flex-1 min-w-0",
-    "h-[44px] sm:h-[60px] lg:h-[68px]",
+    "h-[52px] sm:h-[64px] lg:h-[72px]",
     "bg-apple-parchment dark:bg-[#1a1a1e] border border-apple-divider/60 dark:border-[#2a2a2e]"
   );
 
@@ -92,7 +92,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
                 exit={{ y: -8, opacity: 0 }}
                 transition={{ type: 'spring', bounce: 0, duration: 0.2 }}
                 className="font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum leading-none select-none"
-                style={{ fontSize: 'clamp(24px, 8vw, 42px)' }}
+                style={{ fontSize: 'clamp(22px, 7vw, 40px)' }}
               >
                 {digit}
               </motion.span>

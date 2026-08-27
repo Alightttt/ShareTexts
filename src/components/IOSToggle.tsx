@@ -35,7 +35,7 @@ export function IOSToggle({
 
   // Track gradient — lighter when off (gray), colored when on (lavender)
   const trackBg = checked
-    ? 'linear-gradient(135deg, #8ca4f7 0%, #6b84f0 50%, #5a74e8 100%)'
+    ? 'linear-gradient(135deg, #a78bfa 0%, #8b7cf6 50%, #5a74e8 100%)'
     : 'linear-gradient(135deg, #e8e8ec 0%, #d5d5da 50%, #c8c8cd 100%)';
 
   return (
@@ -46,7 +46,7 @@ export function IOSToggle({
       onClick={onToggle}
       className={cn(
         'relative shrink-0 rounded-full cursor-pointer',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#6b84f0]',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8b7cf6]',
         'active:scale-95 transition-transform duration-100',
         className
       )}
