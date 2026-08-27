@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { motion, AnimatePresence } from 'motion/react';
+import { AttachmentPanel } from '../components/AttachmentPanel';
+import { AttachmentFlight } from '../components/AttachmentFlight';
 import {
   X, Plus, Image as ImageIcon, Copy, Check, CheckCheck,
   File as FileIcon, Play, Download, RefreshCw, AlertCircle, ChevronDown, ChevronUp, ArrowUp, Lock, ZoomIn, ShieldCheck, Terminal, Share2, LogOut, Smartphone, Monitor
@@ -143,6 +145,11 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
     }
   }, [confirmClose]);
   const audioInputRef = useRef<HTMLInputElement>(null);
+  const plusButtonRef = useRef<HTMLButtonElement>(null);
+  const composerStripRef = useRef<HTMLDivElement>(null);
+  const [flyingFiles, setFlyingFiles] = useState<File[]>([]);
+  const [flightFromRect, setFlightFromRect] = useState<DOMRect | null>(null);
+  const [flightToRect, setFlightToRect] = useState<DOMRect | null>(null);
   // Object URLs for staged image previews, keyed by attachment id; revoked
   // when the set changes (or on unmount) so we never leak blob URLs.
   const previewUrls = useMemo(() => {
@@ -733,6 +740,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
             <AnimatePresence>
               {attachments.length > 0 && (
                 <motion.div
+                  ref={composerStripRef}
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0, filter: 'blur(4px)' }}
@@ -783,6 +791,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
             </AnimatePresence>
             <div className="flex items-end gap-0.5 p-1 relative">
               <button
+                ref={plusButtonRef}
                 type="button"
                 data-testid="add-attachment"
                 onPointerDown={() => setShowAttachmentMenu(!showAttachmentMenu)}
@@ -824,29 +833,34 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                   <ArrowUp className="w-5 h-5" strokeWidth={2.4} />
                 </AnimatedIcon>
               </button>
-              <AnimatePresence>
-                {showAttachmentMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.6, y: 8 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.6, y: 8 }}
-                    transition={{ type: 'spring', bounce: 0.3, duration: 0.35 }}
-                    className="absolute left-1 bottom-[calc(100%+10px)] z-30"
-                  >
-                    <div className="flex items-center gap-1 px-2 py-1.5 bg-[#1a1a22] dark:bg-[#2a2a32] rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.25)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-                      <PillIcon icon={<ImageIcon className="w-[18px] h-[18px]" />} label="Photo" delay={0} onClick={() => { imageInputRef.current?.click(); setShowAttachmentMenu(false); }} />
-                      <PillIcon icon={<FileIcon className="w-[18px] h-[18px]" />} label="File" delay={0.04} onClick={() => { fileInputRef.current?.click(); setShowAttachmentMenu(false); }} />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+
             </div>
           </motion.div>
         </form>
       </div>
-      {showAttachmentMenu && (
-        <div className="fixed inset-0 z-[5]" onPointerDown={() => setShowAttachmentMenu(false)} />
-      )}
+      <AttachmentPanel
+        isOpen={showAttachmentMenu}
+        onClose={() => setShowAttachmentMenu(false)}
+        onSelectType={(type) => {
+          // Trigger the existing file inputs in ChatView
+          if (type === 'image') {
+            imageInputRef.current?.click();
+          } else {
+            fileInputRef.current?.click();
+          }
+        }}
+        buttonRef={plusButtonRef}
+      />
+      <AttachmentFlight
+        files={flyingFiles}
+        fromRect={flightFromRect}
+        toRect={flightToRect}
+        onComplete={() => {
+          setFlyingFiles([]);
+          setFlightFromRect(null);
+          setFlightToRect(null);
+        }}
+      />
     </div>
   );
 }
