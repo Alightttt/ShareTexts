@@ -827,7 +827,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 onPointerDown={handleSend}
                 disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
                 aria-label="Send"
-                className="w-[34px] h-[34px] rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-90 bg-[#8b7cf6] hover:bg-[#5a74e8] text-white disabled:opacity-30 disabled:bg-[#c0c8e0] dark:disabled:bg-[#3a3a42] disabled:shadow-none"
+                className="w-[34px] h-[34px] rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-90 bg-[#8b7cf6] hover:bg-[#7c6ce0] text-white disabled:opacity-30 disabled:bg-[#c0c8e0] dark:disabled:bg-[#3a3a42] disabled:shadow-none"
               >
                 <AnimatedIcon animate="send" active={!((!inputText.trim() && attachments.length === 0) || !session.partnerConnected)}>
                   <ArrowUp className="w-5 h-5" strokeWidth={2.4} />
@@ -905,10 +905,16 @@ function EmptyRoomIllustration() {
       <rect x="84" y="12" width="22" height="28" rx="2" fill="currentColor" opacity="0.03" />
       <rect x="90" y="50" width="10" height="3.5" rx="1.5" fill="currentColor" opacity="0.12" />
       <rect x="85" y="53.5" width="20" height="2" rx="1" fill="currentColor" opacity="0.12" />
-      {/* Connection dots — simple, calm */}
-      <circle cx="50" cy="32" r="2" fill="currentColor" opacity="0.15" />
-      <circle cx="56" cy="28" r="2.5" fill="currentColor" opacity="0.25" />
-      <circle cx="62" cy="32" r="2" fill="currentColor" opacity="0.15" />
+      {/* Connection dots — breathing animation */}
+      <circle cx="50" cy="32" r="2" fill="currentColor" opacity="0.15">
+        <animate attributeName="opacity" values="0.15;0.3;0.15" dur="2.5s" repeatCount="indefinite" />
+      </circle>
+      <circle cx="56" cy="28" r="2.5" fill="currentColor" opacity="0.25">
+        <animate attributeName="opacity" values="0.25;0.45;0.25" dur="2s" repeatCount="indefinite" />
+      </circle>
+      <circle cx="62" cy="32" r="2" fill="currentColor" opacity="0.15">
+        <animate attributeName="opacity" values="0.15;0.3;0.15" dur="2.5s" repeatCount="indefinite" begin="0.5s" />
+      </circle>
     </svg>
   );
 }
@@ -1060,9 +1066,9 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
   if (!a) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 10, scale: 0.98 }}
+        initial={{ opacity: 0, y: 8, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+        transition={{ type: 'spring', bounce: 0.15, duration: 0.3 }}
         className={cn(
           "flex w-full",
           isMe ? "justify-end" : "justify-start",
@@ -1160,18 +1166,17 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
   // other device holds the file — "Sent" is truthful), partner files we
   // received become 'restoring' (re-requested from the peer on reconnect).
   const lost = a.status === 'complete' && !a.url;
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+  return (    <motion.div
+      initial={{ opacity: 0, y: 8, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+      transition={{ type: 'spring', bounce: 0.15, duration: 0.3 }}
       className={cn(
         "flex w-full",
         isMe ? "justify-end" : "justify-start",
         isGroupStart ? "mt-3" : "mt-0.5",
       )}
     >        <div className={cn(
-          "flex flex-col gap-0 max-w-[85%] sm:max-w-[65%] w-full",
+      "flex flex-col gap-0 max-w-[85%] sm:max-w-[65%] w-full",
           isMe ? "items-end" : "items-start"
         )}>
         <div className={cn(

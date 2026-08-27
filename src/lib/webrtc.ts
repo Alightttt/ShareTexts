@@ -243,8 +243,8 @@ export class PeerManager {
   private relayFallbackTimer: ReturnType<typeof setTimeout> | null = null;
   /** Adaptive chunk size: starts small for instant feedback, scales up as
    *  bandwidth is confirmed. Reset on each new transfer. */
-  private currentChunkSize = 64 * 1024; // 64 KB initial — first chunks arrive fast — first chunks arrive fast
-  private maxChunkSize = 1024 * 1024;   // 1 MB ceiling
+  private currentChunkSize = 128 * 1024; // 128 KB initial — ramps up fast on fast channels
+  private maxChunkSize = 2 * 1024 * 1024; // 2 MB ceiling — peak throughput on LAN
   private bandwidthSamples: number[] = []; // recent chunks/sec measurements
 
   public onMessage: ((data: string) => void) | null = null;
@@ -950,7 +950,7 @@ export class PeerManager {
 
     // Parallel pipeline: read + encrypt N chunks ahead while sending.
     // Overlaps disk I/O, encryption CPU, and network send for max throughput.
-    const PIPELINE_DEPTH = 16;
+    const PIPELINE_DEPTH = 32; // Deep pipeline: overlaps I/O, encryption, and send
     type PipelineEntry = { index: number; packet: Uint8Array; endByte: number };
     const inflight: Promise<PipelineEntry | null>[] = [];
     let readIdx = start;
@@ -1025,7 +1025,7 @@ export class PeerManager {
         // On fast channels (>5 MB/s), double the chunk size; on slow ones,
         // halve it. This adapts to both WiFi-speed LAN and throttled relay.
         const now = Date.now();
-        if (now - lastBandwidthCheck > 2000) {
+        if (now - lastBandwidthCheck > 1000) {
           const elapsed = (now - lastBandwidthCheck) / 1000;
           const throughput = bytesSentSinceCheck / elapsed; // bytes/sec
           lastBandwidthCheck = now;

@@ -35,7 +35,7 @@ export function IOSToggle({
 
   // Track gradient — lighter when off (gray), colored when on (lavender)
   const trackBg = checked
-    ? 'linear-gradient(135deg, #a78bfa 0%, #8b7cf6 50%, #5a74e8 100%)'
+    ? 'linear-gradient(135deg, #a78bfa 0%, #8b7cf6 50%, #7c6ce0 100%)'
     : 'linear-gradient(135deg, #e8e8ec 0%, #d5d5da 50%, #c8c8cd 100%)';
 
   return (
@@ -114,7 +114,7 @@ export function IOSToggle({
               transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
               className="absolute inset-0 flex items-center justify-center"
             >
-              <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="#5a74e8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none" stroke="#7c6ce0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
               </svg>
             </motion.div>
