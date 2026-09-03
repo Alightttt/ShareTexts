@@ -55,7 +55,7 @@ console.log('== DESKTOP RECEIVE (12MB) ==');
   const p = path.join(OUT, 'flight12.bin');
   fs.writeFileSync(p, crypto.randomBytes(12 * 1024 * 1024));
   await B.locator('input[multiple]:not([accept])').setInputFiles(p);
-  await B.waitForFunction(() => { const b = document.querySelector('button[data-testid="send"]'); return b && !b.disabled; }, { timeout: 5000 });
+  await B.waitForFunction(() => { const b = document.querySelector('button[data-testid="send"]'); return b && !b.disabled; }, null, { timeout: 5000 });
   const t0 = Date.now();
   await B.locator('button[data-testid="send"]').click();
 
@@ -80,11 +80,11 @@ console.log('== DESKTOP RECEIVE (12MB) ==');
   await B.screenshot({ path: path.join(OUT, 'flight-mobile-sender-mid.png') });
   console.log('mid state:', JSON.stringify(mid));
 
-  // wait for completion + flight gone
+  // wait for completion + flight gone (3-arg waitForFunction: fn, arg, options)
   await A.waitForFunction(() => {
     const msgs = window.__sharetextDebug?.getMessages?.() ?? [];
     return msgs.some(m => m.attachment?.status === 'complete');
-  }, { timeout: 120000 }).catch(() => {});
+  }, null, { timeout: 120000 }).catch(() => {});
   await sleep(1200);
   const landed = await flightState(A);
   await A.screenshot({ path: path.join(OUT, 'flight-desktop-landed.png') });
@@ -100,7 +100,7 @@ console.log('== DESKTOP RECEIVE (12MB) ==');
   console.log('== CANCEL PATH ==');
   fs.writeFileSync(p, crypto.randomBytes(30 * 1024 * 1024));
   await B.locator('input[multiple]:not([accept])').setInputFiles(p);
-  await B.waitForFunction(() => { const b = document.querySelector('button[data-testid="send"]'); return b && !b.disabled; }, { timeout: 5000 });
+  await B.waitForFunction(() => { const b = document.querySelector('button[data-testid="send"]'); return b && !b.disabled; }, null, { timeout: 5000 });
   await B.locator('button[data-testid="send"]').click();
   let sawCancelChip = false;
   for (let i = 0; i < 40; i++) {
@@ -124,7 +124,7 @@ console.log('== DESKTOP RECEIVE (12MB) ==');
   console.log('== DISCONNECT PATH ==');
   fs.writeFileSync(p, crypto.randomBytes(40 * 1024 * 1024));
   await B.locator('input[multiple]:not([accept])').setInputFiles(p);
-  await B.waitForFunction(() => { const b = document.querySelector('button[data-testid="send"]'); return b && !b.disabled; }, { timeout: 5000 });
+  await B.waitForFunction(() => { const b = document.querySelector('button[data-testid="send"]'); return b && !b.disabled; }, null, { timeout: 5000 });
   await B.locator('button[data-testid="send"]').click();
   let sawKillChip = false;
   for (let i = 0; i < 40; i++) {
@@ -169,7 +169,7 @@ console.log('== DESKTOP SEND (A sends, B receives) ==');
   await B.waitForFunction(() => {
     const msgs = window.__sharetextDebug?.getMessages?.() ?? [];
     return msgs.some(m => m.attachment?.status === 'complete');
-  }, { timeout: 120000 }).catch(() => {});
+  }, null, { timeout: 120000 }).catch(() => {});
   await sleep(800);
   const final = await flightState(A);
   await B.screenshot({ path: path.join(OUT, 'flight-mobile-landed.png') });

@@ -1,5 +1,6 @@
-# ShareText E2E Test: Error States
-# Tests various error conditions
+# ShareText E2E Test: Error States — invalid pairing code
+# Entering a code that matches no active room shows the rejection message on
+# the receiver panel. The code input autofocuses, so typing needs no tap.
 url: http://localhost:3000
 tags:
   - error
@@ -8,20 +9,16 @@ tags:
 - launchApp:
     clearState: true
 
-# Test invalid code entry
+# Open the receiver panel
 - tapOn:
-    text: "Receive text"
+    text: "Receive"
 
-# Enter an invalid code
-- tapOn:
-    text: "Enter code"
+# Type a code that cannot belong to an active room
 - inputText: "000000"
 
-# Should show error message
+# The join error is surfaced under the code entry, with a retry affordance
 - assertVisible:
-    text: "doesn't seem to work"
-
-# Should show retry option
+    text: "isn't active"
 - assertVisible:
     text: "Try again"
 

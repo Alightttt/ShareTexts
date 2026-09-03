@@ -215,7 +215,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   // One-time: persist the platform-guessed device name so every surface
   // agrees. The WebRTC hello reads the name from localStorage directly, and
-  // the RoomHub name row reads it from session state — if we never write the
+  // the connected hero reads it from session state — if we never write the
   // guess, the partner sees "Guest Device" while this device shows
   // "Guest Windows PC", and two devices on the same platform are
   // indistinguishable. Writing the guess once keeps them identical until

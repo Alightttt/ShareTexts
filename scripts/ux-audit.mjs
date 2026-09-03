@@ -109,7 +109,7 @@ await A.getByRole('button', { name: 'Send' }).last().click();
 await B.waitForFunction(() => {
   const imgs = [...document.querySelectorAll('img')];
   return imgs.some(i => i.src.startsWith('blob:') && i.complete && i.naturalWidth > 0);
-}, { timeout: 10000 }).catch(() => fail(`[${label}] B did not render received image`));
+}, null, { timeout: 10000 }).catch(() => fail(`[${label}] B did not render received image`));
 await sleep(600);
 await B.screenshot({ path: `${SHOTS}/ux-${label}-image-received.png` });
 
@@ -121,7 +121,7 @@ await sleep(400);
 await A.getByRole('button', { name: 'Send' }).last().click();
 const fileDone = await B.waitForFunction(() => {
   return [...document.querySelectorAll('*')].some(el => el.textContent.includes('ux-') && el.textContent.includes('test-file.bin') && el.textContent.includes('MB'));
-}, { timeout: 15000 }).catch(() => null);
+}, null, { timeout: 15000 }).catch(() => null);
 if (!fileDone) fail(`[${label}] B did not receive file card`);
 await sleep(800);
 await B.screenshot({ path: `${SHOTS}/ux-${label}-file-received.png` });

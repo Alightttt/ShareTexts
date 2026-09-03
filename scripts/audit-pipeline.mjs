@@ -37,7 +37,7 @@ async function sendAndVerify(mb, label, throttleRate) {
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: throttleRate });
   }
   await B.locator('input[multiple]:not([accept])').setInputFiles(p);
-  await B.waitForFunction(() => { const b = document.querySelector('button[data-testid="send"]'); return b && !b.disabled; }, { timeout: 5000 });
+  await B.waitForFunction(() => { const b = document.querySelector('button[data-testid="send"]'); return b && !b.disabled; }, null, { timeout: 5000 });
   const t0 = Date.now();
   const gaps = [];
   let last = null, lastT = t0;
@@ -53,31 +53,42 @@ async function sendAndVerify(mb, label, throttleRate) {
       last = val; lastT = now;
     }
   }, 200);
+  // Snapshot A's message count BEFORE the send, then wait for THIS leg's
+  // newest message to reach 'complete' — counting after the click races fast
+  // transfers (the message can already be appended, so the wait never fires).
+  const beforeCount = await A.evaluate(() => (window.__sharetextDebug?.getMessages?.() ?? []).length);
   await B.locator('button[data-testid="send"]').click();
-  await A.waitForFunction(() => {
-    const msgs = window.__sharetextDebug?.getMessages?.() ?? [];
-    const last = msgs[msgs.length - 1];
-    return last?.attachment?.status === 'complete';
-  }, { timeout: 90000 }).catch(() => {});
+  const completed = await A.waitForFunction(
+    (startCount) => {
+      const msgs = window.__sharetextDebug?.getMessages?.() ?? [];
+      return msgs.length > startCount && msgs[msgs.length - 1]?.attachment?.status === 'complete';
+    },
+    beforeCount,
+    { timeout: 300000 }
+  ).then(() => true).catch(() => false);
   clearInterval(iv);
   const ms = Date.now() - t0;
-  // independent integrity check: hash the received blob in-page
+  // Independent integrity check: hash the blob the receiver holds for the
+  // message this leg just completed.
   const gotSha = await A.evaluate(async () => {
     const msgs = window.__sharetextDebug?.getMessages?.() ?? [];
-    const a = [...msgs].reverse().find(m => m.attachment && m.attachment.url);
-    if (!a?.attachment?.url) return 'NO-URL';
-    const blob = await (await fetch(a.attachment.url)).blob();
+    const m = msgs[msgs.length - 1];
+    if (!m?.attachment?.url) return 'NO-URL';
+    const blob = await (await fetch(m.attachment.url)).blob();
     const buf = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
     return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
   });
-  const verified = gotSha === expected;
+  const verified = completed && gotSha === expected;
   if (cdp) await cdp.detach().catch(() => {});
-  console.log(`${label}: ${mb}MB in ${(ms / 1000).toFixed(1)}s = ${(mb / (ms / 1000)).toFixed(1)} MB/s | sha match: ${verified} | stall-gaps>1s: ${gaps.filter(g => g > 1000).length}`);
+  console.log(`${label}: ${mb}MB in ${(ms / 1000).toFixed(1)}s = ${(mb / (ms / 1000)).toFixed(1)} MB/s | sha match: ${verified}${completed ? '' : ' (transfer did not complete)'} | stall-gaps>1s: ${gaps.filter(g => g > 1000).length}`);
   return { ms, verified };
 }
 
-await sendAndVerify(20, 'FAST', null);
-await sendAndVerify(20, 'THROTTLED', 8);
+// Leg size is configurable: 5MB default stays in-window on the slow local
+// relay; set LEG_MB=20 on fast networks for the full-throughput check.
+const LEG_MB = Number(process.env.LEG_MB || 5);
+await sendAndVerify(LEG_MB, 'FAST', null);
+await sendAndVerify(LEG_MB, 'THROTTLED', 8);
 console.log('page errors:', errs.length ? errs : 'none');
 
 // ── interruption: B sends 60MB, dies mid-flight; A must stay in the room ──
@@ -85,7 +96,7 @@ const big = '.audit-shots/int.bin';
 fs.writeFileSync(big, crypto.randomBytes(60 * 1024 * 1024));
 await (await ctxB.newCDPSession(B)).send('Emulation.setCPUThrottlingRate', { rate: 1 }).catch(() => {});
 await B.locator('input[multiple]:not([accept])').setInputFiles(big);
-await B.waitForFunction(() => { const b = document.querySelector('button[data-testid="send"]'); return b && !b.disabled; }, { timeout: 5000 });
+await B.waitForFunction(() => { const b = document.querySelector('button[data-testid="send"]'); return b && !b.disabled; }, null, { timeout: 5000 });
 await B.locator('button[data-testid="send"]').click();
 await sleep(1500);
 await ctxB.close();

@@ -34,13 +34,15 @@ export async function readLiveCode(page) {
 }
 
 export async function waitForChat(page, label) {
-  await page.getByText(/Connection secure|Paste or type|Your private clipboard|End room/).first().waitFor({ timeout: 20000 })
+  // Connected chat mounts the composer (SingleScreenApp renders ChatView once
+  // the pair is connected); the composer textarea is the reliable marker.
+  await page.getByTestId('composer').first().waitFor({ timeout: 20000 })
     .catch(() => console.log(`WARN: ${label} did not reach chat view in 20s`));
 }
 
 export async function pairDevices(A, B) {
   await A.getByRole('button', { name: 'Send' }).first().click();
-  await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
+  await A.getByRole('group', { name: 'Pairing code' }).waitFor({ timeout: 10000 });
   const code = await readLiveCode(A);
   await B.getByRole('button', { name: 'Receive' }).first().click();
   await B.locator('input[inputmode="numeric"]').fill(code);

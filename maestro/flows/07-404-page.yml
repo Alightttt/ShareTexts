@@ -1,5 +1,5 @@
 # ShareText E2E Test: 404 Page
-# Tests that invalid routes show a styled 404 page
+# Unknown paths render the not-found screen with a route back home.
 url: http://localhost:3000/definitely-not-a-real-page
 tags:
   - 404
@@ -8,21 +8,17 @@ tags:
 - launchApp:
     clearState: true
 
-# Should show styled 404 message
+# Styled not-found message
 - assertVisible:
-    text: "This page doesn't exist"
+    text: "This page does not exist."
 
-# Should have a way back home
-- assertVisible:
-    text: "Back to Home"
-
-# Click back to home
+# Return home
 - tapOn:
-    text: "Back to Home"
+    text: "Go Home"
 
-# Should navigate to landing page
+# Home hero renders
 - assertVisible:
-    text: "Move anything between your devices"
+    text: "Move anything"
 
 # Take screenshot
 - takeScreenshot: 404-page

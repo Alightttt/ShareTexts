@@ -30,8 +30,10 @@ async function main() {
   // --- Device A: create session ---
   await A.goto(URL, { waitUntil: 'networkidle' });
   await A.getByRole('button', { name: 'Send' }).first().click();
-  await A.getByText('LIVE CODE').waitFor({ timeout: 10000 });
-  console.log('STEP 1 OK: A created session, Live Code visible');
+  // The pairing-code tile group (LiveCodeDisplay) marks the sending panel.
+  await A.getByRole('group', { name: 'Pairing code' }).waitFor({ timeout: 10000 });
+  console.log('STEP 1 OK: A created session, pairing code visible');
+  await ctxA.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: URL.match(/^https?:\/\/[^/]+/)?.[0] || URL }).catch(() => {});
   const code = await readLiveCode(A);
   console.log('Live code:', code);
 
@@ -65,11 +67,11 @@ async function main() {
     console.log("STEP 4 OK: A received B's reply");
   }
 
-  // --- Copy button on A ---
-  await A.getByRole('button', { name: 'Copy' }).first().click();
-  await sleep(800);
-  const aBodyCopy = await A.locator('body').innerText();
-  console.log(aBodyCopy.includes('Copied') ? 'STEP 5 OK: copy feedback shows' : 'STEP 5 WARN: no Copied feedback visible');
+  // --- Copy button on A: the sent message must copy verbatim ---
+  await A.getByRole('button', { name: 'Copy message' }).first().click();
+  await sleep(500);
+  const clip = await A.evaluate(() => navigator.clipboard.readText().catch(() => ''));
+  console.log(clip === 'Hello from Device A 👋' ? 'STEP 5 OK: Copy put the message on the clipboard' : 'STEP 5 WARN: clipboard read failed or mismatched');
 
   // --- Large unicode text A -> B ---
   const big = makeUnicodeText(120); // ~120 KB
@@ -90,7 +92,8 @@ async function main() {
   console.log('STEP 7: A refreshed — waiting for reconnect…');
   await sleep(6000);
   const aBody2 = await A.locator('body').innerText();
-  if (aBody2.includes('End room') || aBody2.includes('Your private clipboard') || aBody2.includes('Paste or type')) {
+  const aComposer = await A.getByTestId('composer').count();
+  if (aComposer > 0) {
     console.log('STEP 7 OK: A reconnected to the room after refresh');
   } else {
     console.log('STEP 7 WARN: A after refresh shows:', aBody2.slice(0, 300).replace(/\n/g, ' | '));
@@ -118,7 +121,8 @@ async function main() {
   await B2.goto(URL, { waitUntil: 'networkidle' });
   await sleep(6000);
   const b2Body = await B2.locator('body').innerText();
-  if (b2Body.includes('End room') || b2Body.includes('Your private clipboard') || b2Body.includes('Hello from Device A')) {
+  const b2Composer = await B2.getByTestId('composer').count();
+  if (b2Composer > 0 || b2Body.includes('Hello from Device A')) {
     console.log('STEP 8c OK: B rejoined the room after closing the tab');
   } else {
     console.log('STEP 8c WARN: B after tab reopen shows:', b2Body.slice(0, 300).replace(/\n/g, ' | '));

@@ -1,58 +1,50 @@
-# ShareText E2E Test: Complete User Journey
-# Tests the entire flow from landing to transfer
+# ShareText E2E Test: Single-Device Journey
+# The panels a single device can drive: home → sender panel → back →
+# receiver panel → back. (Two-device transfer E2E lives in scripts/e2e.mjs.)
 url: http://localhost:3000
 tags:
   - complete
   - journey
   - e2e
 ---
-# This is a comprehensive test of the entire ShareText experience
-# Note: Some steps require two devices and may need manual intervention
-
 - launchApp:
     clearState: true
 
-# 1. Landing Page
+# Home
 - assertVisible:
-    text: "Move anything between your devices"
+    text: "Move anything"
 - assertVisible:
-    text: "Send text"
+    text: "Send"
 - assertVisible:
-    text: "Receive text"
+    text: "Receive"
 
-# 2. Start a session
+# Start a session (sender panel)
 - tapOn:
-    text: "Send text"
-
-# 3. Verify pairing screen
+    text: "Send"
 - assertVisible:
-    text: "Live Code"
+    text: "Connect your other device."
 - assertVisible:
-    text: "Code refreshes in"
-
-# 4. Copy the code
-- tapOn:
     text: "Copy code"
 
-# 5. Go back and try joining
+# Cancel back to home
 - tapOn:
-    text: "Back"
-
-# 6. Join as receiver
-- tapOn:
-    text: "Receive text"
-
-# 7. Verify join screen
+    text: "Cancel"
 - assertVisible:
-    text: "Enter the 6-digit code"
+    text: "Move anything"
 
-# 8. Test back navigation
+# Open the receiver panel
 - tapOn:
-    text: "Back"
-
-# 9. Verify return to landing
+    text: "Receive"
 - assertVisible:
-    text: "Move anything between your devices"
+    text: "Join a room."
+- assertVisible:
+    text: "Scan QR code"
+
+# Cancel back to home
+- tapOn:
+    text: "Cancel"
+- assertVisible:
+    text: "Move anything"
 
 # Take final screenshot
 - takeScreenshot: complete-journey

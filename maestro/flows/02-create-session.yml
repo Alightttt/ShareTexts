@@ -1,5 +1,6 @@
-# ShareText E2E Test: Create Session
-# Tests the session creation flow from landing page
+# ShareText E2E Test: Create Session (sender panel)
+# Tests starting a session from the home screen: the sending panel shows the
+# pairing-code tile group with the share/copy/QR actions.
 url: http://localhost:3000
 tags:
   - session
@@ -9,37 +10,25 @@ tags:
 - launchApp:
     clearState: true
 
-# Click "Send text" to start a session
+# Start a session
 - tapOn:
-    text: "Send text"
+    text: "Send"
 
-# Should see the pairing screen
+# Sending panel heading
 - assertVisible:
-    text: "Your private clipboard"
+    text: "Connect your other device."
 
-# Should see a 6-digit code (Live Code display)
+# Sharing affordances
 - assertVisible:
-    text: "Live Code"
-
-# Should see code refresh timer
+    text: "Show QR"
 - assertVisible:
-    text: "Code refreshes in"
-
-# Should see back button
-- assertVisible:
-    text: "Back"
-
-# Copy code button should exist
+    text: "Share link"
 - assertVisible:
     text: "Copy code"
 
-# QR code button should exist
+# Escape hatch back to home
 - assertVisible:
-    text: "Show QR Code"
-
-# Link sharing should exist
-- assertVisible:
-    text: "Share link"
+    text: "Cancel"
 
 # Take screenshot
 - takeScreenshot: session-created

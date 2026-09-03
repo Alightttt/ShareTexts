@@ -1,0 +1,35 @@
+# ShareText E2E Test: QR Overlay (sender panel)
+# Opens the QR-code overlay from the sending panel and closes it again.
+url: http://localhost:3000
+tags:
+  - session
+  - qr
+  - ui
+---
+- launchApp:
+    clearState: true
+
+# Start a session
+- tapOn:
+    text: "Send"
+- assertVisible:
+    text: "Connect your other device."
+
+# Open the QR overlay
+- tapOn:
+    text: "Show QR"
+
+# Overlay instructions + close affordance
+- assertVisible:
+    text: "Open ShareText on your other device, choose"
+- assertVisible:
+    text: "Close"
+
+# Close the overlay and land back on the sending panel
+- tapOn:
+    text: "Close"
+- assertVisible:
+    text: "Connect your other device."
+
+# Take screenshot
+- takeScreenshot: qr-overlay

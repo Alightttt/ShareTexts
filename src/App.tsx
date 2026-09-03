@@ -3,18 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, lazy, Suspense, type ReactNode } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { SessionProvider, useSession } from './lib/SessionContext';
-import { WifiOff, Send, Home, Share2, Check } from 'lucide-react';
+import { Send, Home, Share2, Check } from 'lucide-react';
 import { ShareTextLogo } from './components/ShareTextLogo';
-import { ConnectingVisual } from './components/ConnectingVisual';
 
-// Lazy-load every view — the landing page paints with only the core JS;
-// ChatView, RoomHub, JoinSession, and Docs stream in only when needed.
-const Landing = lazy(() => import('./views/Landing').then(m => ({ default: m.Landing })));
-const RoomHub = lazy(() => import('./views/RoomHub').then(m => ({ default: m.RoomHub })));
-const JoinSession = lazy(() => import('./views/JoinSession').then(m => ({ default: m.JoinSession })));
-const ChatView = lazy(() => import('./views/ChatView').then(m => ({ default: m.ChatView })));
+// Lazy-load the remaining views — the app shell paints with only the core
+// JS; SingleScreenApp and Docs stream in only when needed.
 const Docs = lazy(() => import('./views/Docs').then(m => ({ default: m.Docs })));
 const SingleScreenApp = lazy(() => import('./views/SingleScreenApp').then(m => ({ default: m.SingleScreenApp })));
 
@@ -89,39 +84,8 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
 }
 
 /**
- * Joiner's "Connecting…" wait. WebRTC handshakes normally open in under a
- * second; if the other device's offer was lost (or its tab closed) the
- * joiner would otherwise wait forever. After a grace period, say what to do
- * and offer the recovery action — never a bare spinner.
- */
-function ConnectingWait({ onRetry }: { onRetry: () => void; key?: React.Key }) {
-  const [elapsed, setElapsed] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setElapsed(true), 15000);
-    return () => clearTimeout(t);
-  }, []);
-  return (
-    <>
-      <p className="text-[17px] text-apple-ink-muted">
-        {elapsed
-          ? "Still connecting. Make sure the other device is on its Connect screen with the code visible — we\u2019re trying a direct connection and a secure relay."
-          : "This usually takes a moment."}
-      </p>
-      {elapsed && (
-        <button
-          onPointerDown={onRetry}
-          className="mt-6 px-6 py-2.5 rounded-[10px] border border-apple-divider dark:border-white/15 text-[14px] font-semibold text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:border-apple-ink/30 dark:hover:border-white/30 transition-motion active:scale-95 min-h-[44px]"
-        >
-          Try again
-        </button>
-      )}
-    </>
-  );
-}
-
-/**
  * Root error boundary — catches rendering errors and never leaves #root empty.
- * Shows a safe recovery screen so the user can get back to the landing page.
+ * Shows a safe recovery screen so the user can get back to the home screen.
  */
 // Lightweight error boundary — function components cannot catch render errors.
 // Uses an untyped class because React 19 ships no .d.ts and @types/react is absent.

@@ -49,20 +49,18 @@ maestro test --include-tags=smoke maestro/flows/
 
 | Flow | Description | Tags |
 |------|-------------|------|
-| `01-landing-page.yml` | Landing page renders correctly | landing, smoke |
-| `02-create-session.yml` | Session creation flow | session, create, smoke |
-| `03-join-session.yml` | Join session flow | session, join, smoke |
-| `04-connected-view.yml` | Connected session UI | connected, ui |
-| `05-text-transfer.yml` | Text send/receive | transfer, text, e2e |
-| `06-error-states.yml` | Error handling | error, edge-case |
-| `07-404-page.yml` | 404 page styling | 404, navigation |
-| `08-dark-mode.yml` | Dark mode toggle | dark-mode, theme |
-| `09-responsive-design.yml` | Responsive layouts | responsive, mobile, desktop |
-| `10-complete-journey.yml` | Full user journey | complete, journey, e2e |
+| `01-home-screen.yml` | Home-screen idle hero smoke | home, smoke |
+| `02-create-session.yml` | Sender panel (pairing code + share actions) | session, create, smoke |
+| `03-join-session.yml` | Receiver / join panel | session, join, smoke |
+| `04-qr-overlay.yml` | QR overlay open/close on the sender panel | session, qr, ui |
+| `06-error-states.yml` | Invalid pairing code rejection | error, edge-case |
+| `07-404-page.yml` | 404 screen + return home | 404, navigation |
+| `10-complete-journey.yml` | Single-device panel navigation round-trip | complete, journey, e2e |
 
 ## Notes
 
-- **Two-Device Testing**: ShareText requires two devices to test transfers. The current flows test single-device UI. For full E2E testing, use the Playwright-based probes in `scripts/`.
+- The flows target the single-screen app: every surface lives on one page (idle hero → sender/receiver panels), so single-device flows cover the reachable UI. Two-device transfers, reconnect, and rejoin require a second peer and are covered by the Playwright suite in `scripts/e2e.mjs`, which CI runs live.
+- Viewport/theme/responsive coverage lives in the Playwright audits (`scripts/audit.mjs`, `scripts/audit-dark.mjs`), which is why no Maestro flow duplicates them.
 - **Maestro Web Support**: Web testing is in beta. Some commands may behave differently than mobile.
 - **Visual Testing**: Use `takeScreenshot` commands for visual regression testing.
 

@@ -1,0 +1,32 @@
+# ShareText E2E Test: Home Screen (single-screen app)
+# Verifies the idle hero on "/" renders both actions plus brand/footer anchors.
+url: http://localhost:3000
+tags:
+  - home
+  - smoke
+---
+- launchApp:
+    clearState: true
+
+# Hero headline (the h1 breaks across two lines — assert the first segment)
+- assertVisible:
+    text: "Move anything"
+
+# Both actions
+- assertVisible:
+    text: "Send"
+- assertVisible:
+    text: "Receive"
+
+# Header nav + footer trust line
+- assertVisible:
+    text: "Docs"
+- assertVisible:
+    text: "No app"
+- assertVisible:
+    text: "No account"
+- assertVisible:
+    text: "Temporary"
+
+# Take screenshot for visual verification
+- takeScreenshot: home-screen
