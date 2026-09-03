@@ -23,8 +23,7 @@ const SHELL = [
   '/icon-maskable-192.png',
   '/icon-maskable-512.png',
   '/apple-touch-icon.png',
-  '/og/sharetext-og-v6.png',
-  '/og/sharetext-og-v6.jpg',
+  '/og/sharetext-og-v8.png',
   '/demo/photo-4x3.jpg',
 ];
 
