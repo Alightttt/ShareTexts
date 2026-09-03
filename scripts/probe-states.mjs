@@ -36,6 +36,11 @@ async function probeViewport(w, h, label) {
   const idleSendRect = await B.getByRole('button', { name: 'Send', exact: true }).first().boundingBox().catch(() => null);
   const idleRecvRect = await B.getByRole('button', { name: 'Receive', exact: true }).first().boundingBox().catch(() => null);
   facts.idleButtons = { sendAboveFold: idleSendRect && idleSendRect.y > 0 && idleSendRect.y + idleSendRect.height < h, sendY: idleSendRect?.y, recvY: idleRecvRect?.y };
+  // Regression guard for the P0 "blank hero" issue: the H1 must be visible and
+  // fully in the first viewport at every breakpoint, without any refresh.
+  const idleH1 = await B.getByRole('heading', { level: 1 }).first().isVisible().catch(() => false);
+  const idleH1Rect = await B.getByRole('heading', { level: 1 }).first().boundingBox().catch(() => null);
+  facts.idleButtons.heroVisible = !!(idleH1 && idleH1Rect && idleH1Rect.y > 0 && idleH1Rect.y + idleH1Rect.height < h);
   await B.screenshot({ path: `.audit-shots/probe-${label}-idle.png`, fullPage: true });
 
   // ── SEND on A, read code ──
@@ -145,6 +150,7 @@ for (const [w, h, l] of widths) {
       label: f.label,
       idleOverflowX: f.idle.docX, idleOverflowY: f.idle.docY,
       sendAboveFold: f.idleButtons.sendAboveFold,
+      heroVisible: f.idleButtons.heroVisible,
       recvY: f.idleButtons.recvY,
       codeFits: f.codeDisplay.el ? (f.codeDisplay.el.overflowX <= 0) : null,
       codeOverflowX: f.codeDisplay.el?.overflowX,

@@ -89,6 +89,52 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
  */
 // Lightweight error boundary — function components cannot catch render errors.
 // Uses an untyped class because React 19 ships no .d.ts and @types/react is absent.
+function AppSkeleton({ docs = false }: { docs?: boolean }) {
+  // Stable brand frame while the route hydrates: header + skeleton lines,
+  // so a slow load never reads as a broken or blank page.
+  return (
+    <div className="min-h-screen bg-apple-canvas dark:bg-[#120e22] flex flex-col">
+      <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4 border-b border-apple-divider/60 dark:border-white/[0.06]">
+        <div className="flex items-center gap-2.5">
+          <ShareTextLogo size={20} className="text-azure-600 dark:text-azure-400" />
+          <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="w-9 h-4 rounded-full bg-apple-divider/80 dark:bg-white/10 animate-pulse" />
+          <span className="w-12 h-7 rounded-full bg-apple-divider/80 dark:bg-white/10 animate-pulse" />
+        </div>
+      </header>
+      <div className="flex-1 w-full max-w-xl mx-auto px-6 lg:px-10 py-14 sm:py-20">
+        {docs ? (
+          <>
+            <div className="h-7 w-1/3 rounded-lg bg-apple-divider/70 dark:bg-white/10 animate-pulse" />
+            <div className="mt-6 space-y-3">
+              <div className="h-4 w-full rounded bg-apple-divider/50 dark:bg-white/[0.06] animate-pulse" />
+              <div className="h-4 w-5/6 rounded bg-apple-divider/50 dark:bg-white/[0.06] animate-pulse" />
+              <div className="h-4 w-2/3 rounded bg-apple-divider/50 dark:bg-white/[0.06] animate-pulse" />
+              <div className="mt-8 h-64 w-full rounded-[20px] bg-apple-parchment dark:bg-white/[0.04] animate-pulse" />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="h-8 w-3/4 rounded-lg bg-apple-divider/70 dark:bg-white/10 animate-pulse" />
+            <div className="mt-3 h-8 w-1/2 rounded-lg bg-apple-divider/70 dark:bg-white/10 animate-pulse" />
+            <div className="mt-5 space-y-2">
+              <div className="h-4 w-full rounded bg-apple-divider/50 dark:bg-white/[0.06] animate-pulse" />
+              <div className="h-4 w-2/3 rounded bg-apple-divider/50 dark:bg-white/[0.06] animate-pulse" />
+            </div>
+            <div className="mt-8 flex gap-3">
+              <div className="h-12 w-28 rounded-[10px] bg-azure-600/25 dark:bg-azure-600/30 animate-pulse" />
+              <div className="h-12 w-28 rounded-[10px] border border-apple-divider dark:border-white/10 animate-pulse" />
+            </div>
+          </>
+        )}
+      </div>
+      <div className="sr-only" role="status">Loading ShareText…</div>
+    </div>
+  );
+}
+
 function ErrorFallback({ onReset }: { onReset: () => void }) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#120e22] p-6 text-center">
@@ -124,7 +170,7 @@ function AppContent() {
   const { session, leaveView, createSession, closeSession } = useSession();
 
   if (typeof window !== 'undefined' && window.location.pathname === '/docs') {
-    return <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-[#120e22] flex items-center justify-center"><ShareTextLogo size={32} motion="loading" className="text-azure-600 dark:text-azure-400 opacity-60" /></div>}><Docs /></Suspense>;
+    return <Suspense fallback={<AppSkeleton docs />}><Docs /></Suspense>;
   }
 
   if (typeof window !== 'undefined' && window.location.pathname !== '/' && !window.location.pathname.startsWith('/s/')) {
@@ -152,7 +198,7 @@ function AppContent() {
   }
 
   return (
-    <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-[#120e22] flex items-center justify-center"><ShareTextLogo size={32} motion="loading" className="text-azure-600 dark:text-azure-400 opacity-60" /></div>}>
+    <Suspense fallback={<AppSkeleton />}>
       <SingleScreenApp />
     </Suspense>
   );

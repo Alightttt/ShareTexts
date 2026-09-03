@@ -283,16 +283,24 @@ export function SingleScreenApp() {
         <AnimatePresence mode="sync">
           {/* ── IDLE ──────────────────────────────────────────────── */}
           {panelMode === 'idle' && (
-            <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto sm:mx-0">
+            // Deterministic first paint: the hero renders visible immediately;
+            // only the swap-out fades. Never gate first paint on animation.
+            <motion.div key="idle" exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto sm:mx-0">
               <h1 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold tracking-[-0.03em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left">
                 Move anything<br />between your devices.
               </h1>
               <p className="mt-4 text-[15px] sm:text-[16px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[36ch] text-center sm:text-left">
                 Phone to laptop, or laptop to phone. No app to install, no account to make. When you close the tab, it's gone.
               </p>
-              <div className="mt-7 flex gap-3 justify-center sm:justify-start">
-                <TactileButton onClick={handleSend} variant="primary" size="lg" icon={<SendCircleIcon size={18} />} disabled={isCreating}>Send</TactileButton>
-                <TactileButton onClick={handleReceive} variant="secondary" size="lg" icon={<ReceiveCircleIcon size={18} />}>Receive</TactileButton>
+              <div className="mt-7 flex gap-6 justify-center sm:justify-start">
+                <div className="flex flex-col items-center gap-1.5">
+                  <TactileButton onClick={handleSend} variant="primary" size="lg" icon={<SendCircleIcon size={18} />} disabled={isCreating}>Send</TactileButton>
+                  <span className="text-[11.5px] font-medium text-apple-ink-muted/70 dark:text-white/40">Create a room</span>
+                </div>
+                <div className="flex flex-col items-center gap-1.5">
+                  <TactileButton onClick={handleReceive} variant="secondary" size="lg" icon={<ReceiveCircleIcon size={18} />}>Receive</TactileButton>
+                  <span className="text-[11.5px] font-medium text-apple-ink-muted/70 dark:text-white/40">Join with a code</span>
+                </div>
               </div>
               {createError && (
                 <div role="alert" className="mt-4">
@@ -523,15 +531,19 @@ export function SingleScreenApp() {
       <div className="flex-1 min-h-0 flex flex-col">
         {panelMode === 'connected' ? (
           <Suspense fallback={<div className="h-full flex items-center justify-center"><ShareTextLogo size={24} motion="connecting" className="text-azure-600 dark:text-azure-400" /></div>}>
-            <motion.div
-              key="room-connected"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.28, ease: EASE }}
-              className="h-full flex flex-col min-h-0"
-            >
-              <ChatView panelMode="embedded" />
-            </motion.div>
+            {/* Definite-height flex wrapper: keeps ChatView's h-full resolved on
+                the desktop two-pane layout (Suspense itself is not a flex item). */}
+            <div className="flex-1 min-h-0 flex flex-col">
+              <motion.div
+                key="room-connected"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.28, ease: EASE }}
+                className="h-full flex flex-col min-h-0"
+              >
+                <ChatView panelMode="embedded" />
+              </motion.div>
+            </div>
           </Suspense>
         ) : (
           <AnimatePresence mode="wait">
@@ -552,15 +564,31 @@ export function SingleScreenApp() {
 
               {/* State-specific messaging */}
               <p className="text-[15px] font-semibold text-apple-ink/70 dark:text-white/50 mb-1.5">
-                {panelMode === 'idle' && 'Connect two devices'}
-                {panelMode === 'sending' && (isCreating && !session.secret ? 'Creating room…' : 'Waiting for your other device')}
+                {panelMode === 'idle' && 'Ready to start'}
+                {panelMode === 'sending' && (isCreating && !session.secret ? 'Creating room…' : 'Room created')}
                 {panelMode === 'receiving' && 'Waiting for connection'}
               </p>
-              <p className="text-[12.5px] text-apple-ink-muted/50 dark:text-white/25 max-w-[240px] leading-relaxed">
-                {panelMode === 'idle' && "Once they're paired, anything you send shows up on the other screen."}
-                {panelMode === 'sending' && (isCreating && !session.secret ? 'Setting up your transfer room.' : 'Enter the code shown on this device.')}
+              <p className="text-[12.5px] text-apple-ink-muted/50 dark:text-white/25 max-w-[260px] leading-relaxed">
+                {panelMode === 'idle' && 'Pick Send on this device, Receive on the other. They pair in seconds.'}
+                {panelMode === 'sending' && (isCreating && !session.secret ? 'Setting up your transfer room.' : 'Connect the other device: enter the code shown on this one.')}
                 {panelMode === 'receiving' && 'Enter the code from the other device.'}
               </p>
+              {/* A compact three-step guide keeps the room panel informative
+                  while disconnected, instead of a large empty surface. */}
+              {panelMode === 'idle' && (
+                <div className="mt-8 space-y-2.5 text-left">
+                  {[
+                    'Open ShareText on both devices.',
+                    'Tap Send on one, Receive on the other.',
+                    'Type, paste, or drop. It lands instantly.',
+                  ].map((step, i) => (
+                    <div key={i} className="flex items-center gap-2.5">
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-azure-600/10 dark:bg-azure-600/20 text-azure-700 dark:text-azure-400 text-[11px] font-bold flex items-center justify-center">{i + 1}</span>
+                      <span className="text-[12.5px] font-medium text-apple-ink-muted/80 dark:text-white/45">{step}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           </AnimatePresence>
         )}
@@ -607,6 +635,12 @@ export function SingleScreenApp() {
               <Suspense fallback={<div className="w-full h-[280px] flex items-center justify-center rounded-[16px] bg-apple-parchment dark:bg-white/5 text-[13px] text-apple-ink-muted">Loading scanner...</div>}>
                 <QRScanner onScan={handleQRScan} onErrorFallback={() => { setShowQRScan(false); }} />
               </Suspense>
+              <button
+                onClick={() => setShowQRScan(false)}
+                className="mt-4 text-[13px] font-semibold text-apple-ink-muted hover:text-apple-ink dark:hover:text-white underline-offset-2 hover:underline transition-colors"
+              >
+                Camera not opening? Type the code instead
+              </button>
             </motion.div>
           </motion.div>
         )}
