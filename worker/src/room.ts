@@ -56,7 +56,7 @@ interface RoomState {
   state: RoomPhase;
   createdAt: number;
   /** The TOTP anchor. Re-anchored on refresh_code so the creator always sees
-   *  a fresh 40s code window on the connect screen; the previous code stays
+   *  a fresh 90s code window on the connect screen; the previous code stays
    *  valid for one more window (±1 validation) so a typing joiner isn't cut off. */
   codeAnchor: number;
   lastActive: number;
@@ -438,7 +438,7 @@ export class Room extends DurableObject<Env> {
     log('room created', roomId.slice(0, 8), 'WAITING');
     await count(this.env, 'rooms.created');
     await reportPresence(this.env, roomId, (await this.livePeers()).length);
-    // createdAt anchors the pairing-code window (40s from room creation).
+    // createdAt anchors the pairing-code window (90s from room creation).
     this.ackOk(cid, id, { roomId, secret, createdAt: now });
   }
 
@@ -537,7 +537,7 @@ export class Room extends DurableObject<Env> {
 
   /**
    * Re-anchor the pairing-code window to now (creator landed on the connect
-   * screen). The previous code stays valid for one more 40s window via the
+   * screen). The previous code stays valid for one more 90s window via the
    * ±1 validation window, so a joiner mid-typing still connects. Requires the
    * room secret — only a device that already joined the room can refresh.
    */

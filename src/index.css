@@ -7,8 +7,8 @@
   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      SHARETEXT DESIGN SYSTEM
      A quiet, precise utility. Not a SaaS template.
-     Blue = action/connection. Green = received. Amber = waiting.
-     Red = error. Neutral = information.
+     Violet = action/connection (Send, pairing). Green = received.
+     Amber = waiting/warning. Red = error. Neutral = information.
      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
   --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
@@ -189,6 +189,13 @@
   }
   :focus:not(:focus-visible) {
     outline: none;
+  }
+
+  ::selection {
+    background: rgba(139, 124, 246, 0.28);
+  }
+  html.dark ::selection {
+    background: rgba(167, 139, 250, 0.45);
   }
 }
 

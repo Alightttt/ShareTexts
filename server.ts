@@ -372,7 +372,7 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     log('room created', roomId.slice(0, 8), 'by', socket.id.slice(0, 8));
     count('rooms.created');
-    // codeAnchor anchors the pairing-code window (40s from room creation,
+    // codeAnchor anchors the pairing-code window (90s from room creation,
     // re-anchored on refresh_code when the creator lands on the connect screen).
     cb({ success: true, roomId, secret, createdAt: rooms.get(roomId)!.codeAnchor });
   });
@@ -397,13 +397,13 @@ io.on('connection', (socket) => {
         label: "Session",
         algorithm: "SHA1",
         digits: 6,
-        period: 40,
+        period: 90,
         secret: room.secret
       });
 
       // Room-anchored window: counter = (now - createdAt) / 40s, so the
       // first code is always a full 40s and both devices agree on it.
-      const delta = totp.validate({ token: code, window: 2, timestamp: Date.now() - room.codeAnchor });
+      const delta = totp.validate({ token: code, window: 3, timestamp: Date.now() - room.codeAnchor });
       if (delta !== null) {
         matchedRoom = room;
         break;
@@ -507,7 +507,7 @@ io.on('connection', (socket) => {
   });
 
   // The creator reached the connect screen — re-anchor the code window so the
-  // countdown always starts fresh at 40s. Safe: the ±1 validation window keeps
+  // countdown always starts fresh at 90s. Safe: the ±1 validation window keeps
   // the previous code valid for one more period, so a joiner mid-typing still
   // connects. Only a seated peer holding the room secret can refresh.
   socket.on('refresh_code', ({ roomId, secret }, cb) => {

@@ -370,7 +370,11 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
       )}>
         <div className={cn(
           "flex flex-col w-full overflow-hidden rounded-[18px]",
-          "bg-white dark:bg-[#1a1a22] border border-apple-divider/40 dark:border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
+          // Sent bubbles carry the brand tint; received stay neutral — the
+          // color tells you whose message it is before you read a word.
+          isMe
+            ? "bg-[#ece6fb] dark:bg-[#2a2152] border border-azure-600/20 dark:border-azure-400/25 shadow-[0_1px_3px_rgba(139,124,246,0.12)]"
+            : "bg-white dark:bg-[#1d1733] border border-apple-divider/40 dark:border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
           isMe && isGroupEnd && "rounded-br-[4px]",
           !isMe && isGroupEnd && "rounded-bl-[4px]",
           isMe && !isGroupEnd && "rounded-br-[14px]",
