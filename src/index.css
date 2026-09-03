@@ -95,7 +95,7 @@
   --shadow-device: 0 4px 20px -6px rgb(0 0 0 / 0.18);
   --shadow-inset: inset 0 1px 2px rgb(0 0 0 / 0.05);
 
-  /* ── Easing ─────────────────────────────────────────────────────────── */
+    /* ── Easing ─────────────────────────────────────────────────────────── */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
@@ -104,6 +104,9 @@
   --motion-quick: 160ms;
   --motion-normal: 250ms;
   --motion-slow: 350ms;
+
+  /* ── Tactile surfaces (theme-aware button gradients) ────────────────── */
+  --st-btn-secondary-grad: linear-gradient(180deg, #ffffff 0%, #f2f1fb 55%, #e6e4f6 100%);
 }
 
 @layer base {
@@ -164,6 +167,7 @@
     --color-azure-500: #a0b4fa;
     --color-azure-600: #a78bfa;
     --color-azure-700: #a0b4fa;
+    --st-btn-secondary-grad: linear-gradient(180deg, #2a2650 0%, #242044 55%, #1e1a3a 100%);
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -223,6 +227,7 @@ html.dark .hero-glow {
   background: radial-gradient(ellipse at 60% 50%, rgba(139,124,246,0.06) 0%, transparent 60%);
 }
 }
+
 
 /* ── Scrollbar — desktop only, quiet ─────────────────────────────────── */
 @media (min-width: 768px) and (hover: hover) and (pointer: fine) {

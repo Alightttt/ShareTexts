@@ -350,6 +350,17 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
       setErrorMsg(null);
       setAttachments(prev => [...prev, ...accepted]);
       setShowAttachmentMenu(false);
+      // The strip mounts AFTER this state update commits, so defer measuring
+      // until the DOM has the new thumbnails — then fly the picked files from
+      // the + button to the strip (AttachmentFlight).
+      setTimeout(() => {
+        const from = plusButtonRef.current?.getBoundingClientRect();
+        const to = composerStripRef.current?.getBoundingClientRect();
+        if (!from || !to) return;
+        setFlightFromRect(from);
+        setFlightToRect(to);
+        setFlyingFiles(accepted.map(a => a.file));
+      }, 50);
     }
   };
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'file' | 'video' | 'audio') => {
@@ -643,9 +654,9 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
               ) : (
                 <div className="flex flex-col items-center">
                   <EmptyRoomIllustration />
-                  <p className="text-[15px] font-semibold text-apple-ink dark:text-white mt-4">Connect another device</p>
+                  <p className="text-[15px] font-semibold text-apple-ink dark:text-white mt-4">Ready when you are</p>
                   <p className="text-[13px] text-apple-ink-muted max-w-[260px] leading-relaxed mt-1">
-                    Then send text, photos, or files.
+                    Type, paste, or drop anything — it goes straight to the other device.
                   </p>
                 </div>
               )}
@@ -734,7 +745,11 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
             <input type="file" ref={audioInputRef} accept="audio/*" multiple className="hidden" onChange={(e) => handleFileSelect(e, 'audio')} />
             <input type="file" ref={fileInputRef} multiple className="hidden" onChange={(e) => handleFileSelect(e, 'file')} />
           </div>
-          <motion.div layout className="relative rounded-[24px] bg-white dark:bg-[#1a1a22] overflow-visible shadow-[0_1px_4px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)] transition-motion focus-within:ring-2 focus-within:ring-[#8b7cf6]/30 z-20 border border-black/[0.04] dark:border-white/[0.06]">
+          <motion.div layout className={cn("relative rounded-[24px] bg-white dark:bg-[#1a1a22] overflow-visible shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_28px_-14px_rgba(0,0,0,0.14)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.2),0_12px_32px_-14px_rgba(0,0,0,0.5)] transition-motion focus-within:ring-2 focus-within:ring-[#8b7cf6]/30 border border-black/[0.04] dark:border-white/[0.06]", showAttachmentMenu ? "z-[45]" : "z-20")}>
+          {/* The composer sits above the attachment panel's full-screen
+              backdrop while the menu is open, so the + button (and the whole
+              composer) stays clickable — otherwise the backdrop eats the click
+              that should toggle the menu closed. */}
             {/* Multi-attachment preview strip — up to 20 files, each with a
                 circular remove button that's always visible and tappable. */}
             <AnimatePresence>
@@ -827,7 +842,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 onPointerDown={handleSend}
                 disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
                 aria-label="Send"
-                className="w-[34px] h-[34px] rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-90 bg-[#8b7cf6] hover:bg-[#7c6ce0] text-white disabled:opacity-30 disabled:bg-[#c0c8e0] dark:disabled:bg-[#3a3a42] disabled:shadow-none"
+                className="w-[38px] h-[38px] rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-90 text-white disabled:opacity-30 disabled:bg-[#c0c8e0] dark:disabled:bg-[#3a3a42] disabled:shadow-none bg-gradient-to-b from-[#a78bfa] to-[#7c6ce0] shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_10px_-2px_rgba(139,124,246,0.4)]"
               >
                 <AnimatedIcon animate="send" active={!((!inputText.trim() && attachments.length === 0) || !session.partnerConnected)}>
                   <ArrowUp className="w-5 h-5" strokeWidth={2.4} />
@@ -1078,7 +1093,9 @@ const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
         <div className={cn(
           "max-w-[85%] sm:max-w-[65%] px-[14px] py-[10px] rounded-[18px]",
           isMe
-            ? "bg-[#f0eef5] dark:bg-[#1e1e2a] text-apple-ink dark:text-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+            // Sent items carry a whisper of the brand so the eye instantly
+            // separates what left this device from what arrived.
+            ? "bg-[#ece9fa] dark:bg-[#252140] text-apple-ink dark:text-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
             : "bg-white dark:bg-[#1a1a22] border border-apple-divider/40 dark:border-white/[0.06] text-apple-ink dark:text-white",
           isMe && isGroupEnd && "rounded-br-[4px]",
           !isMe && isGroupEnd && "rounded-bl-[4px]",

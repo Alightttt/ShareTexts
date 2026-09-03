@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 import { ShareTextLogo } from './ShareTextLogo';
@@ -8,6 +8,11 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
   const [shake, setShake] = useState(false);
   const [pasteHint, setPasteHint] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  // The desktop and mobile layouts both render this component (CSS picks the
+  // visible one), so a hardcoded id would appear twice in the DOM — breaking
+  // label association and letting autoFocus land on the hidden copy. useId
+  // keeps every instance's id unique.
+  const inputId = useId();
 
   useEffect(() => {
     if (!isJoining && inputRef.current) {
@@ -82,9 +87,9 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
 
   return (
     <div className="flex flex-col items-center relative w-full">
-      <label htmlFor="pairing-code-input" className="sr-only">Six-digit pairing code</label>
+      <label htmlFor={inputId} className="sr-only">Six-digit pairing code</label>
       <input
-        id="pairing-code-input"
+        id={inputId}
         ref={inputRef}
         type="text"
         inputMode="numeric"

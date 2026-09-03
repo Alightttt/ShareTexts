@@ -46,17 +46,20 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
 const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; shadowHover: string; shadowPress: string; gradient: string }> = {
   primary: {
     base: 'text-white',
-    shadowIdle: '0 1px 2px rgba(0,0,0,0.2), 0 4px 12px -2px rgba(139,124,246,0.25)',
-    shadowHover: '0 4px 8px rgba(0,0,0,0.15), 0 12px 28px -4px rgba(139,124,246,0.4)',
-    shadowPress: '0 1px 2px rgba(0,0,0,0.2), 0 2px 6px -1px rgba(139,124,246,0.15)',
-    gradient: 'linear-gradient(135deg, #a78bfa 0%, #8b7cf6 50%, #7c6ce0 100%)',
+    shadowIdle: '0 1px 2px rgba(0,0,0,0.22), 0 6px 16px -4px rgba(139,124,246,0.45)',
+    shadowHover: '0 6px 12px rgba(0,0,0,0.16), 0 16px 32px -6px rgba(139,124,246,0.55)',
+    shadowPress: '0 1px 2px rgba(0,0,0,0.22), 0 2px 6px -1px rgba(139,124,246,0.2)',
+    gradient: 'linear-gradient(180deg, #b18ffc 0%, #8b7cf6 45%, #7a69e4 100%)',
   },
   secondary: {
-    base: 'text-[#4c2baa] dark:text-[#7c6be0]',
-    shadowIdle: '0 1px 2px rgba(139,124,246,0.08), 0 3px 8px -2px rgba(139,124,246,0.06)',
-    shadowHover: '0 4px 8px rgba(139,124,246,0.12), 0 10px 20px -3px rgba(139,124,246,0.15)',
-    shadowPress: '0 1px 2px rgba(139,124,246,0.08), 0 2px 4px -1px rgba(139,124,246,0.06)',
-    gradient: 'linear-gradient(135deg, #f0f4ff 0%, #e8edff 50%, #e0e7fe 100%)',
+    // The gradient reads from a theme-aware CSS variable (defined in
+    // index.css) so dark mode gets a dark lavender surface instead of a
+    // washed-out light pill with low-contrast text.
+    base: 'text-[#4c2baa] dark:text-[#c4b5fd]',
+    shadowIdle: '0 1px 1.5px rgba(139,124,246,0.14), 0 3px 8px -2px rgba(139,124,246,0.1)',
+    shadowHover: '0 5px 10px rgba(139,124,246,0.16), 0 12px 24px -4px rgba(139,124,246,0.18)',
+    shadowPress: '0 1px 2px rgba(139,124,246,0.1), 0 2px 4px -1px rgba(139,124,246,0.08)',
+    gradient: 'var(--st-btn-secondary-grad)',
   },
   ghost: {
     base: 'bg-transparent text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-apple-parchment dark:hover:bg-apple-tile-1',
@@ -66,6 +69,7 @@ const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; 
     gradient: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 50%, rgba(0,0,0,0.03) 100%)',
   },
 };
+
 
 // Surface fill under the gradient overlay
 const SURFACE_FILLS: Record<ButtonVariant, string> = {
@@ -104,9 +108,13 @@ export function TactileButton({
   // Y transform — rises on hover, compresses on press (Apple Design §4)
   const y = useSpring(0, { stiffness: 300, damping: 20 });
 
-  // Shadow animation — expanded on hover, tight on press
+  // Shadow animation — expanded on hover, tight on press. The shadow is
+  // visible AT REST (starts at 1): a button with zero resting depth reads as
+  // a flat rectangle, and flat buttons are what make the idle screen feel
+  // like a generic dashboard instead of a physical utility. Hover lifts it,
+  // press compresses it, leave settles back to rest.
   const shadowY = useSpring(0, { stiffness: 200, damping: 20 });
-  const shadowOpacity = useSpring(0, { stiffness: 200, damping: 20 });
+  const shadowOpacity = useSpring(1, { stiffness: 200, damping: 20 });
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     const rect = ref.current?.getBoundingClientRect();
@@ -129,7 +137,7 @@ export function TactileButton({
     lightOpacity.set(0);
     y.set(0);
     shadowY.set(0);
-    shadowOpacity.set(0);
+    shadowOpacity.set(1); // settle back to resting depth
     setIsPressed(false);
   }, [lightOpacity, y, shadowY, shadowOpacity]);
 
@@ -149,7 +157,7 @@ export function TactileButton({
     } else {
       y.set(0);
       shadowY.set(0);
-      shadowOpacity.set(0);
+      shadowOpacity.set(1);
     }
   }, [y, shadowY, shadowOpacity, isHovered]);
 

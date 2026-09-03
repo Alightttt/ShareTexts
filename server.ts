@@ -18,7 +18,8 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: isProd ? ["'self'"] : ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
       // Received images/videos render from blob: object URLs.
       imgSrc: ["'self'", "data:", "blob:"],
       mediaSrc: ["'self'", "blob:"],
@@ -34,6 +35,8 @@ app.use(helmet({
         "ws:",
         "wss:",
         "https:",
+        "https://fonts.googleapis.com",
+        "https://fonts.gstatic.com",
         ...(isProd ? [] : ["http://localhost:*", "ws://localhost:*"]),
       ],
       frameAncestors: ["'none'"],
@@ -613,7 +616,7 @@ async function start() {
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: { server: httpServer } },
       appType: "spa",
     });
     app.use(vite.middlewares);

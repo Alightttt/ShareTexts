@@ -3,6 +3,21 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Image as ImageIcon, File as FileIcon } from 'lucide-react';
 import { cn } from '../lib/utils';
 
+// Escape closes the menu; re-focuses the + button so keyboard users stay put.
+function useEscapeToClose(isOpen: boolean, onClose: () => void, triggerRef: React.RefObject<HTMLButtonElement | null>) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+        triggerRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose, triggerRef]);
+}
+
 type PanelMode = 'closed' | 'menu';
 
 interface AttachmentPanelProps {
@@ -26,7 +41,8 @@ interface AttachmentPanelProps {
  */
 export function AttachmentPanel({ isOpen, onClose, onSelectType, buttonRef }: AttachmentPanelProps) {
   const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
-  
+  useEscapeToClose(isOpen, onClose, buttonRef);
+
   useEffect(() => {
     if (isOpen && buttonRef.current) {
       setButtonRect(buttonRef.current.getBoundingClientRect());

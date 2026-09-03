@@ -51,6 +51,29 @@ function useIsMobileDevice() {
   return mobile;
 }
 
+/**
+ * True when the two-panel desktop layout is active. The desktop and mobile
+ * layout branches both reference the same leftPanel/roomPanel elements; only
+ * mounting the branch that matches the current viewport keeps a SINGLE copy
+ * of every component in the DOM (one ChatView, one composer, one pairing
+ * input) instead of two — one visible and one hidden — which previously
+ * duplicated ids, file inputs, event listeners, haptics and draft writes.
+ */
+function useIsDesktopLayout() {
+  const [desktop, setDesktop] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth >= 1024;
+  });
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const update = () => setDesktop(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  return desktop;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Device pair illustration — explains the product visually           */
 /* ------------------------------------------------------------------ */
@@ -99,6 +122,7 @@ function DevicePair({ state }: { state: 'idle' | 'connecting' | 'connected' }) {
 /* ------------------------------------------------------------------ */
 export function SingleScreenApp() {
   const { session, createSession, abandonSession, joinWithCode } = useSession();
+  const isDesktopLayout = useIsDesktopLayout();
   const [panelMode, setPanelMode] = useState<PanelMode>('idle');
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -206,6 +230,12 @@ export function SingleScreenApp() {
   /* ---------------------------------------------------------------- */
   /*  LEFT / TOP PANEL                                                */
   /* ---------------------------------------------------------------- */
+  const isMobileDevice = useIsMobileDevice();
+  // Which device am I? The connected state shows two physical devices, so the
+  // "this device" tile must match reality — a phone on phones, a screen on
+  // desktops — instead of always drawing a phone.
+  const ThisDeviceIcon = isMobileDevice ? Smartphone : Monitor;
+  const PartnerDeviceIcon = isMobileDevice ? Monitor : Smartphone;
   const leftPanel = (
     <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0e1220]">
       {/* Header */}
@@ -315,7 +345,7 @@ export function SingleScreenApp() {
                       "w-12 h-12 rounded-[14px] flex items-center justify-center",
                       "bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 border border-[#8b7cf6]/15 dark:border-[#a78bfa]/15"
                     )}>
-                      <Smartphone className="w-5 h-5 text-[#8b7cf6] dark:text-[#a78bfa]" />
+                      <ThisDeviceIcon className="w-5 h-5 text-[#8b7cf6] dark:text-[#a78bfa]" />
                     </div>
                     <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/40">This device</span>
                   </div>
@@ -336,7 +366,7 @@ export function SingleScreenApp() {
                       "w-12 h-12 rounded-[14px] flex items-center justify-center",
                       "bg-status-success/8 dark:bg-status-success/10 border border-status-success/15 dark:border-status-success/15"
                     )}>
-                      <Monitor className="w-5 h-5 text-status-success" />
+                      <PartnerDeviceIcon className="w-5 h-5 text-status-success" />
                     </div>
                     <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/40">Paired</span>
                   </div>
@@ -437,10 +467,13 @@ export function SingleScreenApp() {
   /* ---------------------------------------------------------------- */
   const roomPanel = (
     <div className={cn(
-      "flex flex-col min-h-0 bg-[#f2f0ed] dark:bg-[#080c16]",
-      "max-lg:h-[60vh] max-lg:min-h-[360px] max-lg:max-h-[700px] max-lg:w-full max-lg:mx-auto max-lg:rounded-[20px] max-lg:border max-lg:border-apple-divider/50 max-lg:dark:border-white/[0.08] max-lg:overflow-hidden max-lg:shadow-card",
+      "relative flex flex-col min-h-0 overflow-hidden bg-[#f2f0ed] dark:bg-[#080c16]",
+      "max-lg:h-[60vh] max-lg:min-h-[360px] max-lg:max-h-[700px] max-lg:w-full max-lg:mx-auto max-lg:rounded-[20px] max-lg:border max-lg:border-apple-divider/50 max-lg:dark:border-white/[0.08] max-lg:shadow-card",
       mobileRoomFullscreen && "max-lg:!fixed max-lg:inset-0 max-lg:z-50 max-lg:rounded-none max-lg:border-none max-lg:aspect-auto max-lg:shadow-none"
     )}>
+      {/* Ambient brand glow — a quiet lavender wash in the corner. Background
+          only: never competes with content, disappears on reduced motion. */}
+      <div aria-hidden="true" className="pointer-events-none absolute -top-28 -right-24 w-[26rem] h-[26rem] rounded-full bg-[#8b7cf6]/[0.08] dark:bg-[#a78bfa]/[0.06] blur-[110px] motion-reduce:hidden" />
       {/* Room header */}
       <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-[#f2f0ed]/80 dark:bg-[#080c16]/80 backdrop-blur-xl z-10">
         <div className="flex items-center gap-2.5">
@@ -451,9 +484,12 @@ export function SingleScreenApp() {
           {panelMode === 'connected' && (
             <>
               <span className="w-px h-3 bg-apple-divider dark:bg-white/10" />
-              <span className="flex items-center gap-1.5 text-[12px] font-medium text-apple-ink-muted dark:text-white/50">
-                <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" />
-                Connected
+              {/* Two physical devices, connected — the mental model in the header */}
+              <span className="flex items-center gap-1.5 text-apple-ink-muted dark:text-white/50" title="Devices connected">
+                <ThisDeviceIcon className="w-3.5 h-3.5" />
+                <ArrowRightLeft className="w-3 h-3 opacity-50" />
+                <PartnerDeviceIcon className="w-3.5 h-3.5" />
+                <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse ml-0.5" />
               </span>
             </>
           )}
@@ -528,18 +564,24 @@ export function SingleScreenApp() {
   /* ---------------------------------------------------------------- */
   return (
     <div className="h-dvh lg:h-dvh overflow-hidden bg-apple-canvas dark:bg-[#0a0e18] dot-bg">
-      {/* Desktop: horizontal split */}
-      <div className="hidden lg:flex h-full">
-        <div className="w-[42%] min-w-[380px] max-w-[480px] h-full overflow-y-auto border-r border-black/[0.06] dark:border-white/[0.06]">{leftPanel}</div>
-        <div className="flex-1 h-full min-w-0">{roomPanel}</div>
-      </div>
-      {/* Mobile: scrollable column */}
-      <div className="lg:hidden h-full overflow-y-auto overscroll-contain">
-        <div className="flex flex-col min-h-full pb-4">
-          <div className="shrink-0">{leftPanel}</div>
-          <div className="shrink-0 px-4 mt-4">{roomPanel}</div>
+      {/* Only the ACTIVE layout is mounted — the other branch stays unmounted
+          so components (ChatView, composer, pairing input) exist exactly once
+          in the DOM instead of twice with one hidden copy. */}
+      {isDesktopLayout ? (
+        /* Desktop: horizontal split */
+        <div className="flex h-full">
+          <div className="w-[42%] min-w-[380px] max-w-[480px] h-full overflow-y-auto border-r border-black/[0.06] dark:border-white/[0.06]">{leftPanel}</div>
+          <div className="flex-1 h-full min-w-0">{roomPanel}</div>
         </div>
-      </div>
+      ) : (
+        /* Mobile: scrollable column */
+        <div className="h-full overflow-y-auto overscroll-contain">
+          <div className="flex flex-col min-h-full pb-4">
+            <div className="shrink-0">{leftPanel}</div>
+            <div className="shrink-0 px-4 mt-4">{roomPanel}</div>
+          </div>
+        </div>
+      )}
       {/* QR scan overlay (for receiving) */}
       <AnimatePresence>
         {showQRScan && (
