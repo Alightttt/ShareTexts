@@ -261,7 +261,12 @@ export function SingleScreenApp() {
   const ThisDeviceIcon = isMobileDevice ? Smartphone : Monitor;
   const PartnerDeviceIcon = isMobileDevice ? Monitor : Smartphone;
   const leftPanel = (
-    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-[#0e1220]">
+    <div className="relative isolate flex flex-col h-full overflow-hidden bg-bg-elevated dark:bg-bg-secondary">
+      {/* Ambient warmth — soft lavender + peach washes behind the content */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[420px] -z-10 overflow-hidden motion-reduce:hidden">
+        <div className="absolute -top-24 -left-20 w-80 h-80 rounded-full bg-azure-200/60 dark:bg-azure-600/[0.12] blur-[100px]" />
+        <div className="absolute -top-12 right-[-3rem] w-96 h-96 rounded-full bg-peach-200/50 dark:bg-peach-400/[0.07] blur-[110px]" />
+      </div>
       {/* Header */}
       <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
         <div className="flex items-center gap-2.5">
@@ -280,9 +285,16 @@ export function SingleScreenApp() {
           {/* ── IDLE ──────────────────────────────────────────────── */}
           {panelMode === 'idle' && (
             <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto sm:mx-0">
+              <p className="mb-4 inline-flex items-center gap-1.5 self-center sm:self-start px-3 py-1.5 rounded-full bg-azure-600/10 dark:bg-azure-600/15 text-azure-800 dark:text-azure-400 text-[11px] font-bold uppercase tracking-[0.1em]">
+                <span className="w-1.5 h-1.5 rounded-full bg-azure-500 animate-pulse" />
+                Browser to browser · nothing to install
+              </p>
               <h1 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold tracking-[-0.03em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left">
                 Move anything<br />between your devices.
               </h1>
+              <p className="mt-4 text-[15px] sm:text-[16px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[36ch] text-center sm:text-left">
+                Send text, photos, and files between any two devices — phone, tablet, or computer. They arrive instantly, encrypted.
+              </p>
               <div className="mt-7 flex gap-3 justify-center sm:justify-start">
                 <TactileButton onClick={handleSend} variant="primary" size="lg" icon={<SendCircleIcon size={18} />} disabled={isCreating}>Send</TactileButton>
                 <TactileButton onClick={handleReceive} variant="secondary" size="lg" icon={<ReceiveCircleIcon size={18} />}>Receive</TactileButton>
@@ -366,7 +378,7 @@ export function SingleScreenApp() {
               <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-[#8b7cf6] hover:bg-[#7c6ce0] text-white rounded-full text-[14px] font-semibold min-h-[48px] transition-all duration-150 active:scale-[0.97] shadow-sm shadow-[#8b7cf6]/20">
                 <QrCode className="w-4 h-4" /> Scan QR code
               </button>
-              <div className="p-6 bg-white dark:bg-[#161e30] border border-apple-divider dark:border-white/10 rounded-[20px] shadow-card">
+              <div className="p-6 bg-white dark:bg-[#251b40] border border-apple-divider dark:border-white/10 rounded-[20px] shadow-card">
                 <LiveCodeInput onComplete={handleCodeComplete} isJoining={isJoining} error={joinError} />
               </div>
               <p className="mt-4 text-[12px] text-apple-ink-muted/60 dark:text-white/35 text-center">Encrypted between devices. Temporary by design.</p>
@@ -431,7 +443,7 @@ export function SingleScreenApp() {
                     {session.connectionType === 'relay' ? 'Relay' : session.connectionType === 'local' ? 'Same network' : session.connectionType === 'direct' ? 'Direct' : 'Connected'}
                   </span>
                 </div>
-                <button onClick={handleDisconnect} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold text-status-danger/80 hover:text-status-danger hover:bg-status-danger/8 transition-colors active:scale-95">
+                <button onClick={handleDisconnect} className="min-h-[44px] flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold text-status-danger/80 hover:text-status-danger hover:bg-status-danger/8 transition-colors active:scale-95">
                   <LogOut className="w-3 h-3" /> Disconnect
                 </button>
               </div>
@@ -511,7 +523,7 @@ export function SingleScreenApp() {
       // lg:h-full is what makes the room fill the whole right side on desktop
       // — without it the panel collapses to its content height (~430px) and
       // the composer sits above a dead band instead of pinning to the bottom.
-      "relative flex flex-col min-h-0 overflow-hidden lg:h-full bg-[#f2f0ed] dark:bg-[#080c16]",
+      "relative flex flex-col min-h-0 overflow-hidden lg:h-full bg-[#f4ecdd] dark:bg-[#110c20]",
       "max-lg:h-[60vh] max-lg:min-h-[360px] max-lg:max-h-[700px] max-lg:w-full max-lg:mx-auto max-lg:rounded-[20px] max-lg:border max-lg:border-apple-divider/50 max-lg:dark:border-white/[0.08] max-lg:shadow-card",
       mobileRoomFullscreen && "max-lg:!fixed max-lg:inset-0 max-lg:z-50 max-lg:rounded-none max-lg:border-none max-lg:aspect-auto max-lg:shadow-none"
     )}>
@@ -519,7 +531,7 @@ export function SingleScreenApp() {
           only: never competes with content, disappears on reduced motion. */}
       <div aria-hidden="true" className="pointer-events-none absolute -top-28 -right-24 w-[26rem] h-[26rem] rounded-full bg-[#8b7cf6]/[0.08] dark:bg-[#a78bfa]/[0.06] blur-[110px] motion-reduce:hidden" />
       {/* Room header */}
-      <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-[#f2f0ed]/80 dark:bg-[#080c16]/80 backdrop-blur-xl z-10">
+      <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-[#f4ecdd]/80 dark:bg-[#110c20]/80 backdrop-blur-xl z-10">
         <div className="flex items-center gap-2.5">
           <ShareTextLogo size={16} className="text-azure-600 dark:text-azure-400" />
           <span className="text-[13px] font-semibold text-apple-ink dark:text-white">
@@ -612,7 +624,7 @@ export function SingleScreenApp() {
   /*  RENDER                                                          */
   /* ---------------------------------------------------------------- */
   return (
-    <div className="h-dvh lg:h-dvh overflow-hidden bg-apple-canvas dark:bg-[#0a0e18] dot-bg">
+    <div className="h-dvh lg:h-dvh overflow-hidden bg-apple-canvas dark:bg-[#120e22] dot-bg">
       {/* Only the ACTIVE layout is mounted — the other branch stays unmounted
           so components (ChatView, composer, pairing input) exist exactly once
           in the DOM instead of twice with one hidden copy. */}
@@ -640,7 +652,7 @@ export function SingleScreenApp() {
       <AnimatePresence>
         {showQRScan && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/50 dark:bg-black/70 flex items-center justify-center p-4" onClick={() => setShowQRScan(false)}>
-            <motion.div ref={qrScanTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[360px] bg-white dark:bg-[#161e30] rounded-[24px] p-6 shadow-2xl relative" role="dialog" aria-modal="true" aria-label="Scan QR code">
+            <motion.div ref={qrScanTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[360px] bg-white dark:bg-[#251b40] rounded-[24px] p-6 shadow-2xl relative" role="dialog" aria-modal="true" aria-label="Scan QR code">
               <button onClick={() => setShowQRScan(false)} className="absolute top-3 right-3 min-w-[44px] min-h-[44px] rounded-full bg-apple-parchment dark:bg-white/5 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors z-10" aria-label="Close QR scanner"><X className="w-4 h-4" /></button>
               <h3 className="text-[16px] font-semibold text-apple-ink dark:text-white mb-2">Scan QR code</h3>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/50 mb-4">Point your camera at the QR code on the other device.</p>
@@ -655,7 +667,7 @@ export function SingleScreenApp() {
       <AnimatePresence>
         {showQROverlay && session.roomId && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/50 dark:bg-black/70 flex items-center justify-center p-6" onClick={() => setShowQROverlay(false)}>
-            <motion.div ref={qrDisplayTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[340px] bg-white dark:bg-[#161e30] rounded-[24px] p-6 shadow-2xl text-center relative" role="dialog" aria-modal="true" aria-label="QR code">
+            <motion.div ref={qrDisplayTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[340px] bg-white dark:bg-[#251b40] rounded-[24px] p-6 shadow-2xl text-center relative" role="dialog" aria-modal="true" aria-label="QR code">
               <button onClick={() => setShowQROverlay(false)} className="absolute top-3 right-3 min-w-[44px] min-h-[44px] rounded-full bg-apple-parchment dark:bg-white/5 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors" aria-label="Close QR code"><X className="w-4 h-4" /></button>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/60 mb-4 leading-relaxed">Open ShareText on your other device, choose <strong className="text-apple-ink dark:text-white">Receive</strong>, then scan.</p>
               <div className="bg-white p-4 rounded-[18px] inline-flex items-center justify-center mb-4 shadow-sm border border-apple-divider/30"><QROverlayInner value={qrValue} /></div>
@@ -677,7 +689,7 @@ function InfoSection({ title, expanded, onToggle, children }: { title: string; e
       <button
         onClick={onToggle}
         aria-expanded={expanded}
-        className="w-full flex items-center justify-between px-4 py-2.5 text-[13px] font-medium text-apple-ink dark:text-white/80 hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors"
+        className="w-full min-h-[44px] flex items-center justify-between px-4 py-2.5 text-[13px] font-medium text-apple-ink dark:text-white/80 hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors"
       >
         {title}
         <motion.span

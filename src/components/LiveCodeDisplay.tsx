@@ -39,7 +39,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
     "relative flex items-center justify-center rounded-[10px] sm:rounded-[14px] shadow-sm overflow-hidden",
     "flex-1 min-w-0",
     "h-[52px] sm:h-[64px] lg:h-[72px]",
-    "bg-apple-parchment dark:bg-[#1a1a1e] border border-apple-divider/60 dark:border-[#2a2a2e]"
+    "bg-apple-parchment dark:bg-[#221a3c] border border-apple-divider/60 dark:border-[#362b58]"
   );
 
   return (

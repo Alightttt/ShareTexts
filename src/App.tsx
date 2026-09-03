@@ -44,7 +44,7 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#0a0e18] p-6 text-center"
+      className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#120e22] p-6 text-center"
     >
       <ShareTextLogo
         size={56}
@@ -91,7 +91,7 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
 // Uses an untyped class because React 19 ships no .d.ts and @types/react is absent.
 function ErrorFallback({ onReset }: { onReset: () => void }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#0a0e18] p-6 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#120e22] p-6 text-center">
       <div className="w-16 h-16 bg-apple-parchment dark:bg-apple-tile-1 rounded-[20px] flex items-center justify-center mb-6">
         <ShareTextLogo size={28} className="text-apple-ink-muted" />
       </div>
@@ -124,13 +124,13 @@ function AppContent() {
   const { session, leaveView, createSession, closeSession } = useSession();
 
   if (typeof window !== 'undefined' && window.location.pathname === '/docs') {
-    return <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-[#0a0e18] flex items-center justify-center"><ShareTextLogo size={32} motion="loading" className="text-azure-600 dark:text-azure-400 opacity-60" /></div>}><Docs /></Suspense>;
+    return <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-[#120e22] flex items-center justify-center"><ShareTextLogo size={32} motion="loading" className="text-azure-600 dark:text-azure-400 opacity-60" /></div>}><Docs /></Suspense>;
   }
 
   if (typeof window !== 'undefined' && window.location.pathname !== '/' && !window.location.pathname.startsWith('/s/')) {
     return (
       <div
-        className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#0a0e18] p-6 text-center">
+        className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#120e22] p-6 text-center">
         <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">This page does not exist.</h2>
         <p className="text-[16px] text-apple-ink-muted dark:text-white/60 font-medium max-w-sm mb-9">Nothing was shared to this address.</p>
         <button onClick={() => { window.location.href = '/'; }}
@@ -152,7 +152,7 @@ function AppContent() {
   }
 
   return (
-    <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-[#0a0e18] flex items-center justify-center"><ShareTextLogo size={32} motion="loading" className="text-azure-600 dark:text-azure-400 opacity-60" /></div>}>
+    <Suspense fallback={<div className="min-h-screen bg-apple-canvas dark:bg-[#120e22] flex items-center justify-center"><ShareTextLogo size={32} motion="loading" className="text-azure-600 dark:text-azure-400 opacity-60" /></div>}>
       <SingleScreenApp />
     </Suspense>
   );

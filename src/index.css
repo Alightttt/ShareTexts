@@ -20,22 +20,22 @@
   --color-brand-dark: #94a8f8;
 
   /* ── Text ───────────────────────────────────────────────────────────── */
-  --color-text: #1d1d1f;
-  --color-text-secondary: #6e6e73;
-  --color-text-muted: #aeaeb2;
+  --color-text: #241d14;
+  --color-text-secondary: #6f665a;
+  --color-text-muted: #a89d8b;
 
   /* ── Surface ────────────────────────────────────────────────────────── */
-  --color-bg: #f5f3f0;
-  --color-bg-secondary: #f0eff5;
-  --color-bg-elevated: #ffffff;
-  --color-surface: #faf9f7;
-  --color-surface-secondary: #f2f2f5;
-  --color-surface-elevated: #faf9f7;
+  --color-bg: #f6f0e6;
+  --color-bg-secondary: #f0e7d6;
+  --color-bg-elevated: #fffdf9;
+  --color-surface: #fbf6ec;
+  --color-surface-secondary: #f4ecdc;
+  --color-surface-elevated: #fffdf9;
 
   /* ── Border ─────────────────────────────────────────────────────────── */
-  --color-border: #e0e0e5;
-  --color-border-subtle: #ececef;
-  --color-border-strong: #c0c0c5;
+  --color-border: #e4d9c5;
+  --color-border-subtle: #eee5d4;
+  --color-border-strong: #cfc2a9;
 
   /* ── Status ─────────────────────────────────────────────────────────── */
   --color-success: #34c759;
@@ -48,37 +48,44 @@
   /* ── Focus ──────────────────────────────────────────────────────────── */
   --color-focus: #8b7cf6;
 
-  /* ── Semantic aliases ───────────────────────────────────────────────── */
-  --color-apple-canvas: #f5f3f0;
-  --color-apple-parchment: #f0eff5;
-  --color-apple-ink: #1d1d1f;
-  --color-apple-ink-muted: #6e6e73;
+  /* ── Semantic aliases (warm cream + violet) ──────────────────────────── */
+  --color-apple-canvas: #f6f0e6;
+  --color-apple-parchment: #f0e7d6;
+  --color-apple-ink: #241d14;
+  --color-apple-ink-muted: #6f665a;
   --color-apple-blue: #8b7cf6;
   --color-apple-blue-focus: #7c6de0;
-  --color-apple-divider: #e0e0e5;
-  --color-apple-hairline: #d8d8dd;
-  --color-azure-50: #f0f4ff;
-  --color-azure-100: #e0e7fe;
-  --color-azure-200: #c7d4fc;
-  --color-azure-400: #a78bfa;
-  --color-azure-500: #7c94f5;
+  --color-apple-divider: #e4d9c5;
+  --color-apple-hairline: #d9cdb6;
+  --color-azure-50: #f4f0fb;
+  --color-azure-100: #eae2f9;
+  --color-azure-200: #d6c8f4;
+  --color-azure-400: #ab92f8;
+  --color-azure-500: #9380f4;
   --color-azure-600: #8b7cf6;
-  --color-azure-700: #7c6ce0;
-  --color-azure-800: #4a64d8;
-  --color-azure-900: #3a4fb8;
+  --color-azure-700: #7765e6;
+  --color-azure-800: #5b4ec9;
+  --color-azure-900: #453aa3;
+
+  /* ── Warm accent (peach sunrise glow) ────────────────────────────────── */
+  --color-peach-100: #ffead9;
+  --color-peach-200: #ffd9bd;
+  --color-peach-300: #ffc09a;
+  --color-peach-400: #faa276;
+  --color-peach-500: #f28456;
   --color-status-success: #34c759;
   --color-status-warning: #ff9500;
   --color-status-warning-ink: #c77a00;
   --color-status-warning-ink-dark: #ffb340;
   --color-status-danger: #ff3b30;
-  --color-surface-dark: #141c2e;
-  --color-surface-dark-2: #1a2438;
-  --color-apple-tile-1: #141c2e;
-  --color-apple-tile-2: #1a2438;
-  --color-apple-tile-3: #212c42;
-  --color-night-800: #0c1220;
-  --color-night-900: #080c16;
-  --color-night-950: #060a12;
+  --color-surface-dark: #1b1430;
+  --color-surface-dark-2: #241b3d;
+  --color-apple-tile-1: #1b1430;
+  --color-apple-tile-2: #241b3d;
+  --color-apple-tile-3: #31275a;
+  --color-night-800: #19122c;
+  --color-night-900: #140f26;
+  --color-night-950: #0f0b1c;
 
   /* ── Radius ─────────────────────────────────────────────────────────── */
   --radius-xs: 8px;
@@ -106,7 +113,7 @@
   --motion-slow: 350ms;
 
   /* ── Tactile surfaces (theme-aware button gradients) ────────────────── */
-  --st-btn-secondary-grad: linear-gradient(180deg, #ffffff 0%, #f2f1fb 55%, #e6e4f6 100%);
+  --st-btn-secondary-grad: linear-gradient(180deg, #ffffff 0%, #f3ecf8 55%, #e9e0f3 100%);
 }
 
 @layer base {
@@ -125,7 +132,7 @@
   }
 
   html.dark body {
-    background: #080b14;
+    background: #141024;
     color: white;
   }
 
@@ -136,38 +143,38 @@
 
   /* ── Dark mode ────────────────────────────────────────────────────── */
   html.dark {
-    --color-bg: #080b14;
-    --color-bg-secondary: #0e1220;
-    --color-bg-elevated: #151d30;
-    --color-surface: #151d30;
-    --color-surface-secondary: #1a2540;
-    --color-surface-elevated: #202c48;
-    --color-text: #f0f2f7;
-    --color-text-secondary: #a0aec0;
-    --color-text-muted: #6b7a90;
-    --color-border: #1e2c48;
-    --color-border-subtle: #162038;
-    --color-border-strong: #2a3c5c;
-    --color-brand: #8ca4f7;
-    --color-brand-strong: #a0b8fa;
-    --color-brand-light: #0d1a30;
+    --color-bg: #141024;
+    --color-bg-secondary: #1a1430;
+    --color-bg-elevated: #221a3d;
+    --color-surface: #1b1430;
+    --color-surface-secondary: #241b3d;
+    --color-surface-elevated: #2b2149;
+    --color-text: #f4eee2;
+    --color-text-secondary: #ab9e8f;
+    --color-text-muted: #7d7062;
+    --color-border: #2e2447;
+    --color-border-subtle: #211a38;
+    --color-border-strong: #3c305e;
+    --color-brand: #ab92f8;
+    --color-brand-strong: #c2adfb;
+    --color-brand-light: #201736;
     --color-success: #3dd68c;
     --color-success-light: #0d2a1a;
     --color-warning: #f0b84d;
     --color-warning-light: #2a1c08;
     --color-error: #ff6b6b;
     --color-error-light: #2a0d0d;
-    --color-apple-canvas: #080b14;
-    --color-apple-parchment: #0f1422;
-    --color-apple-divider: #1e2c48;
-    --color-apple-hairline: #263450;
-    --color-apple-ink: #edf0f5;
-    --color-apple-ink-muted: #8894ac;
-    --color-azure-400: #c4b5fd;
-    --color-azure-500: #a0b4fa;
+    --color-apple-canvas: #141024;
+    --color-apple-parchment: #1d1633;
+    --color-apple-divider: #2e2447;
+    --color-apple-hairline: #3c2f60;
+    --color-apple-ink: #f4eee2;
+    --color-apple-ink-muted: #ab9e8f;
+    --color-azure-400: #c4adf9;
+    --color-azure-500: #b49cf8;
     --color-azure-600: #a78bfa;
-    --color-azure-700: #a0b4fa;
-    --st-btn-secondary-grad: linear-gradient(180deg, #2a2650 0%, #242044 55%, #1e1a3a 100%);
+    --color-azure-700: #9c82e8;
+    --st-btn-secondary-grad: linear-gradient(180deg, #2e2550 0%, #292148 55%, #231b3c 100%);
   }
 
   h1, h2, h3, h4, h5, h6 {

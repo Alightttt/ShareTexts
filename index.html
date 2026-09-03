@@ -8,36 +8,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
     <!-- Primary -->
-    <title>AirDrop for any device</title>
-    <meta name="description" content="Transfer text, links, photos, and files between any two devices directly from your browser. No app, no account, no setup. Temporary by design." />
+    <title>ShareText — Move anything between your devices</title>
+    <meta name="description" content="Send text, photos, and files between any two devices — phone to laptop, iPhone to Windows — straight from your browser. No app, no account, nothing to install. Temporary by design." />
     <meta name="robots" content="index, follow" />
     <meta name="author" content="ShareText" />
-    <meta name="application-name" content="AirDrop for any device" />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#060a13" media="(prefers-color-scheme: dark)" />
+    <meta name="application-name" content="ShareText" />
+    <meta name="theme-color" content="#f6f0e6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#120e22" media="(prefers-color-scheme: dark)" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="AirDrop" />
+    <meta name="apple-mobile-web-app-title" content="ShareText" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="ShareText" />
-    <meta property="og:title" content="AirDrop for any device" />
-    <meta property="og:description" content="Transfer text, links, photos, and files between any two devices directly from your browser. No app, no account, no setup. Temporary by design." />
+    <meta property="og:title" content="ShareText — Move anything between your devices" />
+    <meta property="og:description" content="Send text, photos, and files between any two devices — phone to laptop, iPhone to Windows — straight from your browser. No app, no account, nothing to install." />
     <meta property="og:url" content="https://sharetexts.online/" />
     <meta property="og:image" content="https://sharetexts.online/og/sharetext-og-v7.png?v=1" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:type" content="image/png" />
-    <meta property="og:image:alt" content="AirDrop for any device — move anything between your devices" />
+    <meta property="og:image:alt" content="ShareText — move anything between your devices" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="AirDrop for any device" />
-    <meta name="twitter:description" content="Transfer text, links, photos, and files between any two devices directly from your browser. No app, no account, no setup. Temporary by design." />
+    <meta name="twitter:title" content="ShareText — Move anything between your devices" />
+    <meta name="twitter:description" content="Send text, photos, and files between any two devices — phone to laptop, iPhone to Windows — straight from your browser. No app, no account, nothing to install." />
     <meta name="twitter:image" content="https://sharetexts.online/og/sharetext-og-v7.png?v=1" />
-    <meta name="twitter:image:alt" content="AirDrop for any device — move anything between your devices" />
+    <meta name="twitter:image:alt" content="ShareText — move anything between your devices" />
 
     <link rel="canonical" href="https://sharetexts.online/" />
 
@@ -141,7 +141,7 @@
           var dark = v === 'dark' || (v !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
           document.documentElement.classList.toggle('dark', dark);
           var meta = document.querySelector('meta[name="theme-color"]');
-          if (meta) meta.content = dark ? '#060a13' : '#ffffff';
+          if (meta) meta.content = dark ? '#120e22' : '#f6f0e6';
         } catch (e) { /* storage unavailable — system default applies */ }
       })();
     </script>
@@ -165,8 +165,8 @@
           #loading-shell.fade-out { opacity: 0; }
           .st-logo-pulse { animation: st-pulse 2s ease-in-out infinite; }
           @keyframes st-pulse { 0%,100%{opacity:0.6;transform:scale(1)} 50%{opacity:1;transform:scale(1.03)} }
-          @media (prefers-color-scheme: dark) { #loading-shell { background: #080b14; } #loading-shell svg { color: #a78bfa; } #loading-shell p { color: #a0aec0; } #loading-shell .st-brand { color: #f0f2f7; } }
-          @media (prefers-color-scheme: light) { #loading-shell { background: #f5f3f0; } #loading-shell svg { color: #8b7cf6; } #loading-shell p { color: #6e6e73; } #loading-shell .st-brand { color: #1d1d1f; } }
+          @media (prefers-color-scheme: dark) { #loading-shell { background: #141024; } #loading-shell svg { color: #a78bfa; } #loading-shell p { color: #ab9e8f; } #loading-shell .st-brand { color: #f4eee2; } }
+          @media (prefers-color-scheme: light) { #loading-shell { background: #f6f0e6; } #loading-shell svg { color: #8b7cf6; } #loading-shell p { color: #6f665a; } #loading-shell .st-brand { color: #241d14; } }
         </style>
         <div style="text-align:center">
           <svg class="st-logo-pulse" width="40" height="40" viewBox="0 0 256 256" fill="none" style="margin-bottom:14px;color:#8b7cf6">

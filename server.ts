@@ -624,7 +624,16 @@ async function start() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    // Hashed build assets are immutable — cache them hard; everything else
+    // (html, manifest, icons, guides, og images) revalidates cheaply.
+    app.use('/assets', express.static(path.join(distPath, 'assets'), { maxAge: '1y', immutable: true }));
+    app.use(express.static(distPath, {
+      setHeaders: (res, filePath) => {
+        if (/\.[a-z0-9]+$/i.test(filePath) && !filePath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'public, max-age=3600');
+        }
+      },
+    }));
     // SPA fallback: only serve index.html for the root path and known SPA
     // routes. All other paths that don't match a static file get a proper
     // 404 — this prevents search engines from indexing nonexistent pages

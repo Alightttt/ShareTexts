@@ -1,11 +1,11 @@
 {
-  "name": "AirDrop for any device",
+  "name": "ShareText — Move anything between your devices",
   "short_name": "ShareText",
-  "description": "Move text, photos and files between your devices. No app, no account.",
+  "description": "Send text, photos, and files between any two devices — phone, tablet, or computer. No app, no account, nothing to install.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0f1a",
-  "theme_color": "#0a0f1a",
+  "background_color": "#120e22",
+  "theme_color": "#8b7cf6",
   "icons": [
     {
       "src": "/icon-192.png?v=11",

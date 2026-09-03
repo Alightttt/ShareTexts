@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -75,7 +75,7 @@ function OverviewSection() {
       <div>
         <h1 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-1">ShareText</h1>
         <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-lg">
-          AirDrop for any device. Move text, photos, and files between your devices. No app, no account, nothing kept.
+          AirDrop that works between any two devices. Move text, photos, and files between your devices — no app, no account, nothing kept.
         </p>
       </div>
 
@@ -603,6 +603,13 @@ function FAQSection() {
 
 export function Docs() {
   const [activeSection, setActiveSection] = useState<Section>('overview');
+
+  // Per-route document title — the home shell has its own static <title>.
+  useEffect(() => {
+    const previous = document.title;
+    document.title = 'ShareText Docs — transfer text, photos & files between devices';
+    return () => { document.title = previous; };
+  }, []);
 
   const renderSection = () => {
     switch (activeSection) {

@@ -425,7 +425,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
       {/* Screen-reader live region — invisible, announced on state changes */}
       <div aria-live="polite" role="status" className="sr-only">{announcement}</div>
       {panelMode !== "embedded" && (<> {/* Header — device relationship, not chat */}
-      <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 shrink-0 border-b border-apple-divider/40 dark:border-white/[0.06] bg-white/60 dark:bg-[#0a0e18]/60 backdrop-blur-2xl backdrop-saturate-[1.8] z-20 sticky top-0">
+      <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 shrink-0 border-b border-apple-divider/40 dark:border-white/[0.06] bg-white/60 dark:bg-[#120e22]/60 backdrop-blur-2xl backdrop-saturate-[1.8] z-20 sticky top-0">
         <div className="flex items-center gap-3 min-w-0">
           <ShareTextLogo size={18} className="text-apple-ink dark:text-white shrink-0" />
           <div className="flex items-center gap-2 min-w-0">
@@ -456,7 +456,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
             data-testid="end-session"
             onPointerDown={() => setConfirmClose(true)}
             aria-label="Disconnect"
-            className="flex items-center justify-center w-9 h-9 sm:w-auto sm:h-auto sm:px-3 sm:py-1.5 rounded-full sm:rounded-[8px] text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/40 dark:hover:bg-white/[0.06] transition-colors min-h-[36px] shrink-0"
+            className="flex items-center justify-center w-11 h-11 sm:w-auto sm:px-3 sm:py-1.5 rounded-full sm:rounded-[8px] text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/40 dark:hover:bg-white/[0.06] transition-colors min-h-[44px] shrink-0"
           >
             <LogOut className="w-[16px] h-[16px] sm:hidden" />
             <span className="hidden sm:inline text-[13px] font-medium">Disconnect</span>
@@ -704,7 +704,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
         )}
       </div>
       {/* Input Area */}
-      <div className="p-3 sm:p-5 bg-white/80 dark:bg-[#0a0e18]/80 border-t border-black/[0.06] dark:border-white/[0.04] z-10 pb-[env(safe-area-inset-bottom)] relative">
+      <div className="p-3 sm:p-5 bg-white/80 dark:bg-[#120e22]/80 border-t border-black/[0.06] dark:border-white/[0.04] z-10 pb-[env(safe-area-inset-bottom)] relative">
         <form onSubmit={handleSend} className="max-w-3xl mx-auto flex flex-col gap-2">
           <div className="hidden sm:flex items-center justify-end gap-1.5 text-[11px] font-medium text-apple-ink-muted/70 dark:text-white/40 px-1">
             <kbd className="px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">Enter</kbd>
@@ -820,7 +820,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 placeholder="Paste or drop anything…"
                 aria-label="Message"
                 title="Enter to send · Shift+Enter for a new line"
-                className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[9px] pl-0.5 pr-0.5 text-apple-ink dark:text-white placeholder:text-[#9a9aaa] dark:placeholder:text-white/25 focus:outline-none text-[16px] leading-[26px]"
+                className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[9px] pl-0.5 pr-0.5 text-apple-ink dark:text-white placeholder:text-[#a89a80] dark:placeholder:text-white/25 focus:outline-none text-[16px] leading-[26px]"
               />
               <button
                 type="button"
