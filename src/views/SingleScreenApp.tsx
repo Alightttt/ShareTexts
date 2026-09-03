@@ -23,7 +23,7 @@ import { TactileButton } from '../components/TactileButton';
 import { signalingConfigIssue } from '../lib/socket';
 import { cn, shortCodeOf } from '../lib/utils';
 import {
-  ChevronDown, Maximize2, Minimize2, LogOut, QrCode, Link2, Copy, Check,
+  Maximize2, Minimize2, LogOut, QrCode, Link2, Copy, Check,
   Smartphone, Monitor, X, Wifi, ArrowRightLeft
 } from 'lucide-react';
 import { generateTOTP } from '../lib/totp';
@@ -129,7 +129,6 @@ export function SingleScreenApp() {
   const [mobileRoomFullscreen, setMobileRoomFullscreen] = useState(false);
   const [showQROverlay, setShowQROverlay] = useState(false);
   const [showQRScan, setShowQRScan] = useState(false);
-  const [infoExpanded, setInfoExpanded] = useState<Record<string, boolean>>({});
   const [joinError, setJoinError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -285,34 +284,15 @@ export function SingleScreenApp() {
           {/* ── IDLE ──────────────────────────────────────────────── */}
           {panelMode === 'idle' && (
             <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto sm:mx-0">
-              <p className="mb-4 inline-flex items-center gap-1.5 self-center sm:self-start px-3 py-1.5 rounded-full bg-azure-600/10 dark:bg-azure-600/15 text-azure-800 dark:text-azure-400 text-[11px] font-bold uppercase tracking-[0.1em]">
-                <span className="w-1.5 h-1.5 rounded-full bg-azure-500 animate-pulse" />
-                Browser to browser · nothing to install
-              </p>
               <h1 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold tracking-[-0.03em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left">
                 Move anything<br />between your devices.
               </h1>
               <p className="mt-4 text-[15px] sm:text-[16px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[36ch] text-center sm:text-left">
-                Send text, photos, and files between any two devices — phone, tablet, or computer. They arrive instantly, encrypted.
+                Phone to laptop, or laptop to phone. No app to install, no account to make. When you close the tab, it's gone.
               </p>
               <div className="mt-7 flex gap-3 justify-center sm:justify-start">
                 <TactileButton onClick={handleSend} variant="primary" size="lg" icon={<SendCircleIcon size={18} />} disabled={isCreating}>Send</TactileButton>
                 <TactileButton onClick={handleReceive} variant="secondary" size="lg" icon={<ReceiveCircleIcon size={18} />}>Receive</TactileButton>
-              </div>
-              {/* Mobile/tablet: a compact pair preview under the actions — the
-                  big room panel only appears once the user picks Send or
-                  Receive, so the first screen stays tight and action-first. */}
-              <div className="lg:hidden mt-9 flex justify-center">
-                <div className="flex items-center gap-2.5 rounded-2xl border border-apple-divider/50 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] px-4 py-2.5">
-                  <span className="flex items-center gap-2 text-apple-ink-muted dark:text-white/45">
-                    <ThisDeviceIcon className="w-4 h-4" />
-                    <ArrowRightLeft className="w-3.5 h-3.5 text-azure-500 dark:text-azure-400" />
-                    <PartnerDeviceIcon className="w-4 h-4" />
-                  </span>
-                  <span className="text-[12.5px] font-medium text-apple-ink-muted dark:text-white/60">
-                    Any two devices — no app, no account
-                  </span>
-                </div>
               </div>
               {createError && (
                 <div role="alert" className="mt-4">
@@ -371,17 +351,17 @@ export function SingleScreenApp() {
           {panelMode === 'receiving' && (
             <motion.div key="receiving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[22px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em]">Join a room.</h2>
+                <h2 className="text-[22px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em]">Enter your code.</h2>
                 <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-medium text-status-danger hover:bg-status-danger/10 px-3 py-2 min-h-[40px] rounded-full active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
               </div>
-              <p className="text-[13px] text-apple-ink-muted dark:text-white/50 font-medium mb-5">Enter the code shown on the other device.</p>
+              <p className="text-[13px] text-apple-ink-muted dark:text-white/50 font-medium mb-5">Type the six-digit code from the other screen.</p>
               <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-[#8b7cf6] hover:bg-[#7c6ce0] text-white rounded-full text-[14px] font-semibold min-h-[48px] transition-all duration-150 active:scale-[0.97] shadow-sm shadow-[#8b7cf6]/20">
                 <QrCode className="w-4 h-4" /> Scan QR code
               </button>
               <div className="p-6 bg-white dark:bg-[#251b40] border border-apple-divider dark:border-white/10 rounded-[20px] shadow-card">
                 <LiveCodeInput onComplete={handleCodeComplete} isJoining={isJoining} error={joinError} />
               </div>
-              <p className="mt-4 text-[12px] text-apple-ink-muted/60 dark:text-white/35 text-center">Encrypted between devices. Temporary by design.</p>
+              <p className="mt-4 text-[12px] text-apple-ink-muted/60 dark:text-white/35 text-center">Codes refresh every 30 seconds. If yours stops working, ask for a new one.</p>
             </motion.div>
           )}
 
@@ -431,7 +411,7 @@ export function SingleScreenApp() {
                 <p className="text-[18px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em] mb-1">Ready to transfer</p>
                 <p className="text-[14px] text-apple-ink-muted dark:text-white/50 leading-relaxed">
                   Send text, photos, or files from either device.<br />
-                  They arrive instantly.
+                  They land on the other one right away.
                 </p>
               </div>
 
@@ -451,50 +431,6 @@ export function SingleScreenApp() {
           )}
         </AnimatePresence>
       </div>
-
-      {/* Info section — visible on idle, compact */}
-      {panelMode === 'idle' && (
-        <>
-          {/* Desktop: always expanded */}
-          <div className="hidden lg:block shrink-0 px-6 lg:px-10 pb-4 space-y-3">
-            <InfoCard title="What is it?">
-              Need to move something from your phone to your computer? ShareText lets you send text, photos, and files directly between two devices — no app, no account, no cable.
-            </InfoCard>
-            <InfoCard title="How to connect?">
-              <ol className="list-none space-y-1.5">
-                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 text-[#8b7cf6] dark:text-[#a78bfa] text-[11px] font-bold flex items-center justify-center mt-0.5">1</span><span>Open ShareText on both devices.</span></li>
-                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 text-[#8b7cf6] dark:text-[#a78bfa] text-[11px] font-bold flex items-center justify-center mt-0.5">2</span><span>Tap Send on one, Receive on the other. Use the code or QR.</span></li>
-                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 text-[#8b7cf6] dark:text-[#a78bfa] text-[11px] font-bold flex items-center justify-center mt-0.5">3</span><span>Send anything. Paste, drop, or attach.</span></li>
-              </ol>
-            </InfoCard>
-          </div>
-          {/* Mobile: collapsible */}
-          <div className="lg:hidden shrink-0 px-6 pb-3 space-y-1.5">
-            <InfoSection title="What is it?" expanded={!!infoExpanded['what']} onToggle={() => setInfoExpanded(p => ({ ...p, what: !p.what }))}>
-              Need to move something from your phone to your computer? ShareText lets you send text, photos, and files directly between two devices — no app, no account, no cable.
-            </InfoSection>
-            <InfoSection title="How to connect?" expanded={!!infoExpanded['how']} onToggle={() => setInfoExpanded(p => ({ ...p, how: !p.how }))}>
-              <ol className="list-none space-y-1.5">
-                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 text-[#8b7cf6] dark:text-[#a78bfa] text-[11px] font-bold flex items-center justify-center mt-0.5">1</span><span>Open ShareText on both devices.</span></li>
-                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 text-[#8b7cf6] dark:text-[#a78bfa] text-[11px] font-bold flex items-center justify-center mt-0.5">2</span><span>Tap Send on one, Receive on the other. Use the code or QR.</span></li>
-                <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 text-[#8b7cf6] dark:text-[#a78bfa] text-[11px] font-bold flex items-center justify-center mt-0.5">3</span><span>Send anything. Paste, drop, or attach.</span></li>
-              </ol>
-            </InfoSection>
-          </div>
-        </>
-      )}
-
-      {/* Connected state: show compact instructions below the hero */}
-      {panelMode === 'connected' && (
-        <div className="hidden lg:block shrink-0 px-6 lg:px-10 pb-4">
-          <InfoCard title="How to use">
-            <ol className="list-none space-y-1.5">
-              <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-status-success/10 text-status-success text-[11px] font-bold flex items-center justify-center mt-0.5">1</span><span>Type, paste, or drop files in the transfer area.</span></li>
-              <li className="flex items-start gap-2.5"><span className="shrink-0 w-5 h-5 rounded-full bg-status-success/10 text-status-success text-[11px] font-bold flex items-center justify-center mt-0.5">2</span><span>They arrive on the other device instantly.</span></li>
-            </ol>
-          </InfoCard>
-        </div>
-      )}
 
       {/* Footer */}
       <footer className="shrink-0 px-6 lg:px-10 py-4 border-t border-apple-divider/60 dark:border-white/[0.06] pb-[env(safe-area-inset-bottom)]">
@@ -609,7 +545,7 @@ export function SingleScreenApp() {
                 {panelMode === 'receiving' && 'Waiting for connection'}
               </p>
               <p className="text-[12.5px] text-apple-ink-muted/50 dark:text-white/25 max-w-[240px] leading-relaxed">
-                {panelMode === 'idle' && 'Then start sharing anything — text, photos, links, or files.'}
+                {panelMode === 'idle' && "Once they're paired, anything you send shows up on the other screen."}
                 {panelMode === 'sending' && (isCreating && !session.secret ? 'Setting up your transfer room.' : 'Enter the code shown on this device.')}
                 {panelMode === 'receiving' && 'Enter the code from the other device.'}
               </p>
@@ -683,49 +619,6 @@ export function SingleScreenApp() {
 /* ------------------------------------------------------------------ */
 /*  Sub-components                                                    */
 /* ------------------------------------------------------------------ */
-function InfoSection({ title, expanded, onToggle, children }: { title: string; expanded: boolean; onToggle: () => void; children: React.ReactNode }) {
-  return (
-    <div className="border border-apple-divider/40 dark:border-white/[0.06] rounded-[12px] overflow-hidden">
-      <button
-        onClick={onToggle}
-        aria-expanded={expanded}
-        className="w-full min-h-[44px] flex items-center justify-between px-4 py-2.5 text-[13px] font-medium text-apple-ink dark:text-white/80 hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors"
-      >
-        {title}
-        <motion.span
-          animate={{ rotate: expanded ? 180 : 0 }}
-          transition={{ duration: 0.15, ease: 'easeInOut' }}
-          className="text-apple-ink-muted"
-        ><ChevronDown className="w-3.5 h-3.5" /></motion.span>
-      </button>
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="overflow-hidden"
-          >
-            <div className="px-4 pb-3 text-[12.5px] text-apple-ink-muted dark:text-white/50 leading-[1.6] space-y-1.5">
-              {children}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="px-1">
-      <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-apple-ink-muted/60 dark:text-white/30 mb-1.5">{title}</h3>
-      <div className="text-[13px] text-apple-ink/80 dark:text-white/60 leading-[1.6] space-y-1.5">{children}</div>
-    </div>
-  );
-}
-
 function QROverlayInner({ value }: { value: string }) {
   const [Comp, setComp] = useState<React.ComponentType<any> | null>(null);
   useEffect(() => { import('qrcode.react').then(m => setComp(() => m.QRCodeSVG)); }, []);

@@ -25,7 +25,7 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
     : reason === 'manual_close'
       ? "You closed this room. Everything you sent is already on the other device."
       : "The other device closed this room. Nothing incomplete was saved.";
-  const sub = "No account or transfer history. Payloads moved directly between your devices.";
+  const sub = "No account needed, and nothing is kept after the room closes.";
 
   const [shared, setShared] = useState(false);
   const shareApp = async () => {
@@ -77,7 +77,7 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
         className="mt-8 flex items-center gap-2 px-4 py-2 rounded-full text-[13.5px] font-medium text-apple-ink-muted dark:text-white/55 hover:text-apple-ink dark:hover:text-white border border-transparent hover:border-apple-divider dark:hover:border-white/15 transition-motion active:scale-95 min-h-[44px]"
       >
         {shared ? <Check className="w-4 h-4 text-status-success" /> : <Share2 className="w-4 h-4" />}
-        {shared ? 'Link copied — share ShareText free' : 'Share ShareText — it\u2019s free, forever'}
+        {shared ? 'Link copied' : 'Send ShareText to someone you know'}
       </button>
     </div>
   );

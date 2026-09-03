@@ -75,7 +75,7 @@ function OverviewSection() {
       <div>
         <h1 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-1">ShareText</h1>
         <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-lg">
-          AirDrop that works between any two devices. Move text, photos, and files between your devices — no app, no account, nothing kept.
+          Like AirDrop, but it works between any two devices, even an iPhone and a Windows PC. Send text, photos, or files from a browser. Nothing is kept once the room closes.
         </p>
       </div>
 
@@ -184,7 +184,7 @@ function TroubleshootingSection() {
 
       <div className="space-y-6">
         {[
-          { problem: "Can't create a room", solution: "Check your internet connection. If the problem persists, the service may be temporarily unavailable — try again in a moment." },
+          { problem: "Can't create a room", solution: "Check your internet connection. If the problem persists, the service may be temporarily unavailable. Try again in a moment." },
           { problem: 'Code expired', solution: 'The pairing code refreshes automatically. If the other device can\'t connect in time, create a new room to get a fresh code.' },
           { problem: "Code doesn't work", solution: 'Make sure you\'re entering the correct 6-digit code from the other device. Codes are case-sensitive and must be entered exactly.' },
           { problem: 'QR code won\'t scan', solution: 'Make sure the camera has permission. If scanning still fails, type the 6-digit code manually instead.' },
@@ -460,7 +460,7 @@ function SecuritySection() {
         <div className="p-5 rounded-[16px] bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3">
           <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-2 flex items-center gap-2">
             <Clock className="w-4 h-4 text-status-success" />
-            Temporary by Design
+            Nothing is kept
           </h3>
           <p className="text-[14px] text-apple-ink-muted dark:text-white/60">
             Rooms expire automatically. No accounts, no permanent history, no cloud storage.

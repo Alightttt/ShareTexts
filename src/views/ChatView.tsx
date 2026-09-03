@@ -56,7 +56,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
   const endSessionTrapRef = useFocusTrap(confirmClose, () => setConfirmClose(false));
   const connectionDetailsTrapRef = useFocusTrap(showConnectionDetails, () => setShowConnectionDetails(false));
   const [showThatsIt, setShowThatsIt] = useState(false);
-  const [thatsItCopy, setThatsItCopy] = useState("That's it — it's on the other device.");
+  const [thatsItCopy, setThatsItCopy] = useState("That's it. It's on the other device.");
   const [announcement, setAnnouncement] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const dragDepth = useRef(0);
@@ -233,7 +233,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
     if (!firstTransferShown.current && session.messages.length >= 1) {
       firstTransferShown.current = true;
       const last = session.messages[session.messages.length - 1];
-      setThatsItCopy(last?.sender === 'me' ? "That's it — it's on the other device." : "That's it — it arrived.");
+      setThatsItCopy(last?.sender === 'me' ? "That's it. It's on the other device." : "That's it. It arrived.");
       setShowThatsIt(true);
       const t = setTimeout(() => setShowThatsIt(false), 5000);
       return () => clearTimeout(t);
@@ -275,7 +275,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
       if (t === 'file' && file.type.startsWith('video/')) t = 'video';
       else if (t === 'file' && file.type.startsWith('audio/')) t = 'audio';
       if (t === 'image' && file.size > 100 * 1024 * 1024) {
-        setErrorMsg(`${file.name} is larger than 100 MB. Photos above 100 MB still transfer full-quality — they arrive as a file you can open, with no preview.`);
+        setErrorMsg(`${file.name} is larger than 100 MB. Photos above 100 MB still transfer full quality. They arrive as a file you can open, with no preview.`);
         continue;
       }
       if (file.size > 4 * 1024 * 1024 * 1024) {
@@ -491,12 +491,12 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
               </div>
               <div className="text-[13px] text-apple-ink-muted leading-relaxed">
                 {session.connectionType === 'relay' ? 'Connected through an encrypted relay.' :
-                  session.connectionType === 'local' ? 'Direct connection — same network.' :
+                  session.connectionType === 'local' ? 'Direct connection, same network.' :
                     session.connectionType === 'direct' ? 'Direct connection between devices.' :
                       'Connecting…'}
               </div>
               <div className="text-[12px] text-apple-ink-muted mt-2 pt-2 border-t border-apple-divider/50 dark:border-apple-tile-3">
-                Encrypted between devices. Temporary by design.
+                Encrypted on the way. Gone when the room closes.
               </div>
               {/* The pairing code lives here now, not on screen: it\u2019s only
                   needed if the other device drops and has to rejoin, so it\u2019s
@@ -518,7 +518,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
             className="absolute top-[76px] sm:top-[80px] left-1/2 -translate-x-1/2 z-40 px-4 py-2.5 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 shadow-float flex items-center gap-2 text-[13.5px] font-semibold whitespace-nowrap"
           >
             <ShareTextLogo size={16} motion="complete" className="text-white dark:text-night-900" />
-            Connected — you can start sending
+            Connected. You can start sending
           </motion.div>
         )}
       </AnimatePresence>
@@ -584,7 +584,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
             <div data-testid="disconnect-banner" className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-2 text-[14px] font-medium text-status-warning-ink dark:text-status-warning-ink-dark">
               <span className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse shrink-0" />
-                Other device disconnected — waiting to reconnect…
+                Other device disconnected. Waiting to reconnect…
               </span>
               <button
                 data-testid="reconnect"
@@ -640,7 +640,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                   <EmptyRoomIllustration />
                   <p className="text-[15px] font-semibold text-apple-ink dark:text-white mt-4">Ready when you are</p>
                   <p className="text-[13px] text-apple-ink-muted max-w-[260px] leading-relaxed mt-1">
-                    Type, paste, or drop anything — it goes straight to the other device.
+                    Type, paste, or drop anything. It goes straight to the other device.
                   </p>
                 </div>
               )}

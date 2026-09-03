@@ -1,7 +1,7 @@
 {
-  "name": "ShareText — Move anything between your devices",
+  "name": "ShareText",
   "short_name": "ShareText",
-  "description": "Send text, photos, and files between any two devices — phone, tablet, or computer. No app, no account, nothing to install.",
+  "description": "Send text, photos, and files between any two devices, phone to laptop, iPhone to Windows. No app, no account, nothing to install.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#120e22",
