@@ -21,7 +21,7 @@ import { motion } from 'motion/react';
  * SMIL animations are skipped when prefers-reduced-motion is set — the mark
  * still shows a parked packet or a settled check, so state stays legible.
  *
- * Must match public/favicon.svg and scripts/render-brand.mjs.
+ * Must match public/favicon.svg and scripts/gen-brand-assets.mjs.
  */
 
 export type BrandMotion = 'loading' | 'connecting' | 'transfer' | 'complete';
