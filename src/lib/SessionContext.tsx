@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { SessionState, ChatMessage, ConnectionType } from '../types';
 import { getSocket, devLog, signalingConfigIssue, resolveShortCode, refreshCode as refreshCodeRPC } from './socket';
-import { PeerManager, TransferCancelledError, hasSendProgress, clearAllTransferState, clearTransferState, getPartialInfo } from './webrtc';
+import { PeerManager, TransferCancelledError, hasSendProgress, clearAllTransferState, clearTransferState, getPartialInfo, chunkCountForSize } from './webrtc';
 import { generateKey } from './crypto';
 import { humanizeError } from './errors';
 import { diag, roomCreateDiagStart, roomCreateDiagEnd } from './diag';
@@ -364,7 +364,21 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
 
     socket.on('peer_disconnected', () => {
-      setSession(s => ({ ...s, partnerConnected: false, partnerConnecting: false, connectionType: 'disconnected' }));
+      setSession(s => {
+        // The server confirmed the other device left — an in-flight transfer
+        // can never finish, so flip it to interrupted now (the resume path
+        // flips it back to receiving if the peer returns). Don't wait for the
+        // data-channel stall watchdog.
+        const messages = s.messages.map(m => {
+          const st = m.attachment?.status;
+          if (m.attachment && (st === 'sending' || st === 'receiving')) {
+            diag('transfer.interrupted', true, m.attachment.name);
+            return { ...m, attachment: { ...m.attachment, status: 'interrupted' } };
+          }
+          return m;
+        });
+        return { ...s, partnerConnected: false, partnerConnecting: false, connectionType: 'disconnected', messages };
+      });
     });
 
     socket.on('room_closed', ({ reason }) => {
@@ -589,9 +603,37 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
               ...s,
               messages: [...s.messages, incoming]
             }));
+          } else if (parsed.attachment) {
+            // A re-sent metadata for a message we already have (e.g. the
+            // checksum arrives after the sender finished hashing). Merge the
+            // new fields into the existing bubble — never duplicate it — and
+            // keep our status ('receiving'/'interrupted'/'complete') intact.
+            // The merge runs INSIDE the updater against current state so a
+            // stale snapshot can never clobber a newer one (e.g. completion).
+            setSession(s => {
+              if (!s.messages.some(m => m.id === parsed.id && m.attachment)) return s;
+              return {
+                ...s,
+                messages: s.messages.map(m => {
+                  if (m.id !== parsed.id || !m.attachment) return m;
+                  return {
+                    ...m,
+                    attachment: {
+                      ...m.attachment,
+                      ...parsed.attachment,
+                      status: m.attachment.status,
+                      name: sanitizeFilename(m.attachment.name || parsed.attachment.name || 'file')
+                    }
+                  };
+                })
+              };
+            });
           }
           if (parsed.attachment) {
-            pm.expectBinaryTransfer(parsed.attachment.id, Math.ceil(parsed.attachment.size / (64 * 1024)));
+            // The chunk count comes from the SAME grid the sender uses
+            // (chunkCountForSize) — a mismatch here would leave the receiver
+            // waiting for chunks that never come or rejecting real ones.
+            pm.expectBinaryTransfer(parsed.attachment.id, chunkCountForSize(parsed.attachment.size));
           } else {
             // Text arrived — confirm receipt immediately so the sender can
             // show a true "Delivered" (not a guessed one).
@@ -728,7 +770,26 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           })
           .catch(() => { /* hashing failed (quota?) — leave complete, unverified */ });
       } else {
-        diag('transfer.checksum_skipped', true, `${transferId.slice(0, 8)} no checksum`);
+        // The sender hashes in parallel with the transfer, so the checksum
+        // metadata can trail the file. Wait briefly for it before declaring
+        // the transfer unverifiable.
+        const msgId = srcMsg?.id;
+        setTimeout(() => {
+          const now = msgId ? messagesRef.current.find(m => m.id === msgId)?.attachment : undefined;
+          if (now?.checksum) {
+            void sha256Hex(finalBlob)
+              .then((got) => {
+                const ok = got === now.checksum;
+                diag('transfer.checksum', ok, ok ? 'verified (late)' : `mismatch expected ${now.checksum.slice(0, 12)}… got ${got.slice(0, 12)}…`);
+                updateMessageAttachment(msgId, ok
+                  ? { verified: true }
+                  : { status: 'failed', note: 'checksum-mismatch', progress: 1, verified: false });
+              })
+              .catch(() => { /* hashing failed — leave complete, unverified */ });
+          } else {
+            diag('transfer.checksum_skipped', true, `${transferId.slice(0, 8)} no checksum`);
+          }
+        }, 4000);
       }
     };
 
@@ -1035,8 +1096,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       const hashPromise = sha256Hex(file).then(c => {
         checksum = c;
         diag('transfer.hash_ok', true, c.slice(0, 12));
-        // Send updated metadata with checksum if transfer is still in progress
         updateMessageAttachment(msg.id, { checksum: c });
+        // Re-send the metadata with the checksum so the peer can verify the
+        // bytes that land on its side. The receiver dedupes by message id and
+        // merges the checksum into the existing bubble.
+        void peerManagerRef.current?.send(JSON.stringify({
+          ...partnerMsg,
+          attachment: { ...partnerMsg.attachment!, checksum: c }
+        })).catch(() => { /* peer may be gone — the transfer itself will fail */ });
         return c;
       }).catch(e => {
         diag('transfer.hash_failed', false, String(e));

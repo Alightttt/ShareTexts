@@ -44,6 +44,19 @@ function iceServers(): RTCIceServer[] {
 }
 
 const CHUNK_SIZE = 128 * 1024; // 128 KB — small chunks for instant progress + maximum pipeline throughput
+
+/**
+ * THE chunk grid. Every byte offset in the system derives from this one
+ * function: the sender computes numChunks/offsets with it, the receiver
+ * registers its expected chunk count with it, and OPFS writes land at
+ * `sequence * CHUNK_SIZE`. The grid is INVARIANT — chunk sizes never adapt,
+ * so a mid-transfer sizing change can never skew byte offsets, truncate a
+ * file, or desync the receiver's expected count. (Adaptive pacing tunes the
+ * pipeline depth instead, which cannot corrupt offsets.)
+ */
+export function chunkCountForSize(size: number): number {
+  return Math.ceil(size / CHUNK_SIZE);
+}
 // 4 GB ceiling. Files stream in 64KB slices (never whole-file arrayBuffers),
 // so the sender's memory stays flat. The receiver assembles chunks in RAM for
 // files under OPFS_THRESHOLD; anything larger streams straight to the Origin
@@ -241,11 +254,16 @@ export class PeerManager {
   private destroyed = false;
   private retryTimer: ReturnType<typeof setInterval> | null = null;
   private relayFallbackTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Adaptive chunk size: starts small for instant feedback, scales up as
-   *  bandwidth is confirmed. Reset on each new transfer. */
-  private currentChunkSize = 128 * 1024; // 128 KB initial — ramps up fast on fast channels
-  private maxChunkSize = 2 * 1024 * 1024; // 2 MB ceiling — peak throughput on LAN
-  private bandwidthSamples: number[] = []; // recent chunks/sec measurements
+  /** Bandwidth samples (bytes/sec) for adaptive PIPELINE DEPTH pacing.
+   *  Depth never touches byte offsets, so it can adapt freely without
+   *  corrupting the chunk grid. */
+  private bandwidthSamples: number[] = [];
+  /** Stall watchdog for transient ICE 'disconnected' states: a connection
+   *  blip (backgrounded tab, brief network hiccup) must not kill an active
+   *  transfer while data is still flowing. We only declare a disconnect
+   *  after the channel has been down AND silent for a while. */
+  private disconnectStallTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastIncomingActivity = 0;
 
   public onMessage: ((data: string) => void) | null = null;
   public onFileProgress: ((transferId: string, progress: number, total: number) => void) | null = null;
@@ -380,11 +398,20 @@ export class PeerManager {
 
     this.pc.onconnectionstatechange = () => {
       if (!this.pc) return;
-      if (this.pc.connectionState === 'connected') {
+      const st = this.pc.connectionState;
+      if (st === 'connected') {
+        this.stopDisconnectStallWatch();
         this.determineConnectionType();
-      } else if (this.pc.connectionState === 'disconnected' || this.pc.connectionState === 'failed' || this.pc.connectionState === 'closed') {
-        if (this.pc.connectionState === 'failed') diag('webrtc.ice_failed', false);
-        if (this.onDisconnect && this.pc.connectionState !== 'closed') this.onDisconnect();
+      } else if (st === 'disconnected') {
+        // Transient: consent freshness can fail for a backgrounded tab or a
+        // brief network blip while the data channel still delivers queued
+        // bytes. Watch for a real stall (no incoming data) before declaring
+        // a disconnect; 'failed'/'closed' below still fire immediately.
+        this.startDisconnectStallWatch();
+      } else if (st === 'failed' || st === 'closed') {
+        this.stopDisconnectStallWatch();
+        if (st === 'failed') diag('webrtc.ice_failed', false);
+        if (this.onDisconnect && st !== 'closed') this.onDisconnect();
       }
     };
 
@@ -392,6 +419,36 @@ export class PeerManager {
       this.dc = event.channel;
       this.setupDataChannel(this.dc);
     };
+  }
+
+  /**
+   * While ICE is 'disconnected', re-check every ~2s: if no data has arrived
+   * for 10s, the link is genuinely dead — fire onDisconnect. Any incoming
+   * chunk resets the clock, so a slow-but-live drain never interrupts.
+   */
+  private startDisconnectStallWatch() {
+    if (this.disconnectStallTimer) return;
+    const check = () => {
+      this.disconnectStallTimer = null;
+      if (this.destroyed) return;
+      if (this.pc?.connectionState === 'connected') return;
+      const idle = Date.now() - this.lastIncomingActivity;
+      if (idle >= 10_000) {
+        diag('webrtc.stall_disconnect', true, `idle ${idle}ms while disconnected`);
+        this.stopDisconnectStallWatch();
+        if (this.onDisconnect) this.onDisconnect();
+        return;
+      }
+      this.disconnectStallTimer = setTimeout(check, Math.min(2000, 10_000 - idle + 250));
+    };
+    this.disconnectStallTimer = setTimeout(check, 2000);
+  }
+
+  private stopDisconnectStallWatch() {
+    if (this.disconnectStallTimer) {
+      clearTimeout(this.disconnectStallTimer);
+      this.disconnectStallTimer = null;
+    }
   }
 
   private setupDataChannel(channel: RTCDataChannel) {
@@ -566,6 +623,7 @@ export class PeerManager {
   }
 
   private async handleIncomingData(data: string | ArrayBuffer) {
+    this.lastIncomingActivity = Date.now();
     if (!this.cryptoKey) {
       await this.waitForCrypto();
     }
@@ -853,7 +911,7 @@ export class PeerManager {
       let sentViaDc = false;
       if (this.dc && this.dc.readyState === 'open') {
         if (this.dc.bufferedAmount > 2 * 1024 * 1024) {
-          const drained = await this.waitForDrain(2 * 1024 * 1024, 1024 * 1024, 8000);
+          const drained = await this.waitForBufferLow(1024 * 1024, 8000);
           if (!drained) this.isRelayFallback = true;
         }
         if (this.dc.readyState === 'open') {
@@ -928,12 +986,12 @@ export class PeerManager {
   public async sendFile(file: File, transferId: string, startIndex = 0) {
     const key = await this.waitForCrypto();
     if (!key) return;
-    // Adaptive chunk sizing: start small for instant progress, scale up
-    // as we measure the channel's throughput. This gives immediate visual
-    // feedback while still achieving peak throughput on large files.
-    let chunkSize = this.currentChunkSize;
-    const maxCs = this.maxChunkSize;
-    let numChunks = Math.ceil(file.size / chunkSize);
+    // Deterministic grid: the chunk size is FIXED (CHUNK_SIZE) and every
+    // offset derives from chunkCountForSize — the same function the receiver
+    // uses to register its expectation and to place OPFS writes. Nothing in
+    // this loop can change the grid mid-transfer, so byte offsets can never
+    // skew, files can never be truncated, and resume positions stay stable.
+    const numChunks = chunkCountForSize(file.size);
     let start = Math.max(0, Math.min(startIndex, numChunks - 1));
     const transferIdBytes = uuidToBytes(transferId);
     const controller = new AbortController();
@@ -943,59 +1001,70 @@ export class PeerManager {
     prog.total = numChunks;
     prog.updatedAt = Date.now();
     sendProgress.set(transferId, prog);
-    diag('transfer.start', true, `${file.name} (${file.size}b, chunk=${chunkSize}) from ${start}/${numChunks}`);
+    diag('transfer.start', true, `${file.name} (${file.size}b, chunks=${numChunks}) from ${start}/${numChunks}`);
     // If the channel's flow control wedges (bufferedAmount stuck), fall back
     // to the relay for the rest of this transfer instead of hanging forever.
     let wedged = false;
 
-    // Parallel pipeline: read + encrypt N chunks ahead while sending.
-    // Overlaps disk I/O, encryption CPU, and network send for max throughput.
-    const PIPELINE_DEPTH = 32; // Deep pipeline: overlaps I/O, encryption, and send
-    type PipelineEntry = { index: number; packet: Uint8Array; endByte: number };
+    // Adaptive pipeline depth: overlap read + encrypt + send. Depth is the
+    // ONLY pacing knob — it bounds how much is in flight without touching
+    // the chunk grid, so adapting it can never corrupt byte offsets.
+    let pipelineDepth = 32;
+    const MIN_DEPTH = 8;
+    const MAX_DEPTH = 64;
+    type PipelineEntry = { index: number; packet: Uint8Array };
     const inflight: Promise<PipelineEntry | null>[] = [];
     let readIdx = start;
     let sendIdx = start;
-    // Track bandwidth for adaptive sizing: measure bytes sent per second
+    // Track bandwidth for adaptive pacing: bytes sent per wall-clock second.
     let lastBandwidthCheck = Date.now();
     let bytesSentSinceCheck = 0;
 
-    const readAndEncrypt = async (idx: number, cs: number): Promise<PipelineEntry | null> => {
-      const offset = idx * cs;
+    const readAndEncrypt = async (idx: number): Promise<PipelineEntry | null> => {
+      const offset = idx * CHUNK_SIZE;
       if (offset >= file.size) return null;
-      const buf = await file.slice(offset, Math.min(offset + cs, file.size)).arrayBuffer();
+      const buf = await file.slice(offset, Math.min(offset + CHUNK_SIZE, file.size)).arrayBuffer();
       if (signal.aborted) return null;
       const encrypted = await encryptBinaryChunk(buf, key);
       const packet = new Uint8Array(20 + encrypted.byteLength);
       packet.set(transferIdBytes, 0);
       new DataView(packet.buffer).setUint32(16, idx, true);
       packet.set(new Uint8Array(encrypted), 20);
-      return { index: idx, packet, endByte: offset + buf.byteLength };
+      return { index: idx, packet };
     };
 
     // Pre-fill the pipeline
-    for (let p = 0; p < PIPELINE_DEPTH && readIdx < numChunks; p++, readIdx++) {
-      inflight.push(readAndEncrypt(readIdx, chunkSize));
+    for (let p = 0; p < pipelineDepth && readIdx < numChunks; p++, readIdx++) {
+      inflight.push(readAndEncrypt(readIdx));
     }
 
     try {
       while (sendIdx < numChunks) {
         if (signal.aborted) throw new TransferCancelledError();
 
-        const entry = await inflight.shift()!;
-        if (!entry || signal.aborted) throw new TransferCancelledError();
+        const entry = await inflight.shift() ?? null;
+        // With the fixed grid a null entry means the loop overshot the file —
+        // an invariant violation. Fail loudly instead of silently truncating.
+        if (!entry || signal.aborted) {
+          if (signal.aborted) throw new TransferCancelledError();
+          throw new Error('chunk pipeline produced no data (grid invariant violated)');
+        }
 
-        // Fill pipeline slot
+        // Fill pipeline slot (refill one less than depth while adapting)
         if (readIdx < numChunks) {
-          inflight.push(readAndEncrypt(readIdx, chunkSize));
+          inflight.push(readAndEncrypt(readIdx));
           readIdx++;
         }
 
         if (!wedged && this.dc && this.dc.readyState === 'open') {
-          // Adaptive drain: use lower thresholds for small chunks early on,
-          // higher thresholds for larger chunks later.
-          const drainThreshold = Math.max(4 * 1024 * 1024, chunkSize * 16);
+          // Backpressure: once the browser's send buffer exceeds ~4 MB, wait
+          // for it to drain below half before pushing more — otherwise we
+          // queue the whole file into memory. Event-driven via
+          // bufferedamountlow (plus a 100 ms fallback poll for engines that
+          // don't fire it reliably).
+          const drainThreshold = 4 * 1024 * 1024;
           if (this.dc.bufferedAmount > drainThreshold) {
-            const drained = await this.waitForDrain(drainThreshold, drainThreshold / 2, 5000);
+            const drained = await this.waitForBufferLow(drainThreshold / 2, 5000);
             if (!drained) {
               wedged = true;
               diag('transfer.dc_wedged', true, `chunk ${entry.index} — finishing via relay`);
@@ -1016,14 +1085,14 @@ export class PeerManager {
         prog.sentUpTo = sendIdx;
         prog.updatedAt = Date.now();
         bytesSentSinceCheck += entry.packet.byteLength;
-        if (sendIdx % 16 === 0) diag('transfer.sent', true, `${sendIdx}/${numChunks} (chunk=${chunkSize})`);
+        if (sendIdx % 32 === 0) diag('transfer.sent', true, `${sendIdx}/${numChunks} (chunk=${CHUNK_SIZE}b)`);
         if (this.onFileProgress) {
           this.onFileProgress(transferId, sendIdx, numChunks);
         }
 
-        // Adaptive sizing: every 2s, measure throughput and scale chunk size.
-        // On fast channels (>5 MB/s), double the chunk size; on slow ones,
-        // halve it. This adapts to both WiFi-speed LAN and throttled relay.
+        // Adaptive pacing: every second, measure throughput and adjust only
+        // the pipeline depth. Fast channels deepen the pipeline (more in
+        // flight), slow ones shallow it — chunk offsets never move.
         const now = Date.now();
         if (now - lastBandwidthCheck > 1000) {
           const elapsed = (now - lastBandwidthCheck) / 1000;
@@ -1033,14 +1102,11 @@ export class PeerManager {
           this.bandwidthSamples.push(throughput);
           if (this.bandwidthSamples.length > 5) this.bandwidthSamples.shift();
           const avgThroughput = this.bandwidthSamples.reduce((a, b) => a + b, 0) / this.bandwidthSamples.length;
-          if (avgThroughput > 5 * 1024 * 1024 && chunkSize < maxCs) {
-            // Fast channel: scale up aggressively
-            chunkSize = Math.min(maxCs, chunkSize * 2);
-          } else if (avgThroughput < 512 * 1024 && chunkSize > 32 * 1024) {
-            // Slow channel: scale down to keep progress smooth
-            chunkSize = Math.max(32 * 1024, chunkSize / 2);
+          if (avgThroughput > 8 * 1024 * 1024 && pipelineDepth < MAX_DEPTH) {
+            pipelineDepth = Math.min(MAX_DEPTH, pipelineDepth + 8);
+          } else if (avgThroughput < 2 * 1024 * 1024 && pipelineDepth > MIN_DEPTH) {
+            pipelineDepth = Math.max(MIN_DEPTH, pipelineDepth - 4);
           }
-          this.currentChunkSize = chunkSize;
         }
       }
       diag('transfer.complete', true, file.name);
@@ -1054,17 +1120,41 @@ export class PeerManager {
    * Wait for the data channel's send buffer to drain below `min` bytes.
    * Resolves false after `maxMs` or when the channel is no longer open, so
    * the caller can fall back to the relay instead of hanging.
+   *
+   * Primary signal: the bufferedamountlow event (the browser tells us the
+   * buffer dropped below the threshold) — no hot polling. A 100 ms fallback
+   * poll covers engines that don't fire the event reliably; both paths
+   * resolve the same promise exactly once, then restore the threshold.
    */
-  private waitForDrain(above: number, min: number, maxMs: number): Promise<boolean> {
+  private waitForBufferLow(min: number, maxMs: number): Promise<boolean> {
     return new Promise(resolve => {
-      const started = Date.now();
-      const check = () => {
-        if (this.destroyed || !this.dc || this.dc.readyState !== 'open') { resolve(false); return; }
-        if (this.dc.bufferedAmount <= min) { resolve(true); return; }
-        if (Date.now() - started > maxMs) { resolve(false); return; }
-        setTimeout(check, 25);
+      const channel = this.dc;
+      if (!channel || channel.readyState !== 'open') { resolve(false); return; }
+      if (channel.bufferedAmount <= min) { resolve(true); return; }
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      let poll: ReturnType<typeof setInterval> | null = null;
+      const prevThreshold = channel.bufferedAmountLowThreshold;
+      const onLow = () => finish(true);
+      const finish = (ok: boolean) => {
+        if (settled) return;
+        settled = true;
+        if (timer) clearTimeout(timer);
+        if (poll) clearInterval(poll);
+        if (this.dc === channel) {
+          channel.removeEventListener('bufferedamountlow', onLow);
+          channel.bufferedAmountLowThreshold = prevThreshold;
+        }
+        resolve(ok);
       };
-      check();
+      // Point the threshold below `min` so the event fires when we're ready
+      // to resume; setupDataChannel sets the steady-state threshold.
+      channel.bufferedAmountLowThreshold = Math.max(min - 64 * 1024, 64 * 1024);
+      channel.addEventListener('bufferedamountlow', onLow);
+      timer = setTimeout(() => finish(channel.bufferedAmount <= min), maxMs);
+      poll = setInterval(() => {
+        if (!this.dc || this.dc.readyState !== 'open' || channel.bufferedAmount <= min) finish(true);
+      }, 100);
     });
   }
 
@@ -1104,6 +1194,7 @@ export class PeerManager {
     this.transferControllers.clear();
     if (this.retryTimer) clearInterval(this.retryTimer);
     if (this.relayFallbackTimer) clearTimeout(this.relayFallbackTimer);
+    this.stopDisconnectStallWatch();
     if (this.dc) {
       try { this.dc.close(); } catch { /* noop */ }
     }

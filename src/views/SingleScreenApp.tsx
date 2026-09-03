@@ -144,10 +144,15 @@ export function SingleScreenApp() {
   /* --- panel mode sync --- */
   useEffect(() => {
     if (session.partnerConnected) setPanelMode('connected');
+    // Transient drop (peer lost the link, tab reloaded, network blip): stay
+    // in the room so the reconnect banner + retry live where the transfer
+    // was, instead of bouncing the creator back to the pairing screen and
+    // hiding the in-flight messages.
+    else if (session.roomId && session.connectionType === 'disconnected') setPanelMode('connected');
     else if (session.roomId && session.isCreator) setPanelMode('sending');
     else if (session.roomId && !session.isCreator) setPanelMode('receiving');
     else if (!session.roomId) setPanelMode('idle');
-  }, [session.roomId, session.isCreator, session.partnerConnected]);
+  }, [session.roomId, session.isCreator, session.partnerConnected, session.connectionType]);
 
   useEffect(() => {
     if (panelMode === 'connected') {
@@ -393,7 +398,9 @@ export function SingleScreenApp() {
                       <ArrowRightLeft className="w-4 h-4 text-[#8b7cf6] dark:text-[#a78bfa]" />
                       <span className="w-1 h-1 rounded-full bg-[#8b7cf6]/40 dark:bg-[#a78bfa]/40" />
                     </motion.div>
-                    <span className="text-[11px] font-medium text-status-success mt-1">Connected</span>
+                    <span className={cn("text-[11px] font-medium mt-1", session.connectionType === 'disconnected' ? "text-status-warning" : "text-status-success")}>
+                      {session.connectionType === 'disconnected' ? 'Reconnecting…' : 'Connected'}
+                    </span>
                   </div>
                   <div className="flex flex-col items-center gap-1.5">
                     <div className={cn(
@@ -521,12 +528,17 @@ export function SingleScreenApp() {
           {panelMode === 'connected' && (
             <>
               <span className="w-px h-3 bg-apple-divider dark:bg-white/10" />
-              {/* Two physical devices, connected — the mental model in the header */}
-              <span className="flex items-center gap-1.5 text-apple-ink-muted dark:text-white/50" title="Devices connected">
+              {/* Two physical devices — the mental model in the header. The
+                  dot turns amber when the link drops so the room header
+                  matches the in-room reconnect banner. */}
+              <span className="flex items-center gap-1.5 text-apple-ink-muted dark:text-white/50" title={session.connectionType === 'disconnected' ? 'Other device disconnected' : 'Devices connected'}>
                 <ThisDeviceIcon className="w-3.5 h-3.5" />
                 <ArrowRightLeft className="w-3 h-3 opacity-50" />
                 <PartnerDeviceIcon className="w-3.5 h-3.5" />
-                <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse ml-0.5" />
+                <span className={cn(
+                  "w-1.5 h-1.5 rounded-full ml-0.5",
+                  session.connectionType === 'disconnected' ? "bg-status-warning" : "bg-status-success animate-pulse"
+                )} />
               </span>
             </>
           )}
