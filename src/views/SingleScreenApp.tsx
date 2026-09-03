@@ -322,10 +322,14 @@ export function SingleScreenApp() {
                   <AnimatePresence>
                     {session.partnerConnecting && !session.partnerConnected && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-4">
-                        <p className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60 flex items-center gap-2">
+                        <motion.p
+                          animate={{ opacity: [0.6, 1, 0.6] }}
+                          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                          className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60 flex items-center gap-2"
+                        >
                           <span className="w-1.5 h-1.5 rounded-full bg-[#8b7cf6] animate-pulse" />
                           {session.connectionType === 'establishing' ? 'Establishing secure connection…' : 'Connecting…'}
-                        </p>
+                        </motion.p>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -519,7 +523,15 @@ export function SingleScreenApp() {
       <div className="flex-1 min-h-0 flex flex-col">
         {panelMode === 'connected' ? (
           <Suspense fallback={<div className="h-full flex items-center justify-center"><ShareTextLogo size={24} motion="connecting" className="text-azure-600 dark:text-azure-400" /></div>}>
-            <ChatView panelMode="embedded" />
+            <motion.div
+              key="room-connected"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.28, ease: EASE }}
+              className="h-full flex flex-col min-h-0"
+            >
+              <ChatView panelMode="embedded" />
+            </motion.div>
           </Suspense>
         ) : (
           <AnimatePresence mode="wait">

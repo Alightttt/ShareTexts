@@ -607,7 +607,7 @@ export function Docs() {
   // Per-route document title — the home shell has its own static <title>.
   useEffect(() => {
     const previous = document.title;
-    document.title = 'ShareText Docs — transfer text, photos & files between devices';
+    document.title = 'ShareText Docs | transfer text, photos & files between devices';
     return () => { document.title = previous; };
   }, []);
 
@@ -630,7 +630,7 @@ export function Docs() {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-apple-canvas/85 dark:bg-night-900/85 backdrop-blur-md border-b border-apple-divider dark:border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">
-          <a href="/" className="flex items-center gap-2 shrink-0" aria-label="ShareText — back to home">
+          <a href="/" className="flex items-center gap-2 shrink-0" aria-label="ShareText, back to home">
             <ArrowLeft className="w-4 h-4 text-apple-ink-muted dark:text-white/60" />
             <ShareTextLogo size={21} className="text-apple-ink dark:text-white" />
             <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>

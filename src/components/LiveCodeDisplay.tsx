@@ -87,10 +87,10 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
             <AnimatePresence mode="popLayout">
               <motion.span
                 key={digit + i}
-                initial={{ y: 8, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: -8, opacity: 0 }}
-                transition={{ type: 'spring', bounce: 0, duration: 0.2 }}
+                initial={{ y: 8, scale: 0.92, opacity: 0 }}
+                animate={{ y: 0, scale: 1, opacity: 1 }}
+                exit={{ y: -8, scale: 0.96, opacity: 0 }}
+                transition={{ type: 'spring', bounce: 0, duration: 0.18, delay: i * 0.03 }}
                 className="font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum leading-none select-none"
                 style={{ fontSize: 'clamp(22px, 7vw, 40px)' }}
               >
@@ -107,10 +107,10 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
             <AnimatePresence mode="popLayout">
               <motion.span
                 key={digit + (i + 3)}
-                initial={{ y: 8, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: -8, opacity: 0 }}
-                transition={{ type: 'spring', bounce: 0, duration: 0.2 }}
+                initial={{ y: 8, scale: 0.92, opacity: 0 }}
+                animate={{ y: 0, scale: 1, opacity: 1 }}
+                exit={{ y: -8, scale: 0.96, opacity: 0 }}
+                transition={{ type: 'spring', bounce: 0, duration: 0.18, delay: i * 0.03 }}
                 className="font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum leading-none select-none"
                 style={{ fontSize: 'clamp(24px, 8vw, 42px)' }}
               >

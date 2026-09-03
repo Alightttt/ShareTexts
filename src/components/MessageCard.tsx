@@ -71,14 +71,14 @@ function transferStatusText(a: Attachment, isMe: boolean): string {
   switch (a.status) {
     case 'failed':
       return a.note === 'resend-unavailable'
-        ? 'The other device no longer has this file — ask them to send it again.'
+        ? 'The other device no longer has this file. Ask them to send it again.'
         : a.note === 'checksum-mismatch'
-          ? "The file didn't arrive intact — send it again."
+          ? "The file didn't arrive intact. Send it again."
           : "Couldn't send this file.";
     case 'preparing': return 'Preparing…';
     case 'restoring': return `Restoring file…${a.progress ? ` ${Math.round(a.progress * 100)}%` : ''}`;
     case 'cancelled': return 'Cancelled';
-    case 'interrupted': return 'The other device disconnected — reconnect to continue';
+    case 'interrupted': return 'The other device disconnected. Reconnect to continue';
     case 'resuming': return `Resuming… ${byteProgress(a)}`;
     case 'sending': return `Sending… ${byteProgress(a)}`;
     case 'receiving': return `Receiving… ${byteProgress(a)}`;
@@ -452,7 +452,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                   {isMe ? <DeliveryTick delivered={msg.delivered} seen={msg.seen} onBlue /> : msg.source === 'push' ? (
                     <span className="font-semibold flex items-center gap-1"><Terminal className="w-3 h-3" /> Sent from your computer</span>
                   ) : <span className="font-semibold">Received</span>}
-                  {a.verified && <span className="flex items-center gap-0.5" title="The bytes were checked against the original — nothing was altered"><ShieldCheck className="w-3 h-3" /> Verified</span>}
+                  {a.verified && <span className="flex items-center gap-0.5" title="Bytes checked against the original; nothing was altered"><ShieldCheck className="w-3 h-3" /> Verified</span>}
                   <span className="hidden sm:inline">{' • '}{formatBytes(a.size)}{' • '}{timeOf(msg.timestamp)}</span>
                   <span className="sm:hidden">{' • '}{formatBytes(a.size)}</span>
                 </span>
