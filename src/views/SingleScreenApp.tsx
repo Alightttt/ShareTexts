@@ -135,6 +135,11 @@ export function SingleScreenApp() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const messageInputRef = useRef<HTMLInputElement>(null);
+  // On phones the transfer room lives below the connected summary; once the
+  // pair connects, roll the room up so the composer is on screen instead of
+  // leaving it below the fold.
+  const mobileColumnRef = useRef<HTMLDivElement>(null);
+  const roomSlotRef = useRef<HTMLDivElement>(null);
 
   /* --- panel mode sync --- */
   useEffect(() => {
@@ -154,6 +159,20 @@ export function SingleScreenApp() {
   // Focus traps for QR overlays
   const qrScanTrapRef = useFocusTrap(showQRScan, () => setShowQRScan(false));
   const qrDisplayTrapRef = useFocusTrap(showQROverlay, () => setShowQROverlay(false));
+
+  // Mobile: when the room becomes the active surface (connected), scroll it
+  // up so the composer is reachable without hunting below the fold.
+  useEffect(() => {
+    if (panelMode !== 'connected' || isDesktopLayout || mobileRoomFullscreen) return;
+    const t = setTimeout(() => {
+      const col = mobileColumnRef.current;
+      const slot = roomSlotRef.current;
+      if (!col || !slot) return;
+      const target = Math.max(0, slot.offsetTop - Math.round(col.clientHeight * 0.18));
+      col.scrollTo({ top: target, behavior: 'smooth' });
+    }, 200);
+    return () => clearTimeout(t);
+  }, [panelMode, isDesktopLayout, mobileRoomFullscreen]);
 
   /* --- handlers --- */
   const [retryCount, setRetryCount] = useState(0);
@@ -262,6 +281,21 @@ export function SingleScreenApp() {
               <div className="mt-7 flex gap-3 justify-center sm:justify-start">
                 <TactileButton onClick={handleSend} variant="primary" size="lg" icon={<SendCircleIcon size={18} />} disabled={isCreating}>Send</TactileButton>
                 <TactileButton onClick={handleReceive} variant="secondary" size="lg" icon={<ReceiveCircleIcon size={18} />}>Receive</TactileButton>
+              </div>
+              {/* Mobile/tablet: a compact pair preview under the actions — the
+                  big room panel only appears once the user picks Send or
+                  Receive, so the first screen stays tight and action-first. */}
+              <div className="lg:hidden mt-9 flex justify-center">
+                <div className="flex items-center gap-2.5 rounded-2xl border border-apple-divider/50 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] px-4 py-2.5">
+                  <span className="flex items-center gap-2 text-apple-ink-muted dark:text-white/45">
+                    <ThisDeviceIcon className="w-4 h-4" />
+                    <ArrowRightLeft className="w-3.5 h-3.5 text-azure-500 dark:text-azure-400" />
+                    <PartnerDeviceIcon className="w-4 h-4" />
+                  </span>
+                  <span className="text-[12.5px] font-medium text-apple-ink-muted dark:text-white/60">
+                    Any two devices — no app, no account
+                  </span>
+                </div>
               </div>
               {createError && (
                 <div role="alert" className="mt-4">
@@ -467,7 +501,10 @@ export function SingleScreenApp() {
   /* ---------------------------------------------------------------- */
   const roomPanel = (
     <div className={cn(
-      "relative flex flex-col min-h-0 overflow-hidden bg-[#f2f0ed] dark:bg-[#080c16]",
+      // lg:h-full is what makes the room fill the whole right side on desktop
+      // — without it the panel collapses to its content height (~430px) and
+      // the composer sits above a dead band instead of pinning to the bottom.
+      "relative flex flex-col min-h-0 overflow-hidden lg:h-full bg-[#f2f0ed] dark:bg-[#080c16]",
       "max-lg:h-[60vh] max-lg:min-h-[360px] max-lg:max-h-[700px] max-lg:w-full max-lg:mx-auto max-lg:rounded-[20px] max-lg:border max-lg:border-apple-divider/50 max-lg:dark:border-white/[0.08] max-lg:shadow-card",
       mobileRoomFullscreen && "max-lg:!fixed max-lg:inset-0 max-lg:z-50 max-lg:rounded-none max-lg:border-none max-lg:aspect-auto max-lg:shadow-none"
     )}>
@@ -574,11 +611,16 @@ export function SingleScreenApp() {
           <div className="flex-1 h-full min-w-0">{roomPanel}</div>
         </div>
       ) : (
-        /* Mobile: scrollable column */
-        <div className="h-full overflow-y-auto overscroll-contain">
+        /* Mobile: scrollable column. The big room panel only mounts once the
+            user picks Send or Receive — on idle the compact pair preview in
+            the hero (above) tells the story without a 60vh empty card at the
+            bottom of the first screen. */
+        <div ref={mobileColumnRef} className="h-full overflow-y-auto overscroll-contain">
           <div className="flex flex-col min-h-full pb-4">
             <div className="shrink-0">{leftPanel}</div>
-            <div className="shrink-0 px-4 mt-4">{roomPanel}</div>
+            {panelMode !== 'idle' && (
+              <div ref={roomSlotRef} className="shrink-0 px-4 mt-4">{roomPanel}</div>
+            )}
           </div>
         </div>
       )}

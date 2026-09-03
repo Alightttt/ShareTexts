@@ -641,9 +641,9 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <div        className="max-w-3xl mx-auto flex flex-col">
+        <div className="max-w-3xl mx-auto flex flex-col h-full">
           {session.messages.length === 0 ? (
-            <div className={cn("h-full flex flex-col items-center justify-center text-center space-y-3", panelMode === 'embedded' ? 'min-h-[20vh]' : 'min-h-[35vh]')}>
+            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3 min-h-[40vh]">
               {disconnected ? (
                 <>
                   <p className="text-[16px] font-semibold text-apple-ink dark:text-white">Other device is offline</p>
@@ -826,7 +826,10 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 rows={1}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
+                  // Never send while an IME composition is active (Hindi,
+                  // Chinese, Japanese, Korean…): Enter there commits the
+                  // candidate, it doesn't submit the message.
+                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.nativeEvent.keyCode !== 229) {
                     e.preventDefault();
                     handleSend(e);
                   }
