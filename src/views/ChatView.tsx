@@ -3,6 +3,7 @@ import { useSession } from '../lib/SessionContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { AttachmentPanel } from '../components/AttachmentPanel';
 import { AttachmentFlight } from '../components/AttachmentFlight';
+import { TransferFlight } from '../components/TransferFlight';
 import {
   X, Plus, Image as ImageIcon, Copy, Check, CheckCheck,
   File as FileIcon, Play, Download, RefreshCw, AlertCircle, ChevronDown, ChevronUp, ArrowUp, Lock, ZoomIn, ShieldCheck, Terminal, Share2, LogOut, Smartphone, Monitor
@@ -432,12 +433,50 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
       setErrorMsg("Couldn't copy. Select the text and copy manually.");
     }
   };
+  // Transfer flight: while a file is genuinely in motion (sender hashing it
+  // first, then bytes moving), a compact tile travels across the room between
+  // the two device sides, driven by real progress. When the transfer ends,
+  // AnimatePresence's `custom` tells the exiting tile to settle into the card
+  // (complete) or fade away (cancel/disconnect).
+  const flight = useMemo(() => {
+    for (let i = session.messages.length - 1; i >= 0; i--) {
+      const a = session.messages[i].attachment;
+      if (!a) continue;
+      const st = a.status;
+      if (st === 'sending' || st === 'receiving' || st === 'resuming') {
+        return {
+          active: true as const,
+          name: a.name || 'file',
+          progress: Math.min(1, a.progress ?? 0),
+          reverse: session.messages[i].sender === 'partner',
+          size: a.size ?? 0,
+        };
+      }
+      // Newest attachment is terminal (complete/cancelled/failed/…): the
+      // flight is over. Complete → settle into the card; anything else → fade.
+      return { active: false as const, exitMode: st === 'complete' ? ('settle' as const) : ('fade' as const) };
+    }
+    return null;
+  }, [session.messages]);
+
   return (
     <div
       data-app-state="connected"
       className={cn("relative flex flex-col bg-apple-canvas dark:bg-night-950 font-sans", panelMode === "embedded" ? "h-full" : "h-dvh")}
       style={visualHeight ? { height: `${visualHeight}px` } : undefined}
     >
+      {/* Transfer flight overlay — the file traveling device-to-device. */}
+      <AnimatePresence custom={flight?.exitMode ?? 'fade'} initial={false}>
+        {flight?.active && (
+          <TransferFlight
+            feedRef={scrollRef}
+            progress={flight.progress}
+            reverse={flight.reverse}
+            name={flight.name}
+            size={flight.size}
+          />
+        )}
+      </AnimatePresence>
       {/* Screen-reader live region — invisible, announced on state changes */}
       <div aria-live="polite" role="status" className="sr-only">{announcement}</div>
       {panelMode !== "embedded" && (<> {/* Header — device relationship, not chat */}
