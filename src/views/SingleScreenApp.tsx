@@ -429,7 +429,7 @@ export function SingleScreenApp() {
                         onClick={startEditName}
                         title="Tap to rename"
                         aria-label={`This device is named ${session.deviceName}. Tap to rename.`}
-                        className="group max-w-[120px] flex items-center gap-1 text-[11px] font-medium text-apple-ink-muted dark:text-white/40 hover:text-apple-ink dark:hover:text-white transition-colors"
+                        className="group max-w-[120px] min-h-[40px] -my-[11.5px] flex items-center gap-1 text-[11px] font-medium text-apple-ink-muted dark:text-white/40 hover:text-apple-ink dark:hover:text-white transition-colors"
                       >
                         <span className="truncate">{session.deviceName}</span>
                         <Pencil className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0" />
@@ -470,7 +470,7 @@ export function SingleScreenApp() {
                     <span className="flex-1">
                       Both devices had the same name — this one is now <span className="font-semibold text-apple-ink dark:text-white">{session.deviceName}</span>. Tap your name to change it.
                     </span>
-                    <button onClick={() => setDismissedNameNotice(true)} aria-label="Dismiss" className="shrink-0 p-0.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                    <button onClick={() => setDismissedNameNotice(true)} aria-label="Dismiss" className="shrink-0 min-w-[40px] min-h-[40px] -m-[12px] flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
@@ -543,7 +543,7 @@ export function SingleScreenApp() {
       // the composer sits above a dead band instead of pinning to the bottom.
       "relative flex flex-col min-h-0 overflow-hidden lg:h-full bg-[#f4ecdd] dark:bg-[#110c20]",
       "max-lg:h-[60vh] max-lg:min-h-[360px] max-lg:max-h-[700px] max-lg:w-full max-lg:mx-auto max-lg:rounded-[20px] max-lg:border max-lg:border-apple-divider/50 max-lg:dark:border-white/[0.08] max-lg:shadow-card",
-      mobileRoomFullscreen && "max-lg:!fixed max-lg:inset-0 max-lg:z-50 max-lg:rounded-none max-lg:border-none max-lg:aspect-auto max-lg:shadow-none"
+      mobileRoomFullscreen && "max-lg:!fixed max-lg:inset-0 max-lg:!h-dvh max-lg:z-50 max-lg:rounded-none max-lg:border-none max-lg:aspect-auto max-lg:shadow-none"
     )} data-testid="room-panel">
       {/* Ambient brand glow — a quiet lavender wash in the corner. Background
           only: never competes with content, disappears on reduced motion. */}

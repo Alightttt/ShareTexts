@@ -1,7 +1,7 @@
 // Layout / accessibility audit: horizontal overflow, touch-target sizes, console errors.
 // Anchored to the single-screen app: idle home hero → sending panel (pairing code +
 // QR overlay) → receiving/join panel → connected chat (desktop + mobile).
-import { launchBrowser, URL, sleep } from './lib.mjs';
+import { launchBrowser, URL, sleep, readLiveCode } from './lib.mjs';
 
 const browser = await launchBrowser();
 const errors = [];
@@ -62,8 +62,7 @@ const B = await ctxB.newPage();
 A.on('pageerror', e => errors.push(`[chatA:ERROR] ${e.message}`));
 B.on('pageerror', e => errors.push(`[chatB:ERROR] ${e.message}`));
 await auditSendingPanel(A);
-const digits = await A.locator('span').filter({ hasText: /^\d$/ }).allTextContents();
-const code = digits.slice(-6).join('');
+const code = await readLiveCode(A);
 await B.goto(URL, { waitUntil: 'networkidle' });
 await B.getByRole('button', { name: 'Receive' }).first().click();
 await B.locator('input[inputmode="numeric"]').fill(code);
