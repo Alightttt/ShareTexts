@@ -125,19 +125,25 @@ function sanitizeStoredMessages(msgs: ChatMessage[] | undefined): ChatMessage[] 
   });
 }
 
+/** The platform-based default name, ignoring anything the user set. Used to
+ *  tell "still an unedited default" apart from a deliberate (even identical)
+ *  rename — auto-disambiguation must never touch a user's choice. */
+export function platformDefaultName(): string {
+  if (typeof navigator === 'undefined') return 'Guest Device';
+  const ua = navigator.userAgent;
+  if (/iPhone/i.test(ua)) return 'Guest iPhone';
+  if (/iPad/i.test(ua)) return 'Guest iPad';
+  if (/Android/i.test(ua)) return 'Guest Android';
+  if (/Windows/i.test(ua)) return 'Guest Windows PC';
+  if (/Macintosh|Mac OS X/i.test(ua)) return 'Guest MacBook';
+  if (/Linux/i.test(ua)) return 'Guest Linux';
+  return 'Guest Device';
+}
+
 export function guessDeviceName(): string {
   const stored = localStorage.getItem(DEVICE_NAME_KEY);
   if (stored) return stored;
-  if (typeof navigator === 'undefined') return 'Guest Device';
-  const ua = navigator.userAgent;
-  let name = 'Guest Device';
-  if (/iPhone/i.test(ua)) name = 'Guest iPhone';
-  else if (/iPad/i.test(ua)) name = 'Guest iPad';
-  else if (/Android/i.test(ua)) name = 'Guest Android';
-  else if (/Windows/i.test(ua)) name = 'Guest Windows PC';
-  else if (/Macintosh|Mac OS X/i.test(ua)) name = 'Guest MacBook';
-  else if (/Linux/i.test(ua)) name = 'Guest Linux';
-  return name;
+  return platformDefaultName();
 }
 
 /**
@@ -577,6 +583,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
     pm.onHello = (name) => {
       setSession(s => ({ ...s, partnerName: name || null }));
+      // Same-platform default collision: two unrenamed devices on the same
+      // platform are indistinguishable ("Guest iPhone" on both sides). Only
+      // the JOINER auto-disambiguates — the creator's name is the anchor, so
+      // the outcome is deterministic even though both sides exchange hellos
+      // and neither side can outrace the other. Renames only fire while BOTH
+      // names are still unedited defaults; a deliberate rename is respected.
+      if (!name || session.isCreator) return;
+      const mine = (typeof localStorage !== 'undefined' && localStorage.getItem(DEVICE_NAME_KEY)) || session.deviceName;
+      if (mine !== name || mine !== platformDefaultName()) return;
+      const suggested = `${mine} 2`;
+      diag('name.auto_disambiguate', true, `${mine} → ${suggested}`);
+      setDeviceName(suggested);
+      setSession(s => ({ ...s, nameAutoAdjusted: true }));
     };
 
     pm.onMessage = (dataStr) => {
@@ -1287,6 +1306,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(DEVICE_NAME_KEY, name);
     } catch { /* ignore */ }
     setSession(s => ({ ...s, deviceName: name }));
+    // Re-announce the new name so the peer's label ("who am I talking to")
+    // updates live. sendHello reads localStorage, so the rename lands in the
+    // same packet. Best-effort: if we're disconnected the relay drops it and
+    // the next connect announces anyway.
+    void peerManagerRef.current?.sendHello().catch(() => { /* best-effort */ });
   };
 
   // Ask the server to put us back in the room and make the other peer

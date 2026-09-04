@@ -828,7 +828,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 onPointerDown={handleSend}
                 disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
                 aria-label="Send"
-                className="w-[38px] h-[38px] rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-90 text-white disabled:opacity-30 disabled:bg-[#c0c8e0] dark:disabled:bg-[#3a3a42] disabled:shadow-none bg-gradient-to-b from-[#a78bfa] to-[#7c6ce0] shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_10px_-2px_rgba(139,124,246,0.4)]"
+                className="w-[38px] h-[38px] rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-90 text-white disabled:opacity-30 disabled:bg-[#d9cdb2] dark:disabled:bg-[#3a3a42] disabled:shadow-none bg-gradient-to-b from-[#a78bfa] to-[#7c6ce0] shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_10px_-2px_rgba(139,124,246,0.4)]"
               >
                 <AnimatedIcon animate="send" active={!((!inputText.trim() && attachments.length === 0) || !session.partnerConnected)}>
                   <ArrowUp className="w-5 h-5" strokeWidth={2.4} />

@@ -60,8 +60,22 @@ P0/P1 existed.
 **P3 — optional refinements (deferred, not blockers):**
 - Per-transfer SHA-256 integrity check surfaced in the UI ("Transfer failed
   integrity check") — protocol fields are ready, verification is not wired.
-- Read receipts ("seen" on the sender's side).
+  *Done* — a mismatch flips the card to a failed state with `checksum-mismatch`
+  instead of silently keeping corrupted bytes.
+- Read receipts ("seen" on the sender's side). *Done* — encrypted `seen`
+  receipts flip the sender's bubbles; restored messages re-confirm honestly
+  after a reload/rejoin.
 - Automatic name suggestions for same-platform pairs at first connect.
+  *Done* — when two devices still carry the same unedited platform default
+  ("Guest iPhone" on both), the joiner auto-renames to "Guest iPhone 2"
+  (deterministic: only the non-creator renames, so the race between the two
+  hellos can't double-rename). Deliberate renames are never touched. The
+  connected panel shows both device names (tap yours to rename — the peer's
+  label updates live) with a one-time dismissible notice when the
+  auto-adjustment fired.
+  *Remaining tradeoff:* same-platform pairs that BOTH rename to the same
+  custom name keep the collision — auto-adjusting a user's explicit choice
+  would be worse than the collision.
 
 ## Lens applied
 

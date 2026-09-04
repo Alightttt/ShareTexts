@@ -1,12 +1,13 @@
 /**
  * SingleScreenApp — the entire app lives on one screen.
  *
- * Desktop (≥1024px): two-panel horizontal split.
- *   Left  = brand · action · context · footer
- *   Right = the transfer room (fills height)
+ * Desktop (≥1024px): balanced 50/50 split, each half exactly w-1/2.
+ *   Left  = brand · action · context · footer (content centered per block)
+ *   Right = the transfer room (flex-1, fills the other half)
  *
- * Mobile (<1024px): single scrollable column.
- *   Header → heading → buttons → collapsible info → room → footer
+ * Mobile (<1024px): single scrollable column, footer pinned to the very
+ *   bottom and hidden while connected.
+ *   Header → hero (centered) → room (only once connected) → footer
  *
  * The experience: DEVICE → CONNECT → TRANSFER → RECEIVED
  */
@@ -21,10 +22,10 @@ import { AnimatedIcon } from '../components/AnimatedIcon';
 import { SendCircleIcon, ReceiveCircleIcon } from '../components/TransferIcons';
 import { TactileButton } from '../components/TactileButton';
 import { signalingConfigIssue } from '../lib/socket';
-import { cn, shortCodeOf } from '../lib/utils';
+import { cn, shortCodeOf, sanitizeDeviceName } from '../lib/utils';
 import {
   Maximize2, Minimize2, LogOut, QrCode, Link2, Copy, Check,
-  Smartphone, Monitor, X, Wifi, ArrowRightLeft
+  Smartphone, Monitor, X, Wifi, ArrowRightLeft, Info, Pencil
 } from 'lucide-react';
 import { generateTOTP } from '../lib/totp';
 import { useFocusTrap } from '../lib/useFocusTrap';
@@ -121,7 +122,7 @@ function DevicePair({ state }: { state: 'idle' | 'connecting' | 'connected' }) {
 /*  Main component                                                    */
 /* ------------------------------------------------------------------ */
 export function SingleScreenApp() {
-  const { session, createSession, abandonSession, joinWithCode } = useSession();
+  const { session, createSession, abandonSession, joinWithCode, setDeviceName } = useSession();
   const isDesktopLayout = useIsDesktopLayout();
   const [panelMode, setPanelMode] = useState<PanelMode>('idle');
   const [isCreating, setIsCreating] = useState(false);
@@ -133,12 +134,28 @@ export function SingleScreenApp() {
   const [isJoining, setIsJoining] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  // Device-name editing in the connected pair visual (tap your name to
+  // rename — the other device sees the change immediately).
+  const [editingName, setEditingName] = useState(false);
+  const [draftName, setDraftName] = useState('');
+  const [dismissedNameNotice, setDismissedNameNotice] = useState(false);
   const messageInputRef = useRef<HTMLInputElement>(null);
   // On phones the transfer room lives below the connected summary; once the
   // pair connects, roll the room up so the composer is on screen instead of
   // leaving it below the fold.
   const mobileColumnRef = useRef<HTMLDivElement>(null);
   const roomSlotRef = useRef<HTMLDivElement>(null);
+
+  /* --- device name editing --- */
+  const startEditName = () => {
+    setDraftName(session.deviceName);
+    setEditingName(true);
+  };
+  const saveName = () => {
+    const clean = sanitizeDeviceName(draftName);
+    if (clean) setDeviceName(clean);
+    setEditingName(false);
+  };
 
   /* --- panel mode sync --- */
   useEffect(() => {
@@ -226,9 +243,10 @@ export function SingleScreenApp() {
     }
   }, [isJoining, joinWithCode]);
 
-  const handleDisconnect = useCallback(() => { setPanelMode('idle'); abandonSession(); setCreateError(null); setIsCreating(false); setJoinError(null); }, [abandonSession]);
+  const handleDisconnect = useCallback(() => { setMobileRoomFullscreen(false); setPanelMode('idle'); abandonSession(); setCreateError(null); setIsCreating(false); setJoinError(null); }, [abandonSession]);
   const handleCancel = useCallback(() => {
     createAbortRef.current++;
+    setMobileRoomFullscreen(false);
     setPanelMode('idle'); abandonSession(); setCreateError(null); setIsCreating(false); setJoinError(null);
   }, [abandonSession]);
 
@@ -259,15 +277,17 @@ export function SingleScreenApp() {
   // desktops — instead of always drawing a phone.
   const ThisDeviceIcon = isMobileDevice ? Smartphone : Monitor;
   const PartnerDeviceIcon = isMobileDevice ? Monitor : Smartphone;
-  const leftPanel = (
-    <div className="relative isolate flex flex-col h-full overflow-hidden bg-bg-elevated dark:bg-bg-secondary">
-      {/* Ambient warmth — soft lavender + peach washes behind the content */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[420px] -z-10 overflow-hidden motion-reduce:hidden">
-        <div className="absolute -top-24 -left-20 w-80 h-80 rounded-full bg-azure-200/60 dark:bg-azure-600/[0.12] blur-[100px]" />
-        <div className="absolute -top-12 right-[-3rem] w-96 h-96 rounded-full bg-peach-200/50 dark:bg-peach-400/[0.07] blur-[110px]" />
-      </div>
-      {/* Header */}
-      <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
+  // Reusable layout nodes. Desktop composes them as one full-height panel;
+  // mobile reorders them (room card only once connected, footer last) so the
+  // room can never sit below the footer or strand below the fold.
+  const ambientGlow = (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[420px] -z-10 overflow-hidden motion-reduce:hidden">
+      <div className="absolute -top-24 -left-20 w-80 h-80 rounded-full bg-azure-200/60 dark:bg-azure-600/[0.12] blur-[100px]" />
+      <div className="absolute -top-12 right-[-3rem] w-96 h-96 rounded-full bg-peach-200/50 dark:bg-peach-400/[0.07] blur-[110px]" />
+    </div>
+  );
+  const headerNode = (
+    <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
         <div className="flex items-center gap-2.5">
           <ShareTextLogo size={20} className="text-azure-600 dark:text-azure-400" />
           <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>
@@ -276,16 +296,16 @@ export function SingleScreenApp() {
           <a href="/docs" className="text-[13px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors">Docs</a>
           <ThemeToggle />
         </div>
-      </header>
+    </header>
+  );
 
-      {/* Hero area */}
-      <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 py-4 sm:py-6 min-h-0 overflow-hidden">
-        <AnimatePresence mode="sync">
+  const heroContent = (
+    <AnimatePresence mode="sync">
           {/* ── IDLE ──────────────────────────────────────────────── */}
           {panelMode === 'idle' && (
             // Deterministic first paint: the hero renders visible immediately;
             // only the swap-out fades. Never gate first paint on animation.
-            <motion.div key="idle" exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto sm:mx-0">
+            <motion.div key="idle" exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto">
               <h1 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold tracking-[-0.03em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left">
                 Move anything<br />between your devices.
               </h1>
@@ -313,7 +333,7 @@ export function SingleScreenApp() {
 
           {/* ── SENDING: pair the other device ────────────────────── */}
           {panelMode === 'sending' && (
-            <motion.div key="sending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md w-full overflow-hidden">
+            <motion.div key="sending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md w-full mx-auto overflow-hidden">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[22px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em]">Connect your other device.</h2>
                 <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-semibold text-status-danger hover:bg-status-danger/15 px-3 py-2 min-h-[40px] rounded-full active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
@@ -361,7 +381,7 @@ export function SingleScreenApp() {
 
           {/* ── RECEIVING: enter code ────────────────────────────── */}
           {panelMode === 'receiving' && (
-            <motion.div key="receiving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md">
+            <motion.div key="receiving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[22px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em]">Enter your code.</h2>
                 <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-medium text-status-danger hover:bg-status-danger/10 px-3 py-2 min-h-[40px] rounded-full active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> Cancel</button>
@@ -379,7 +399,7 @@ export function SingleScreenApp() {
 
           {/* ── CONNECTED: device pair + ready to transfer ───────── */}
           {panelMode === 'connected' && (
-            <motion.div key="connected" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25, ease: EASE }} className="max-w-md mx-auto sm:mx-0">
+            <motion.div key="connected" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25, ease: EASE }} className="max-w-md mx-auto">
               {/* Device pair visual */}
               <div className="flex flex-col items-center sm:items-start mb-6">
                 <div className="flex items-center gap-4 mb-4">
@@ -390,7 +410,31 @@ export function SingleScreenApp() {
                     )}>
                       <ThisDeviceIcon className="w-5 h-5 text-[#8b7cf6] dark:text-[#a78bfa]" />
                     </div>
-                    <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/40">This device</span>
+                    {editingName ? (
+                      <input
+                        autoFocus
+                        value={draftName}
+                        onChange={e => setDraftName(e.target.value)}
+                        onBlur={saveName}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') saveName();
+                          else if (e.key === 'Escape') { setDraftName(session.deviceName); setEditingName(false); }
+                        }}
+                        aria-label="Rename this device"
+                        maxLength={32}
+                        className="w-[120px] text-center text-[11px] font-medium text-apple-ink dark:text-white bg-transparent border-b border-[#8b7cf6]/50 dark:border-[#a78bfa]/50 outline-none px-0.5"
+                      />
+                    ) : (
+                      <button
+                        onClick={startEditName}
+                        title="Tap to rename"
+                        aria-label={`This device is named ${session.deviceName}. Tap to rename.`}
+                        className="group max-w-[120px] flex items-center gap-1 text-[11px] font-medium text-apple-ink-muted dark:text-white/40 hover:text-apple-ink dark:hover:text-white transition-colors"
+                      >
+                        <span className="truncate">{session.deviceName}</span>
+                        <Pencil className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0" />
+                      </button>
+                    )}
                   </div>
                   <div className="flex flex-col items-center">
                     <motion.div
@@ -413,9 +457,24 @@ export function SingleScreenApp() {
                     )}>
                       <PartnerDeviceIcon className="w-5 h-5 text-status-success" />
                     </div>
-                    <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/40">Paired</span>
+                    <span className="max-w-[120px] text-[11px] font-medium text-apple-ink-muted dark:text-white/40 truncate">
+                      {session.partnerName || 'Paired'}
+                    </span>
                   </div>
                 </div>
+
+                {/* One-time notice when the auto-disambiguation renamed us. */}
+                {session.nameAutoAdjusted && !dismissedNameNotice && (
+                  <div role="status" className="w-full sm:max-w-[340px] flex items-start gap-2 px-3 py-2 rounded-[12px] bg-[#8b7cf6]/8 dark:bg-[#a78bfa]/10 border border-[#8b7cf6]/15 dark:border-[#a78bfa]/15 text-[12px] text-apple-ink-muted dark:text-white/60 leading-snug">
+                    <Info className="w-3.5 h-3.5 text-[#8b7cf6] dark:text-[#a78bfa] shrink-0 mt-px" />
+                    <span className="flex-1">
+                      Both devices had the same name — this one is now <span className="font-semibold text-apple-ink dark:text-white">{session.deviceName}</span>. Tap your name to change it.
+                    </span>
+                    <button onClick={() => setDismissedNameNotice(true)} aria-label="Dismiss" className="shrink-0 p-0.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Ready message */}
@@ -441,11 +500,11 @@ export function SingleScreenApp() {
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
-      </div>
+    </AnimatePresence>
+  );
 
-      {/* Footer */}
-      <footer className="shrink-0 px-6 lg:px-10 py-4 border-t border-apple-divider/60 dark:border-white/[0.06] pb-[env(safe-area-inset-bottom)]">
+  const footerNode = (
+    <footer className="shrink-0 px-6 lg:px-10 py-4 border-t border-apple-divider/60 dark:border-white/[0.06] pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-5 text-[12px] font-medium text-apple-ink-muted dark:text-white/40">
             <a href="/docs" className="hover:text-apple-ink dark:hover:text-white transition-colors">Docs</a>
@@ -459,7 +518,18 @@ export function SingleScreenApp() {
             <span>Temporary</span>
           </div>
         </div>
-      </footer>
+    </footer>
+  );
+
+  const leftPanel = (
+    <div className="relative isolate flex flex-col h-full overflow-hidden bg-bg-elevated dark:bg-bg-secondary">
+      {ambientGlow}
+      {headerNode}
+      {/* Hero area — flex-1 centers each state's content in the half */}
+      <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 py-4 sm:py-6 min-h-0 overflow-hidden">
+        {heroContent}
+      </div>
+      {footerNode}
     </div>
   );
 
@@ -474,7 +544,7 @@ export function SingleScreenApp() {
       "relative flex flex-col min-h-0 overflow-hidden lg:h-full bg-[#f4ecdd] dark:bg-[#110c20]",
       "max-lg:h-[60vh] max-lg:min-h-[360px] max-lg:max-h-[700px] max-lg:w-full max-lg:mx-auto max-lg:rounded-[20px] max-lg:border max-lg:border-apple-divider/50 max-lg:dark:border-white/[0.08] max-lg:shadow-card",
       mobileRoomFullscreen && "max-lg:!fixed max-lg:inset-0 max-lg:z-50 max-lg:rounded-none max-lg:border-none max-lg:aspect-auto max-lg:shadow-none"
-    )}>
+    )} data-testid="room-panel">
       {/* Ambient brand glow — a quiet lavender wash in the corner. Background
           only: never competes with content, disappears on reduced motion. */}
       <div aria-hidden="true" className="pointer-events-none absolute -top-28 -right-24 w-[26rem] h-[26rem] rounded-full bg-[#8b7cf6]/[0.08] dark:bg-[#a78bfa]/[0.06] blur-[110px] motion-reduce:hidden" />
@@ -605,22 +675,32 @@ export function SingleScreenApp() {
           so components (ChatView, composer, pairing input) exist exactly once
           in the DOM instead of twice with one hidden copy. */}
       {isDesktopLayout ? (
-        /* Desktop: horizontal split */
+        /* Desktop: balanced 50/50 split — brand half and room half read as
+            one composition, each exactly half the viewport. */
         <div className="flex h-full">
-          <div className="w-[42%] min-w-[380px] max-w-[480px] h-full overflow-y-auto border-r border-black/[0.06] dark:border-white/[0.06]">{leftPanel}</div>
+          <div className="w-1/2 h-full overflow-y-auto border-r border-black/[0.06] dark:border-white/[0.06]">{leftPanel}</div>
           <div className="flex-1 h-full min-w-0">{roomPanel}</div>
         </div>
       ) : (
-        /* Mobile: scrollable column. The big room panel only mounts once the
-            user picks Send or Receive — on idle the compact pair preview in
-            the hero (above) tells the story without a 60vh empty card at the
-            bottom of the first screen. */
+        /* Mobile: single scrollable column. Header + hero fill the first
+            viewport (flex-1 centers idle content between header and footer);
+            the room card mounts ONLY once the pair is connected, so the chat
+            starts right under the summary and the card can never strand below
+            the fold — and the footer pins to the very bottom, hidden while
+            connected. */
         <div ref={mobileColumnRef} className="h-full overflow-y-auto overscroll-contain">
-          <div className="flex flex-col min-h-full pb-4">
-            <div className="shrink-0">{leftPanel}</div>
-            {panelMode !== 'idle' && (
-              <div ref={roomSlotRef} className="shrink-0 px-4 mt-4">{roomPanel}</div>
+          <div className="flex flex-col min-h-full">
+            <div className="relative isolate flex flex-1 flex-col bg-bg-elevated dark:bg-bg-secondary">
+              {ambientGlow}
+              {headerNode}
+              <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 py-4 sm:py-6 min-h-0">
+                {heroContent}
+              </div>
+            </div>
+            {panelMode === 'connected' && (
+              <div ref={roomSlotRef} className="shrink-0 px-4 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">{roomPanel}</div>
             )}
+            {panelMode === 'connected' ? null : footerNode}
           </div>
         </div>
       )}

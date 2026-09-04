@@ -41,6 +41,9 @@ async function probeViewport(w, h, label) {
   const idleH1 = await B.getByRole('heading', { level: 1 }).first().isVisible().catch(() => false);
   const idleH1Rect = await B.getByRole('heading', { level: 1 }).first().boundingBox().catch(() => null);
   facts.idleButtons.heroVisible = !!(idleH1 && idleH1Rect && idleH1Rect.y > 0 && idleH1Rect.y + idleH1Rect.height < h);
+  // Mobile-structure guard: the room card must NOT exist in the DOM before
+  // the pair connects — it can never strand below the footer/fold.
+  facts.roomCardIdle = await B.locator('[data-testid="room-panel"]').count();
   await B.screenshot({ path: `.audit-shots/probe-${label}-idle.png`, fullPage: true });
 
   // ── SEND on A, read code ──
@@ -88,6 +91,8 @@ async function probeViewport(w, h, label) {
   });
   facts.codeInput = { inputVisible: !!inputBox, cells };
   facts.receiveOverflow = cellRow ? (cellRow.left < -1 || cellRow.right > cellRow.vw + 1) : null;
+  // Still no room card while entering a code (pre-connection).
+  facts.roomCardReceive = await B.locator('[data-testid="room-panel"]').count();
   await B.screenshot({ path: `.audit-shots/probe-${label}-receive.png` });
 
   // ── wrong code → error state ──
@@ -109,6 +114,21 @@ async function probeViewport(w, h, label) {
     await sleep(1200);
     facts.connectedA = await measure(A);
     facts.connectedB = await measure(B);
+    // Room card mounts now, and on mobile it starts right under the summary
+    // (no dead gap before the composer): in the column flow, the room slot's
+    // previous sibling is the header+hero block, so its top must sit within
+    // 48px of that block's bottom.
+    const underGap = await B.evaluate(() => {
+      const room = document.querySelector('[data-testid="room-panel"]');
+      const slot = room?.parentElement;
+      const prev = slot?.previousElementSibling;
+      if (!room || !slot || !prev) return null;
+      const rb = slot.getBoundingClientRect();
+      const pb = prev.getBoundingClientRect();
+      return { roomTop: Math.round(rb.top), heroBottom: Math.round(pb.bottom), gap: Math.round(rb.top - pb.bottom) };
+    });
+    facts.roomCardConnected = underGap ? 1 : 0;
+    facts.chatStartsUnderSummary = !!(underGap && underGap.gap >= -6 && underGap.gap <= 48);
     // room empty-state text on B
     facts.emptyRoomB = await B.evaluate(() => document.body.innerText.includes('Ready when you are'));
     await B.screenshot({ path: `.audit-shots/probe-${label}-connected.png`, fullPage: true });
@@ -157,6 +177,8 @@ for (const [w, h, l] of widths) {
       qrFound: f.qrOverlay.found, qrFits: f.qrOverlay.fits,
       receiveOverflow: f.receiveOverflow, cells: f.codeInput.cells?.cellCount,
       wrongCodeShown: f.wrongCode.errorShown,
+      roomCardIdle: f.roomCardIdle, roomCardReceive: f.roomCardReceive,
+      roomCardConnected: f.roomCardConnected, chatUnderSummary: f.chatStartsUnderSummary,
       joined: f.bJoined,
       connectedOverflowX: f.connectedB?.docX,
       emptyRoomB: f.emptyRoomB,

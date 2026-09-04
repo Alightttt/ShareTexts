@@ -859,7 +859,12 @@ export class PeerManager {
     });
   }
 
-  private async sendHello() {
+  /**
+   * Announce this device's name (reads localStorage at send time). Public so
+   * the session layer can re-announce after an auto-disambiguation rename or
+   * a user edit — the peer updates its "who am I talking to" label.
+   */
+  public async sendHello() {
     try {
       const name = typeof window !== 'undefined'
         ? (window.localStorage.getItem('sharetext.deviceName') || undefined)

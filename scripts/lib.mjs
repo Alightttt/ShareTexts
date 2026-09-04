@@ -29,8 +29,25 @@ export async function launchBrowser() {
 export const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 export async function readLiveCode(page) {
-  const codeDigits = await page.locator('span').filter({ hasText: /^\d$/ }).allTextContents();
-  return codeDigits.slice(-6).join('');
+  // Scope to the pairing-code group and require a stable read: the digit
+  // tiles animate code rotation (AnimatePresence popLayout briefly renders
+  // the OLD digits while the new ones enter), and an unscoped read can pick
+  // up countdown or mid-animation digits and produce a hybrid code. Two
+  // consecutive identical reads after the animation settles are trustworthy.
+  const group = page.getByRole('group', { name: 'Pairing code' });
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const digits = await group.locator('span').filter({ hasText: /^\d$/ }).allTextContents();
+    if (digits.length >= 6) {
+      const code = digits.slice(-6).join('');
+      if (/^\d{6}$/.test(code)) {
+        await sleep(250);
+        const again = (await group.locator('span').filter({ hasText: /^\d$/ }).allTextContents()).slice(-6).join('');
+        if (again === code) return code;
+      }
+    }
+    await sleep(300);
+  }
+  throw new Error('could not read a stable pairing code');
 }
 
 export async function waitForChat(page, label) {

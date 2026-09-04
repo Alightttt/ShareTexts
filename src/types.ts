@@ -63,4 +63,8 @@ export interface SessionState {
   closedReason?: string | null;
   deviceName: string;
   partnerName: string | null;
+  /** True after this device auto-renamed itself ("Guest iPhone" → "Guest
+   *  iPhone 2") because both peers still had the same default name at first
+   *  connect. The UI can surface a one-time, dismissible notice about it. */
+  nameAutoAdjusted?: boolean;
 }
