@@ -3,6 +3,34 @@ import fs from 'fs';
 
 export const URL = process.env.URL || 'http://localhost:3000';
 
+// ── Shared touch-target contract (single source for audit.mjs + walk) ──
+// Every button and link needs a ≥40px hit box in both dimensions. Exempt:
+// iOS-style switches (role="switch", ~28px tall by design) and sr-only
+// elements (skip links — keyboard targets revealed on focus, not thumbs).
+// Self-contained (DOM + params only) so it can be injected into evaluate.
+export const TAP_TARGET_MIN = 40;
+// NOTE: minTarget cannot default to TAP_TARGET_MIN here — the function is
+// serialized into the page via page.evaluate, where module consts don't
+// exist. Callers pass { minTarget: TAP_TARGET_MIN } (audit.mjs, walk).
+export function tapTargetIssues({ minTarget } = {}) {
+  const floor = minTarget ?? 40;
+  const issues = [];
+  for (const el of document.querySelectorAll('button, a')) {
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) continue;
+    if (el.getAttribute('role') === 'switch') continue;
+    if (el.classList.contains('sr-only')) continue;
+    if ((r.width < floor || r.height < floor) && !el.classList.contains('hidden')) {
+      issues.push({
+        name: (el.getAttribute('aria-label') || el.textContent.trim() || '(icon)').slice(0, 30),
+        width: Math.round(r.width),
+        height: Math.round(r.height),
+      });
+    }
+  }
+  return issues;
+}
+
 const KNOWN_PATHS = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
   'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',

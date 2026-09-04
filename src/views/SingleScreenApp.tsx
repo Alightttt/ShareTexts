@@ -293,7 +293,7 @@ export function SingleScreenApp() {
           <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>
         </div>
         <div className="flex items-center gap-3">
-          <a href="/docs" className="text-[13px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors">Docs</a>
+          <a href="/docs" className="min-w-[40px] min-h-[40px] flex items-center justify-center -mx-[5px] -my-[10px] text-[13px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors">Docs</a>
           <ThemeToggle />
         </div>
     </header>
@@ -507,8 +507,8 @@ export function SingleScreenApp() {
     <footer className="shrink-0 px-6 lg:px-10 py-4 border-t border-apple-divider/60 dark:border-white/[0.06] pb-[env(safe-area-inset-bottom)]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-5 text-[12px] font-medium text-apple-ink-muted dark:text-white/40">
-            <a href="/docs" className="hover:text-apple-ink dark:hover:text-white transition-colors">Docs</a>
-            <a href="https://x.com/0xalyt" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-apple-ink dark:hover:text-white transition-colors" aria-label="Follow on X">@0xalyt<svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg></a>
+            <a href="/docs" className="min-w-[40px] min-h-[40px] flex items-center justify-center -mx-[5px] -my-[10px] hover:text-apple-ink dark:hover:text-white transition-colors">Docs</a>
+            <a href="https://x.com/0xalyt" target="_blank" rel="noopener noreferrer" className="min-h-[40px] flex items-center gap-1.5 -my-[10px] hover:text-apple-ink dark:hover:text-white transition-colors" aria-label="Follow on X">@0xalyt<svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg></a>
           </div>
           <div className="hidden sm:flex items-center gap-2.5 text-[11px] text-apple-ink-muted/40 dark:text-white/20">
             <span>No app</span>

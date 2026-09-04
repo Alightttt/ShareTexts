@@ -589,7 +589,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
               <button
                 data-testid="reconnect"
                 onPointerDown={() => void requestReconnect()}
-                className="px-3 py-1.5 rounded-full text-[13px] font-semibold bg-status-warning/15 hover:bg-status-warning/25 transition-colors active:scale-95 shrink-0"
+                className="min-h-[40px] px-3 py-1.5 rounded-full text-[13px] font-semibold bg-status-warning/15 hover:bg-status-warning/25 transition-colors active:scale-95 shrink-0"
               >
                 Reconnect
               </button>

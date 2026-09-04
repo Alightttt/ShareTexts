@@ -3,16 +3,16 @@
 // → connected placement + name edit + notice dismiss → chat both ways →
 // disconnect → desktop 1280 + 1920 split geometry → focus states → disabled
 // send warmth. Exits non-zero with a named failure list.
-import { launchBrowser, URL, sleep, readLiveCode, waitForChat } from './lib.mjs';
+import { launchBrowser, URL, sleep, readLiveCode, waitForChat, tapTargetIssues, TAP_TARGET_MIN } from './lib.mjs';
 
 const browser = await launchBrowser();
 const fails = [];
 const ok = (cond, label) => { console.log(`${cond ? 'OK  ' : 'FAIL'} ${label}`); if (!cond) fails.push(label); };
 
+// Shares the exact contract with audit.mjs (lib.mjs tapTargetIssues): 40px
+// in both dimensions, role="switch" exempt — no per-harness drift.
 async function smallTargets(page) {
-  return page.evaluate(() => [...document.querySelectorAll('button')]
-    .filter(b => { const r = b.getBoundingClientRect(); return r.width > 0 && r.height > 0 && (r.width < 40 || r.height < 40); })
-    .map(b => { const r = b.getBoundingClientRect(); return `${(b.getAttribute('aria-label') || b.textContent.trim() || '(icon)').slice(0, 24)} ${Math.round(r.width)}x${Math.round(r.height)}`; }));
+  return (await page.evaluate(tapTargetIssues, { minTarget: TAP_TARGET_MIN })).map(i => `${i.name} ${i.width}x${i.height}`);
 }
 
 async function main() {

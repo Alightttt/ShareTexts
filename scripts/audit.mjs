@@ -1,29 +1,20 @@
 // Layout / accessibility audit: horizontal overflow, touch-target sizes, console errors.
 // Anchored to the single-screen app: idle home hero → sending panel (pairing code +
 // QR overlay) → receiving/join panel → connected chat (desktop + mobile).
-import { launchBrowser, URL, sleep, readLiveCode } from './lib.mjs';
+import { launchBrowser, URL, sleep, readLiveCode, tapTargetIssues } from './lib.mjs';
 
 const browser = await launchBrowser();
 const errors = [];
 
-function auditPage(page, label, minTarget = 40) {
-  return page.evaluate(({ label, minTarget }) => {
-    const issues = [];
+async function auditPage(page, label, minTarget = 40) {
+  const overflowX = await page.evaluate(() => {
     const doc = document.documentElement;
-    const overflowX = doc.scrollWidth - doc.clientWidth;
-    if (overflowX > 2) issues.push(`horizontal overflow: ${overflowX}px`);
-    document.querySelectorAll('button').forEach(b => {
-      const r = b.getBoundingClientRect();
-      if (r.width === 0 || r.height === 0) return;
-      // iOS-style switches (role="switch") are deliberately ~28px tall — the
-      // whole pill is the target, and the 40px rule is for buttons.
-      if (b.getAttribute('role') === 'switch') return;
-      if (r.height < minTarget && !b.classList.contains('hidden')) {
-        issues.push(`small touch target: "${b.textContent.trim().slice(0, 30)}" ${r.width.toFixed(0)}x${r.height.toFixed(0)}`);
-      }
-    });
-    return { label, issues };
-  }, { label, minTarget });
+    return doc.scrollWidth - doc.clientWidth;
+  });
+  const issues = (await page.evaluate(tapTargetIssues, { minTarget }))
+    .map(i => `small touch target: "${i.name}" ${i.width}x${i.height}`);
+  if (overflowX > 2) issues.unshift(`horizontal overflow: ${overflowX}px`);
+  return { label, issues };
 }
 
 async function auditSendingPanel(page) {
@@ -70,12 +61,22 @@ await B.goto(URL, { waitUntil: 'networkidle' });
 await B.getByRole('button', { name: 'Receive' }).first().click();
 await B.locator('input[inputmode="numeric"]').fill(code);
 await B.getByTestId('composer').first().waitFor({ timeout: 20000 }).catch(() => {});
-await A.getByTestId('composer').first().waitFor({ timeout: 20000 }).catch(() => {});
-await A.locator('textarea').first().fill('Hello from desktop with a fairly long message that should wrap nicely on mobile screens.');
-await A.getByRole('button', { name: 'Send', exact: true }).click();
-await sleep(2000);
-console.log('desktop chat:', JSON.stringify(await auditPage(A, 'chat-desktop')));
-console.log('mobile chat:', JSON.stringify(await auditPage(B, 'chat-mobile')));
+await A.getByTestId('composer').first().waitFor({ timeout: 20000 }).catch(() => {});  // Two messages (A → B twice) so Copy All — which needs ≥2 messages — is
+  // part of the audited inventory on BOTH sides, not just a walk-layouts
+  // check. If the pair never reached chat, fail loudly instead of auditing
+  // an empty room as "clean".
+  for (const text of [
+    'Hello from desktop with a fairly long message that should wrap nicely on mobile screens.',
+    'A second message, so Copy All appears on both devices.',
+  ]) {
+    await A.locator('textarea').first().fill(text);
+    await A.getByRole('button', { name: 'Send', exact: true }).click();
+    await sleep(1500);
+  }
+  const bHasTwo = await B.evaluate(() => document.body.innerText.includes('Copy All'));
+  if (!bHasTwo) throw new Error('chat never reached two messages on B — pairing failed; rerun the audit');
+  console.log('desktop chat:', JSON.stringify(await auditPage(A, 'chat-desktop')));
+  console.log('mobile chat:', JSON.stringify(await auditPage(B, 'chat-mobile')));
 
 console.log('\n--- PAGE ERRORS ---');
 console.log(errors.length ? errors.join('\n') : '(none)');
