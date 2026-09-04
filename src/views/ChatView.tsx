@@ -584,7 +584,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
             <div data-testid="disconnect-banner" className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-2 text-[14px] font-medium text-status-warning-ink dark:text-status-warning-ink-dark">
               <span className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse shrink-0" />
-                Other device disconnected. Waiting to reconnect…
+                Other device disconnected. This room stays open — waiting for it to come back…
               </span>
               <button
                 data-testid="reconnect"
@@ -652,7 +652,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                   <button
                     onPointerDown={copyAll}
                     className={cn(
-                      "flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold transition-motion active:scale-95",
+                      "flex items-center gap-1.5 px-3.5 py-2.5 min-h-[40px] rounded-full text-[13px] font-semibold transition-motion active:scale-95",
                       copiedAll
                         ? "bg-status-success/15 text-status-success"
                         : "bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white"
@@ -796,7 +796,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 aria-label="Add attachment"
                 aria-expanded={showAttachmentMenu}
                 className={cn(
-                  "w-[34px] h-[34px] rounded-full flex items-center justify-center shrink-0 text-[#8b7cf6] dark:text-[#a78bfa] hover:bg-[#8b7cf6]/10 dark:hover:bg-[#8b7cf6]/10 transition-motion active:scale-90",
+                  "min-w-[40px] min-h-[40px] -m-[3px] rounded-full flex items-center justify-center shrink-0 text-[#8b7cf6] dark:text-[#a78bfa] hover:bg-[#8b7cf6]/10 dark:hover:bg-[#8b7cf6]/10 transition-motion active:scale-90",
                   showAttachmentMenu && "text-[#8b7cf6] dark:text-[#a78bfa] bg-[#8b7cf6]/10 rotate-45"
                 )}
               >
@@ -828,7 +828,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 onPointerDown={handleSend}
                 disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
                 aria-label="Send"
-                className="w-[38px] h-[38px] rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-90 text-white disabled:opacity-30 disabled:bg-[#d9cdb2] dark:disabled:bg-[#3a3a42] disabled:shadow-none bg-gradient-to-b from-[#a78bfa] to-[#7c6ce0] shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_10px_-2px_rgba(139,124,246,0.4)]"
+                className="min-w-[40px] min-h-[40px] -m-[1px] rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-90 text-white disabled:opacity-30 disabled:bg-[#d9cdb2] dark:disabled:bg-[#3a3a42] disabled:shadow-none bg-gradient-to-b from-[#a78bfa] to-[#7c6ce0] shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_10px_-2px_rgba(139,124,246,0.4)]"
               >
                 <AnimatedIcon animate="send" active={!((!inputText.trim() && attachments.length === 0) || !session.partnerConnected)}>
                   <ArrowUp className="w-5 h-5" strokeWidth={2.4} />

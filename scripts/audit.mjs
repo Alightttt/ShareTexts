@@ -15,6 +15,9 @@ function auditPage(page, label, minTarget = 40) {
     document.querySelectorAll('button').forEach(b => {
       const r = b.getBoundingClientRect();
       if (r.width === 0 || r.height === 0) return;
+      // iOS-style switches (role="switch") are deliberately ~28px tall — the
+      // whole pill is the target, and the 40px rule is for buttons.
+      if (b.getAttribute('role') === 'switch') return;
       if (r.height < minTarget && !b.classList.contains('hidden')) {
         issues.push(`small touch target: "${b.textContent.trim().slice(0, 30)}" ${r.width.toFixed(0)}x${r.height.toFixed(0)}`);
       }

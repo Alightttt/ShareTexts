@@ -324,7 +324,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                   aria-label="Copy message"
                   title="Copy"
                   className={cn(
-                    "flex items-center justify-center w-7 h-7 rounded-full transition-motion active:scale-90",
+                    "flex items-center justify-center min-w-[40px] min-h-[40px] -m-[6px] rounded-full transition-motion active:scale-90",
                     copied
                       ? "text-status-success"
                       : "text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/60 dark:hover:bg-apple-tile-3"
