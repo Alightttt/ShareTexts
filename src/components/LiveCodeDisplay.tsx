@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { generateTOTP, getTOTPRemainingSeconds, getTOTPProgress } from '../lib/totp';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { useI18n } from '../lib/i18n';
 
 interface LiveCodeDisplayProps {
   secret: string;
@@ -9,6 +10,7 @@ interface LiveCodeDisplayProps {
 }
 
 export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
+  const { t } = useI18n();
   const [code, setCode] = useState(() => generateTOTP(secret, createdAt));
   const [progress, setProgress] = useState(() => getTOTPProgress(createdAt));
   const [remaining, setRemaining] = useState(() => getTOTPRemainingSeconds(createdAt));
@@ -29,11 +31,12 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
   const isUrgent = remaining <= 5;
   const isCritical = remaining <= 2;
 
+  const seconds = Math.ceil(remaining);
   const statusText = isCritical
-    ? 'Refreshing…'
+    ? t('code.refresh')
     : isUrgent
-      ? `Refreshes in ${Math.ceil(remaining)}s`
-      : `Code active · ${Math.ceil(remaining)}s`;
+      ? t('code.refreshesIn', { s: seconds })
+      : t('code.active', { s: seconds });
 
   const digitTileClass = cn(
     "relative flex items-center justify-center rounded-[10px] sm:rounded-[14px] shadow-sm overflow-hidden",
@@ -81,7 +84,7 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
       </div>
 
       {/* Pairing code — 6 digits, mathematically constrained to never overflow */}
-      <div className="flex justify-center items-center gap-1.5 sm:gap-2 px-3 sm:px-5 pb-4 sm:pb-6 w-full" role="group" aria-label="Pairing code">
+      <div className="flex justify-center items-center gap-1.5 sm:gap-2 px-3 sm:px-5 pb-4 sm:pb-6 w-full" role="group" aria-label={t('code.pairingAria')}>
         {digits.slice(0, 3).map((digit, i) => (
           <div key={'a' + i} className={digitTileClass}>
             <AnimatePresence mode="popLayout">

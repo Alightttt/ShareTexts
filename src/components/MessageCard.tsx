@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { FileTypeIcon } from './FileTypeIcon';
 import { cn, formatBytes, sanitizeFilename } from '../lib/utils';
+import { useI18n } from '../lib/i18n';
+import type { I18nApi } from '../lib/i18n';
 import { ChatMessage, Attachment } from '../types';
 
 const LARGE_TEXT_THRESHOLD = 8000; // chars
@@ -49,6 +51,21 @@ async function toPngClipboardBlob(blob: Blob): Promise<Blob | null> {
 
 const timeOf = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+/** Human short format from a MIME type, for the "Original · …" metadata chip. */
+function shortFormat(mime?: string): string {
+  const map: Record<string, string> = {
+    'image/jpeg': 'JPEG', 'image/png': 'PNG', 'image/webp': 'WebP', 'image/gif': 'GIF',
+    'image/heic': 'HEIC', 'image/heif': 'HEIF', 'image/avif': 'AVIF', 'image/svg+xml': 'SVG',
+    'video/mp4': 'MP4', 'video/quicktime': 'MOV', 'video/webm': 'WebM',
+    'audio/mpeg': 'MP3', 'audio/mp4': 'M4A', 'audio/wav': 'WAV', 'audio/ogg': 'OGG',
+  };
+  if (!mime) return '';
+  const base = mime.split(';')[0].trim();
+  if (map[base]) return map[base];
+  const m = base.match(/^\w+\/(.+)$/);
+  return m ? m[1].toUpperCase() : base.toUpperCase();
+}
+
 /** In-flight byte progress: "1.2 MB of 4.1 MB", falling back to a percent. */
 function byteProgress(a: Attachment): string {
   return a.size && a.progress
@@ -67,22 +84,22 @@ function byteProgress(a: Attachment): string {
  *   interrupted → the peer dropped mid-transfer
  *   resuming / sending / receiving → "… 1.2 MB of 4.1 MB"
  */
-function transferStatusText(a: Attachment, isMe: boolean): string {
+function transferStatusText(a: Attachment, isMe: boolean, t: I18nApi['t']): string {
   switch (a.status) {
     case 'failed':
       return a.note === 'resend-unavailable'
-        ? 'The other device no longer has this file. Ask them to send it again.'
+        ? t('status.failed.resend')
         : a.note === 'checksum-mismatch'
-          ? "The file didn't arrive intact. Send it again."
-          : "Couldn't send this file.";
-    case 'preparing': return 'Preparing…';
-    case 'restoring': return `Restoring file…${a.progress ? ` ${Math.round(a.progress * 100)}%` : ''}`;
-    case 'cancelled': return 'Cancelled';
-    case 'interrupted': return 'The other device disconnected. Reconnect to continue';
-    case 'resuming': return `Resuming… ${byteProgress(a)}`;
-    case 'sending': return `Sending… ${byteProgress(a)}`;
-    case 'receiving': return `Receiving… ${byteProgress(a)}`;
-    default: return isMe ? 'Sending…' : 'Receiving…';
+          ? t('status.failed.checksum')
+          : t('status.failed.generic');
+    case 'preparing': return t('status.preparing');
+    case 'restoring': return t('status.restoring', { pct: a.progress ? ` ${Math.round(a.progress * 100)}%` : '' });
+    case 'cancelled': return t('status.cancelled');
+    case 'interrupted': return t('status.interrupted');
+    case 'resuming': return t('status.resuming', { progress: byteProgress(a) });
+    case 'sending': return t('status.sending', { progress: byteProgress(a) });
+    case 'receiving': return t('status.receiving', { progress: byteProgress(a) });
+    default: return isMe ? t('status.sendingShort') : t('status.receivingShort');
   }
 }
 
@@ -105,6 +122,7 @@ const STATUS_TONE: Record<string, string> = {
  *   Seen      — the OTHER device's room is open with it on screen (read ack)
  */
 function DeliveryTick({ delivered, seen, onBlue }: { delivered?: boolean; seen?: boolean; onBlue: boolean }) {
+  const { t } = useI18n();
   if (seen) {
     return (
       <span className="flex items-center gap-1 text-apple-blue">
@@ -116,7 +134,7 @@ function DeliveryTick({ delivered, seen, onBlue }: { delivered?: boolean; seen?:
         >
           <CheckCheck className="w-3.5 h-3.5" />
         </motion.span>
-        <span className="font-semibold">Seen</span>
+        <span className="font-semibold">{t('msg.seen')}</span>
       </span>
     );
   }
@@ -133,7 +151,7 @@ function DeliveryTick({ delivered, seen, onBlue }: { delivered?: boolean; seen?:
         >
           <CheckCheck className="w-3.5 h-3.5" />
         </motion.span>
-        <span className="font-semibold">Delivered</span>
+        <span className="font-semibold">{t('msg.delivered')}</span>
       </span>
     );
   }
@@ -147,7 +165,7 @@ function DeliveryTick({ delivered, seen, onBlue }: { delivered?: boolean; seen?:
       >
         <Check className="w-3.5 h-3.5" />
       </motion.span>
-      <span className="font-semibold">Sent</span>
+      <span className="font-semibold">{t('msg.sent')}</span>
     </span>
   );
 }
@@ -159,6 +177,7 @@ export interface MessageCardProps {
 }
 
 export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = true, isGroupEnd = true }) => {
+  const { t } = useI18n();
   const { retryTransfer, retryText, cancelTransfer } = useSession();
   const isMe = msg.sender === 'me';
   const a = msg.attachment;
@@ -166,6 +185,13 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
   const [saved, setSaved] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
+  // Decoded dimensions of the ORIGINAL image bytes (proves nothing was
+  // resized) and a decode-failure flag: a received "image" that the browser
+  // can't decode (HEIC/HEIF on Chrome, damaged file, …) degrades to the file
+  // row with Save promoted — the original is never stranded behind a dead
+  // preview box.
+  const [imgMeta, setImgMeta] = useState<{ w: number; h: number } | null>(null);
+  const [decodeFailed, setDecodeFailed] = useState(false);
   const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
   const preview = isLargeText && !expanded ? msg.text.slice(0, LARGE_TEXT_PREVIEW) : msg.text;
   const handleCopy = async (text: string) => {
@@ -280,7 +306,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                 onClick={() => setExpanded(true)}
                 className={cn("mt-1.5 flex items-center gap-1 text-[14px] font-semibold active:opacity-70", isMe ? "text-white/90" : "text-apple-blue")}
               >
-                <ChevronDown className="w-4 h-4" /> Show full text
+                <ChevronDown className="w-4 h-4" /> {t('msg.showFull')}
               </button>
             )}
             {isLargeText && expanded && (
@@ -288,7 +314,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                 onClick={() => setExpanded(false)}
                 className={cn("mt-1.5 flex items-center gap-1 text-[14px] font-semibold active:opacity-70", isMe ? "text-white/90" : "text-apple-blue")}
               >
-                <ChevronUp className="w-4 h-4" /> Collapse
+                <ChevronUp className="w-4 h-4" /> {t('msg.collapse')}
               </button>
             )}
           </div>
@@ -296,13 +322,13 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
             {msg.delivery === 'failed' ? (
               <>
                 <span className={cn("text-[12.5px] font-semibold flex items-center gap-1", isMe ? "text-white" : "text-status-danger")}>
-                  <AlertCircle className="w-3.5 h-3.5" /> Couldn't send
+                  <AlertCircle className="w-3.5 h-3.5" /> {t('msg.couldNotSend')}
                 </span>
                 <button
                   onPointerDown={(e) => { e.preventDefault(); void retryText(msg.id); }}
                   className={cn("flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold transition-motion active:scale-95", isMe ? "bg-white/20 text-white" : "bg-apple-parchment dark:bg-apple-tile-2 text-apple-ink dark:text-white")}
                 >
-                  <RefreshCw className="w-3 h-3" /> Retry
+                  <RefreshCw className="w-3 h-3" /> {t('action.retry')}
                 </button>
               </>
             ) : (
@@ -312,17 +338,17 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                     <DeliveryTick delivered={msg.delivered} seen={msg.seen} onBlue />
                   ) : msg.source === 'push' ? (
                     <span className="font-semibold flex items-center gap-1">
-                      <Terminal className="w-3 h-3" /> From your push link
+                      <Terminal className="w-3 h-3" /> {t('msg.fromPush')}
                     </span>
                   ) : (
-                    <span className="font-semibold">Received</span>
+                    <span className="font-semibold">{t('msg.received')}</span>
                   )}
                   {' • '}{timeOf(msg.timestamp)}
                 </span>
                 <button
                   onPointerDown={() => handleCopy(msg.text)}
-                  aria-label="Copy message"
-                  title="Copy"
+                  aria-label={t('msg.copyMessage')}
+                  title={t('msg.copy')}
                   className={cn(
                     "flex items-center justify-center min-w-[40px] min-h-[40px] -m-[6px] rounded-full transition-motion active:scale-90",
                     copied
@@ -346,9 +372,14 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
   // elements with blob URLs are already script-safe, but the pass rule is:
   // prefer download over inline for anything that could be active content.
   const unsafePreview = !!a.mimeType && /^(text\/html|application\/xhtml\+xml|image\/svg\+xml|text\/xml|application\/xml|text\/javascript|application\/javascript)/i.test(a.mimeType);
-  const isImage = a.type === 'image' && !unsafePreview;
+  // An image whose bytes failed to decode (HEIC on Chrome, truncated file…)
+  // is NOT an inline image anymore: it flips to the file row below.
+  const isImage = a.type === 'image' && !unsafePreview && !decodeFailed;
   const isVideo = a.type === 'video' && !unsafePreview;
   const complete = a.status === 'complete' && a.url;
+  // "Original" proof chip for decoded images — exact pixels, exact format.
+  const fmtShort = isImage || a.type === 'image' ? shortFormat(a.mimeType) : '';
+  const dimsTxt = imgMeta && a.type === 'image' && !decodeFailed ? `${imgMeta.w} × ${imgMeta.h}` : '';
   // Restored after a reload with no bytes: own sends keep 'complete' (the
   // other device holds the file — "Sent" is truthful), partner files we
   // received become 'restoring' (re-requested from the peer on reconnect).
@@ -396,11 +427,22 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                   className="block w-full cursor-zoom-in group relative"
                   aria-label={`View ${a.name}`}
                 >
-                  <img src={a.url} alt={a.name} className="w-full h-auto object-contain max-h-[60vh] block" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }} />
-                  <div className="hidden w-full aspect-video flex flex-col items-center justify-center bg-apple-parchment dark:bg-surface-dark">
-                    <ImageIcon className="w-8 h-8 mb-2 opacity-50 text-apple-ink-muted" />
-                    <span className="text-[13px] text-apple-ink-muted">Preview unavailable</span>
-                  </div>
+                  {/* Soft reveal on arrival — the completed photo settles in
+                      instead of popping. Rendered from the received original
+                      bytes (object-contain, never cropped or stretched). */}
+                  <motion.img
+                    src={a.url}
+                    alt={a.name}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.22, ease: 'easeOut' }}
+                    className="w-full h-auto object-contain max-h-[60vh] block"
+                    onLoad={(e) => {
+                      const el = e.currentTarget;
+                      if (el.naturalWidth > 0) setImgMeta({ w: el.naturalWidth, h: el.naturalHeight });
+                    }}
+                    onError={() => setDecodeFailed(true)}
+                  />
                   <span className="absolute bottom-2.5 right-2.5 flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-black/55 text-white text-[12px] font-semibold backdrop-blur opacity-90 group-hover:opacity-100 transition-opacity pointer-events-none">
                     <ZoomIn className="w-3.5 h-3.5" /> View
                   </span>
@@ -417,7 +459,15 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
           {isVideo && !lost && (
             <div className="relative w-full aspect-video bg-black/90 flex items-center justify-center overflow-hidden">
               {complete ? (
-                <video src={a.url} controls preload="metadata" className="w-full h-full object-contain bg-black" />
+                <motion.video
+                  src={a.url}
+                  controls
+                  preload="metadata"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                  className="w-full h-full object-contain bg-black"
+                />
               ) : (
                 <div className="text-white/70 flex flex-col items-center">
                   <Play className="w-10 h-10 mb-3 opacity-50" />
@@ -429,12 +479,17 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
           {/* File / Audio — plus active-content MIME (HTML/SVG/XML/JS) and
               restored attachments whose bytes died with the page: all render
               as the file row, never a broken or inline preview. */}
-          {(a.type === 'file' || a.type === 'audio' || unsafePreview || lost) && (
+          {(a.type === 'file' || a.type === 'audio' || unsafePreview || lost || (a.type === 'image' && !unsafePreview && decodeFailed)) && (
             <div className="p-4 flex items-center gap-3.5 bg-apple-parchment/50 dark:bg-black/20">
               <FileTypeIcon name={a.name} mimeType={a.mimeType} size={20} />
               <div className="flex flex-col flex-1 truncate min-w-0">
                 <span className="text-[14.5px] font-semibold truncate text-apple-ink dark:text-white">{a.name}</span>
-                <span className="text-[12.5px] font-medium text-apple-ink-muted">{formatBytes(a.size)}</span>
+                <span className="text-[12.5px] font-medium text-apple-ink-muted">
+                  {formatBytes(a.size)}
+                  {a.type === 'image' && decodeFailed && (
+                    <span className="hidden sm:inline"> · Original file kept — preview not supported by this browser</span>
+                  )}
+                </span>
               </div>
             </div>
           )}
@@ -456,13 +511,23 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                   {isMe ? <DeliveryTick delivered={msg.delivered} seen={msg.seen} onBlue /> : msg.source === 'push' ? (
                     <span className="font-semibold flex items-center gap-1"><Terminal className="w-3 h-3" /> Sent from your computer</span>
                   ) : <span className="font-semibold">Received</span>}
-                  {a.verified && <span className="flex items-center gap-0.5" title="Bytes checked against the original; nothing was altered"><ShieldCheck className="w-3 h-3" /> Verified</span>}
-                  <span className="hidden sm:inline">{' • '}{formatBytes(a.size)}{' • '}{timeOf(msg.timestamp)}</span>
-                  <span className="sm:hidden">{' • '}{formatBytes(a.size)}</span>
+                  {a.verified && <span className="flex items-center gap-0.5" title={t('msg.verifiedTitle')}><ShieldCheck className="w-3 h-3" /> {t('msg.verified')}</span>}
+                  {/* Original-quality proof: size · exact pixel dimensions ·
+                      exact format — read from the bytes that arrived. */}
+                  <span className="hidden sm:inline">
+                    {' • '}{formatBytes(a.size)}
+                    {dimsTxt ? <span title="Exact pixel size — never resized">{' • '}{dimsTxt}</span> : null}
+                    {a.type === 'image' && fmtShort && !decodeFailed ? ` • ${fmtShort}` : ''}
+                    {' • '}{timeOf(msg.timestamp)}
+                  </span>
+                  <span className="sm:hidden">
+                    {' • '}{formatBytes(a.size)}
+                    {dimsTxt ? ` • ${dimsTxt}` : ''}
+                  </span>
                 </span>
               ) : (
                 <span className={cn("text-[12.5px] font-semibold", a.status === 'failed' ? "text-status-danger" : a.status === 'cancelled' || a.status === 'interrupted' ? "text-apple-ink-muted" : "text-apple-blue")}>
-                  {transferStatusText(a, isMe)}
+                  {transferStatusText(a, isMe, t)}
                 </span>
               )}
             </div>
@@ -471,17 +536,17 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
               {complete && (
                 <>
                   {a.type === 'image' && (
-                    <ActionButton icon={copied ? <Check /> : <Copy />} label={copied ? "Copied" : "Copy"} active={copied} onClick={() => { void copyAttachment(a); }} onBlue={isMe} testId="transfer-copy" />
+                    <ActionButton icon={copied ? <Check /> : <Copy />} label={copied ? t('action.copied') : t('action.copy')} active={copied} onClick={() => { void copyAttachment(a); }} onBlue={isMe} testId="transfer-copy" />
                   )}
-                  <ActionButton icon={<Share2 />} label={shared ? "Shared" : "Share"} active={shared} onClick={() => { void handleShare(); }} onBlue={isMe} testId="transfer-share" />
-                  <ActionButton icon={saved ? <Check /> : <Download />} label={saved ? "Saved" : "Save"} active={saved} onClick={() => handleDownload(a.url!, a.name)} primary onBlue={isMe} testId="transfer-download" />
+                  <ActionButton icon={<Share2 />} label={shared ? t('action.shared') : t('action.share')} active={shared} onClick={() => { void handleShare(); }} onBlue={isMe} testId="transfer-share" />
+                  <ActionButton icon={saved ? <Check /> : <Download />} label={saved ? t('action.saved') : t('action.save')} active={saved} onClick={() => handleDownload(a.url!, a.name)} primary onBlue={isMe} testId="transfer-download" />
                 </>
               )}
               {(a.status === 'preparing' || a.status === 'sending' || a.status === 'receiving' || a.status === 'interrupted' || a.status === 'resuming') && (
-                <ActionButton icon={<X />} label="Cancel" onClick={() => { void cancelTransfer(msg.id); }} onBlue={isMe} testId="cancel-transfer" />
+                <ActionButton icon={<X />} label={t('action.cancel')} onClick={() => { void cancelTransfer(msg.id); }} onBlue={isMe} testId="cancel-transfer" />
               )}
               {(a.status === 'failed' || (a.status === 'cancelled' && isMe) || (a.status === 'interrupted' && isMe)) && (
-                <ActionButton icon={<RefreshCw />} label="Retry" onClick={() => { void retryTransfer(msg.id); }} onBlue={isMe} testId="retry" />
+                <ActionButton icon={<RefreshCw />} label={t('action.retry')} onClick={() => { void retryTransfer(msg.id); }} onBlue={isMe} testId="retry" />
               )}
             </div>
           </div>
@@ -502,10 +567,11 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
 
 /** Placeholder status shown in the media area while an image/video arrives. */
 function ProgressState({ attachment: a, isMe }: { attachment: Attachment; isMe: boolean }) {
+  const { t } = useI18n();
   if (a.status === 'complete') return null;
   return (
     <span className={cn("font-medium", STATUS_TONE[a.status] || 'text-apple-ink-muted')}>
-      {transferStatusText(a, isMe)}
+      {transferStatusText(a, isMe, t)}
     </span>
   );
 }

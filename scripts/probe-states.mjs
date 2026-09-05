@@ -1,8 +1,6 @@
 // Deep state probe — walks every screen state and measures real geometry.
 // Usage: node scripts/probe-states.mjs
-import { launchBrowser, sleep } from './lib.mjs';
-
-const URL = process.env.URL || 'http://localhost:3210';
+import { launchBrowser, sleep, URL } from './lib.mjs';
 const browser = await launchBrowser();
 
 async function probeViewport(w, h, label) {
@@ -43,7 +41,7 @@ async function probeViewport(w, h, label) {
   facts.idleButtons.heroVisible = !!(idleH1 && idleH1Rect && idleH1Rect.y > 0 && idleH1Rect.y + idleH1Rect.height < h);
   // Mobile-structure guard: the room card must NOT exist in the DOM before
   // the pair connects — it can never strand below the footer/fold.
-  facts.roomCardIdle = await B.locator('[data-testid="room-panel"]').count();
+  facts.roomCardIdle = await B.evaluate(() => document.querySelector('[data-app-state="connected"]') !== null);
   await B.screenshot({ path: `.audit-shots/probe-${label}-idle.png`, fullPage: true });
 
   // ── SEND on A, read code ──
@@ -61,7 +59,9 @@ async function probeViewport(w, h, label) {
   await A.getByRole('button', { name: 'Show QR' }).click().catch(() => {});
   await sleep(500);
   facts.qrOverlay = await A.evaluate(() => {
-    const dlg = document.querySelector('[role="dialog"][aria-label="QR code"]');
+    // Locale-proof: any modal dialog while the QR overlay is open (the overlay
+    // is the only role=dialog rendered by the sending panel).
+    const dlg = document.querySelector('[role="dialog"][aria-modal="true"]');
     if (!dlg) return { found: false };
     const b = dlg.getBoundingClientRect();
     return { found: true, x: Math.round(b.x), w: Math.round(b.width), fits: b.x >= 0 && b.x + b.width <= window.innerWidth };
@@ -91,8 +91,8 @@ async function probeViewport(w, h, label) {
   });
   facts.codeInput = { inputVisible: !!inputBox, cells };
   facts.receiveOverflow = cellRow ? (cellRow.left < -1 || cellRow.right > cellRow.vw + 1) : null;
-  // Still no room card while entering a code (pre-connection).
-  facts.roomCardReceive = await B.locator('[data-testid="room-panel"]').count();
+  // Still no room view while entering a code (pre-connection).
+  facts.roomCardReceive = await B.evaluate(() => document.querySelector('[data-app-state="connected"]') !== null);
   await B.screenshot({ path: `.audit-shots/probe-${label}-receive.png` });
 
   // ── wrong code → error state ──
@@ -118,17 +118,18 @@ async function probeViewport(w, h, label) {
     // (no dead gap before the composer): in the column flow, the room slot's
     // previous sibling is the header+hero block, so its top must sit within
     // 48px of that block's bottom.
-    const underGap = await B.evaluate(() => {
-      const room = document.querySelector('[data-testid="room-panel"]');
-      const slot = room?.parentElement;
-      const prev = slot?.previousElementSibling;
-      if (!room || !slot || !prev) return null;
-      const rb = slot.getBoundingClientRect();
-      const pb = prev.getBoundingClientRect();
-      return { roomTop: Math.round(rb.top), heroBottom: Math.round(pb.bottom), gap: Math.round(rb.top - pb.bottom) };
+    // New design: the connected room TAKES OVER the whole screen — no summary
+    // above it, no room "card" in a column flow. Assert the takeover instead.
+    facts.roomCardConnected = await B.evaluate(() => document.querySelector('[data-app-state="connected"]') !== null);
+    const takeover = await B.evaluate(() => {
+      const room = document.querySelector('[data-app-state="connected"]');
+      if (!room) return null;
+      const r = room.getBoundingClientRect();
+      return { top: Math.round(r.top), left: Math.round(r.left), w: Math.round(r.width), h: Math.round(r.height), vw: window.innerWidth, vh: window.innerHeight };
     });
-    facts.roomCardConnected = underGap ? 1 : 0;
-    facts.chatStartsUnderSummary = !!(underGap && underGap.gap >= -6 && underGap.gap <= 48);
+    facts.roomTakeover = takeover;
+    facts.chatStartsUnderSummary = !!(takeover && takeover.top <= 1 && takeover.left <= 1
+      && Math.abs(takeover.w - takeover.vw) <= 2 && Math.abs(takeover.h - takeover.vh) <= 2);
     // room empty-state text on B
     facts.emptyRoomB = await B.evaluate(() => document.body.innerText.includes('Ready when you are'));
     await B.screenshot({ path: `.audit-shots/probe-${label}-connected.png`, fullPage: true });
@@ -178,7 +179,7 @@ for (const [w, h, l] of widths) {
       receiveOverflow: f.receiveOverflow, cells: f.codeInput.cells?.cellCount,
       wrongCodeShown: f.wrongCode.errorShown,
       roomCardIdle: f.roomCardIdle, roomCardReceive: f.roomCardReceive,
-      roomCardConnected: f.roomCardConnected, chatUnderSummary: f.chatStartsUnderSummary,
+      roomCardConnected: f.roomCardConnected, fullTakeover: f.chatStartsUnderSummary,
       joined: f.bJoined,
       connectedOverflowX: f.connectedB?.docX,
       emptyRoomB: f.emptyRoomB,

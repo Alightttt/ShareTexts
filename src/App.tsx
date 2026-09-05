@@ -5,6 +5,7 @@
 
 import React, { useState, lazy, Suspense } from 'react';
 import { SessionProvider, useSession } from './lib/SessionContext';
+import { I18nProvider, useI18n } from './lib/i18n';
 import { Send, Home, Share2, Check } from 'lucide-react';
 import { ShareTextLogo } from './components/ShareTextLogo';
 
@@ -14,18 +15,19 @@ const Docs = lazy(() => import('./views/Docs').then(m => ({ default: m.Docs })))
 const SingleScreenApp = lazy(() => import('./views/SingleScreenApp').then(m => ({ default: m.SingleScreenApp })));
 
 function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, onNewSession: () => void, onHome: () => void }) {
+  const { t } = useI18n();
   // One honest line about what happened, then one clear action.
   const heading = reason === 'expired'
-    ? "Time's up."
+    ? t('app.ended.heading.expired')
     : reason === 'manual_close'
-      ? "That’s it."
-      : "Room closed.";
+      ? t('app.ended.heading.manual')
+      : t('app.ended.heading.closed');
   const copy = reason === 'expired'
-    ? "The connection expired. For privacy, the room cannot be reopened. Start a new connection to continue."
+    ? t('app.ended.body.expired')
     : reason === 'manual_close'
-      ? "You closed this room. Everything you sent is already on the other device."
-      : "The other device closed this room. Nothing incomplete was saved.";
-  const sub = "No account needed, and nothing is kept after the room closes.";
+      ? t('app.ended.body.manual')
+      : t('app.ended.body.closed');
+  const sub = t('app.ended.sub');
 
   const [shared, setShared] = useState(false);
   const shareApp = async () => {
@@ -60,13 +62,13 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
           onPointerDown={onNewSession}
           className="px-7 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] shadow-sm hover:opacity-90 min-h-[48px] flex items-center justify-center gap-2"
         >
-          <Send className="w-4 h-4" /> Start a transfer
+          <Send className="w-4 h-4" /> {t('app.ended.cta')}
         </button>
         <button
           onPointerDown={onHome}
           className="px-6 py-3 rounded-[12px] text-[14px] font-medium text-apple-ink-muted dark:text-white/60 border border-apple-divider dark:border-white/15 hover:text-apple-ink dark:hover:text-white hover:border-apple-ink/30 dark:hover:border-white/30 transition-motion active:scale-[0.97] min-h-[48px] flex items-center justify-center gap-1.5"
         >
-          <Home className="w-4 h-4" /> Back to Home
+          <Home className="w-4 h-4" /> {t('app.ended.home')}
         </button>
       </div>
 
@@ -77,7 +79,7 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
         className="mt-8 flex items-center gap-2 px-4 py-2 rounded-full text-[13.5px] font-medium text-apple-ink-muted dark:text-white/55 hover:text-apple-ink dark:hover:text-white border border-transparent hover:border-apple-divider dark:hover:border-white/15 transition-motion active:scale-95 min-h-[44px]"
       >
         {shared ? <Check className="w-4 h-4 text-status-success" /> : <Share2 className="w-4 h-4" />}
-        {shared ? 'Link copied' : 'Send ShareText to someone you know'}
+        {shared ? t('app.ended.shareDone') : t('app.ended.share')}
       </button>
     </div>
   );
@@ -136,6 +138,8 @@ function AppSkeleton({ docs = false }: { docs?: boolean }) {
 }
 
 function ErrorFallback({ onReset }: { onReset: () => void }) {
+  // Rendered by the class boundary, which sits above the providers — static
+  // English is intentional (recovery copy must never depend on a broken tree).
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#120e22] p-6 text-center">
       <div className="w-16 h-16 bg-apple-parchment dark:bg-apple-tile-1 rounded-[20px] flex items-center justify-center mb-6">
@@ -167,6 +171,7 @@ const ErrorBoundary = class extends (React.Component as any) {
 };
 
 function AppContent() {
+  const { t } = useI18n();
   const { session, leaveView, createSession, closeSession } = useSession();
 
   if (typeof window !== 'undefined' && window.location.pathname === '/docs') {
@@ -177,10 +182,10 @@ function AppContent() {
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#120e22] p-6 text-center">
-        <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">This page does not exist.</h2>
-        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 font-medium max-w-sm mb-9">Nothing was shared to this address.</p>
+        <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">{t('app.404.title')}</h2>
+        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 font-medium max-w-sm mb-9">{t('app.404.body')}</p>
         <button onClick={() => { window.location.href = '/'; }}
-          className="px-7 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold active:scale-[0.97] min-h-[48px]">Go Home</button>
+          className="px-7 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold active:scale-[0.97] min-h-[48px]">{t('app.404.cta')}</button>
       </div>
     );
   }
@@ -204,16 +209,25 @@ function AppContent() {
   );
 }
 
+function SkipLink() {
+  const { t } = useI18n();
+  return (
+    // Keyboard users jump past the hero to main content
+    <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-azure-600 focus:text-white focus:rounded-lg focus:text-[14px] focus:font-semibold">
+      {t('app.skip')}
+    </a>
+  );
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
-      <SessionProvider>
-        {/* Skip link — keyboard users jump past the hero to main content */}
-        <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-azure-600 focus:text-white focus:rounded-lg focus:text-[14px] focus:font-semibold">
-          Skip to main content
-        </a>
-        <AppContent />
-      </SessionProvider>
+      <I18nProvider>
+        <SessionProvider>
+          <SkipLink />
+          <AppContent />
+        </SessionProvider>
+      </I18nProvider>
     </ErrorBoundary>
   );
 }

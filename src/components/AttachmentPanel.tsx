@@ -1,7 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Image as ImageIcon, File as FileIcon } from 'lucide-react';
+import { Image as ImageIcon, File as FileIcon, Video as VideoIcon, Music } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { useI18n } from '../lib/i18n';
 
 // Escape closes the menu; re-focuses the + button so keyboard users stay put.
 function useEscapeToClose(isOpen: boolean, onClose: () => void, triggerRef: React.RefObject<HTMLButtonElement | null>) {
@@ -23,7 +24,7 @@ type PanelMode = 'closed' | 'menu';
 interface AttachmentPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectType: (type: 'image' | 'file') => void;
+  onSelectType: (type: 'image' | 'file' | 'video' | 'audio') => void;
   buttonRef: React.RefObject<HTMLButtonElement | null>;
 }
 
@@ -40,6 +41,7 @@ interface AttachmentPanelProps {
  * 4. Panel closes automatically
  */
 export function AttachmentPanel({ isOpen, onClose, onSelectType, buttonRef }: AttachmentPanelProps) {
+  const { t } = useI18n();
   const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
   useEscapeToClose(isOpen, onClose, buttonRef);
 
@@ -111,17 +113,31 @@ export function AttachmentPanel({ isOpen, onClose, onSelectType, buttonRef }: At
             <div className="p-2">
               <MenuItem
                 icon={<ImageIcon className="w-5 h-5" />}
-                label="Photos"
-                description="Choose from your photos"
+                label={t('attach.photos')}
+                description={t('attach.photosHint')}
                 onClick={() => handleSelect('image')}
                 delay={0.05}
               />
               <MenuItem
-                icon={<FileIcon className="w-5 h-5" />}
-                label="Files"
-                description="Choose any file"
-                onClick={() => handleSelect('file')}
+                icon={<VideoIcon className="w-5 h-5" />}
+                label={t('attach.video')}
+                description={t('attach.videoHint')}
+                onClick={() => handleSelect('video')}
                 delay={0.1}
+              />
+              <MenuItem
+                icon={<Music className="w-5 h-5" />}
+                label={t('attach.audio')}
+                description={t('attach.audioHint')}
+                onClick={() => handleSelect('audio')}
+                delay={0.15}
+              />
+              <MenuItem
+                icon={<FileIcon className="w-5 h-5" />}
+                label={t('attach.files')}
+                description={t('attach.filesHint')}
+                onClick={() => handleSelect('file')}
+                delay={0.2}
               />
             </div>
           </motion.div>

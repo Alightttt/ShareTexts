@@ -5,11 +5,12 @@ import { AttachmentPanel } from '../components/AttachmentPanel';
 import { AttachmentFlight } from '../components/AttachmentFlight';
 import { TransferFlight } from '../components/TransferFlight';
 import {
-  X, Plus, Copy, Check, Play, AlertCircle, ChevronDown, ArrowUp, ShieldCheck, LogOut
+  X, Plus, Copy, Check, Play, AlertCircle, ChevronDown, ArrowUp, ShieldCheck, LogOut,
+  Smartphone, Monitor, Pencil, ArrowRightLeft, Info
 } from 'lucide-react';
 import { FileTypeIcon } from '../components/FileTypeIcon';
 import { AnimatedIcon } from '../components/AnimatedIcon';
-import { cn, formatBytes } from '../lib/utils';
+import { cn, formatBytes, sanitizeDeviceName } from '../lib/utils';
 import { Attachment } from '../types';
 import { MessageCard } from '../components/MessageCard';
 import { ShareTextLogo } from '../components/ShareTextLogo';
@@ -17,8 +18,33 @@ import { ThemeToggle } from '../components/ThemeToggle';
 import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
 import { saveDraft, loadDraft, clearDraft, ComposerDraft } from '../lib/draftStore';
 import { useFocusTrap } from '../lib/useFocusTrap';
-export function ChatView({ panelMode }: { panelMode?: string } = {}) {
-  const { session, sendMessage, closeSession, cancelTransfer, requestReconnect } = useSession();
+import { useI18n } from '../lib/i18n';
+export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' } = {}) {
+  const { t } = useI18n();
+  // Stable translator for effects: effects fire on session changes, not on
+  // locale changes — routing through a ref means an announcement/toast that
+  // lands later still speaks the CURRENT language.
+  const tRef = useRef(t);
+  tRef.current = t;
+  const { session, sendMessage, closeSession, cancelTransfer, requestReconnect, setDeviceName } = useSession();
+  // A phone on phones, a screen on desktops — the "who am I talking to" chips
+  // in the standalone header must match the device the user is actually on.
+  const isMobileDevice = (() => {
+    if (typeof navigator === 'undefined') return false;
+    return /Android|webOS|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  })();
+  const ThisDeviceIcon = isMobileDevice ? Smartphone : Monitor;
+  const PartnerDeviceIcon = isMobileDevice ? Monitor : Smartphone;
+  // Rename-this-device lives inside the connection details popover in
+  // standalone mode (the paired screen owns it on desktop instead).
+  const [editingName, setEditingName] = useState(false);
+  const [draftName, setDraftName] = useState('');
+  const startEditName = () => { setDraftName(session.deviceName); setEditingName(true); };
+  const saveName = () => {
+    const clean = sanitizeDeviceName(draftName);
+    if (clean) setDeviceName(clean);
+    setEditingName(false);
+  };
   const [inputText, setInputText] = useState('');
   // Multiple staged attachments per send (up to 20) — each file becomes its
   // own transfer bubble on send, but they're picked together in one message.
@@ -53,10 +79,17 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  // One-time notice when the auto-disambiguation renamed this device. On
+  // desktop the pairing summary shows it; on mobile (fullscreen room, no
+  // summary) the details sheet is the honest place to explain the rename.
+  const [nameNoticeOpen, setNameNoticeOpen] = useState(false);
+  useEffect(() => {
+    if (session.nameAutoAdjusted) setNameNoticeOpen(true);
+  }, [session.nameAutoAdjusted]);
   const endSessionTrapRef = useFocusTrap(confirmClose, () => setConfirmClose(false));
   const connectionDetailsTrapRef = useFocusTrap(showConnectionDetails, () => setShowConnectionDetails(false));
   const [showThatsIt, setShowThatsIt] = useState(false);
-  const [thatsItCopy, setThatsItCopy] = useState("That's it. It's on the other device.");
+  const [thatsItCopy, setThatsItCopy] = useState('');
   const [announcement, setAnnouncement] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const dragDepth = useRef(0);
@@ -203,26 +236,28 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
   useEffect(() => {
     if (!lastMessage || lastMessage.sender === 'me') return;
     const st = lastMessage.attachment?.status;
+    const tr = tRef.current;
     if (st === 'complete') {
-      const t = lastMessage.attachment?.type;
-      setAnnouncement(t === 'image' ? 'Photo received' : t === 'video' ? 'Video received' : t === 'audio' ? 'Audio received' : `File received: ${lastMessage.attachment!.name}`);
+      const type = lastMessage.attachment?.type;
+      setAnnouncement(type === 'image' ? tr('chat.photoReceived') : type === 'video' ? tr('chat.videoReceived') : type === 'audio' ? tr('chat.audioReceived') : tr('chat.fileReceived', { name: lastMessage.attachment!.name }));
     } else if (st === 'failed') {
-      setAnnouncement("Couldn't send the file.");
+      setAnnouncement(tr('chat.couldNotSend'));
     } else if (st === 'cancelled') {
-      setAnnouncement('Transfer cancelled');
+      setAnnouncement(tr('chat.transferCancelled'));
     } else if (!lastMessage.attachment) {
-      setAnnouncement('Message received');
+      setAnnouncement(tr('chat.messageReceived'));
     }
   }, [session.messages]);
   useEffect(() => {
+    const tr = tRef.current;
     if (session.partnerConnected && session.connectionType !== 'disconnected') {
-      setAnnouncement('Connected');
+      setAnnouncement(tr('common.connected'));
       // The visible alert — a short toast when the room opens.
       setShowConnected(true);
-      const t = setTimeout(() => setShowConnected(false), 2800);
-      return () => clearTimeout(t);
+      const t2 = setTimeout(() => setShowConnected(false), 2800);
+      return () => clearTimeout(t2);
     } else if (session.connectionType === 'disconnected') {
-      setAnnouncement('Other device disconnected');
+      setAnnouncement(tr('chat.peerDisconnected'));
     }
   }, [session.partnerConnected, session.connectionType]);
   // Post-transfer moment: after the very first transfer, a quiet "That's it."
@@ -233,7 +268,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
     if (!firstTransferShown.current && session.messages.length >= 1) {
       firstTransferShown.current = true;
       const last = session.messages[session.messages.length - 1];
-      setThatsItCopy(last?.sender === 'me' ? "That's it. It's on the other device." : "That's it. It arrived.");
+      setThatsItCopy(last?.sender === 'me' ? tRef.current('thatsIt.sent') : tRef.current('thatsIt.received'));
       setShowThatsIt(true);
       const t = setTimeout(() => setShowThatsIt(false), 5000);
       return () => clearTimeout(t);
@@ -260,31 +295,34 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
     if (list.length === 0) return;
     const roomLeft = MAX_ATTACHMENTS - attachments.length;
     if (roomLeft <= 0) {
-      setErrorMsg(`You can attach up to ${MAX_ATTACHMENTS} files in one message. Send this batch first.`);
+      setErrorMsg(t('attach.max', { max: MAX_ATTACHMENTS }));
       return;
     }
     const accepted: (Attachment & { file: File })[] = [];
     for (const file of list) {
       if (accepted.length >= roomLeft) {
-        setErrorMsg(`You can attach up to ${MAX_ATTACHMENTS} files in one message. ${list.length - accepted.length} more file${list.length - accepted.length === 1 ? ' was' : 's were'} left out.`);
+        setErrorMsg(t('attach.overflow', { max: MAX_ATTACHMENTS, left: list.length - accepted.length }));
         break;
       }
-      let t = type;
-      // A video/audio picked through the generic File picker still plays
-      // inline instead of arriving as a dead file card.
-      if (t === 'file' && file.type.startsWith('video/')) t = 'video';
-      else if (t === 'file' && file.type.startsWith('audio/')) t = 'audio';
-      if (t === 'image' && file.size > 100 * 1024 * 1024) {
-        setErrorMsg(`${file.name} is larger than 100 MB. Photos above 100 MB still transfer full quality. They arrive as a file you can open, with no preview.`);
+      let kind = type;
+      // A media file picked through the generic File picker (or pasted) still
+      // gets the right card: video/audio/images play or preview inline instead
+      // of arriving as a dead generic file tile. The original bytes are never
+      // touched — this only chooses the card layout.
+      if (kind === 'file' && file.type.startsWith('video/')) kind = 'video';
+      else if (kind === 'file' && file.type.startsWith('audio/')) kind = 'audio';
+      else if (kind === 'file' && file.type.startsWith('image/')) kind = 'image';
+      if (kind === 'image' && file.size > 100 * 1024 * 1024) {
+        setErrorMsg(t('attach.largeImage', { name: file.name }));
         continue;
       }
       if (file.size > 4 * 1024 * 1024 * 1024) {
-        setErrorMsg(`${file.name} is too large. ShareText works best with files under a few hundred MB. Try a smaller file or a different method.`);
+        setErrorMsg(t('attach.tooLarge', { name: file.name }));
         continue;
       }
       accepted.push({
         id: crypto.randomUUID(),
-        type: t,
+        type: kind,
         name: file.name,
         size: file.size,
         mimeType: file.type,
@@ -313,6 +351,27 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
     if (!e.target.files || e.target.files.length === 0) return;
     addFiles(e.target.files, type);
     e.target.value = ''; // allow picking the same file again after removing
+  };
+  // Paste-to-stage: a photo or file copied to the clipboard (screenshot,
+  // copied image, copied document) lands in the composer strip like any pick —
+  // the flow that makes "send a screenshot" feel instant. Plain text pastes
+  // are left untouched and go into the message normally.
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const files: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind !== 'file') continue;
+      const f = item.getAsFile();
+      if (f && f.size > 0) files.push(f);
+    }
+    if (files.length === 0) return; // not a file paste — text pastes normally
+    e.preventDefault();
+    haptic(8);
+    // Classification happens per file inside addFiles (type 'file' promotes
+    // each media file to its right card), so mixed pastes just work.
+    addFiles(files, 'file');
   };
   // Drag & drop: classify the first dropped file and stage it like the menu.
   const handleDragEnter = (e: React.DragEvent) => {
@@ -375,9 +434,19 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
       setCopiedAll(true);
       setTimeout(() => setCopiedAll(false), 2000);
     } catch {
-      setErrorMsg("Couldn't copy. Select the text and copy manually.");
+      setErrorMsg(t('composer.copyFailed'));
     }
   };
+  // Desktop embedded: land focus in the composer when the room opens (the
+  // right pane mounts fresh on connect). Mobile standalone deliberately does
+  // NOT autofocus — popping the keyboard over the takeover animation is jarring.
+  useEffect(() => {
+    if (panelMode === 'embedded') {
+      const t = setTimeout(() => textareaRef.current?.focus({ preventScroll: true }), 350);
+      return () => clearTimeout(t);
+    }
+  }, [panelMode]);
+
   // Transfer flight: while a file is genuinely in motion (sender hashing it
   // first, then bytes moving), a compact tile travels across the room between
   // the two device sides, driven by real progress. When the transfer ends,
@@ -407,7 +476,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
   return (
     <div
       data-app-state="connected"
-      className={cn("relative flex flex-col bg-apple-canvas dark:bg-night-950 font-sans", panelMode === "embedded" ? "h-full" : "h-dvh")}
+      className={cn("relative flex flex-col bg-[#f4ecdd] dark:bg-[#110c20] font-sans", panelMode === "embedded" ? "h-full" : "h-dvh")}
       style={visualHeight ? { height: `${visualHeight}px` } : undefined}
     >
       {/* Transfer flight overlay — the file traveling device-to-device. */}
@@ -424,81 +493,154 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
       </AnimatePresence>
       {/* Screen-reader live region — invisible, announced on state changes */}
       <div aria-live="polite" role="status" className="sr-only">{announcement}</div>
-      {panelMode !== "embedded" && (<> {/* Header — device relationship, not chat */}
-      <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 shrink-0 border-b border-apple-divider/40 dark:border-white/[0.06] bg-white/60 dark:bg-[#120e22]/60 backdrop-blur-2xl backdrop-saturate-[1.8] z-20 sticky top-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <ShareTextLogo size={18} className="text-apple-ink dark:text-white shrink-0" />
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="text-[14px] font-semibold text-apple-ink dark:text-white truncate">ShareText</span>
-            <span className="w-px h-3.5 bg-apple-divider dark:bg-white/10" />
-            <span className="flex items-center gap-1.5 text-[12px] font-medium text-apple-ink-muted dark:text-white/50">
+      {panelMode !== "embedded" && (<>
+      {/* Standalone header — the "who am I talking to" bar. The device
+          relationship (this device ⇄ partner) is the identity of the room:
+          names, live status, and one tap to details (rename, encryption,
+          rejoin code). The parent keeps `relative` so the details popover
+          anchors just under the bar. */}
+      <div className="relative flex items-center justify-between gap-2 px-3 sm:px-5 py-2.5 shrink-0 border-b border-apple-divider/50 dark:border-white/[0.08] bg-[#f4ecdd]/85 dark:bg-[#110c20]/85 backdrop-blur-2xl backdrop-saturate-[1.8] z-30">
+        <button
+          type="button"
+          data-testid="connection-details"
+          onPointerDown={() => setShowConnectionDetails(!showConnectionDetails)}
+          aria-expanded={showConnectionDetails}
+          aria-label={t('details.aria')}
+          className="flex items-center gap-2 min-w-0 max-w-full rounded-full px-1.5 py-1 -ml-1.5 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
+        >
+          <span className="shrink-0 flex items-center justify-center w-8 h-8 rounded-[10px] bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 border border-[#8b7cf6]/20 dark:border-[#a78bfa]/20 text-[#8b7cf6] dark:text-[#a78bfa]">
+            <ThisDeviceIcon className="w-4 h-4" />
+          </span>            <span className="flex flex-col items-start min-w-0 leading-tight">
+            <span className="text-[12px] font-semibold text-apple-ink dark:text-white truncate max-w-[34vw] sm:max-w-[160px]">
+              {session.deviceName}
+            </span>
+            <span className="flex items-center gap-1 text-[10.5px] font-medium text-apple-ink-muted dark:text-white/45">
               <span className={cn(
                 "w-1.5 h-1.5 rounded-full",
-                disconnected ? "bg-apple-ink-muted" : "bg-status-success",
+                disconnected ? "bg-status-warning" : "bg-status-success",
                 !disconnected && "animate-pulse"
               )} />
-              {disconnected ? 'Offline' : 'Connected'}
+              {disconnected ? t('chat.offline') : t('chat.online')}
             </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+          </span>
+          <ArrowRightLeft className="w-3.5 h-3.5 shrink-0 text-apple-ink-muted/50 dark:text-white/30" />
+          <span className="shrink-0 flex items-center justify-center w-8 h-8 rounded-[10px] bg-status-success/10 dark:bg-status-success/10 border border-status-success/20 dark:border-status-success/20 text-status-success">
+            <PartnerDeviceIcon className="w-4 h-4" />
+          </span>            <span className="flex flex-col items-start min-w-0 leading-tight">
+            <span className="text-[12px] font-semibold text-apple-ink dark:text-white truncate max-w-[34vw] sm:max-w-[160px]">
+              {session.partnerName || t('chat.pairedDevice')}
+            </span>
+            <span className="flex items-center gap-1 text-[10.5px] font-medium text-apple-ink-muted dark:text-white/45">
+              {disconnected ? t('chat.disconnected') : t('common.connected')}
+            </span>
+          </span>
+        </button>
+        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
           <ThemeToggle />
-          <button
-            data-testid="connection-details"
-            onPointerDown={() => setShowConnectionDetails(!showConnectionDetails)}
-            title="Connection details"
-            aria-label="Connection details"
-            className="hidden sm:flex items-center justify-center w-9 h-9 rounded-full text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/40 dark:hover:bg-white/[0.06] transition-colors"
-          >
-            <ShieldCheck className="w-[16px] h-[16px]" />
-          </button>
           <button
             data-testid="end-session"
             onPointerDown={() => setConfirmClose(true)}
-            aria-label="Disconnect"
-            className="flex items-center justify-center w-11 h-11 sm:w-auto sm:px-3 sm:py-1.5 rounded-full sm:rounded-[8px] text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/40 dark:hover:bg-white/[0.06] transition-colors min-h-[44px] shrink-0"
+            aria-label={t('common.disconnect')}
+            className="flex items-center justify-center min-w-[40px] min-h-[40px] sm:w-auto sm:px-3 rounded-full sm:rounded-[8px] text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/40 dark:hover:bg-white/[0.06] transition-colors shrink-0"
           >
-            <LogOut className="w-[16px] h-[16px] sm:hidden" />
-            <span className="hidden sm:inline text-[13px] font-medium">Disconnect</span>
+            <LogOut className="w-4 h-4 sm:hidden" />
+            <span className="hidden sm:inline text-[13px] font-medium">{t('common.disconnect')}</span>
           </button>
         </div>
         <AnimatePresence>
           {showConnectionDetails && (
             <motion.div
               ref={connectionDetailsTrapRef}
-              initial={{ opacity: 0, y: -5, scale: 0.95 }}
+              initial={{ opacity: 0, y: -6, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 5, scale: 0.95 }}
-              transition={{ type: "spring", bounce: 0, duration: 0.25 }}
-              className="absolute top-[calc(100%+8px)] left-4 sm:left-6 p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[14px] shadow-lg min-w-[240px] max-w-[320px] z-30"
+              exit={{ opacity: 0, y: -4, scale: 0.98 }}
+              transition={{ type: "spring", bounce: 0, duration: 0.28 }}
+              className="absolute top-[calc(100%+10px)] right-2 sm:right-4 left-2 sm:left-auto sm:w-[360px] p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[18px] shadow-2xl z-40 overflow-hidden"
               role="dialog"
               aria-modal="true"
-              aria-label="Connection details"
+              aria-label={t('details.aria')}
               onPointerDown={(e) => { if (e.target === e.currentTarget) setShowConnectionDetails(false); }}
             >
-              <div className="flex items-center justify-between gap-2 text-[13px] font-semibold text-apple-ink dark:text-white mb-1.5">
-                <span className="flex items-center gap-2">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <span className="flex items-center gap-2 text-[13px] font-semibold text-apple-ink dark:text-white">
                   <ShieldCheck className="w-4 h-4 text-status-success" />
-                  Secure connection
+                  {t('details.secure')}
                 </span>
                 <button
                   onPointerDown={() => setShowConnectionDetails(false)}
-                  aria-label="Close connection details"
-                  className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-apple-divider/50 dark:hover:bg-white/10 transition-colors"
+                  aria-label={t('details.close')}
+                  className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-apple-divider/50 dark:hover:bg-white/10 transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <div className="text-[13px] text-apple-ink-muted leading-relaxed">
-                {session.connectionType === 'relay' ? 'Connected through an encrypted relay.' :
-                  session.connectionType === 'local' ? 'Direct connection, same network.' :
-                    session.connectionType === 'direct' ? 'Direct connection between devices.' :
-                      'Connecting…'}
+              {/* The two devices — tap your name to rename; the other device
+                  sees the change immediately. */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 flex flex-col items-center gap-1 rounded-[14px] bg-[#8b7cf6]/5 dark:bg-[#a78bfa]/5 border border-apple-divider/60 dark:border-apple-tile-3 p-2.5 min-w-0">
+                  <ThisDeviceIcon className="w-5 h-5 text-[#8b7cf6] dark:text-[#a78bfa]" />
+                  {editingName ? (
+                    <input
+                      autoFocus
+                      value={draftName}
+                      onChange={e => setDraftName(e.target.value)}
+                      onBlur={saveName}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') saveName();
+                        else if (e.key === 'Escape') { setDraftName(session.deviceName); setEditingName(false); }
+                      }}
+                      aria-label={t('pair.renameField')}
+                      maxLength={32}
+                      className="w-full text-center text-[12px] font-medium text-apple-ink dark:text-white bg-transparent border-b border-[#8b7cf6]/50 dark:border-[#a78bfa]/50 outline-none"
+                    />
+                  ) : (
+                    <button
+                      onClick={startEditName}
+                      title={t('pair.renameTitle')}
+                      aria-label={t('pair.renameAria', { name: session.deviceName })}
+                      className="group flex items-center gap-1 text-[12px] font-semibold text-apple-ink dark:text-white hover:text-apple-ink/80 max-w-full"
+                    >
+                      <span className="truncate max-w-[96px]">{session.deviceName}</span>
+                      <Pencil className="w-2.5 h-2.5 opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
+                    </button>
+                  )}
+                  <span className="text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">{t('chat.you')}</span>
+                </div>
+                <ArrowRightLeft className="w-4 h-4 shrink-0 text-apple-ink-muted/40 dark:text-white/25" />
+                <div className="flex-1 flex flex-col items-center gap-1 rounded-[14px] bg-status-success/5 dark:bg-status-success/5 border border-apple-divider/60 dark:border-apple-tile-3 p-2.5 min-w-0">
+                  <PartnerDeviceIcon className="w-5 h-5 text-status-success" />
+                  <span className="text-[12px] font-semibold text-apple-ink dark:text-white truncate max-w-full">
+                    {session.partnerName || t('chat.pairedDevice')}
+                  </span>
+                  <span className="text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">{t('chat.otherDevice')}</span>
+                </div>
               </div>
-              <div className="text-[12px] text-apple-ink-muted mt-2 pt-2 border-t border-apple-divider/50 dark:border-apple-tile-3">
-                Encrypted on the way. Gone when the room closes.
+              <div className="mt-3 text-[13px] text-apple-ink-muted dark:text-white/60 leading-relaxed">
+                {session.connectionType === 'relay' ? t('details.relay') :
+                  session.connectionType === 'local' ? t('details.local') :
+                    session.connectionType === 'direct' ? t('details.direct') :
+                      t('details.connecting')}
               </div>
-              {/* The pairing code lives here now, not on screen: it\u2019s only
+              <div className="text-[12px] text-apple-ink-muted dark:text-white/45 mt-2 pt-2 border-t border-apple-divider/50 dark:border-apple-tile-3">
+                {t('details.encryptedNote')}
+              </div>
+              {/* One-time auto-rename explanation (mobile joiners never see
+                  the desktop summary) — dismissible. */}
+              {nameNoticeOpen && (
+                <div role="status" className="mt-3 flex items-start gap-2 p-2.5 rounded-[12px] bg-[#8b7cf6]/8 dark:bg-[#a78bfa]/10 border border-[#8b7cf6]/15 dark:border-[#a78bfa]/15 text-[12px] text-apple-ink-muted dark:text-white/60 leading-snug">
+                  <Info className="w-3.5 h-3.5 text-[#8b7cf6] dark:text-[#a78bfa] shrink-0 mt-px" />
+                  <span className="flex-1">{t('pair.autoRename', { name: session.deviceName })}</span>
+                  <button
+                    onPointerDown={() => setNameNoticeOpen(false)}
+                    data-testid="dismiss-name-notice"
+                    aria-label={t('pair.dismiss')}
+                    className="shrink-0 w-7 h-7 -m-1.5 flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+              {/* The pairing code lives here, not on screen: it\u2019s only
                   needed if the other device drops and has to rejoin, so it\u2019s
                   one tap away instead of always visible. */}
               <PairingMini secret={session.secret} createdAt={session.createdAt} className="mt-3" />
@@ -518,7 +660,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
             className="absolute top-[76px] sm:top-[80px] left-1/2 -translate-x-1/2 z-40 px-4 py-2.5 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 shadow-float flex items-center gap-2 text-[13.5px] font-semibold whitespace-nowrap"
           >
             <ShareTextLogo size={16} motion="complete" className="text-white dark:text-night-900" />
-            Connected. You can start sending
+            {t('toast.connected')}
           </motion.div>
         )}
       </AnimatePresence>
@@ -544,9 +686,9 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
               aria-modal="true"
               aria-labelledby="end-session-heading"
             >
-              <h3 id="end-session-heading" className="text-[18px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">Disconnect?</h3>
+              <h3 id="end-session-heading" className="text-[18px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">{t('end.title')}</h3>
               <p className="text-[14px] text-apple-ink-muted leading-relaxed mb-6">
-                Both devices will disconnect. This connection will be closed.
+                {t('end.body')}
               </p>
               <div className="flex flex-col gap-2">
                 <button
@@ -556,7 +698,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                   style={{ touchAction: 'manipulation' }}
                   className="w-full py-3.5 bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white rounded-[14px] text-[15px] font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
                 >
-                  Keep connected
+                  {t('end.keep')}
                 </button>
                 <button
                   data-testid="end-session-confirm"
@@ -564,7 +706,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                   style={{ touchAction: 'manipulation' }}
                   className="w-full py-3.5 bg-status-danger hover:bg-[#e0352b] text-white rounded-[14px] text-[15px] font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
                 >
-                  Disconnect
+                  {t('common.disconnect')}
                 </button>
               </div>
             </motion.div>
@@ -584,14 +726,14 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
             <div data-testid="disconnect-banner" className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-2 text-[14px] font-medium text-status-warning-ink dark:text-status-warning-ink-dark">
               <span className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse shrink-0" />
-                Other device disconnected. This room stays open — waiting for it to come back…
+                {t('banner.peerGone')}
               </span>
               <button
                 data-testid="reconnect"
                 onPointerDown={() => void requestReconnect()}
                 className="min-h-[40px] px-3 py-1.5 rounded-full text-[13px] font-semibold bg-status-warning/15 hover:bg-status-warning/25 transition-colors active:scale-95 shrink-0"
               >
-                Reconnect
+                {t('banner.reconnect')}
               </button>
             </div>
           </motion.div>
@@ -630,17 +772,17 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
             <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3 min-h-[40vh]">
               {disconnected ? (
                 <>
-                  <p className="text-[16px] font-semibold text-apple-ink dark:text-white">Other device is offline</p>
+                  <p className="text-[16px] font-semibold text-apple-ink dark:text-white">{t('chat.peerOffline.title')}</p>
                   <p className="text-[13px] text-apple-ink-muted max-w-[260px] leading-relaxed">
-                    It will reconnect when the other device comes back.
+                    {t('chat.peerOffline.body')}
                   </p>
                 </>
               ) : (
                 <div className="flex flex-col items-center">
                   <EmptyRoomIllustration />
-                  <p className="text-[15px] font-semibold text-apple-ink dark:text-white mt-4">Ready when you are</p>
+                  <p className="text-[15px] font-semibold text-apple-ink dark:text-white mt-4">{t('chat.ready')}</p>
                   <p className="text-[13px] text-apple-ink-muted max-w-[260px] leading-relaxed mt-1">
-                    Type, paste, or drop anything. It goes straight to the other device.
+                    {t('chat.empty.body')}
                   </p>
                 </div>
               )}
@@ -659,7 +801,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                     )}
                   >
                     {copiedAll ? <AnimatedIcon animate="check" active={copiedAll}><Check className="w-3.5 h-3.5" /></AnimatedIcon> : <AnimatedIcon animate="copy" active={copiedAll}><Copy className="w-3.5 h-3.5" /></AnimatedIcon>}
-                    {copiedAll ? `Copied ${session.messages.length} items` : 'Copy All'}
+                    {copiedAll ? t('chat.copiedAll', { count: session.messages.length }) : t('chat.copyAll')}
                   </button>
                 </div>
               )}
@@ -685,7 +827,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 onPointerDown={() => { setShowJump(false); atBottomRef.current = true; messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
                 className="self-center flex items-center gap-1.5 px-4 py-2 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 shadow-float text-[13px] font-semibold active:scale-95 transition-motion"
               >
-                <ChevronDown className="w-3.5 h-3.5" /> New message
+                <ChevronDown className="w-3.5 h-3.5" /> {t('chat.newMessage')}
               </motion.button>
             )}
           </AnimatePresence>
@@ -697,8 +839,8 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
               <div className="w-12 h-12 rounded-full bg-apple-blue/10 dark:bg-azure-400/10 flex items-center justify-center">
                 <ArrowUp className="w-5 h-5 text-apple-blue dark:text-azure-400" />
               </div>
-              <span className="text-[15px] font-semibold text-apple-ink dark:text-white">Drop to send</span>
-              <span className="text-[13px] text-apple-ink-muted dark:text-white/50">Files will be sent instantly</span>
+              <span className="text-[15px] font-semibold text-apple-ink dark:text-white">{t('chat.drop.title')}</span>
+              <span className="text-[13px] text-apple-ink-muted dark:text-white/50">{t('chat.drop.subtitle')}</span>
             </div>
           </div>
         )}
@@ -707,11 +849,11 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
       <div className="p-3 sm:p-5 bg-white/80 dark:bg-[#120e22]/80 border-t border-black/[0.06] dark:border-white/[0.04] z-10 pb-[env(safe-area-inset-bottom)] relative">
         <form onSubmit={handleSend} className="max-w-3xl mx-auto flex flex-col gap-2">
           <div className="hidden sm:flex items-center justify-end gap-1.5 text-[11px] font-medium text-apple-ink-muted/70 dark:text-white/40 px-1">
-            <kbd className="px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">Enter</kbd>
-            <span>to send</span>
+            <kbd className="px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">{t('composer.enter')}</kbd>
+            <span>{t('composer.toSend')}</span>
             <span className="opacity-50">·</span>
-            <kbd className="px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">Shift+Enter</kbd>
-            <span>for a new line</span>
+            <kbd className="px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">{t('composer.shiftEnter')}</kbd>
+            <span>{t('composer.newLine')}</span>
           </div>
           <AnimatePresence>
             {errorMsg && (
@@ -782,7 +924,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                     </AnimatePresence>
                   </div>
                   <p className="text-[11px] font-medium text-apple-ink-muted mt-1">
-                    {attachments.length} of {MAX_ATTACHMENTS} attached
+                    {t('attach.count', { count: attachments.length, max: MAX_ATTACHMENTS })}
                   </p>
                 </motion.div>
               )}
@@ -793,7 +935,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 type="button"
                 data-testid="add-attachment"
                 onPointerDown={() => setShowAttachmentMenu(!showAttachmentMenu)}
-                aria-label="Add attachment"
+                aria-label={t('attach.add')}
                 aria-expanded={showAttachmentMenu}
                 className={cn(
                   "min-w-[40px] min-h-[40px] -m-[3px] rounded-full flex items-center justify-center shrink-0 text-[#8b7cf6] dark:text-[#a78bfa] hover:bg-[#8b7cf6]/10 dark:hover:bg-[#8b7cf6]/10 transition-motion active:scale-90",
@@ -808,6 +950,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 value={inputText}
                 rows={1}
                 onChange={(e) => setInputText(e.target.value)}
+                onPaste={handlePaste}
                 onKeyDown={(e) => {
                   // Never send while an IME composition is active (Hindi,
                   // Chinese, Japanese, Korean…): Enter there commits the
@@ -817,9 +960,9 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                     handleSend(e);
                   }
                 }}
-                placeholder="Paste or drop anything…"
-                aria-label="Message"
-                title="Enter to send · Shift+Enter for a new line"
+                placeholder={t('composer.placeholder')}
+                aria-label={t('composer.aria')}
+                title={t('composer.title')}
                 className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[9px] pl-0.5 pr-0.5 text-apple-ink dark:text-white placeholder:text-[#a89a80] dark:placeholder:text-white/25 focus:outline-none text-[16px] leading-[26px]"
               />
               <button
@@ -827,7 +970,7 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
                 data-testid="send"
                 onPointerDown={handleSend}
                 disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
-                aria-label="Send"
+                aria-label={t('composer.send')}
                 className="min-w-[40px] min-h-[40px] -m-[1px] rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-90 text-white disabled:opacity-30 disabled:bg-[#d9cdb2] dark:disabled:bg-[#3a3a42] disabled:shadow-none bg-gradient-to-b from-[#a78bfa] to-[#7c6ce0] shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_10px_-2px_rgba(139,124,246,0.4)]"
               >
                 <AnimatedIcon animate="send" active={!((!inputText.trim() && attachments.length === 0) || !session.partnerConnected)}>
@@ -843,12 +986,11 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
         isOpen={showAttachmentMenu}
         onClose={() => setShowAttachmentMenu(false)}
         onSelectType={(type) => {
-          // Trigger the existing file inputs in ChatView
-          if (type === 'image') {
-            imageInputRef.current?.click();
-          } else {
-            fileInputRef.current?.click();
-          }
+          // Trigger the matching hidden input in ChatView
+          if (type === 'image') imageInputRef.current?.click();
+          else if (type === 'video') videoInputRef.current?.click();
+          else if (type === 'audio') audioInputRef.current?.click();
+          else fileInputRef.current?.click();
         }}
         buttonRef={plusButtonRef}
       />
@@ -867,11 +1009,12 @@ export function ChatView({ panelMode }: { panelMode?: string } = {}) {
 }
 /** The circular ✕ that removes a staged attachment — always visible, tappable. */
 function RemoveAttachmentButton({ onClick }: { onClick: () => void }) {
+  const { t } = useI18n();
   return (
     <button
       type="button"
       onPointerDown={onClick}
-      aria-label="Remove attachment"
+      aria-label={t('attach.remove')}
       className="absolute -top-2.5 -right-2.5 w-7 h-7 rounded-full bg-black/75 dark:bg-black/75 text-white border border-white/25 shadow-md backdrop-blur flex items-center justify-center z-10 transition-transform active:scale-90 hover:bg-black/90"
     >
       <X className="w-4 h-4" />
@@ -907,6 +1050,7 @@ function EmptyRoomIllustration() {
  *  device can rejoin without reopening the Connect screen, without exposing
  *  the code continuously on screen. Re-ticks every second. */
 function PairingMini({ secret, createdAt, className }: { secret: string, createdAt?: number, className?: string }) {
+  const { t } = useI18n();
   const [code, setCode] = useState(() => generateTOTP(secret, createdAt));
   const [remaining, setRemaining] = useState(() => getTOTPRemainingSeconds(createdAt));
   useEffect(() => {
@@ -919,7 +1063,7 @@ function PairingMini({ secret, createdAt, className }: { secret: string, created
   return (
     <div className={cn("rounded-[14px] bg-apple-parchment/60 dark:bg-apple-tile-1 border border-apple-divider/60 dark:border-apple-tile-3 p-3", className)}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[10.5px] font-semibold tracking-widest uppercase text-apple-ink-muted">Rejoin code</span>
+        <span className="text-[10.5px] font-semibold tracking-widest uppercase text-apple-ink-muted">{t('details.rejoinLabel')}</span>
         <span className={cn("text-[11px] font-medium tnum", remaining <= 3 ? "text-status-danger" : "text-apple-ink-muted")}>
           {Math.ceil(remaining)}s
         </span>
@@ -935,7 +1079,7 @@ function PairingMini({ secret, createdAt, className }: { secret: string, created
         ))}
       </div>
       <p className="text-[11px] text-apple-ink-muted mt-2 leading-snug">
-        If the other device drops, it can rejoin with this code.
+        {t('details.rejoinNote')}
       </p>
     </div>
   );

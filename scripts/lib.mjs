@@ -84,14 +84,3 @@ export async function waitForChat(page, label) {
   await page.getByTestId('composer').first().waitFor({ timeout: 20000 })
     .catch(() => console.log(`WARN: ${label} did not reach chat view in 20s`));
 }
-
-export async function pairDevices(A, B) {
-  await A.getByRole('button', { name: 'Send' }).first().click();
-  await A.getByRole('group', { name: 'Pairing code' }).waitFor({ timeout: 10000 });
-  const code = await readLiveCode(A);
-  await B.getByRole('button', { name: 'Receive' }).first().click();
-  await B.locator('input[inputmode="numeric"]').fill(code);
-  await waitForChat(B, 'B');
-  await waitForChat(A, 'A');
-  return code;
-}

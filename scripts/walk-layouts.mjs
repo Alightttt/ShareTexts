@@ -37,13 +37,13 @@ async function main() {
       footerVisible: footer ? getComputedStyle(footer).display !== 'none' : false,
       gapTop: hb && bb ? Math.round(bb.top - hb.bottom) : null,
       gapBottom: fb && bb ? Math.round(fb.top - bb.bottom) : null,
-      roomCard: !!document.querySelector('[data-testid="room-panel"]'),
+      roomCard: !!document.querySelector('[data-app-state="connected"]'),
       docY: document.documentElement.scrollHeight - document.documentElement.clientHeight,
     };
   });
   ok(idle.footerBottom === idle.vh && idle.docY === 0, `idle: footer at column bottom (${idle.footerBottom}/${idle.vh}, scrollY ${idle.docY})`);
   ok(idle.footerVisible, 'idle: footer visible');
-  ok(!idle.roomCard, 'idle: no room card in DOM');
+  ok(!idle.roomCard, 'idle: no room view in DOM');
   ok(Math.abs(idle.gapTop - idle.gapBottom) <= 12, `idle: hero centered between header and footer (gaps ${idle.gapTop}/${idle.gapBottom})`);
 
   // Theme toggle responds
@@ -62,14 +62,15 @@ async function main() {
   await M.getByRole('button', { name: 'Cancel' }).click();
   await sleep(700);
   ok((await M.getByRole('button', { name: 'Send', exact: true }).count()) > 0, 'Cancel returns to idle');
-  ok((await M.locator('[data-testid="room-panel"]').count()) === 0, 'no room card after cancel');
+  ok((await M.locator('[data-app-state="connected"]').count()) === 0, 'no room view after cancel');
 
   // Sending → QR overlay → close
   await M.getByRole('button', { name: 'Send', exact: true }).click();
   await M.getByRole('group', { name: 'Pairing code' }).waitFor({ timeout: 8000 });
   await M.getByRole('button', { name: 'Show QR' }).click();
   await M.getByRole('dialog', { name: 'QR code' }).waitFor({ timeout: 5000 });
-  await M.getByRole('button', { name: 'Close QR code' }).click();
+  // The overlay's close control is the localized “Close” (two of them: X + footer).
+  await M.getByRole('button', { name: 'Close', exact: true }).first().click();
   await sleep(400);
   ok((await M.getByRole('dialog', { name: 'QR code' }).count()) === 0, 'QR overlay closes');
   await M.getByRole('button', { name: 'Cancel' }).click();
@@ -94,38 +95,43 @@ async function main() {
   await waitForChat(M, 'M'); await waitForChat(A, 'A');
   await sleep(1500);
 
-  // Connected placement on M
+  // Connected placement on M — the room TAKES OVER the whole screen: no
+  // separate footer, no summary column. The takeover is the assertion.
   const conn = await M.evaluate(() => {
-    const room = document.querySelector('[data-testid="room-panel"]');
+    const room = document.querySelector('[data-app-state="connected"]');
     const footer = document.querySelector('footer');
-    const slot = room?.parentElement;
-    const prev = slot?.previousElementSibling;
-    const rb = slot?.getBoundingClientRect(), pb = prev?.getBoundingClientRect();
+    if (!room) return null;
+    const r = room.getBoundingClientRect();
     return {
-      roomCard: !!room,
-      footerHidden: footer ? getComputedStyle(footer).display === 'none' : null,
-      gap: rb && pb ? Math.round(rb.top - pb.bottom) : null,
+      fullBleed: r.top <= 1 && r.left <= 1
+        && Math.abs(r.width - window.innerWidth) <= 2
+        && Math.abs(r.height - window.innerHeight) <= 2,
+      footerGone: !footer,
     };
   });
-  ok(conn.roomCard, 'connected: room card mounted');
-  // Footer must be GONE (unmounted) or hidden while connected — either is correct.
-  ok(conn.footerHidden !== false, 'connected: footer removed/hidden');
-  ok(conn.gap !== null && conn.gap >= -6 && conn.gap <= 48, `connected: chat starts under summary (gap ${conn.gap})`);
+  ok(conn !== null && conn.fullBleed, 'connected: room takes over the full viewport');
+  ok(conn !== null && conn.footerGone, 'connected: page footer unmounted (room replaces it)');
 
-  // Same-platform defaults → joiner auto-renamed + notice; dismiss works
+  // Same-platform defaults → joiner auto-renamed. On mobile the rename notice
+  // lives in the connection-details sheet (no pairing summary on mobile).
   const mBody = await M.locator('body').innerText();
   ok(mBody.includes('Guest Windows PC 2'), 'joiner auto-renamed (same defaults)');
-  ok(mBody.includes('Both devices had the same name'), 'auto-name notice shown');
+  await M.getByTestId('connection-details').click();
+  await sleep(500);
+  const sheetBody = await M.locator('body').innerText();
+  ok(sheetBody.includes('Both devices had the same name'), 'auto-name notice shown in details sheet');
   await M.getByRole('button', { name: 'Dismiss' }).click();
   await sleep(300);
   ok(!(await M.locator('body').innerText()).includes('Both devices had the same name'), 'notice dismisses');
 
-  // Tap-to-edit name on M, Enter saves, A sees it
+  // Tap-to-edit name in the sheet, Enter saves, A sees it
   await M.getByRole('button', { name: /This device is named/ }).click();
   await M.getByLabel('Rename this device').fill('Walk Phone');
   await M.getByLabel('Rename this device').press('Enter');
   await sleep(1500);
   ok((await A.locator('body').innerText()).includes('Walk Phone'), 'rename propagates to A live');
+  await M.getByLabel('Close connection details').click().catch(() => {});
+  await sleep(300);
 
   // Chat both ways from the mobile composer
   await M.locator('textarea').first().fill('Hi from the walk phone 📱');
@@ -144,24 +150,15 @@ async function main() {
   });
   ok(disabledBg === 'rgb(217, 205, 178)', `empty-composer send disabled in warm parchment (${disabledBg})`);
 
-  // Embedded chrome (single-screen room header, not ChatView's own header):
-  // mobile fullscreen toggle expands/contracts the room card.
-  await M.getByRole('button', { name: 'Fullscreen' }).click();
-  await sleep(600);
-  const fs = await M.evaluate(() => {
-    const room = document.querySelector('[data-testid="room-panel"]');
+  // New design: mobile connected = full-bleed room with ChatView's own slim
+  // header. No separate Fullscreen/Minimize toggle exists anymore — the room
+  // IS fullscreen. Verify the takeover geometry held.
+  const fsNow = await M.evaluate(() => {
+    const room = document.querySelector('[data-app-state="connected"]');
     const r = room?.getBoundingClientRect();
     return { w: r ? Math.round(r.width) : null, h: r ? Math.round(r.height) : null, vw: window.innerWidth, vh: window.innerHeight };
   });
-  ok(fs.w === fs.vw && fs.h === fs.vh, `fullscreen expands room to viewport (${fs.w}x${fs.h})`);
-  await M.getByRole('button', { name: 'Minimize' }).click();
-  await sleep(500);
-  const back = await M.evaluate(() => {
-    const room = document.querySelector('[data-testid="room-panel"]');
-    const r = room?.getBoundingClientRect();
-    return r ? Math.round(r.height) : null;
-  });
-  ok(back !== null && back < 667, `fullscreen minimizes again (h=${back})`);
+  ok(fsNow.w === fsNow.vw && fsNow.h === fsNow.vh, `room stays fullscreen (no minimize toggle) (${fsNow.w}x${fsNow.h})`);
 
   // Small targets inventory on connected mobile
   const smallM = await smallTargets(M);
@@ -169,28 +166,40 @@ async function main() {
   console.log('  small targets M:', JSON.stringify(smallM));
   console.log('  small targets A:', JSON.stringify(smallA));
 
-  // Disconnect from the embedded room header → idle again, footer back
-  await M.locator('button[aria-label="Disconnect"]').click();
+  // Disconnect from the room header → confirm sheet → "That's it." end screen
+  // → 'Start a transfer' CTA → idle. The end screen is the designed closure
+  // moment (privacy message + fresh start), not a bug.
+  await M.getByRole('button', { name: 'Disconnect' }).first().click();
+  await M.getByTestId('end-session-confirm').waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+  await M.getByTestId('end-session-confirm').click();
+  await sleep(1200);
+  const endedShown = await M.evaluate(() => document.body.innerText.includes("That's it."));
+  ok(endedShown, 'manual close shows the designed end screen');
+  await M.getByRole('button', { name: 'Start a transfer' }).click();
   await sleep(1200);
   const backIdle = await M.evaluate(() => ({
-    roomCard: !!document.querySelector('[data-testid="room-panel"]'),
+    roomCard: !!document.querySelector('[data-app-state="connected"]'),
     footerVisible: document.querySelector('footer') ? getComputedStyle(document.querySelector('footer')).display !== 'none' : false,
     sendVisible: !!document.querySelector('button'),
   }));
-  ok(!backIdle.roomCard && backIdle.footerVisible, 'after disconnect: idle again, footer back, no room card');
+  ok(!backIdle.roomCard && backIdle.footerVisible, 'after disconnect: idle again, footer back, no room view');
 
   // ── DESKTOP 1920×1080 idle geometry ──
+  // New design: 50/50 at <1280px, ≈44/56 from 1280px up so the room half is
+  // wider. Assert the split ratio, not a fixed pixel width.
   const ctxD = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
   const D = await ctxD.newPage();
   D.on('pageerror', e => fails.push(`[D pageerror] ${e.message}`));
   await D.goto(URL, { waitUntil: 'networkidle' });
   await D.getByRole('heading', { level: 1 }).waitFor({ timeout: 20000 });
   await sleep(600);
-  const split1920 = await D.evaluate(() => {
-    const left = document.querySelector('header')?.closest('div[class*="w-1/2"]');
-    const right = left?.nextElementSibling;
+  const split = (vmin = 1280) => D.evaluate(() => {
+    const left = document.querySelector('header')?.closest('div');
+    let pane = left;
+    while (pane && pane.parentElement && !pane.parentElement.classList.contains('flex') ) pane = pane.parentElement;
+    const right = pane?.nextElementSibling;
     const block = document.querySelector('h1')?.closest('.max-w-md');
-    const lb = left?.getBoundingClientRect(), rb = right?.getBoundingClientRect(), bb = block?.getBoundingClientRect();
+    const lb = pane?.getBoundingClientRect(), rb = right?.getBoundingClientRect(), bb = block?.getBoundingClientRect();
     return {
       leftW: lb ? Math.round(lb.width) : null, rightW: rb ? Math.round(rb.width) : null,
       vw: window.innerWidth,
@@ -200,9 +209,14 @@ async function main() {
       docY: document.documentElement.scrollHeight - document.documentElement.clientHeight,
     };
   });
-  ok(split1920.leftW === 960 && split1920.rightW === 960, `1920: 50/50 split (${split1920.leftW}/${split1920.rightW})`);
-  ok(Math.abs(split1920.blockCenter - split1920.leftCenter) <= 4, '1920: hero block centered in left half');
-  ok(split1920.docX === 0 && split1920.docY === 0, '1920: no overflow at all');
+  const split1920 = await split();
+  {
+    const ratio = split1920.leftW / split1920.vw;
+    ok(Math.abs(ratio - 0.44) <= 0.02, `1920: ≈44/56 split (${split1920.leftW}/${split1920.rightW}, ratio ${ratio.toFixed(3)})`);
+    ok(split1920.rightW > split1920.leftW, '1920: room half is the wider half');
+    ok(Math.abs(split1920.blockCenter - split1920.leftCenter) <= 8, '1920: hero block centered in left half');
+    ok(split1920.docX === 0 && split1920.docY === 0, '1920: no overflow at all');
+  }
 
   // Focus states: Tab reaches Send, Enter activates it (then Escape/cancel)
   await D.keyboard.press('Tab'); // skip to first focusable
@@ -219,25 +233,23 @@ async function main() {
   await sleep(500);
   ok((await D.getByRole('button', { name: 'Send', exact: true }).count()) > 0, 'Cancel returns to idle on desktop');
 
-  // ── DESKTOP 1280 idle: 50/50 split (resize the idle D page) ──
+  // ── DESKTOP 1280 idle: xl boundary — 44/56 applies from 1280px up (resize the idle D page) ──
   await D.setViewportSize({ width: 1280, height: 800 });
   await sleep(600);
-  const split1280 = await D.evaluate(() => {
-    const left = document.querySelector('header')?.closest('div[class*="w-1/2"]');
-    const right = left?.nextElementSibling;
-    const block = document.querySelector('h1')?.closest('.max-w-md');
-    const lb = left?.getBoundingClientRect(), rb = right?.getBoundingClientRect(), bb = block?.getBoundingClientRect();
-    return {
-      leftW: lb ? Math.round(lb.width) : null, rightW: rb ? Math.round(rb.width) : null,
-      vw: window.innerWidth,
-      blockCenter: bb ? Math.round(bb.left + bb.width / 2) : null,
-      leftCenter: lb ? Math.round(lb.left + lb.width / 2) : null,
-      docX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    };
-  });
-  ok(split1280.leftW === 640 && split1280.rightW === 640, `1280: 50/50 split (${split1280.leftW}/${split1280.rightW})`);
-  ok(Math.abs(split1280.blockCenter - split1280.leftCenter) <= 4, `1280: hero block centered in left half (${split1280.blockCenter} vs ${split1280.leftCenter})`);
-  ok(split1280.docX === 0, '1280: no horizontal overflow');
+  const split1280 = await split();
+  {
+    const ratio = split1280.leftW / split1280.vw;
+    ok(Math.abs(ratio - 0.44) <= 0.02, `1280: ≈44/56 split at the xl boundary (${split1280.leftW}/${split1280.rightW}, ratio ${ratio.toFixed(3)})`);
+    ok(Math.abs(split1280.blockCenter - split1280.leftCenter) <= 8, `1280: hero block centered in left half (${split1280.blockCenter} vs ${split1280.leftCenter})`);
+    ok(split1280.docX === 0, '1280: no horizontal overflow');
+  }
+
+  // ── 1024–1279 band: exact 50/50 ──
+  await D.setViewportSize({ width: 1180, height: 800 });
+  await sleep(600);
+  const split1180 = await split();
+  ok(Math.abs(split1180.leftW - 590) <= 3 && Math.abs(split1180.rightW - 590) <= 3, `1180: 50/50 split (${split1180.leftW}/${split1180.rightW})`);
+  ok(split1180.docX === 0, '1180: no horizontal overflow');
 
   await browser.close();
   if (fails.length) { console.log('\nFAILURES:'); fails.forEach(f => console.log(' -', f)); process.exit(1); }

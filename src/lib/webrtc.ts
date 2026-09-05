@@ -235,6 +235,33 @@ export function getPartialInfo(transferId: string): { received: number; total: n
   return { received: p.received, total: p.total, missing: missing.slice(0, 20) };
 }
 
+/**
+ * Bounded concurrency for file sends on one PeerManager. A batch of photos
+ * fires one sendFile per attachment at the same moment; without a cap that
+ * means N full-depth encryption pipelines in flight at once (20 photos × 8 MB
+ * of pipeline each on a fast link). 3 concurrent streams saturate a LAN and
+ * still keep peak in-flight memory modest, while later files start the moment
+ * a slot frees — a batch still arrives as a stream, not a strict queue.
+ */
+class TransferSlots {
+  private active = 0;
+  private queue: Array<() => void> = [];
+  constructor(private readonly max: number) {}
+  acquire(): Promise<void> {
+    if (this.active < this.max) {
+      this.active++;
+      return Promise.resolve();
+    }
+    return new Promise(resolve => this.queue.push(resolve));
+  }
+  release(): void {
+    const next = this.queue.shift();
+    if (next) next(); // slot passes straight to the next waiting transfer
+    else this.active--;
+  }
+}
+const fileSendSlots = new TransferSlots(3);
+
 /** Thrown by a send loop that was cancelled (distinct from a network failure). */
 export class TransferCancelledError extends Error {
   constructor() {
@@ -840,22 +867,37 @@ export class PeerManager {
 
     this.pc.getStats().then(stats => {
       let activeCandidatePair: any = null;
-      stats.forEach(report => {
-        if (report.type === 'candidate-pair' && report.state === 'succeeded') {
-          activeCandidatePair = report;
-        }
-      });
+      try {
+        stats.forEach(report => {
+          if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+            activeCandidatePair = report;
+          }
+        });
+      } catch {
+        // Transient: a stats snapshot can be internally inconsistent right at
+        // connection time (a 'succeeded' pair whose candidate refs aren't in
+        // the same snapshot). Don't let that misreport the link as relay —
+        // re-run stats on the next tick instead.
+        setTimeout(() => this.determineConnectionType(), 150);
+        return;
+      }
 
       if (activeCandidatePair) {
         const localCandidate = stats.get(activeCandidatePair.localCandidateId);
         if (localCandidate && localCandidate.candidateType === 'host') {
+          diag('webrtc.link', true, 'host (same network)');
           if (this.onConnectionTypeChange) this.onConnectionTypeChange('local');
         } else {
+          diag('webrtc.link', true, 'non-host candidate');
           if (this.onConnectionTypeChange) this.onConnectionTypeChange('direct');
         }
       } else {
-        if (this.onConnectionTypeChange) this.onConnectionTypeChange('direct');
+        // No succeeded pair yet (mid-negotiation / glare). Keep the current
+        // type — never regress an accurate report to a wrong one.
+        diag('webrtc.link', false, 'no succeeded pair yet — keeping current type');
       }
+    }).catch(e => {
+      diag('webrtc.stats_error', false, String(e));
     });
   }
 
@@ -1011,12 +1053,21 @@ export class PeerManager {
     // to the relay for the rest of this transfer instead of hanging forever.
     let wedged = false;
 
+    // Wait for a send slot before opening the pipeline — see TransferSlots.
+    // A cancel that lands while queued is caught right after acquisition.
+    await fileSendSlots.acquire();
+    try {
+      if (signal.aborted) throw new TransferCancelledError();
+
     // Adaptive pipeline depth: overlap read + encrypt + send. Depth is the
     // ONLY pacing knob — it bounds how much is in flight without touching
-    // the chunk grid, so adapting it can never corrupt byte offsets.
-    let pipelineDepth = 32;
-    const MIN_DEPTH = 8;
-    const MAX_DEPTH = 64;
+    // the chunk grid, so adapting it can never corrupt byte offsets. Starts
+    // deeper than before (48 vs 32) so LAN/Wi-Fi links saturate from the
+    // first seconds instead of ramping; the concurrency cap above keeps the
+    // aggregate in-flight memory sane.
+    let pipelineDepth = 48;
+    const MIN_DEPTH = 16;
+    const MAX_DEPTH = 96;
     type PipelineEntry = { index: number; packet: Uint8Array };
     const inflight: Promise<PipelineEntry | null>[] = [];
     let readIdx = start;
@@ -1043,7 +1094,6 @@ export class PeerManager {
       inflight.push(readAndEncrypt(readIdx));
     }
 
-    try {
       while (sendIdx < numChunks) {
         if (signal.aborted) throw new TransferCancelledError();
 
@@ -1067,7 +1117,7 @@ export class PeerManager {
           // queue the whole file into memory. Event-driven via
           // bufferedamountlow (plus a 100 ms fallback poll for engines that
           // don't fire it reliably).
-          const drainThreshold = 4 * 1024 * 1024;
+          const drainThreshold = 8 * 1024 * 1024;
           if (this.dc.bufferedAmount > drainThreshold) {
             const drained = await this.waitForBufferLow(drainThreshold / 2, 5000);
             if (!drained) {
@@ -1116,6 +1166,7 @@ export class PeerManager {
       }
       diag('transfer.complete', true, file.name);
     } finally {
+      fileSendSlots.release();
       this.transferControllers.delete(transferId);
       if (!signal.aborted) sendProgress.delete(transferId);
     }

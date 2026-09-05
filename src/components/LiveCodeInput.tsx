@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef, useId } from 'react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 import { ShareTextLogo } from './ShareTextLogo';
+import { useI18n } from '../lib/i18n';
 
 export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (code: string) => void, isJoining: boolean, error?: string | null }) {
+  const { t } = useI18n();
   const [code, setCode] = useState('');
   const [shake, setShake] = useState(false);
   const [pasteHint, setPasteHint] = useState(false);
@@ -44,7 +46,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
     if (isJoining) return;
     const raw = e.target.value;
     if (/\D/.test(raw) && raw.length > code.length) {
-      showValidation('Use six numbers, not text.');
+      showValidation(t('code.numericOnly'));
       return;
     }
     const val = normalizeCode(raw);
@@ -62,7 +64,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
     const hasNonDigit = /\D/.test(pasted.trim());
     const normalized = normalizeCode(pasted);
     if (normalized.length === 0 && hasNonDigit) {
-      showValidation('Use six numbers, not text.');
+      showValidation(t('code.numericOnly'));
       return;
     }
     if (normalized.length > 0) {
@@ -87,7 +89,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
 
   return (
     <div className="flex flex-col items-center relative w-full">
-      <label htmlFor={inputId} className="sr-only">Six-digit pairing code</label>
+      <label htmlFor={inputId} className="sr-only">{t('code.sixDigits')}</label>
       <input
         id={inputId}
         ref={inputRef}
@@ -103,7 +105,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
         autoFocus
         autoComplete="one-time-code"
         data-testid="join-code-input"
-        aria-label="Six-digit pairing code"
+        aria-label={t('code.sixDigits')}
         aria-describedby={error ? 'live-code-error' : pasteHint ? 'live-code-hint' : undefined}
         aria-invalid={!!error}
         aria-current={isJoining ? 'step' : undefined}
@@ -148,7 +150,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
 
       {!error && !validationMsg && pasteHint && (
         <div id="live-code-hint" role="status" className="mt-3 sm:mt-4 text-[12px] sm:text-[13px] text-apple-ink-muted dark:text-white/50 font-medium">
-          Enter all 6 digits to continue.
+          {t('code.enterAll')}
         </div>
       )}
 
@@ -160,7 +162,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
 
       {!error && !validationMsg && !pasteHint && digitCount > 0 && digitCount < 6 && (
         <div role="status" className="mt-3 sm:mt-4 text-[12px] sm:text-[13px] text-apple-ink-muted dark:text-white/50 font-medium">
-          {digitCount} of 6 digits entered
+          {t('code.digitsOf', { n: digitCount })}
         </div>
       )}
 
@@ -171,7 +173,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
             onClick={() => { setCode(''); if (inputRef.current) inputRef.current.focus(); }}
             className="px-4 py-1.5 rounded-full text-[12px] font-semibold bg-status-danger/10 text-status-danger hover:bg-status-danger/20 transition-colors active:scale-95"
           >
-            Try again
+            {t('home.retry')}
           </button>
         </div>
       )}
@@ -179,7 +181,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
       {isJoining && (
         <div role="status" className="flex flex-col items-center justify-center mt-6 sm:mt-8">
           <ShareTextLogo size={20} motion="connecting" className="text-apple-blue dark:text-azure-400 mb-3 sm:mb-4" />
-          <p className="text-[14px] sm:text-[15px] font-medium text-apple-ink-muted">Verifying code…</p>
+          <p className="text-[14px] sm:text-[15px] font-medium text-apple-ink-muted">{t('code.verifying')}</p>
         </div>
       )}
     </div>
