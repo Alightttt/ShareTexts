@@ -28,6 +28,7 @@ const en = {
   'footer.noApp': 'No app',
   'footer.noAccount': 'No account',
   'footer.temporary': 'Temporary',
+  'home.badge.private': 'Private',
   'footer.followAria': 'Follow on X',
   'lang.menu': 'Language',
 
@@ -76,6 +77,9 @@ const en = {
   'conn.guidance.2s': 'original pixels, untouched',
   'conn.guidance.3t': 'Drag any file',
   'conn.guidance.3s': 'bytes arrive unchanged',
+  'conn.roomOpen': 'Room open — use the panel on the right',
+  'connect.title': 'Connecting to your device…',
+  'connect.sub': 'This takes a few seconds. Keep both devices open.',
 
   // ── room panel placeholders ────────────────────────────────────────
   'room.title': 'Room',

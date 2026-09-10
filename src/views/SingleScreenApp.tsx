@@ -30,13 +30,13 @@ import { LanguageMenu } from '../components/LanguageMenu';
 import { cn, shortCodeOf, sanitizeDeviceName } from '../lib/utils';
 import {
   LogOut, QrCode, Link2, Copy, Check,
-  Smartphone, Monitor, X, Wifi, ArrowRightLeft, Info, Pencil
+  Smartphone, Monitor, X, Wifi, ArrowRightLeft, Info, Pencil, Lock
 } from 'lucide-react';
 import { generateTOTP } from '../lib/totp';
 import { useFocusTrap } from '../lib/useFocusTrap';
 const QRScanner = lazy(() => import('../components/QRScanner').then(m => ({ default: m.QRScanner })));
 const ChatView = lazy(() => import('./ChatView').then(m => ({ default: m.ChatView })));
-type PanelMode = 'idle' | 'sending' | 'receiving' | 'connected';
+type PanelMode = 'idle' | 'sending' | 'receiving' | 'connecting' | 'connected';
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 /* ------------------------------------------------------------------ */
@@ -155,18 +155,35 @@ export function SingleScreenApp() {
     setEditingName(false);
   };
 
+  // "The channel has opened for this room." Once true, a later
+  // partnerConnecting (peer_recovered after a drop) is a RECONNECT, not a
+  // first connect: the room stays up — ChatView's reconnect banner is the
+  // right surface — instead of bouncing back to the connecting screen.
+  const everConnectedRoomRef = useRef<string | null>(null);
+  const everConnectedRef = useRef(false);
   /* --- panel mode sync --- */
   useEffect(() => {
+    if (session.roomId !== everConnectedRoomRef.current) {
+      everConnectedRoomRef.current = session.roomId;
+      everConnectedRef.current = false;
+    }
+    if (session.partnerConnected) everConnectedRef.current = true;
     if (session.partnerConnected) setPanelMode('connected');
+    // Once the channel has opened for this room, a later partnerConnecting is
+    // a reconnect (handled above), never a first connect.
+    else if (session.roomId && everConnectedRef.current) setPanelMode('connected');
+    // A peer joined (either side) and the channel isn't open yet — the
+    // connecting screen takes over until it is.
+    else if (session.partnerConnecting && session.roomId) setPanelMode('connecting');
     // Transient drop (peer lost the link, tab reloaded, network blip): stay
     // in the room so the reconnect banner + retry live where the transfer
     // was, instead of bouncing the creator back to the pairing screen and
     // hiding the in-flight messages.
     else if (session.roomId && session.connectionType === 'disconnected') setPanelMode('connected');
     else if (session.roomId && session.isCreator) setPanelMode('sending');
-    else if (session.roomId && !session.isCreator) setPanelMode('receiving');
+    else if (session.roomId && !session.isCreator) setPanelMode(p => (p === 'connecting' ? 'connecting' : 'receiving'));
     else if (!session.roomId) setPanelMode('idle');
-  }, [session.roomId, session.isCreator, session.partnerConnected, session.connectionType]);
+  }, [session.roomId, session.isCreator, session.partnerConnected, session.partnerConnecting, session.connectionType]);
 
   // Focus traps for QR overlays
   const qrScanTrapRef = useFocusTrap(showQRScan, () => setShowQRScan(false));
@@ -213,18 +230,32 @@ export function SingleScreenApp() {
     try {
       const res = await joinWithCode(code);
       setIsJoining(false);
-      if (!res.success) setJoinError(res.error || t('err.codeInactive'));
+      if (!res.success) {
+        setJoinError(res.error || t('err.codeInactive'));
+      } else {
+        // The code was accepted — leave the code-entry screen behind and
+        // show the connecting overlay until the channel actually opens.
+        setPanelMode('connecting');
+      }
     } catch {
       setIsJoining(false);
       setJoinError(signalingConfigIssue() || t('err.generic'));
     }
-  }, [isJoining, joinWithCode]);
+  }, [isJoining, joinWithCode, t]);
 
   const handleDisconnect = useCallback(() => { setPanelMode('idle'); abandonSession(); setCreateError(null); setIsCreating(false); setJoinError(null); }, [abandonSession]);
   const handleCancel = useCallback(() => {
     createAbortRef.current++;
     setPanelMode('idle'); abandonSession(); setCreateError(null); setIsCreating(false); setJoinError(null);
   }, [abandonSession]);
+  // Dismiss the connecting overlay. The creator goes back to their pairing
+  // screen (the room stays open — the peer can still connect); the joiner
+  // abandons and can enter a fresh code.
+  const dismissConnecting = useCallback(() => {
+    if (session.isCreator) { setPanelMode('sending'); return; }
+    createAbortRef.current++;
+    setPanelMode('idle'); abandonSession(); setJoinError(null);
+  }, [session.isCreator, abandonSession]);
 
   /* --- derived --- */
   const shareUrl = session.roomId ? `${window.location.origin}/s/${shortCodeOf(session.roomId)}` : '';
@@ -280,6 +311,12 @@ export function SingleScreenApp() {
             // Deterministic first paint: the hero renders visible immediately;
             // only the swap-out fades. Never gate first paint on animation.
             <motion.div key="idle" exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto">
+              {/* Trust badge — the privacy promise, stated before the pitch. */}
+              <div className="flex justify-center sm:justify-start mb-4">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 border border-[#8b7cf6]/15 dark:border-[#a78bfa]/15 text-[#8b7cf6] dark:text-[#a78bfa] text-[11px] font-semibold">
+                  <Lock className="w-3 h-3" aria-hidden="true" /> {t('home.badge.private')}
+                </span>
+              </div>
               <h1 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold tracking-[-0.03em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left">
                 {(() => { const [a, b] = t('home.title').split('\n'); return (<>{a}{b ? <><br />{b}</> : null}</>); })()}
               </h1>
@@ -368,6 +405,37 @@ export function SingleScreenApp() {
                 <LiveCodeInput onComplete={handleCodeComplete} isJoining={isJoining} error={joinError} />
               </div>
               <p className="mt-4 text-[12px] text-apple-ink-muted/60 dark:text-white/35 text-center">{t('receive.note')}</p>
+            </motion.div>
+          )}
+
+          {/* ── CONNECTING: code accepted, channel opening ────────── */}
+          {panelMode === 'connecting' && (
+            <motion.div key="connecting" data-testid="connecting-panel" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto text-center">
+              <div className="flex flex-col items-center py-8">
+                {/* Mobile carries the brand-mark connecting motion; on desktop
+                    the room panel already shows the animated beam, so the
+                    hero stays calm and points at it. */}
+                {!isDesktopLayout && (
+                  <ShareTextLogo size={20} motion="connecting" className="text-azure-600 dark:text-azure-400 mb-4" />
+                )}
+                {!isDesktopLayout && (
+                  <h2 className="text-[22px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em] mb-2">{t('connect.title')}</h2>
+                )}
+                {isDesktopLayout ? (
+                  <>
+                    <p className="text-[15px] font-semibold text-apple-ink/70 dark:text-white/50 mb-1.5">{t('conn.roomOpen')}</p>
+                    <p className="text-[12.5px] text-apple-ink-muted/50 dark:text-white/25 max-w-[280px] leading-relaxed">{t('connect.sub')}</p>
+                  </>
+                ) : (
+                  <p className="text-[13px] text-apple-ink-muted dark:text-white/50 font-medium leading-relaxed max-w-[32ch]">{t('connect.sub')}</p>
+                )}
+                {/* Escape hatch: the creator returns to their pairing screen
+                    (the room stays open); the joiner abandons and can enter a
+                    fresh code. Never a trap. */}
+                <button onClick={dismissConnecting} className="mt-6 flex items-center gap-1 text-[13px] font-semibold text-status-danger hover:bg-status-danger/10 px-3 py-2 min-h-[40px] rounded-full active:scale-95 transition-colors">
+                  <X className="w-3.5 h-3.5" /> {t('cancel')}
+                </button>
+              </div>
             </motion.div>
           )}
 
@@ -611,11 +679,13 @@ export function SingleScreenApp() {
                 {panelMode === 'idle' && t('room.ready')}
                 {panelMode === 'sending' && (isCreating && !session.secret ? t('create.creating') : t('room.created'))}
                 {panelMode === 'receiving' && t('room.waiting')}
+                {panelMode === 'connecting' && t('connect.title')}
               </p>
               <p className="text-[12.5px] text-apple-ink-muted/50 dark:text-white/25 max-w-[260px] leading-relaxed">
                 {panelMode === 'idle' && t('room.idleHint')}
                 {panelMode === 'sending' && (isCreating && !session.secret ? t('room.setup') : t('room.sendHint'))}
                 {panelMode === 'receiving' && t('room.receiveHint')}
+                {panelMode === 'connecting' && t('connect.sub')}
               </p>
               {/* A compact three-step guide keeps the room panel informative
                   while disconnected, instead of a large empty surface. */}
