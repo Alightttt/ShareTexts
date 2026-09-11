@@ -6,6 +6,7 @@ import { generateKey } from './crypto';
 import { humanizeError } from './errors';
 import { diag, roomCreateDiagStart, roomCreateDiagEnd } from './diag';
 import { sanitizeFilename } from './utils';
+import { normalizePastedText } from './textFidelity';
 
 function toHex(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf);
@@ -1077,8 +1078,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const sendMessage = async (text: string, attachment?: import('../types').Attachment, file?: File) => {
+  const sendMessage = async (rawText: string, attachment?: import('../types').Attachment, file?: File) => {
     if (!peerManagerRef.current) return;
+    // Text fidelity: normalize ONCE on the sender so both devices hold the
+    // exact same JS string. Valid text (emoji, RTL, tabs, CRLF, all unicode)
+    // is untouched — only lone surrogates (which cannot survive the UTF-8
+    // wire anyway) become a deterministic U+FFFD instead of differing
+    // silently between devices.
+    const text = normalizePastedText(rawText);
     const msg: ChatMessage = {
       id: crypto.randomUUID(),
       sender: 'me',
@@ -1177,7 +1184,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const fresh: ChatMessage = {
       id: crypto.randomUUID(),
       sender: 'me',
-      text: msg.text,
+      text: normalizePastedText(msg.text),
       timestamp: Date.now()
     };
     setSession(s => ({

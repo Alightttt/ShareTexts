@@ -156,6 +156,8 @@ interface MenuItemProps {
 }
 
 function MenuItem({ icon, label, description, onClick, delay = 0 }: MenuItemProps) {
+  // Bencho icon-bar micro-physics: the disc springs toward the pointer with
+  // a slight lean, then overshoots back on leave — quiet, but felt.
   return (
     <motion.button
       initial={{ opacity: 0, x: -10 }}
@@ -165,16 +167,23 @@ function MenuItem({ icon, label, description, onClick, delay = 0 }: MenuItemProp
         e.stopPropagation();
         onClick();
       }}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.97 }}
       className={cn(
-        "w-full flex items-center gap-3 p-3 rounded-xl",
+        "w-full flex items-center gap-3 p-3 rounded-xl group/menuitem",
         "hover:bg-black/5 dark:hover:bg-white/5",
-        "active:scale-[0.98] transition-all duration-150",
+        "transition-colors duration-150",
         "text-left"
       )}
     >
-      <div className="w-10 h-10 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/20 flex items-center justify-center text-[#8b7cf6] dark:text-[#a78bfa]">
+      <motion.div
+        variants={{ rest: { scale: 1, x: 0 }, hover: { scale: 1.08, x: 2 } }}
+        initial="rest"
+        whileHover="hover"
+        className="w-10 h-10 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/20 flex items-center justify-center text-[#8b7cf6] dark:text-[#a78bfa]"
+      >
         {icon}
-      </div>
+      </motion.div>
       <div>
         <div className="text-sm font-semibold text-apple-ink dark:text-white">{label}</div>
         <div className="text-xs text-apple-ink-muted">{description}</div>

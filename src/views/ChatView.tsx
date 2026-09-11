@@ -5,11 +5,12 @@ import { AttachmentPanel } from '../components/AttachmentPanel';
 import { AttachmentFlight } from '../components/AttachmentFlight';
 import { TransferFlight } from '../components/TransferFlight';
 import {
-  X, Plus, Copy, Check, Play, AlertCircle, ChevronDown, ArrowUp, ShieldCheck, LogOut,
+  X, Plus, Copy, Check, Play, AlertCircle, ChevronDown, ArrowUp, ShieldCheck,
   Smartphone, Monitor, Pencil, ArrowRightLeft, Info
 } from 'lucide-react';
 import { FileTypeIcon } from '../components/FileTypeIcon';
 import { AnimatedIcon } from '../components/AnimatedIcon';
+import { InlineConfirm } from '../components/InlineConfirm';
 import { cn, formatBytes, sanitizeDeviceName } from '../lib/utils';
 import { Attachment } from '../types';
 import { MessageCard } from '../components/MessageCard';
@@ -19,6 +20,12 @@ import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
 import { saveDraft, loadDraft, clearDraft, ComposerDraft } from '../lib/draftStore';
 import { useFocusTrap } from '../lib/useFocusTrap';
 import { useI18n } from '../lib/i18n';
+
+/** Localized date-separator label: Today / Yesterday / a real date. */
+function dateKeyOf(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
 export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' } = {}) {
   const { t } = useI18n();
   // Stable translator for effects: effects fire on session changes, not on
@@ -78,7 +85,34 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   const [showConnectionDetails, setShowConnectionDetails] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
-  const [confirmClose, setConfirmClose] = useState(false);
+  // Message selection (bencho selection-list): long-press a bubble to enter,
+  // tap to toggle, floating bar copies or exits. Long-press keeps the copy
+  // button free; a fresh selection always starts with the pressed message.
+  const [selectMode, setSelectMode] = useState(false);
+  const [selection, setSelection] = useState<Set<string>>(new Set());
+  const [selectionCopied, setSelectionCopied] = useState(false);
+  const enterSelectMode = (firstId?: string) => {
+    haptic(12);
+    setSelectMode(true);
+    setSelection(firstId ? new Set([firstId]) : new Set());
+  };
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelection(new Set());
+    setSelectionCopied(false);
+  };
+  const toggleSelected = (id: string) => {
+    haptic(8);
+    setSelection(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  // Escape leaves selection mode (after closing menus — same handler below).
+  useEffect(() => {
+    if (selectMode && session.messages.length === 0) exitSelectMode();
+  }, [selectMode, session.messages.length]);
   // One-time notice when the auto-disambiguation renamed this device. On
   // desktop the pairing summary shows it; on mobile (fullscreen room, no
   // summary) the details sheet is the honest place to explain the rename.
@@ -86,14 +120,12 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   useEffect(() => {
     if (session.nameAutoAdjusted) setNameNoticeOpen(true);
   }, [session.nameAutoAdjusted]);
-  const endSessionTrapRef = useFocusTrap(confirmClose, () => setConfirmClose(false));
   const connectionDetailsTrapRef = useFocusTrap(showConnectionDetails, () => setShowConnectionDetails(false));
   const [showThatsIt, setShowThatsIt] = useState(false);
   const [thatsItCopy, setThatsItCopy] = useState('');
   const [announcement, setAnnouncement] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const dragDepth = useRef(0);
-  const firstTransferShown = useRef(false);
   // "Other device connected" toast — the alert both sides get when the
   // room opens, so the creator sees the joiner arrive even when the
   // handshake was too fast to catch on the pairing screen.
@@ -112,17 +144,6 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
-  const keepSessionRef = useRef<HTMLButtonElement>(null);
-  // Focus the dialog's safe action on open. React's autoFocus is insufficient
-  // here: the browser's default pointerdown focus on the opener button lands
-  // AFTER React's autoFocus and steals focus back, so focus the keep button
-  // on the next frame instead. Enter then closes safely, never ends.
-  useEffect(() => {
-    if (confirmClose) {
-      const raf = requestAnimationFrame(() => keepSessionRef.current?.focus());
-      return () => cancelAnimationFrame(raf);
-    }
-  }, [confirmClose]);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const plusButtonRef = useRef<HTMLButtonElement>(null);
   const composerStripRef = useRef<HTMLDivElement>(null);
@@ -145,6 +166,11 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     return () => { previewUrls.forEach((u) => URL.revokeObjectURL(u)); };
   }, [previewUrls]);
   const disconnected = !session.partnerConnected && session.connectionType === 'disconnected';
+  // Localized day keys for the date separators — recomputed per render is
+  // fine (two string builds), and they must be fresh so midnight rolls over.
+  const now = Date.now();
+  const todayKey = dateKeyOf(now);
+  const yesterdayKey = dateKeyOf(now - 86_400_000);
   // Keep the composer exactly as tall as its content (1 line = 44px), growing
   // smoothly up to 30vh. Without this the textarea sits at its default
   // rows=2 height (68px), which is the "extra height / misaligned buttons"
@@ -263,9 +289,17 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   // Post-transfer moment: after the very first transfer, a quiet "That's it."
   // appears once, then the app gets out of the way. Direction-aware: sending
   // and receiving tell different truths ("it's on the other device" vs "it
-  // arrived").
+  // arrived"). The baseline is the message count AT MOUNT, so a RESTORED
+  // session (refresh/rejoin with history) never replays the one-time moment
+  // for messages the user already saw — only a real 0→1 transition fires it.
+  const firstTransferShown = useRef(false);
+  const mountMessageCount = useRef<number | null>(null);
   useEffect(() => {
-    if (!firstTransferShown.current && session.messages.length >= 1) {
+    if (mountMessageCount.current === null) {
+      mountMessageCount.current = session.messages.length;
+      return;
+    }
+    if (!firstTransferShown.current && mountMessageCount.current === 0 && session.messages.length >= 1) {
       firstTransferShown.current = true;
       const last = session.messages[session.messages.length - 1];
       setThatsItCopy(last?.sender === 'me' ? tRef.current('thatsIt.sent') : tRef.current('thatsIt.received'));
@@ -279,12 +313,12 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
       if (e.key === 'Escape') {
         setShowAttachmentMenu(false);
         setShowConnectionDetails(false);
-        setConfirmClose(false);
+        if (selectMode) exitSelectMode();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [selectMode]);
   const MAX_ATTACHMENTS = 20;
   // Stage one or more files (menu pick or drag-drop) into the composer strip.
   // Per-file limits with honest messages: images above 100 MB can't preview
@@ -358,20 +392,45 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   // are left untouched and go into the message normally.
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const items = e.clipboardData?.items;
-    if (!items) return;
-    const files: File[] = [];
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      if (item.kind !== 'file') continue;
-      const f = item.getAsFile();
-      if (f && f.size > 0) files.push(f);
+    if (items) {
+      const files: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind !== 'file') continue;
+        const f = item.getAsFile();
+        if (f && f.size > 0) files.push(f);
+      }
+      if (files.length > 0) {
+        e.preventDefault();
+        haptic(8);
+        // Classification happens per file inside addFiles (type 'file' promotes
+        // each media file to its right card), so mixed pastes just work.
+        addFiles(files, 'file');
+        return;
+      }
     }
-    if (files.length === 0) return; // not a file paste — text pastes normally
+    // Plain-text paste — splice the RAW clipboard string in ourselves.
+    // Text fidelity: the browser normalizes textarea values (\r\n → \n, per
+    // the HTML spec) and legacy executables could also strip them, so the
+    // default insertion can silently corrupt a Windows CRLF paste before it
+    // is ever sent. clipboardData still holds the original bytes, so we take
+    // over insertion: preventDefault stops the browser's lossy edit, state
+    // holds the exact clipboard string, and the controlled re-render writes
+    // it back to the textarea — exactly what a user edit does.
+    const pastedText = e.clipboardData?.getData('text/plain');
+    if (typeof pastedText !== 'string') return;
     e.preventDefault();
-    haptic(8);
-    // Classification happens per file inside addFiles (type 'file' promotes
-    // each media file to its right card), so mixed pastes just work.
-    addFiles(files, 'file');
+    const ta = e.currentTarget;
+    const start = ta.selectionStart ?? inputText.length;
+    const end = ta.selectionEnd ?? start;
+    const next = inputText.slice(0, start) + pastedText + inputText.slice(end);
+    setInputText(next);
+    // Caret lands after the pasted content (textarea is controlled, so the
+    // DOM value will be replaced by the next render anyway).
+    requestAnimationFrame(() => {
+      const pos = start + pastedText.length;
+      try { ta.setSelectionRange(pos, pos); } catch { /* detached */ }
+    });
   };
   // Drag & drop: classify the first dropped file and stage it like the menu.
   const handleDragEnter = (e: React.DragEvent) => {
@@ -426,6 +485,19 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   };
   const inputBytes = useMemo(() => new TextEncoder().encode(inputText).length, [inputText]);
   const isLargeInput = inputBytes > 50000;
+  // Copy the selected messages verbatim, in chronological order. Uses the
+  // same execCommand fallback as per-message copy.
+  const copySelected = async () => {
+    const texts = session.messages.filter(m => selection.has(m.id)).map(m => m.text).filter(x => x.trim());
+    if (texts.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(texts.join('\n\n'));
+    } catch {
+      setErrorMsg(t('composer.copyFailed'));
+    }
+    setSelectionCopied(true);
+    setTimeout(() => { setSelectionCopied(false); exitSelectMode(); }, 600);
+  };
   const copyAll = async () => {
     const texts = session.messages.map(m => m.text).filter(t => t.trim());
     if (texts.length === 0) return;
@@ -537,15 +609,16 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
         </button>
         <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
           <ThemeToggle />
-          <button
-            data-testid="end-session"
-            onPointerDown={() => setConfirmClose(true)}
-            aria-label={t('common.disconnect')}
-            className="flex items-center justify-center min-w-[40px] min-h-[40px] sm:w-auto sm:px-3 rounded-full sm:rounded-[8px] text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/40 dark:hover:bg-white/[0.06] transition-colors shrink-0"
-          >
-            <LogOut className="w-4 h-4 sm:hidden" />
-            <span className="hidden sm:inline text-[13px] font-medium">{t('common.disconnect')}</span>
-          </button>
+          {/* Two-press inline confirm replaces the old modal: arm fills the
+              pill with a danger countdown, second press disconnects. */}
+          <InlineConfirm
+            testId="end-session"
+            label={t('common.disconnect')}
+            confirmLabel={t('end.tapAgain')}
+            onConfirm={closeSession}
+            className="sm:rounded-[8px]"
+            size="sm"
+          />
         </div>
         <AnimatePresence>
           {showConnectionDetails && (
@@ -566,13 +639,16 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                   <ShieldCheck className="w-4 h-4 text-status-success" />
                   {t('details.secure')}
                 </span>
-                <button
-                  onPointerDown={() => setShowConnectionDetails(false)}
-                  aria-label={t('details.close')}
-                  className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-apple-divider/50 dark:hover:bg-white/10 transition-colors"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <kbd aria-hidden="true" className="hidden sm:inline px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">Esc</kbd>
+                  <button
+                    onPointerDown={() => setShowConnectionDetails(false)}
+                    aria-label={t('details.close')}
+                    className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-apple-divider/50 dark:hover:bg-white/10 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
               {/* The two devices — tap your name to rename; the other device
                   sees the change immediately. */}
@@ -638,7 +714,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                   >
                     <X className="w-3 h-3" />
                   </button>
-                </div>
+                </div>
               )}
               {/* The pairing code lives here, not on screen: it\u2019s only
                   needed if the other device drops and has to rejoin, so it\u2019s
@@ -661,55 +737,6 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           >
             <ShareTextLogo size={16} motion="complete" className="text-white dark:text-night-900" />
             {t('toast.connected')}
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {/* Close confirmation */}
-      <AnimatePresence>
-        {confirmClose && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/40 dark:bg-black/60 flex items-end sm:items-center justify-center p-4 sm:p-6"
-            onPointerDown={() => setConfirmClose(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 24, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 24, scale: 0.97 }}
-              transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="w-full max-w-sm bg-white dark:bg-surface-dark rounded-[20px] p-6 shadow-2xl text-center"
-              ref={endSessionTrapRef}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="end-session-heading"
-            >
-              <h3 id="end-session-heading" className="text-[18px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">{t('end.title')}</h3>
-              <p className="text-[14px] text-apple-ink-muted leading-relaxed mb-6">
-                {t('end.body')}
-              </p>
-              <div className="flex flex-col gap-2">
-                <button
-                  ref={keepSessionRef}
-                  data-testid="end-session-cancel"
-                  onPointerDown={() => setConfirmClose(false)}
-                  style={{ touchAction: 'manipulation' }}
-                  className="w-full py-3.5 bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white rounded-[14px] text-[15px] font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
-                >
-                  {t('end.keep')}
-                </button>
-                <button
-                  data-testid="end-session-confirm"
-                  onPointerDown={closeSession}
-                  style={{ touchAction: 'manipulation' }}
-                  className="w-full py-3.5 bg-status-danger hover:bg-[#e0352b] text-white rounded-[14px] text-[15px] font-semibold transition-colors active:scale-[0.98] min-h-[48px]"
-                >
-                  {t('common.disconnect')}
-                </button>
-              </div>
-            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -806,14 +833,34 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 </div>
               )}
               <AnimatePresence initial={false}>
-                {session.messages.map((msg, idx) => (
-                  <MessageCard
-                    key={msg.id}
-                    msg={msg}
-                    isGroupStart={idx === 0 || session.messages[idx - 1].sender !== msg.sender}
-                    isGroupEnd={idx === session.messages.length - 1 || session.messages[idx + 1].sender !== msg.sender}
-                  />
-                ))}
+                {session.messages.map((msg, idx) => {
+                  // Date separators: a quiet chip between days. Today is the
+                  // common case (no separator at all); Yesterday and older
+                  // dates get an honest localized label.
+                  const showSep = idx === 0 || dateKeyOf(session.messages[idx - 1].timestamp) !== dateKeyOf(msg.timestamp);
+                  const sepKey = dateKeyOf(msg.timestamp);
+                  const sepLabel = sepKey === todayKey ? t('time.today') : sepKey === yesterdayKey ? t('time.yesterday') : new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' }).format(msg.timestamp);
+                  return (
+                    <React.Fragment key={msg.id}>
+                      {showSep && (
+                        <div aria-hidden="true" className="flex justify-center mt-4 mb-1">
+                          <span className="px-3 py-1 rounded-full bg-black/[0.04] dark:bg-white/[0.06] text-[11px] font-semibold tracking-wide text-apple-ink-muted/80 dark:text-white/45">
+                            {sepLabel}
+                          </span>
+                        </div>
+                      )}
+                      <MessageCard
+                        msg={msg}
+                        isGroupStart={idx === 0 || session.messages[idx - 1].sender !== msg.sender}
+                        isGroupEnd={idx === session.messages.length - 1 || session.messages[idx + 1].sender !== msg.sender}
+                        selectMode={selectMode}
+                        selected={selection.has(msg.id)}
+                        onToggleSelect={() => toggleSelected(msg.id)}
+                        onLongPressStart={enterSelectMode}
+                      />
+                    </React.Fragment>
+                  );
+                })}
               </AnimatePresence>
             </>
           )}
@@ -833,6 +880,42 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>
+        {/* Selection-mode floating bar (bencho selection list): count, copy,
+            exit. Sits over the message area, never blocking the composer. */}
+        <AnimatePresence>
+          {selectMode && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+              role="toolbar"
+              aria-label={t('select.title')}
+              data-testid="selection-bar"
+              className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 px-1.5 py-1.5 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 shadow-float"
+            >
+              <span className="pl-2.5 pr-1 text-[13px] font-semibold whitespace-nowrap">
+                {selectionCopied ? t('select.copied') : t('select.selectedCount', { count: selection.size })}
+              </span>
+              <button
+                type="button"
+                onClick={copySelected}
+                disabled={selection.size === 0}
+                className="flex items-center gap-1.5 px-3 py-2 min-h-[36px] rounded-full bg-white/15 dark:bg-black/10 text-[12.5px] font-semibold disabled:opacity-40 active:scale-95 transition-motion"
+              >
+                <Copy className="w-3.5 h-3.5" /> {t('select.copySelected')}
+              </button>
+              <button
+                type="button"
+                onClick={exitSelectMode}
+                aria-label={t('select.clear')}
+                className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-white/15 dark:hover:bg-black/10 active:scale-95 transition-motion"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {dragOver && (
           <div className="absolute inset-0 z-20 m-2 rounded-[20px] border-2 border-dashed border-apple-blue dark:border-azure-400 bg-apple-blue/10 dark:bg-azure-500/10 pointer-events-none flex items-center justify-center">
             <div className="flex flex-col items-center gap-2 px-8 py-6 bg-white dark:bg-surface-dark rounded-[20px] border border-apple-blue/20 dark:border-azure-400/20">
@@ -864,6 +947,17 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
               </motion.div>
             )}
           </AnimatePresence>
+          {/* Payload size readout — appears once the composer holds ≥1 KB so
+              multi-KB pastes get honest feedback; ≥50 KB marks a large
+              payload (it will travel chunked over the wire). */}
+          {inputText.length >= 1024 && (
+            <div className="hidden sm:flex items-center justify-end gap-1.5 text-[11px] font-medium text-apple-ink-muted/70 dark:text-white/40 px-1" aria-live="polite">
+              {isLargeInput && (
+                <span className="text-[#8b7cf6] dark:text-[#a78bfa] font-semibold">{t('composer.largePayload')}</span>
+              )}
+              <span className={cn('tnum', isLargeInput && 'font-semibold')}>{formatBytes(inputBytes)}</span>
+            </div>
+          )}
           <div className="relative">
             <input type="file" ref={imageInputRef} accept="image/*" multiple className="hidden" onChange={(e) => handleFileSelect(e, 'image')} />
             <input type="file" ref={videoInputRef} accept="video/*" multiple className="hidden" onChange={(e) => handleFileSelect(e, 'video')} />

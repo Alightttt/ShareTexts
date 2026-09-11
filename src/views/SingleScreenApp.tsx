@@ -24,6 +24,8 @@ import { LiveCodeInput } from '../components/LiveCodeInput';
 import { AnimatedIcon } from '../components/AnimatedIcon';
 import { SendCircleIcon, ReceiveCircleIcon } from '../components/TransferIcons';
 import { TactileButton } from '../components/TactileButton';
+import { InlineConfirm } from '../components/InlineConfirm';
+import { CommandBar, CommandBarChip } from '../components/CommandBar';
 import { signalingConfigIssue } from '../lib/socket';
 import { useI18n } from '../lib/i18n';
 import { LanguageMenu } from '../components/LanguageMenu';
@@ -143,6 +145,9 @@ export function SingleScreenApp() {
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState('');
   const [dismissedNameNotice, setDismissedNameNotice] = useState(false);
+  // ⌘K command bar — shared open state between the global hotkey (inside
+  // CommandBar) and the header chip (here).
+  const [cmdOpen, setCmdOpen] = useState(false);
 
   /* --- device name editing --- */
   const startEditName = () => {
@@ -297,6 +302,7 @@ export function SingleScreenApp() {
           <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>
         </div>
         <div className="flex items-center gap-1">
+          <CommandBarChip onClick={() => setCmdOpen(true)} />
           <LanguageMenu />
           <a href="/docs" className="min-w-[40px] min-h-[40px] flex items-center justify-center -mx-[5px] -my-[10px] text-[13px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.docs')}</a>
           <ThemeToggle />
@@ -534,9 +540,14 @@ export function SingleScreenApp() {
                     {session.connectionType === 'relay' ? t('conn.relay') : session.connectionType === 'local' ? t('conn.local') : session.connectionType === 'direct' ? t('conn.direct') : t('common.connected')}
                   </span>
                 </div>
-                <button onClick={handleDisconnect} className="min-h-[44px] flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold text-status-danger/80 hover:text-status-danger hover:bg-status-danger/8 transition-colors active:scale-95">
-                  <LogOut className="w-3 h-3" /> {t('common.disconnect')}
-                </button>
+                <InlineConfirm
+                  testId="end-session"
+                  label={t('common.disconnect')}
+                  confirmLabel={t('end.tapAgain')}
+                  onConfirm={handleDisconnect}
+                  className="text-status-danger/80 hover:text-status-danger"
+                  size="sm"
+                />
               </div>
 
               {/* Quiet guidance — what the right pane is for */}
@@ -711,6 +722,7 @@ export function SingleScreenApp() {
   /* ---------------------------------------------------------------- */
   return (
     <div className="h-dvh lg:h-dvh overflow-hidden bg-apple-canvas dark:bg-[#141024] dot-bg">
+      <CommandBar open={cmdOpen} onOpenChange={setCmdOpen} />
       {/* Only the ACTIVE layout is mounted — the other branch stays unmounted
           so components (ChatView, composer, pairing input) exist exactly once
           in the DOM instead of twice with one hidden copy. */}
@@ -765,6 +777,7 @@ export function SingleScreenApp() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/50 dark:bg-black/70 flex items-center justify-center p-4" onClick={() => setShowQRScan(false)}>
             <motion.div ref={qrScanTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[360px] bg-white dark:bg-[#251b40] rounded-[24px] p-6 shadow-2xl relative" role="dialog" aria-modal="true" aria-label={t('receive.scan')}>
               <button onClick={() => setShowQRScan(false)} className="absolute top-3 right-3 min-w-[44px] min-h-[44px] rounded-full bg-apple-parchment dark:bg-white/5 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors z-10" aria-label={t('common.close')}><X className="w-4 h-4" /></button>
+              <kbd aria-hidden="true" className="hidden sm:inline absolute top-5 right-16 px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-white/10 bg-white/60 dark:bg-white/5 text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">Esc</kbd>
               <h3 className="text-[16px] font-semibold text-apple-ink dark:text-white mb-2">{t('qr.scan.title')}</h3>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/50 mb-4">{t('qr.scan.body')}</p>
               <Suspense fallback={<div className="w-full h-[280px] flex items-center justify-center rounded-[16px] bg-apple-parchment dark:bg-white/5 text-[13px] text-apple-ink-muted">{t('qr.scan.loading')}</div>}>
@@ -786,6 +799,7 @@ export function SingleScreenApp() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/50 dark:bg-black/70 flex items-center justify-center p-6" onClick={() => setShowQROverlay(false)}>
             <motion.div ref={qrDisplayTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[340px] bg-white dark:bg-[#251b40] rounded-[24px] p-6 shadow-2xl text-center relative" role="dialog" aria-modal="true" aria-label={t('qr.display.title')}>
               <button onClick={() => setShowQROverlay(false)} className="absolute top-3 right-3 min-w-[44px] min-h-[44px] rounded-full bg-apple-parchment dark:bg-white/5 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors" aria-label={t('common.close')}><X className="w-4 h-4" /></button>
+              <kbd aria-hidden="true" className="hidden sm:inline absolute top-5 right-16 px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-white/10 bg-white/60 dark:bg-white/5 text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">Esc</kbd>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/60 mb-4 leading-relaxed">
                 {(() => { const parts = t('qr.display.body', { receive: '\u0000' }).split('\u0000'); return (<>{parts[0]}<strong className="text-apple-ink dark:text-white">{t('qr.display.receive')}</strong>{parts[1]}</>); })()}
               </p>

@@ -220,6 +220,31 @@ const en = {
   'code.verifying': 'Verifying code…',
 
   // ── image viewer ───────────────────────────────────────────────────
+
+  // ── command bar (⌘K) ─────────────────────────────────────────────
+  'command.title': 'ShareText commands',
+  'command.placeholder': 'Type a command…',
+  'command.openAria': 'Open command bar (Ctrl+K)',
+  'command.noResults': 'No matching commands',
+  'command.group.actions': 'Actions',
+  'command.group.room': 'Room',
+  'command.group.settings': 'Settings',
+  'command.darkMode': 'Switch to dark theme',
+  'command.lightMode': 'Switch to light theme',
+
+  // ── date separators / composer size hint ──────────────────────────
+  'time.today': 'Today',
+  'time.yesterday': 'Yesterday',
+  'composer.largePayload': 'Large text — it will transfer in chunks',
+
+  // ── inline confirm / message selection ────────────────────────────
+  'end.tapAgain': 'Tap again to disconnect',
+  'select.title': 'Select messages',
+  'select.selectedCount': '{count} selected',
+  'select.copySelected': 'Copy selected',
+  'select.copied': 'Copied',
+  'select.aria': 'Select message',
+  'select.clear': 'Clear selection',
 };
 
 export default en;

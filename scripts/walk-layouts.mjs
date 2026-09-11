@@ -166,12 +166,13 @@ async function main() {
   console.log('  small targets M:', JSON.stringify(smallM));
   console.log('  small targets A:', JSON.stringify(smallA));
 
-  // Disconnect from the room header → confirm sheet → "That's it." end screen
-  // → 'Start a transfer' CTA → idle. The end screen is the designed closure
-  // moment (privacy message + fresh start), not a bug.
-  await M.getByRole('button', { name: 'Disconnect' }).first().click();
-  await M.getByTestId('end-session-confirm').waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
-  await M.getByTestId('end-session-confirm').click();
+  // Disconnect from the room header → two-press inline confirm (arm, then
+  // confirm) → "That's it." end screen → 'Start a transfer' CTA → idle.
+  // The end screen is the designed closure moment (privacy message + fresh
+  // start), not a bug.
+  const disconnectBtn = M.getByTestId('end-session').first();
+  await disconnectBtn.click(); // arms the inline confirm
+  await disconnectBtn.click(); // confirms within the countdown
   await sleep(1200);
   const endedShown = await M.evaluate(() => document.body.innerText.includes("That's it."));
   ok(endedShown, 'manual close shows the designed end screen');

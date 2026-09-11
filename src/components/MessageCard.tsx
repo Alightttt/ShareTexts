@@ -6,7 +6,7 @@
  * The card owns nothing about the transport: it renders `ChatMessage` state
  * and calls back into SessionContext for retry/cancel/send actions.
  */
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { useSession } from '../lib/SessionContext';
 import {
@@ -19,6 +19,7 @@ import { cn, formatBytes, sanitizeFilename } from '../lib/utils';
 import { useI18n } from '../lib/i18n';
 import type { I18nApi } from '../lib/i18n';
 import { ChatMessage, Attachment } from '../types';
+import { looksLikeStructuredText, maxLineLength, sliceAtGraphemeBoundary, hasStrongRtl } from '../lib/textFidelity';
 
 const LARGE_TEXT_THRESHOLD = 8000; // chars
 const LARGE_TEXT_PREVIEW = 1400;
@@ -50,6 +51,69 @@ async function toPngClipboardBlob(blob: Blob): Promise<Blob | null> {
 }
 
 const timeOf = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+/**
+ * Selection ring for selection mode (bencho selection list): an absolutely
+ * positioned ring on the message edge; filled when selected. Tap target is
+ * the whole bubble wrapper (handled in the render paths via onPointerDown).
+ */
+function SelectionRing({ selected }: { selected: boolean }) {
+  return (
+    <motion.span
+      initial={false}
+      animate={{ scale: selected ? 1 : 0.85, opacity: 1 }}
+      transition={{ type: 'spring', bounce: 0.45, duration: 0.35 }}
+      className={cn(
+        'absolute top-1/2 -translate-y-1/2 w-[22px] h-[22px] rounded-full border-2 flex items-center justify-center shrink-0 pointer-events-none',
+        selected
+          ? 'bg-[#8b7cf6] border-[#8b7cf6]'
+          : 'bg-transparent border-apple-ink-muted/40 dark:border-white/35'
+      )}
+    >
+      {selected && (
+        <motion.span
+          initial={{ scale: 0.3, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', bounce: 0.55, duration: 0.35 }}
+        >
+          <Check className="w-3 h-3 text-white" strokeWidth={3.2} />
+        </motion.span>
+      )}
+    </motion.span>
+  );
+}
+
+/** Long-press detector shared by both render paths: 500ms hold (touch or
+ *  mouse) fires onLongPressStart once; any move >8px cancels (a scroll, not
+ *  a hold). The click right after a long-press is swallowed so it can't
+ *  trigger whatever the tap would have (viewer open, etc.). */
+function useLongPress(onLongPress?: (id: string) => void, id?: string) {
+  const timerRef = useRef<number | null>(null);
+  const firedRef = useRef(false);
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+  const clear = () => {
+    if (timerRef.current !== null) { clearTimeout(timerRef.current); timerRef.current = null; }
+    startRef.current = null;
+  };
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (!onLongPress || id === undefined) return;
+    firedRef.current = false;
+    startRef.current = { x: e.clientX, y: e.clientY };
+    timerRef.current = window.setTimeout(() => {
+      firedRef.current = true;
+      onLongPress(id);
+    }, 500);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (timerRef.current === null || !startRef.current) return;
+    if (Math.hypot(e.clientX - startRef.current.x, e.clientY - startRef.current.y) > 8) clear();
+  };
+  const onPointerUp = () => clear();
+  const onClickCapture = (e: React.MouseEvent) => {
+    if (firedRef.current) { e.preventDefault(); e.stopPropagation(); firedRef.current = false; }
+  };
+  return { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: clear, onClickCapture };
+}
 
 /** Human short format from a MIME type, for the "Original · …" metadata chip. */
 function shortFormat(mime?: string): string {
@@ -174,9 +238,15 @@ export interface MessageCardProps {
   msg: ChatMessage;
   isGroupStart?: boolean;
   isGroupEnd?: boolean;
+  /** Selection mode (bencho selection list) — owned by ChatView. */
+  selectMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
+  /** Long-press enters selection mode with THIS message pre-selected. */
+  onLongPressStart?: (messageId: string) => void;
 }
 
-export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = true, isGroupEnd = true }) => {
+export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = true, isGroupEnd = true, selectMode = false, selected = false, onToggleSelect, onLongPressStart }) => {
   const { t } = useI18n();
   const { retryTransfer, retryText, cancelTransfer } = useSession();
   const isMe = msg.sender === 'me';
@@ -192,8 +262,18 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
   // preview box.
   const [imgMeta, setImgMeta] = useState<{ w: number; h: number } | null>(null);
   const [decodeFailed, setDecodeFailed] = useState(false);
+  // Text fidelity: the text is transferred byte-for-byte (AES-GCM over UTF-8,
+  // no server rewrite). The choices here are DISPLAY-only — nothing ever
+  // rewrites msg.text:
+  //   - structured content (code, aligned tables) renders monospace with
+  //     horizontal scroll so columns keep their shape
+  //   - RTL gets a dir hint; CSS bidi (plaintext) handles alignment
+  //   - the >8k-char preview cuts at a grapheme boundary, never mid-emoji
+  const isStructured = useMemo(() => looksLikeStructuredText(msg.text), [msg.text]);
+  const isWide = useMemo(() => maxLineLength(msg.text) > 80, [msg.text]);
+  const isRtl = useMemo(() => hasStrongRtl(msg.text), [msg.text]);
   const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
-  const preview = isLargeText && !expanded ? msg.text.slice(0, LARGE_TEXT_PREVIEW) : msg.text;
+  const preview = isLargeText && !expanded ? sliceAtGraphemeBoundary(msg.text, LARGE_TEXT_PREVIEW) : msg.text;
   const handleCopy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -242,6 +322,16 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
     document.body.removeChild(link);
   };
   const [shared, setShared] = useState(false);
+  // Selection mode: long-press any bubble to enter (this message becomes the
+  // first selected); tap toggles while selecting — but a tap on one of the
+  // bubble's own buttons (Copy/Retry/…) stays a button press, never a
+  // selection toggle. The hook is created once, shared by both render paths.
+  const longPress = useLongPress(selectMode ? undefined : onLongPressStart, msg.id);
+  const handleBubbleTap = (e: React.MouseEvent) => {
+    if (!selectMode) return;
+    if ((e.target as HTMLElement).closest('button')) return;
+    onToggleSelect?.();
+  };
   // One-click Share: native sheet when the platform supports it (with the
   // actual file bytes attached), otherwise it degrades to a download — the
   // button is never a dead end.
@@ -282,13 +372,22 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: 'spring', bounce: 0.15, duration: 0.3 }}
         className={cn(
-          "flex w-full",
-          isMe ? "justify-end" : "justify-start",
+          "flex w-full items-center gap-2",
+          // Row-reverse for own messages puts the selection ring OUTSIDE the
+          // bubble (right side) while the bubble stays flush right, exactly
+          // as the plain justify-end layout renders without a ring.
+          isMe ? "flex-row-reverse justify-start" : "justify-start",
           isGroupStart ? "mt-3" : "mt-0.5",
+          selectMode && "px-1"
         )}
+        {...longPress}
+        onClickCapture={selectMode ? undefined : longPress.onClickCapture}
+        onClick={selectMode ? handleBubbleTap : undefined}
       >
+        {selectMode && <SelectionRing selected={selected} />}
         <div className={cn(
-          "max-w-[85%] sm:max-w-[65%] px-[14px] py-[10px] rounded-[18px]",
+          "max-w-[85%] sm:max-w-[65%] px-[14px] py-[10px] rounded-[18px] transition-shadow",
+          selected && "ring-2 ring-[#8b7cf6]/60",
           isMe
             // Sent items carry a whisper of the brand so the eye instantly
             // separates what left this device from what arrived.
@@ -299,7 +398,19 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
           isMe && !isGroupEnd && "rounded-br-[14px]",
           !isMe && !isGroupEnd && "rounded-bl-[14px]",
         )}>
-          <div className="text-[15.5px] whitespace-pre-wrap leading-relaxed break-words">
+          <div
+            dir={isRtl ? 'rtl' : undefined}
+            style={{ unicodeBidi: 'plaintext' }}
+            className={cn(
+              "text-[15.5px] whitespace-pre-wrap leading-relaxed",
+              isStructured
+                ? // Code / table shape: monospace + pre + horizontal scroll.
+                  // overflow-x keeps columns aligned instead of wrapping and
+                  // mangling the table the user pasted. break-words is OFF here.
+                  "font-mono text-[13px] whitespace-pre overflow-x-auto"
+                : "break-words",
+            )}
+          >
             {preview}
             {isLargeText && !expanded && (
               <button
@@ -390,13 +501,19 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: 'spring', bounce: 0.15, duration: 0.3 }}
       className={cn(
-        "flex w-full",
-        isMe ? "justify-end" : "justify-start",
+        "flex w-full items-center gap-2",
+        isMe ? "flex-row-reverse justify-start" : "justify-start",
         isGroupStart ? "mt-3" : "mt-0.5",
+        selectMode && "px-1"
       )}
+      {...longPress}
+      onClickCapture={selectMode ? undefined : longPress.onClickCapture}
+      onClick={selectMode ? handleBubbleTap : undefined}
     >
+      {selectMode && <SelectionRing selected={selected} />}
       <div className={cn(
-        "flex flex-col gap-0 max-w-[85%] sm:max-w-[65%] w-full",
+        "flex flex-col gap-0 max-w-[85%] sm:max-w-[65%] w-full transition-shadow",
+        selected && "ring-2 ring-[#8b7cf6]/60",
         isMe ? "items-end" : "items-start"
       )}>
         <div className={cn(
@@ -411,9 +528,14 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
           isMe && !isGroupEnd && "rounded-br-[14px]",
           !isMe && !isGroupEnd && "rounded-bl-[14px]",
         )}>
-          {/* Text caption (if any) */}
+          {/* Text caption (if any) — same fidelity rules as text bubbles:
+              dir hint for RTL, no grapheme splitting for huge captions. */}
           {msg.text && (
-            <div className="px-4 py-3 text-[15.5px] whitespace-pre-wrap leading-relaxed break-words text-apple-ink dark:text-white">
+            <div
+              dir={hasStrongRtl(msg.text) ? 'rtl' : undefined}
+              style={{ unicodeBidi: 'plaintext' }}
+              className="px-4 py-3 text-[15.5px] whitespace-pre-wrap leading-relaxed break-words text-apple-ink dark:text-white"
+            >
               {msg.text}
             </div>
           )}
@@ -423,7 +545,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
               {complete ? (
                 <button
                   type="button"
-                  onClick={() => setViewerOpen(true)}
+                  onClick={() => { if (!selectMode) setViewerOpen(true); }}
                   className="block w-full cursor-zoom-in group relative"
                   aria-label={`View ${a.name}`}
                 >

@@ -14,6 +14,7 @@
     "worker:typecheck": "tsc -p worker/tsconfig.json",
     "worker:deploy": "wrangler deploy --config worker/wrangler.toml",
     "worker:test": "node scripts/verify-worker.mjs",
+    "test:fidelity": "node scripts/text-fidelity.mjs",
     "worker:test-live": "node scripts/verify-worker-live.mjs"
   },
   "dependencies": {

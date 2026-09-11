@@ -41,13 +41,7 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
   };
 
   return (
-    <div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.3 }}
-      className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#120e22] p-6 text-center"
-    >
+    <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#120e22] p-6 text-center">
       <ShareTextLogo
         size={56}
         motion={reason === 'expired' ? undefined : 'complete'}
