@@ -80,6 +80,11 @@ const en = {
   'conn.roomOpen': 'Room open — use the panel on the right',
   'connect.title': 'Connecting to your device…',
   'connect.sub': 'This takes a few seconds. Keep both devices open.',
+  'connect.searching': 'Waiting for your other device…',
+  'connect.establishing': 'Devices found — linking…',
+  'connect.linked': 'Devices linked',
+  'connect.thisDevice': 'This device',
+  'connect.otherDevice': 'Other device',
 
   // ── room panel placeholders ────────────────────────────────────────
   'room.title': 'Room',

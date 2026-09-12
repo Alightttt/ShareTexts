@@ -25,6 +25,7 @@ import { AnimatedIcon } from '../components/AnimatedIcon';
 import { SendCircleIcon, ReceiveCircleIcon } from '../components/TransferIcons';
 import { TactileButton } from '../components/TactileButton';
 import { InlineConfirm } from '../components/InlineConfirm';
+import { ConnectHandshake } from '../components/ConnectHandshake';
 import { CommandBar, CommandBarChip } from '../components/CommandBar';
 import { signalingConfigIssue } from '../lib/socket';
 import { useI18n } from '../lib/i18n';
@@ -148,6 +149,15 @@ export function SingleScreenApp() {
   // ⌘K command bar — shared open state between the global hotkey (inside
   // CommandBar) and the header chip (here).
   const [cmdOpen, setCmdOpen] = useState(false);
+  // The QR overlay closes itself once this room links — one dismissal per
+  // room id, so a transient reconnect blip never re-opens it.
+  const qrDismissedForRoomRef = useRef<string | null>(null);
+  // Set when the creator deliberately backs out of the connecting screen.
+  // While set (until the link opens or the room changes) the auto-sync must
+  // not bounce them straight back to 'connecting' — that would make the
+  // escape hatch a lie. The sending panel still shows the live handshake in
+  // place of the code, so nothing is hidden; it just stops taking over.
+  const creatorLeftConnectingRef = useRef(false);
 
   /* --- device name editing --- */
   const startEditName = () => {
@@ -171,15 +181,21 @@ export function SingleScreenApp() {
     if (session.roomId !== everConnectedRoomRef.current) {
       everConnectedRoomRef.current = session.roomId;
       everConnectedRef.current = false;
+      creatorLeftConnectingRef.current = false;
     }
-    if (session.partnerConnected) everConnectedRef.current = true;
+    if (session.partnerConnected) {
+      everConnectedRef.current = true;
+      creatorLeftConnectingRef.current = false;
+    }
     if (session.partnerConnected) setPanelMode('connected');
     // Once the channel has opened for this room, a later partnerConnecting is
     // a reconnect (handled above), never a first connect.
     else if (session.roomId && everConnectedRef.current) setPanelMode('connected');
     // A peer joined (either side) and the channel isn't open yet — the
-    // connecting screen takes over until it is.
-    else if (session.partnerConnecting && session.roomId) setPanelMode('connecting');
+    // connecting screen takes over until it is. The creator can opt out of
+    // this takeover by backing out (creatorLeftConnectingRef); the handshake
+    // still renders inline on their pairing screen.
+    else if (session.partnerConnecting && session.roomId && !creatorLeftConnectingRef.current) setPanelMode('connecting');
     // Transient drop (peer lost the link, tab reloaded, network blip): stay
     // in the room so the reconnect banner + retry live where the transfer
     // was, instead of bouncing the creator back to the pairing screen and
@@ -188,6 +204,34 @@ export function SingleScreenApp() {
     else if (session.roomId && session.isCreator) setPanelMode('sending');
     else if (session.roomId && !session.isCreator) setPanelMode(p => (p === 'connecting' ? 'connecting' : 'receiving'));
     else if (!session.roomId) setPanelMode('idle');
+  }, [session.roomId, session.isCreator, session.partnerConnected, session.partnerConnecting, session.connectionType]);
+
+  // The QR overlay is a pairing tool — the moment the partner is actually
+  // connected it has done its job. Close it automatically so the user never
+  // has to dismiss it themselves while the room is already taking over.
+  useEffect(() => {
+    if (session.partnerConnected && !qrDismissedForRoomRef.current) {
+      qrDismissedForRoomRef.current = session.roomId;
+      setShowQROverlay(false);
+    }
+  }, [session.partnerConnected, session.roomId]);
+
+  // Keep panelMode honest when session flags move without a panel action:
+  //  · creator: peer starts joining → handshake replaces the code screen
+  //  · creator: peer gave up before the link opened → back to the code screen
+  //  · joiner:  code accepted / link re-establishing (incl. post-refresh
+  //             restore) → handshake until the channel actually opens
+  // A settled 'connected' panel is never bounced by this effect — transient
+  // drops keep the room visible with its reconnect banner.
+  useEffect(() => {
+    if (!session.roomId) return;
+    if (session.isCreator) {
+      if (session.partnerConnecting && !creatorLeftConnectingRef.current) setPanelMode(p => (p === 'connected' ? p : 'connecting'));
+      else if (!session.partnerConnected) setPanelMode(p => (p === 'connecting' ? 'sending' : p));
+    } else {
+      const linking = session.partnerConnecting || session.connectionType === 'establishing' || session.connectionType === 'connecting';
+      if (linking) setPanelMode(p => (p === 'connected' ? p : 'connecting'));
+    }
   }, [session.roomId, session.isCreator, session.partnerConnected, session.partnerConnecting, session.connectionType]);
 
   // Focus traps for QR overlays
@@ -257,7 +301,7 @@ export function SingleScreenApp() {
   // screen (the room stays open — the peer can still connect); the joiner
   // abandons and can enter a fresh code.
   const dismissConnecting = useCallback(() => {
-    if (session.isCreator) { setPanelMode('sending'); return; }
+    if (session.isCreator) { creatorLeftConnectingRef.current = true; setPanelMode('sending'); return; }
     createAbortRef.current++;
     setPanelMode('idle'); abandonSession(); setJoinError(null);
   }, [session.isCreator, abandonSession]);
@@ -363,22 +407,25 @@ export function SingleScreenApp() {
               ) : (
                 <>
                   <p className="text-[13px] text-apple-ink-muted dark:text-white/50 font-medium mb-5">{t('create.hint')}</p>
-                  {session.secret && <LiveCodeDisplay secret={session.secret} createdAt={session.createdAt} />}
-                  <AnimatePresence>
-                    {session.partnerConnecting && !session.partnerConnected && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mt-4">
-                        <motion.p
-                          animate={{ opacity: [0.6, 1, 0.6] }}
-                          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-                          className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60 flex items-center gap-2"
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#8b7cf6] animate-pulse" />
-                          {session.connectionType === 'establishing' ? t('create.establishing') : t('create.connecting')}
-                        </motion.p>
+                  {/* The pairing tools (live code + QR/link/copy) make way for
+                      the handshake the moment the other device starts joining:
+                      the story changes from "share this code" to "we're
+                      linking up". They return if the peer drops away. */}
+                  <AnimatePresence mode="wait" initial={false}>
+                    {session.partnerConnecting && !session.partnerConnected ? (
+                      <motion.div key="handshake" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} transition={{ duration: 0.25, ease: EASE }} className="py-3">
+                        <ConnectHandshake phase="connecting" localIcon={isMobileDevice ? 'phone' : 'monitor'} />
+                      </motion.div>
+                    ) : (
+                      <motion.div key="code" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                        {session.secret && <LiveCodeDisplay secret={session.secret} createdAt={session.createdAt} />}
                       </motion.div>
                     )}
                   </AnimatePresence>
-                  <div className="mt-5 space-y-2">
+                  <AnimatePresence initial={false}>
+                    {!session.partnerConnecting && (
+                      <motion.div key="pairing-actions" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                      <div className="mt-5 space-y-2">
                     <button onClick={() => setShowQROverlay(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-[#8b7cf6] hover:bg-[#7c6ce0] text-white rounded-full text-[14px] font-semibold min-h-[48px] transition-all duration-150 active:scale-[0.97] shadow-sm shadow-[#8b7cf6]/20">
                       <QrCode className="w-4 h-4" /> {t('create.showQr')}
                     </button>
@@ -390,7 +437,10 @@ export function SingleScreenApp() {
                       {copiedCode ? <AnimatedIcon animate="check" active><Check className="w-3.5 h-3.5 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="copy"><Copy className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /></AnimatedIcon>}
                       {copiedCode ? t('create.codeCopied') : t('create.copyCode')}
                     </button>
-                  </div>
+                      </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </>
               )}
             </motion.div>
@@ -404,37 +454,37 @@ export function SingleScreenApp() {
                 <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-medium text-status-danger hover:bg-status-danger/10 px-3 py-2 min-h-[40px] rounded-full active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> {t('cancel')}</button>
               </div>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/50 font-medium mb-5">{t('receive.hint')}</p>
-              <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-[#8b7cf6] hover:bg-[#7c6ce0] text-white rounded-full text-[14px] font-semibold min-h-[48px] transition-all duration-150 active:scale-[0.97] shadow-sm shadow-[#8b7cf6]/20">
-                <QrCode className="w-4 h-4" /> {t('receive.scan')}
-              </button>
-              <div className="p-6 bg-white dark:bg-[#251b40] border border-apple-divider dark:border-white/10 rounded-[20px] shadow-card">
-                <LiveCodeInput onComplete={handleCodeComplete} isJoining={isJoining} error={joinError} />
-              </div>
-              <p className="mt-4 text-[12px] text-apple-ink-muted/60 dark:text-white/35 text-center">{t('receive.note')}</p>
+              {/* While the code verifies, the entry UI steps aside for the
+                  handshake — the same scene the creator sees, so both devices
+                  tell one story. */}
+              <AnimatePresence mode="wait" initial={false}>
+                {isJoining ? (
+                  <motion.div key="joining-handshake" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} transition={{ duration: 0.25, ease: EASE }} className="py-3">
+                    <ConnectHandshake phase="connecting" localIcon={isMobileDevice ? 'phone' : 'monitor'} />
+                  </motion.div>
+                ) : (
+                  <motion.div key="code-entry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                    <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-[#8b7cf6] hover:bg-[#7c6ce0] text-white rounded-full text-[14px] font-semibold min-h-[48px] transition-all duration-150 active:scale-[0.97] shadow-sm shadow-[#8b7cf6]/20">
+                      <QrCode className="w-4 h-4" /> {t('receive.scan')}
+                    </button>
+                    <div className="p-6 bg-white dark:bg-[#251b40] border border-apple-divider dark:border-white/10 rounded-[20px] shadow-card">
+                      <LiveCodeInput onComplete={handleCodeComplete} isJoining={isJoining} error={joinError} />
+                    </div>
+                    <p className="mt-4 text-[12px] text-apple-ink-muted/60 dark:text-white/35 text-center">{t('receive.note')}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
 
           {/* ── CONNECTING: code accepted, channel opening ────────── */}
           {panelMode === 'connecting' && (
             <motion.div key="connecting" data-testid="connecting-panel" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto text-center">
-              <div className="flex flex-col items-center py-8">
-                {/* Mobile carries the brand-mark connecting motion; on desktop
-                    the room panel already shows the animated beam, so the
-                    hero stays calm and points at it. */}
-                {!isDesktopLayout && (
-                  <ShareTextLogo size={20} motion="connecting" className="text-azure-600 dark:text-azure-400 mb-4" />
-                )}
-                {!isDesktopLayout && (
-                  <h2 className="text-[22px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em] mb-2">{t('connect.title')}</h2>
-                )}
-                {isDesktopLayout ? (
-                  <>
-                    <p className="text-[15px] font-semibold text-apple-ink/70 dark:text-white/50 mb-1.5">{t('conn.roomOpen')}</p>
-                    <p className="text-[12.5px] text-apple-ink-muted/50 dark:text-white/25 max-w-[280px] leading-relaxed">{t('connect.sub')}</p>
-                  </>
-                ) : (
-                  <p className="text-[13px] text-apple-ink-muted dark:text-white/50 font-medium leading-relaxed max-w-[32ch]">{t('connect.sub')}</p>
-                )}
+              <div className="flex flex-col items-center py-6">
+                {/* The handshake IS the connecting screen: radar → convergence
+                    → locked link, staged exactly like the transfer that
+                    follows. Works identically on mobile and desktop. */}
+                <ConnectHandshake phase="connecting" localIcon={isMobileDevice ? 'phone' : 'monitor'} />
                 {/* Escape hatch: the creator returns to their pairing screen
                     (the room stays open); the joiner abandons and can enter a
                     fresh code. Never a trap. */}
@@ -678,26 +728,33 @@ export function SingleScreenApp() {
               transition={{ duration: 0.2, ease: EASE }}
               className="h-full flex flex-col items-center justify-center text-center px-8 flex-1"
             >
-              {/* Device pair illustration */}
-              <div className="mb-5">
-                <DevicePair
-                  state={panelMode === 'sending' && session.partnerConnecting ? 'connecting' : panelMode === 'idle' ? 'idle' : 'connecting'}
-                />
-              </div>
+              {/* Connecting shows the same handshake scene as the left half —
+                  one story on both panes. Other states keep the quiet pair
+                  illustration with their status copy. */}
+              {panelMode === 'connecting' ? (
+                <div className="mb-4">
+                  <ConnectHandshake phase="connecting" localIcon={isMobileDevice ? 'phone' : 'monitor'} />
+                </div>
+              ) : (
+                <>
+                  {/* Device pair illustration */}
+                  <div className="mb-5">
+                    <DevicePair state={panelMode === 'idle' ? 'idle' : 'connecting'} />
+                  </div>
 
-              {/* State-specific messaging */}
-              <p className="text-[15px] font-semibold text-apple-ink/70 dark:text-white/50 mb-1.5">
-                {panelMode === 'idle' && t('room.ready')}
-                {panelMode === 'sending' && (isCreating && !session.secret ? t('create.creating') : t('room.created'))}
-                {panelMode === 'receiving' && t('room.waiting')}
-                {panelMode === 'connecting' && t('connect.title')}
-              </p>
-              <p className="text-[12.5px] text-apple-ink-muted/50 dark:text-white/25 max-w-[260px] leading-relaxed">
-                {panelMode === 'idle' && t('room.idleHint')}
-                {panelMode === 'sending' && (isCreating && !session.secret ? t('room.setup') : t('room.sendHint'))}
-                {panelMode === 'receiving' && t('room.receiveHint')}
-                {panelMode === 'connecting' && t('connect.sub')}
-              </p>
+                  {/* State-specific messaging */}
+                  <p className="text-[15px] font-semibold text-apple-ink/70 dark:text-white/50 mb-1.5">
+                    {panelMode === 'idle' && t('room.ready')}
+                    {panelMode === 'sending' && (isCreating && !session.secret ? t('create.creating') : t('room.created'))}
+                    {panelMode === 'receiving' && t('room.waiting')}
+                  </p>
+                  <p className="text-[12.5px] text-apple-ink-muted/50 dark:text-white/25 max-w-[260px] leading-relaxed">
+                    {panelMode === 'idle' && t('room.idleHint')}
+                    {panelMode === 'sending' && (isCreating && !session.secret ? t('room.setup') : t('room.sendHint'))}
+                    {panelMode === 'receiving' && t('room.receiveHint')}
+                  </p>
+                </>
+              )}
               {/* A compact three-step guide keeps the room panel informative
                   while disconnected, instead of a large empty surface. */}
               {panelMode === 'idle' && (

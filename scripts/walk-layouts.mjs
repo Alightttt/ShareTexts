@@ -124,10 +124,13 @@ async function main() {
   await sleep(300);
   ok(!(await M.locator('body').innerText()).includes('Both devices had the same name'), 'notice dismisses');
 
-  // Tap-to-edit name in the sheet, Enter saves, A sees it
+  // Tap-to-edit name in the sheet, Enter saves, A sees it.
+  // Enter goes through page.keyboard (focus is already on the input after
+  // fill) — a locator press can lose an element-identity race when React
+  // re-renders the sheet mid-press.
   await M.getByRole('button', { name: /This device is named/ }).click();
   await M.getByLabel('Rename this device').fill('Walk Phone');
-  await M.getByLabel('Rename this device').press('Enter');
+  await M.keyboard.press('Enter');
   await sleep(1500);
   ok((await A.locator('body').innerText()).includes('Walk Phone'), 'rename propagates to A live');
   await M.getByLabel('Close connection details').click().catch(() => {});
