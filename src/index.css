@@ -6,23 +6,26 @@
 @theme {
   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      SHARETEXT DESIGN SYSTEM
-     A quiet, precise utility. Not a SaaS template.
-     Violet = action/connection (Send, pairing). Green = received.
-     Amber = waiting/warning. Red = error. Neutral = information.
+     Warm paper in light, true neutral dark at night. One accent: iOS blue,
+     reserved for actions and links. Ink (near-black) carries primary CTAs.
+     Green = success/connected. Amber = waiting/warning. Red = error.
      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  /* System serif-free stack: the platform's own UI font. No webfont, no
+     fingerprint — the app should feel native on every OS it runs on. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
   /* ── Brand ──────────────────────────────────────────────────────────── */
-  --color-brand: #8b7cf6;
-  --color-brand-strong: #7c6ce0;
-  --color-brand-light: #f0f4ff;
-  --color-brand-dark: #94a8f8;
+  --color-brand: #007aff;
+  --color-brand-strong: #0066d6;
+  --color-brand-light: #eef6ff;
+  --color-brand-dark: #4da3ff;
 
   /* ── Text ───────────────────────────────────────────────────────────── */
-  --color-text: #241d14;
-  --color-text-secondary: #6f665a;
-  --color-text-muted: #a89d8b;
+  --color-text: #211f1a;
+  --color-text-secondary: #68655e;
+  --color-text-muted: #a29d92;
 
   /* ── Surface ────────────────────────────────────────────────────────── */
   --color-bg: #f6f0e6;
@@ -46,28 +49,28 @@
   --color-error-light: #ffeaea;
 
   /* ── Focus ──────────────────────────────────────────────────────────── */
-  --color-focus: #8b7cf6;
+  --color-focus: #007aff;
 
-  /* ── Semantic aliases (warm cream + violet) ──────────────────────────── */
+  /* ── Semantic aliases (warm paper + blue accent) ─────────────────────── */
   --color-apple-canvas: #f6f0e6;
   --color-apple-parchment: #f0e7d6;
-  --color-apple-ink: #241d14;
-  --color-apple-ink-muted: #6f665a;
-  --color-apple-blue: #8b7cf6;
-  --color-apple-blue-focus: #7c6de0;
+  --color-apple-ink: #211f1a;
+  --color-apple-ink-muted: #68655e;
+  --color-apple-blue: #007aff;
+  --color-apple-blue-focus: #0066d6;
   --color-apple-divider: #e4d9c5;
   --color-apple-hairline: #d9cdb6;
-  --color-azure-50: #f4f0fb;
-  --color-azure-100: #eae2f9;
-  --color-azure-200: #d6c8f4;
-  --color-azure-400: #ab92f8;
-  --color-azure-500: #9380f4;
-  --color-azure-600: #8b7cf6;
-  --color-azure-700: #7765e6;
-  --color-azure-800: #5b4ec9;
-  --color-azure-900: #453aa3;
+  --color-azure-50: #eef6ff;
+  --color-azure-100: #e0f0ff;
+  --color-azure-200: #b8dfff;
+  --color-azure-400: #4da3ff;
+  --color-azure-500: #1e90ff;
+  --color-azure-600: #007aff;
+  --color-azure-700: #0066d6;
+  --color-azure-800: #0050aa;
+  --color-azure-900: #003a7a;
 
-  /* ── Warm accent (peach sunrise glow) ────────────────────────────────── */
+  /* ── Warm accent (kept for heritage accents; use sparingly) ──────────── */
   --color-peach-100: #ffead9;
   --color-peach-200: #ffd9bd;
   --color-peach-300: #ffc09a;
@@ -78,14 +81,15 @@
   --color-status-warning-ink: #c77a00;
   --color-status-warning-ink-dark: #ffb340;
   --color-status-danger: #ff3b30;
-  --color-surface-dark: #1b1430;
-  --color-surface-dark-2: #241b3d;
-  --color-apple-tile-1: #1b1430;
-  --color-apple-tile-2: #241b3d;
-  --color-apple-tile-3: #31275a;
-  --color-night-800: #19122c;
-  --color-night-900: #140f26;
-  --color-night-950: #0f0b1c;
+  /* Dark surfaces: true neutral graphite — no hue cast. */
+  --color-surface-dark: #1a1a1e;
+  --color-surface-dark-2: #212126;
+  --color-apple-tile-1: #1a1a1e;
+  --color-apple-tile-2: #212126;
+  --color-apple-tile-3: #2c2c33;
+  --color-night-800: #1b1b1f;
+  --color-night-900: #131316;
+  --color-night-950: #0e0e11;
 
   /* ── Radius ─────────────────────────────────────────────────────────── */
   --radius-xs: 8px;
@@ -102,7 +106,7 @@
   --shadow-device: 0 4px 20px -6px rgb(0 0 0 / 0.18);
   --shadow-inset: inset 0 1px 2px rgb(0 0 0 / 0.05);
 
-    /* ── Easing ─────────────────────────────────────────────────────────── */
+  /* ── Easing ─────────────────────────────────────────────────────────── */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
@@ -113,7 +117,8 @@
   --motion-slow: 350ms;
 
   /* ── Tactile surfaces (theme-aware button gradients) ────────────────── */
-  --st-btn-secondary-grad: linear-gradient(180deg, #ffffff 0%, #f3ecf8 55%, #e9e0f3 100%);
+  --st-btn-primary-grad: linear-gradient(180deg, #3a3833 0%, #211f1a 55%, #17150f 100%);
+  --st-btn-secondary-grad: linear-gradient(180deg, #ffffff 0%, #f4f1ea 55%, #ebe6dc 100%);
 }
 
 @layer base {
@@ -132,7 +137,7 @@
   }
 
   html.dark body {
-    background: #141024;
+    background: #131315;
     color: white;
   }
 
@@ -143,38 +148,39 @@
 
   /* ── Dark mode ────────────────────────────────────────────────────── */
   html.dark {
-    --color-bg: #141024;
-    --color-bg-secondary: #1a1430;
-    --color-bg-elevated: #221a3d;
-    --color-surface: #1b1430;
-    --color-surface-secondary: #241b3d;
-    --color-surface-elevated: #2b2149;
-    --color-text: #f4eee2;
-    --color-text-secondary: #ab9e8f;
-    --color-text-muted: #7d7062;
-    --color-border: #2e2447;
-    --color-border-subtle: #211a38;
-    --color-border-strong: #3c305e;
-    --color-brand: #ab92f8;
-    --color-brand-strong: #c2adfb;
-    --color-brand-light: #201736;
+    --color-bg: #131315;
+    --color-bg-secondary: #17171a;
+    --color-bg-elevated: #1d1d21;
+    --color-surface: #1a1a1e;
+    --color-surface-secondary: #212126;
+    --color-surface-elevated: #26262b;
+    --color-text: #f2f0eb;
+    --color-text-secondary: #a5a19a;
+    --color-text-muted: #75726c;
+    --color-border: #2b2b30;
+    --color-border-subtle: #222226;
+    --color-border-strong: #3a3a41;
+    --color-brand: #4da3ff;
+    --color-brand-strong: #7cc4ff;
+    --color-brand-light: #12202f;
     --color-success: #3dd68c;
     --color-success-light: #0d2a1a;
     --color-warning: #f0b84d;
     --color-warning-light: #2a1c08;
     --color-error: #ff6b6b;
     --color-error-light: #2a0d0d;
-    --color-apple-canvas: #141024;
-    --color-apple-parchment: #1d1633;
-    --color-apple-divider: #2e2447;
-    --color-apple-hairline: #3c2f60;
-    --color-apple-ink: #f4eee2;
-    --color-apple-ink-muted: #ab9e8f;
-    --color-azure-400: #c4adf9;
-    --color-azure-500: #b49cf8;
-    --color-azure-600: #a78bfa;
-    --color-azure-700: #9c82e8;
-    --st-btn-secondary-grad: linear-gradient(180deg, #2e2550 0%, #292148 55%, #231b3c 100%);
+    --color-apple-canvas: #131315;
+    --color-apple-parchment: #1c1c20;
+    --color-apple-divider: #2b2b30;
+    --color-apple-hairline: #3a3a41;
+    --color-apple-ink: #f2f0eb;
+    --color-apple-ink-muted: #a5a19a;
+    --color-azure-400: #7cc4ff;
+    --color-azure-500: #4da3ff;
+    --color-azure-600: #0a84ff;
+    --color-azure-700: #0074e0;
+    --st-btn-primary-grad: linear-gradient(180deg, #ffffff 0%, #ececea 55%, #d8d8dc 100%);
+    --st-btn-secondary-grad: linear-gradient(180deg, #2b2b31 0%, #26262c 55%, #212127 100%);
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -192,10 +198,10 @@
   }
 
   ::selection {
-    background: rgba(139, 124, 246, 0.28);
+    background: rgba(0, 122, 255, 0.22);
   }
   html.dark ::selection {
-    background: rgba(167, 139, 250, 0.45);
+    background: rgba(10, 132, 255, 0.4);
   }
 }
 
@@ -211,13 +217,13 @@
     transition-timing-function: var(--ease-out);
   }
 
-/* Dot background pattern — subtle lavender */
+/* Dot background pattern — warm speckle in light, faint graphite in dark */
 .dot-bg {
-  background-image: radial-gradient(circle, rgba(139,124,246,0.08) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(33, 31, 26, 0.05) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 html.dark .dot-bg {
-  background-image: radial-gradient(circle, rgba(139,124,246,0.04) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 }

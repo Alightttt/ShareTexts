@@ -145,7 +145,7 @@ export function LanguageMenu({ className, align = 'right' }: { className?: strin
                     className={cn(
                       "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[10px] text-[13px] transition-colors",
                       active
-                        ? "bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/15 text-apple-ink dark:text-white font-semibold"
+                        ? "bg-[#007aff]/10 dark:bg-[#4da3ff]/15 text-apple-ink dark:text-white font-semibold"
                         : hovered
                           ? "bg-apple-divider/40 dark:bg-white/[0.06] text-apple-ink dark:text-white"
                           : "text-apple-ink dark:text-white/85"
@@ -158,7 +158,7 @@ export function LanguageMenu({ className, align = 'right' }: { className?: strin
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ type: 'spring', bounce: 0.55, duration: 0.4 }}
                       >
-                        <Check className="w-3.5 h-3.5 shrink-0 text-[#8b7cf6] dark:text-[#a78bfa]" />
+                        <Check className="w-3.5 h-3.5 shrink-0 text-[#007aff] dark:text-[#4da3ff]" />
                       </motion.span>
                     )}
                   </button>

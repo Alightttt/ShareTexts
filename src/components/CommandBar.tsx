@@ -279,12 +279,12 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
                     className={cn(
                       'w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-[13.5px] transition-colors',
                       l.code === lang
-                        ? 'bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/15 font-semibold text-apple-ink dark:text-white'
+                        ? 'bg-[#007aff]/10 dark:bg-[#4da3ff]/15 font-semibold text-apple-ink dark:text-white'
                         : 'text-apple-ink dark:text-white/85 hover:bg-apple-divider/40 dark:hover:bg-white/[0.06]'
                     )}
                   >
                     <span>{l.native}</span>
-                    {l.code === lang && <Check className="w-4 h-4 text-[#8b7cf6] dark:text-[#a78bfa]" />}
+                    {l.code === lang && <Check className="w-4 h-4 text-[#007aff] dark:text-[#4da3ff]" />}
                   </button>
                 ))}
               </div>
@@ -326,13 +326,13 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
                             className={cn(
                               'w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[13.5px] text-left transition-colors',
                               active
-                                ? 'bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/15 text-apple-ink dark:text-white font-medium'
+                                ? 'bg-[#007aff]/10 dark:bg-[#4da3ff]/15 text-apple-ink dark:text-white font-medium'
                                 : 'text-apple-ink dark:text-white/85 hover:bg-apple-divider/40 dark:hover:bg-white/[0.06]'
                             )}
                           >
                             <span className={cn(
                               'flex items-center justify-center w-7 h-7 rounded-[8px] shrink-0',
-                              active ? 'bg-[#8b7cf6]/15 dark:bg-[#a78bfa]/20 text-[#8b7cf6] dark:text-[#a78bfa]' : 'bg-apple-parchment dark:bg-white/[0.05] text-apple-ink-muted dark:text-white/60'
+                              active ? 'bg-[#007aff]/15 dark:bg-[#4da3ff]/20 text-[#007aff] dark:text-[#4da3ff]' : 'bg-apple-parchment dark:bg-white/[0.05] text-apple-ink-muted dark:text-white/60'
                             )}>
                               {cmd.icon}
                             </span>

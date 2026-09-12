@@ -112,13 +112,14 @@ async function main() {
   ok(conn !== null && conn.fullBleed, 'connected: room takes over the full viewport');
   ok(conn !== null && conn.footerGone, 'connected: page footer unmounted (room replaces it)');
 
-  // Same-platform defaults → joiner auto-renamed. On mobile the rename notice
-  // lives in the connection-details sheet (no pairing summary on mobile).
-  const mBody = await M.locator('body').innerText();
-  ok(mBody.includes('Guest Windows PC 2'), 'joiner auto-renamed (same defaults)');
+  // Same-platform defaults → joiner auto-renamed. On mobile the header shows
+  // only the PARTNER, so the own-device name is verified inside the
+  // connection-details sheet — which is also where the rename notice lives
+  // (no pairing summary on mobile).
   await M.getByTestId('connection-details').click();
   await sleep(500);
   const sheetBody = await M.locator('body').innerText();
+  ok(sheetBody.includes('Guest Windows PC 2'), 'joiner auto-renamed (same defaults)');
   ok(sheetBody.includes('Both devices had the same name'), 'auto-name notice shown in details sheet');
   await M.getByRole('button', { name: 'Dismiss' }).click();
   await sleep(300);
@@ -151,7 +152,7 @@ async function main() {
     const btn = document.querySelector('button[data-testid="send"]');
     return btn && btn.disabled ? getComputedStyle(btn).backgroundColor : null;
   });
-  ok(disabledBg === 'rgb(217, 205, 178)', `empty-composer send disabled in warm parchment (${disabledBg})`);
+  ok(disabledBg === 'rgb(217, 205, 182)', `empty-composer send disabled in warm parchment (${disabledBg})`);
 
   // New design: mobile connected = full-bleed room with ChatView's own slim
   // header. No separate Fullscreen/Minimize toggle exists anymore — the room

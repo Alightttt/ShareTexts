@@ -88,7 +88,7 @@ function useIsDesktopLayout() {
 function DevicePair({ state }: { state: 'idle' | 'connecting' | 'connected' }) {
   const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
   const muted = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
-  const accent = isDark ? '#a78bfa' : '#8b7cf6';
+  const accent = isDark ? '#4da3ff' : '#007aff';
   const beamColor = state === 'connected' ? accent : muted;
   const deviceColor = state === 'connected'
     ? (isDark ? 'rgba(167,139,250,0.15)' : 'rgba(139,124,246,0.10)')
@@ -333,12 +333,10 @@ export function SingleScreenApp() {
   // desktops — instead of always drawing a phone.
   const ThisDeviceIcon = isMobileDevice ? Smartphone : Monitor;
   const PartnerDeviceIcon = isMobileDevice ? Monitor : Smartphone;
-  const ambientGlow = (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[420px] -z-10 overflow-hidden motion-reduce:hidden">
-      <div className="absolute -top-24 -left-20 w-80 h-80 rounded-full bg-azure-200/60 dark:bg-azure-600/[0.12] blur-[100px]" />
-      <div className="absolute -top-12 right-[-3rem] w-96 h-96 rounded-full bg-peach-200/50 dark:bg-peach-400/[0.07] blur-[110px]" />
-    </div>
-  );
+  // No ambient blobs: colored blur washes were template decor. The paper
+  // canvas and the tile composition carry the screen now — quiet is the
+  // luxury.
+  const ambientGlow = null;
   const headerNode = (
     <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
         <div className="flex items-center gap-2.5">
@@ -363,7 +361,7 @@ export function SingleScreenApp() {
             <motion.div key="idle" exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto">
               {/* Trust badge — the privacy promise, stated before the pitch. */}
               <div className="flex justify-center sm:justify-start mb-4">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 border border-[#8b7cf6]/15 dark:border-[#a78bfa]/15 text-[#8b7cf6] dark:text-[#a78bfa] text-[11px] font-semibold">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#007aff]/10 dark:bg-[#4da3ff]/10 border border-[#007aff]/15 dark:border-[#4da3ff]/15 text-[#007aff] dark:text-[#4da3ff] text-[11px] font-semibold">
                   <Lock className="w-3 h-3" aria-hidden="true" /> {t('home.badge.private')}
                 </span>
               </div>
@@ -426,14 +424,17 @@ export function SingleScreenApp() {
                     {!session.partnerConnecting && (
                       <motion.div key="pairing-actions" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                       <div className="mt-5 space-y-2">
-                    <button onClick={() => setShowQROverlay(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-[#8b7cf6] hover:bg-[#7c6ce0] text-white rounded-full text-[14px] font-semibold min-h-[48px] transition-all duration-150 active:scale-[0.97] shadow-sm shadow-[#8b7cf6]/20">
-                      <QrCode className="w-4 h-4" /> {t('create.showQr')}
+                    {/* Equal-weight paper tiles: the code is the hero of this
+                        screen, so the three sharing tools don't compete — no
+                        one blue pill outranking the others arbitrarily. */}
+                    <button onClick={() => setShowQROverlay(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] rounded-full text-[14px] font-semibold text-apple-ink dark:text-white min-h-[48px] transition-colors active:scale-[0.97]">
+                      <QrCode className="w-4 h-4 text-apple-ink-muted dark:text-white/60" /> {t('create.showQr')}
                     </button>
                     <button onClick={shareLink} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] rounded-full text-[13px] font-semibold text-apple-ink dark:text-white/90 transition-colors active:scale-[0.97] min-h-[44px]">
                       {copiedLink ? <AnimatedIcon animate="check" active><Check className="w-4 h-4 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="link"><Link2 className="w-4 h-4 text-apple-ink-muted dark:text-white/50" /></AnimatedIcon>}
                       {copiedLink ? t('create.copied') : t('create.shareLink')}
                     </button>
-                    <button onClick={copyCode} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-white/[0.04] border border-apple-divider/40 dark:border-white/[0.06] hover:bg-apple-parchment dark:hover:bg-white/[0.06] rounded-full text-[13px] font-medium text-apple-ink dark:text-white/70 transition-colors active:scale-[0.98] min-h-[44px]">
+                    <button onClick={copyCode} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] rounded-full text-[13px] font-medium text-apple-ink dark:text-white/70 transition-colors active:scale-[0.98] min-h-[44px]">
                       {copiedCode ? <AnimatedIcon animate="check" active><Check className="w-3.5 h-3.5 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="copy"><Copy className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /></AnimatedIcon>}
                       {copiedCode ? t('create.codeCopied') : t('create.copyCode')}
                     </button>
@@ -464,10 +465,10 @@ export function SingleScreenApp() {
                   </motion.div>
                 ) : (
                   <motion.div key="code-entry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-                    <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-[#8b7cf6] hover:bg-[#7c6ce0] text-white rounded-full text-[14px] font-semibold min-h-[48px] transition-all duration-150 active:scale-[0.97] shadow-sm shadow-[#8b7cf6]/20">
-                      <QrCode className="w-4 h-4" /> {t('receive.scan')}
+                    <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] rounded-full text-[14px] font-semibold text-apple-ink dark:text-white min-h-[48px] transition-colors active:scale-[0.97]">
+                      <QrCode className="w-4 h-4 text-apple-ink-muted dark:text-white/60" /> {t('receive.scan')}
                     </button>
-                    <div className="p-6 bg-white dark:bg-[#251b40] border border-apple-divider dark:border-white/10 rounded-[20px] shadow-card">
+                    <div className="p-6 bg-white dark:bg-[#1e2430] border border-apple-divider dark:border-white/10 rounded-[20px] shadow-card">
                       <LiveCodeInput onComplete={handleCodeComplete} isJoining={isJoining} error={joinError} />
                     </div>
                     <p className="mt-4 text-[12px] text-apple-ink-muted/60 dark:text-white/35 text-center">{t('receive.note')}</p>
@@ -504,9 +505,9 @@ export function SingleScreenApp() {
                   <div className="flex flex-col items-center gap-1.5">
                     <div className={cn(
                       "w-14 h-14 rounded-[16px] flex items-center justify-center",
-                      "bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 border border-[#8b7cf6]/15 dark:border-[#a78bfa]/15"
+                      "bg-[#007aff]/10 dark:bg-[#4da3ff]/10 border border-[#007aff]/15 dark:border-[#4da3ff]/15"
                     )}>
-                      <ThisDeviceIcon className="w-6 h-6 text-[#8b7cf6] dark:text-[#a78bfa]" />
+                      <ThisDeviceIcon className="w-6 h-6 text-[#007aff] dark:text-[#4da3ff]" />
                     </div>
                     {editingName ? (
                       <input
@@ -520,7 +521,7 @@ export function SingleScreenApp() {
                         }}
                         aria-label={t('pair.renameField')}
                         maxLength={32}
-                        className="w-[120px] text-center text-[11px] font-medium text-apple-ink dark:text-white bg-transparent border-b border-[#8b7cf6]/50 dark:border-[#a78bfa]/50 outline-none px-0.5"
+                        className="w-[120px] text-center text-[11px] font-medium text-apple-ink dark:text-white bg-transparent border-b border-[#007aff]/50 dark:border-[#4da3ff]/50 outline-none px-0.5"
                       />
                     ) : (                        <button
                           onClick={startEditName}
@@ -539,9 +540,9 @@ export function SingleScreenApp() {
                       transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                       className="flex items-center gap-1"
                     >
-                      <span className="w-1 h-1 rounded-full bg-[#8b7cf6]/40 dark:bg-[#a78bfa]/40" />
-                      <ArrowRightLeft className="w-4 h-4 text-[#8b7cf6] dark:text-[#a78bfa]" />
-                      <span className="w-1 h-1 rounded-full bg-[#8b7cf6]/40 dark:bg-[#a78bfa]/40" />
+                      <span className="w-1 h-1 rounded-full bg-[#007aff]/40 dark:bg-[#4da3ff]/40" />
+                      <ArrowRightLeft className="w-4 h-4 text-[#007aff] dark:text-[#4da3ff]" />
+                      <span className="w-1 h-1 rounded-full bg-[#007aff]/40 dark:bg-[#4da3ff]/40" />
                     </motion.div>
                     <span className={cn("text-[11px] font-medium mt-1", session.connectionType === 'disconnected' ? "text-status-warning" : "text-status-success")}>
                       {session.connectionType === 'disconnected' ? t('pair.reconnecting') : t('common.connected')}
@@ -562,8 +563,8 @@ export function SingleScreenApp() {
 
                 {/* One-time notice when the auto-disambiguation renamed us. */}
                 {session.nameAutoAdjusted && !dismissedNameNotice && (
-                  <div role="status" className="w-full sm:max-w-[340px] flex items-start gap-2 px-3 py-2 rounded-[12px] bg-[#8b7cf6]/8 dark:bg-[#a78bfa]/10 border border-[#8b7cf6]/15 dark:border-[#a78bfa]/15 text-[12px] text-apple-ink-muted dark:text-white/60 leading-snug">
-                    <Info className="w-3.5 h-3.5 text-[#8b7cf6] dark:text-[#a78bfa] shrink-0 mt-px" />
+                  <div role="status" className="w-full sm:max-w-[340px] flex items-start gap-2 px-3 py-2 rounded-[12px] bg-[#007aff]/8 dark:bg-[#4da3ff]/10 border border-[#007aff]/15 dark:border-[#4da3ff]/15 text-[12px] text-apple-ink-muted dark:text-white/60 leading-snug">
+                    <Info className="w-3.5 h-3.5 text-[#007aff] dark:text-[#4da3ff] shrink-0 mt-px" />
                     <span className="flex-1">
                       {(() => { const parts = t('pair.autoRename', { name: '\u0000' }).split('\u0000'); return (<>{parts[0]}<span className="font-semibold text-apple-ink dark:text-white">{session.deviceName}</span>{parts[1]}</>); })()}
                     </span>
@@ -608,7 +609,7 @@ export function SingleScreenApp() {
                   [t('conn.guidance.3t'), t('conn.guidance.3s')],
                 ].map(([ti, si]) => (
                   <div key={ti} className="flex items-center gap-2.5 text-[12px]">
-                    <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-[#8b7cf6]/50 dark:bg-[#a78bfa]/50" />
+                    <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-[#007aff]/50 dark:bg-[#4da3ff]/50" />
                     <span className="font-semibold text-apple-ink dark:text-white/85">{ti}</span>
                     <span className="text-apple-ink-muted/70 dark:text-white/40">— {si}</span>
                   </div>
@@ -638,7 +639,7 @@ export function SingleScreenApp() {
   );
 
   const leftPanel = (
-    <div className="relative isolate flex flex-col h-full overflow-hidden bg-apple-canvas dark:bg-[#141024]">
+    <div className="relative isolate flex flex-col h-full overflow-hidden bg-apple-canvas dark:bg-[#131315]">
       {ambientGlow}
       {headerNode}
       {/* Hero area — flex-1 centers each state's content in the half */}
@@ -654,14 +655,11 @@ export function SingleScreenApp() {
   /* ---------------------------------------------------------------- */
   const roomPanel = (
     <div
-      className="relative flex flex-col h-full min-h-0 overflow-hidden bg-[#f4ecdd] dark:bg-[#110c20]"
+      className="relative flex flex-col h-full min-h-0 overflow-hidden bg-[#f4f2ec] dark:bg-[#0f0f11]"
       data-testid="room-panel"
     >
-      {/* Ambient brand glow — a quiet lavender wash in the corner. Background
-          only: never competes with content, disappears on reduced motion. */}
-      <div aria-hidden="true" className="pointer-events-none absolute -top-28 -right-24 w-[26rem] h-[26rem] rounded-full bg-[#8b7cf6]/[0.08] dark:bg-[#a78bfa]/[0.06] blur-[110px] motion-reduce:hidden" />
       {/* Room header */}
-      <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-[#f4ecdd]/80 dark:bg-[#110c20]/80 backdrop-blur-xl z-10">
+      <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-[#f4f2ec]/80 dark:bg-[#0f0f11]/80 backdrop-blur-xl z-10">
         <div className="flex items-center gap-2.5">
           <ShareTextLogo size={16} className="text-azure-600 dark:text-azure-400" />
           <span className="text-[13px] font-semibold text-apple-ink dark:text-white">
@@ -778,7 +776,7 @@ export function SingleScreenApp() {
   /*  RENDER                                                          */
   /* ---------------------------------------------------------------- */
   return (
-    <div className="h-dvh lg:h-dvh overflow-hidden bg-apple-canvas dark:bg-[#141024] dot-bg">
+    <div className="h-dvh lg:h-dvh overflow-hidden bg-apple-canvas dark:bg-[#131315] dot-bg">
       <CommandBar open={cmdOpen} onOpenChange={setCmdOpen} />
       {/* Only the ACTIVE layout is mounted — the other branch stays unmounted
           so components (ChatView, composer, pairing input) exist exactly once
@@ -799,7 +797,7 @@ export function SingleScreenApp() {
               stacked summary card above the chat, no second scroll surface. */
         panelMode === 'connected' ? (
           <Suspense fallback={
-            <div className="h-full flex items-center justify-center bg-[#f4ecdd] dark:bg-[#110c20]">
+            <div className="h-full flex items-center justify-center bg-[#f4f2ec] dark:bg-[#0f0f11]">
               <ShareTextLogo size={26} motion="connecting" className="text-azure-600 dark:text-azure-400" />
             </div>
           }>
@@ -816,7 +814,7 @@ export function SingleScreenApp() {
         ) : (
           <div className="h-full overflow-y-auto overscroll-contain">
             <div className="flex flex-col min-h-full">
-              <div className="relative isolate flex flex-1 flex-col bg-apple-canvas dark:bg-[#141024]">
+              <div className="relative isolate flex flex-1 flex-col bg-apple-canvas dark:bg-[#131315]">
                 {ambientGlow}
                 {headerNode}
                 <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 py-4 sm:py-6 min-h-0">
@@ -832,7 +830,7 @@ export function SingleScreenApp() {
       <AnimatePresence>
         {showQRScan && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/50 dark:bg-black/70 flex items-center justify-center p-4" onClick={() => setShowQRScan(false)}>
-            <motion.div ref={qrScanTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[360px] bg-white dark:bg-[#251b40] rounded-[24px] p-6 shadow-2xl relative" role="dialog" aria-modal="true" aria-label={t('receive.scan')}>
+            <motion.div ref={qrScanTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[360px] bg-white dark:bg-[#1e2430] rounded-[24px] p-6 shadow-2xl relative" role="dialog" aria-modal="true" aria-label={t('receive.scan')}>
               <button onClick={() => setShowQRScan(false)} className="absolute top-3 right-3 min-w-[44px] min-h-[44px] rounded-full bg-apple-parchment dark:bg-white/5 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors z-10" aria-label={t('common.close')}><X className="w-4 h-4" /></button>
               <kbd aria-hidden="true" className="hidden sm:inline absolute top-5 right-16 px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-white/10 bg-white/60 dark:bg-white/5 text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">Esc</kbd>
               <h3 className="text-[16px] font-semibold text-apple-ink dark:text-white mb-2">{t('qr.scan.title')}</h3>
@@ -854,7 +852,7 @@ export function SingleScreenApp() {
       <AnimatePresence>
         {showQROverlay && session.roomId && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/50 dark:bg-black/70 flex items-center justify-center p-6" onClick={() => setShowQROverlay(false)}>
-            <motion.div ref={qrDisplayTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[340px] bg-white dark:bg-[#251b40] rounded-[24px] p-6 shadow-2xl text-center relative" role="dialog" aria-modal="true" aria-label={t('qr.display.title')}>
+            <motion.div ref={qrDisplayTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[340px] bg-white dark:bg-[#1e2430] rounded-[24px] p-6 shadow-2xl text-center relative" role="dialog" aria-modal="true" aria-label={t('qr.display.title')}>
               <button onClick={() => setShowQROverlay(false)} className="absolute top-3 right-3 min-w-[44px] min-h-[44px] rounded-full bg-apple-parchment dark:bg-white/5 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors" aria-label={t('common.close')}><X className="w-4 h-4" /></button>
               <kbd aria-hidden="true" className="hidden sm:inline absolute top-5 right-16 px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-white/10 bg-white/60 dark:bg-white/5 text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">Esc</kbd>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/60 mb-4 leading-relaxed">

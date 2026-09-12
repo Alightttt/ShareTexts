@@ -66,7 +66,7 @@ function SelectionRing({ selected }: { selected: boolean }) {
       className={cn(
         'absolute top-1/2 -translate-y-1/2 w-[22px] h-[22px] rounded-full border-2 flex items-center justify-center shrink-0 pointer-events-none',
         selected
-          ? 'bg-[#8b7cf6] border-[#8b7cf6]'
+          ? 'bg-[#007aff] border-[#007aff]'
           : 'bg-transparent border-apple-ink-muted/40 dark:border-white/35'
       )}
     >
@@ -387,12 +387,12 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
         {selectMode && <SelectionRing selected={selected} />}
         <div className={cn(
           "max-w-[85%] sm:max-w-[65%] px-[14px] py-[10px] rounded-[18px] transition-shadow",
-          selected && "ring-2 ring-[#8b7cf6]/60",
+          selected && "ring-2 ring-azure-500/60",
           isMe
             // Sent items carry a whisper of the brand so the eye instantly
             // separates what left this device from what arrived.
-            ? "bg-[#ece9fa] dark:bg-[#252140] text-apple-ink dark:text-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
-            : "bg-white dark:bg-[#1a1a22] border border-apple-divider/40 dark:border-white/[0.06] text-apple-ink dark:text-white",
+            ? "bg-[#e2efff] dark:bg-[#1f3350] text-apple-ink dark:text-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+            : "bg-white dark:bg-[#1f1f24] border border-apple-divider/40 dark:border-white/[0.06] text-apple-ink dark:text-white",
           isMe && isGroupEnd && "rounded-br-[4px]",
           !isMe && isGroupEnd && "rounded-bl-[4px]",
           isMe && !isGroupEnd && "rounded-br-[14px]",
@@ -415,7 +415,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
             {isLargeText && !expanded && (
               <button
                 onClick={() => setExpanded(true)}
-                className={cn("mt-1.5 flex items-center gap-1 text-[14px] font-semibold active:opacity-70", isMe ? "text-white/90" : "text-apple-blue")}
+                className="mt-1.5 flex items-center gap-1 text-[14px] font-semibold active:opacity-70 text-apple-blue"
               >
                 <ChevronDown className="w-4 h-4" /> {t('msg.showFull')}
               </button>
@@ -423,21 +423,26 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
             {isLargeText && expanded && (
               <button
                 onClick={() => setExpanded(false)}
-                className={cn("mt-1.5 flex items-center gap-1 text-[14px] font-semibold active:opacity-70", isMe ? "text-white/90" : "text-apple-blue")}
+                className="mt-1.5 flex items-center gap-1 text-[14px] font-semibold active:opacity-70 text-apple-blue"
               >
                 <ChevronUp className="w-4 h-4" /> {t('msg.collapse')}
               </button>
             )}
           </div>
+          {/* Footer: status line + copy, optically flush with the bubble's
+              right content edge. The copy button keeps its 40px hit box but
+              its negative margin equals half the box minus the icon, so the
+              ICON's right edge lands exactly on the text edge above — the
+              old -6px left the icon floating ~7px inside the bubble. */}
           <div className="mt-1 flex items-center justify-end gap-1.5">
             {msg.delivery === 'failed' ? (
               <>
-                <span className={cn("text-[12.5px] font-semibold flex items-center gap-1", isMe ? "text-white" : "text-status-danger")}>
+                <span className="text-[12.5px] font-semibold flex items-center gap-1 text-status-danger">
                   <AlertCircle className="w-3.5 h-3.5" /> {t('msg.couldNotSend')}
                 </span>
                 <button
                   onPointerDown={(e) => { e.preventDefault(); void retryText(msg.id); }}
-                  className={cn("flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold transition-motion active:scale-95", isMe ? "bg-white/20 text-white" : "bg-apple-parchment dark:bg-apple-tile-2 text-apple-ink dark:text-white")}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-semibold transition-motion active:scale-95 bg-apple-parchment dark:bg-apple-tile-2 text-apple-ink dark:text-white"
                 >
                   <RefreshCw className="w-3 h-3" /> {t('action.retry')}
                 </button>
@@ -461,7 +466,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                   aria-label={t('msg.copyMessage')}
                   title={t('msg.copy')}
                   className={cn(
-                    "flex items-center justify-center min-w-[40px] min-h-[40px] -m-[6px] rounded-full transition-motion active:scale-90",
+                    "flex items-center justify-center min-w-[40px] min-h-[40px] -my-[13px] -mr-[13px] rounded-full transition-motion active:scale-90",
                     copied
                       ? "text-status-success"
                       : "text-apple-ink-muted hover:text-apple-ink dark:hover:text-white hover:bg-apple-divider/60 dark:hover:bg-apple-tile-3"
@@ -513,7 +518,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
       {selectMode && <SelectionRing selected={selected} />}
       <div className={cn(
         "flex flex-col gap-0 max-w-[85%] sm:max-w-[65%] w-full transition-shadow",
-        selected && "ring-2 ring-[#8b7cf6]/60",
+        selected && "ring-2 ring-[#007aff]/60",
         isMe ? "items-end" : "items-start"
       )}>
         <div className={cn(
@@ -521,7 +526,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
           // Sent bubbles carry the brand tint; received stay neutral — the
           // color tells you whose message it is before you read a word.
           isMe
-            ? "bg-[#ece6fb] dark:bg-[#2a2152] border border-azure-600/20 dark:border-azure-400/25 shadow-[0_1px_3px_rgba(139,124,246,0.12)]"
+            ? "bg-[#e2efff] dark:bg-[#2a2152] border border-azure-600/20 dark:border-azure-400/25 shadow-[0_1px_3px_rgba(139,124,246,0.12)]"
             : "bg-white dark:bg-[#1d1733] border border-apple-divider/40 dark:border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
           isMe && isGroupEnd && "rounded-br-[4px]",
           !isMe && isGroupEnd && "rounded-bl-[4px]",
@@ -708,7 +713,7 @@ function ActionButton({ icon, label, onClick, active, primary, onBlue, testId }:
         active
           ? "bg-status-success/15 text-status-success"
           : primary
-            ? "bg-apple-blue hover:bg-apple-blue-focus text-white"
+            ? "bg-apple-ink dark:bg-white hover:opacity-90 text-white dark:text-night-900"
             : "bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white"
       )}
     >

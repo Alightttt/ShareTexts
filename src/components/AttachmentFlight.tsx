@@ -117,7 +117,7 @@ const FlyingFileCard: React.FC<FlyingFileCardProps> = ({ file, fromX, fromY, toX
       <div className={cn(
         "w-20 h-20 rounded-xl overflow-hidden shadow-2xl",
         "border border-white/20",
-        isImage ? "bg-black" : "bg-white dark:bg-[#1a1a22]"
+        isImage ? "bg-black" : "bg-white dark:bg-[#1f1f24]"
       )}>
         {isImage && previewUrl ? (
           <img

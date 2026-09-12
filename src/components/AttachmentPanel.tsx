@@ -108,7 +108,7 @@ export function AttachmentPanel({ isOpen, onClose, onSelectType, buttonRef }: At
               duration: 0.4,
             }}
             style={panelStyle}
-            className="bg-white dark:bg-[#1a1a22] border border-black/10 dark:border-white/10 shadow-2xl overflow-hidden min-w-[200px]"
+            className="bg-white dark:bg-[#1f1f24] border border-black/10 dark:border-white/10 shadow-2xl overflow-hidden min-w-[200px]"
           >
             <div className="p-2">
               <MenuItem
@@ -180,7 +180,7 @@ function MenuItem({ icon, label, description, onClick, delay = 0 }: MenuItemProp
         variants={{ rest: { scale: 1, x: 0 }, hover: { scale: 1.08, x: 2 } }}
         initial="rest"
         whileHover="hover"
-        className="w-10 h-10 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/20 flex items-center justify-center text-[#8b7cf6] dark:text-[#a78bfa]"
+        className="w-10 h-10 rounded-full bg-[#007aff]/10 dark:bg-[#4da3ff]/20 flex items-center justify-center text-[#007aff] dark:text-[#4da3ff]"
       >
         {icon}
       </motion.div>

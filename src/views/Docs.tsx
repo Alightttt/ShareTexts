@@ -55,8 +55,8 @@ function CodeBlock({ code, language = 'bash' }: { code: string; language?: strin
 function StepCard({ number, title, description, icon }: { number: number; title: string; description: string; icon: React.ReactNode }) {
   return (
     <div className="flex gap-4 items-start">
-      <div className="shrink-0 w-10 h-10 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 flex items-center justify-center">
-        <span className="text-[14px] font-semibold text-[#8b7cf6] dark:text-[#a78bfa]">{number}</span>
+      <div className="shrink-0 w-10 h-10 rounded-full bg-[#007aff]/10 dark:bg-[#4da3ff]/10 flex items-center justify-center">
+        <span className="text-[14px] font-semibold text-[#007aff] dark:text-[#4da3ff]">{number}</span>
       </div>
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-1">
@@ -87,7 +87,7 @@ function OverviewSection() {
           { icon: <Lock className="w-5 h-5" />, title: 'Verified', desc: 'SHA-256 on every transfer. Bit-perfect.' },
         ].map((f, i) => (
           <div key={i} className="flex gap-3.5 p-4 rounded-[14px] bg-white dark:bg-apple-tile-1 border border-apple-divider/50 dark:border-apple-tile-3">
-            <div className="w-10 h-10 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 flex items-center justify-center shrink-0 text-[#8b7cf6] dark:text-[#a78bfa]">{f.icon}</div>
+            <div className="w-10 h-10 rounded-full bg-[#007aff]/10 dark:bg-[#4da3ff]/10 flex items-center justify-center shrink-0 text-[#007aff] dark:text-[#4da3ff]">{f.icon}</div>
             <div>
               <p className="text-[14px] font-semibold text-apple-ink dark:text-white mb-0.5">{f.title}</p>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/55 leading-snug">{f.desc}</p>
@@ -114,8 +114,8 @@ function TransferSection() {
           { n: '3', title: 'Transfer', desc: 'Type, paste, or attach. It appears instantly on the other device.' },
         ].map((s, i) => (
           <div key={i} className="flex gap-4 items-start">
-            <div className="shrink-0 w-9 h-9 rounded-full bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 flex items-center justify-center">
-              <span className="text-[14px] font-bold text-[#8b7cf6] dark:text-[#a78bfa]">{s.n}</span>
+            <div className="shrink-0 w-9 h-9 rounded-full bg-[#007aff]/10 dark:bg-[#4da3ff]/10 flex items-center justify-center">
+              <span className="text-[14px] font-bold text-[#007aff] dark:text-[#4da3ff]">{s.n}</span>
             </div>
             <div>
               <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-0.5">{s.title}</h3>
@@ -127,7 +127,7 @@ function TransferSection() {
 
       <div className="flex flex-wrap gap-2">
         {['Text', 'Links', 'Photos', 'Files'].map((t) => (
-          <span key={t} className="px-3 py-1.5 rounded-full bg-[#8b7cf6]/8 dark:bg-[#8b7cf6]/10 text-[13px] font-medium text-[#8b7cf6] dark:text-[#a78bfa]">{t}</span>
+          <span key={t} className="px-3 py-1.5 rounded-full bg-[#007aff]/8 dark:bg-[#007aff]/10 text-[13px] font-medium text-[#007aff] dark:text-[#4da3ff]">{t}</span>
         ))}
       </div>
     </div>
@@ -302,15 +302,15 @@ function AgentSection() {
         <h3 className="text-[18px] font-semibold text-apple-ink dark:text-white mb-4">Getting the Agent Token</h3>
         <ol className="space-y-3 text-[14px] text-apple-ink-muted dark:text-white/60">
           <li className="flex gap-3">
-            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-[#8b7cf6]">1</span>
+            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-[#007aff]">1</span>
             <span>Open ShareText and create a room (click "Send")</span>
           </li>
           <li className="flex gap-3">
-            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-[#8b7cf6]">2</span>
+            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-[#007aff]">2</span>
             <span>Click the <Terminal className="w-4 h-4 inline" /> icon in the header to open the agent panel</span>
           </li>
           <li className="flex gap-3">
-            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-[#8b7cf6]">3</span>
+            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-[#007aff]">3</span>
             <span>Copy the curl command or use the token directly</span>
           </li>
         </ol>
@@ -378,16 +378,16 @@ function APISection() {
             <div>
               <h4 className="text-[13px] font-semibold text-apple-ink dark:text-white mb-2">Headers</h4>
               <div className="space-y-1 text-[13px] font-mono text-apple-ink-muted dark:text-white/60">
-                <div><span className="text-[#8b7cf6]">Authorization:</span> Bearer {'<token>'}</div>
-                <div><span className="text-[#8b7cf6]">Content-Type:</span> application/json or application/octet-stream</div>
-                <div><span className="text-[#8b7cf6]">X-File-Name:</span> (optional) filename for file transfers</div>
+                <div><span className="text-[#007aff]">Authorization:</span> Bearer {'<token>'}</div>
+                <div><span className="text-[#007aff]">Content-Type:</span> application/json or application/octet-stream</div>
+                <div><span className="text-[#007aff]">X-File-Name:</span> (optional) filename for file transfers</div>
               </div>
             </div>
             <div>
               <h4 className="text-[13px] font-semibold text-apple-ink dark:text-white mb-2">Body (JSON)</h4>
               <div className="space-y-1 text-[13px] font-mono text-apple-ink-muted dark:text-white/60">
-                <div><span className="text-[#8b7cf6]">roomId:</span> string (required)</div>
-                <div><span className="text-[#8b7cf6]">text:</span> string (for text transfers)</div>
+                <div><span className="text-[#007aff]">roomId:</span> string (required)</div>
+                <div><span className="text-[#007aff]">text:</span> string (for text transfers)</div>
               </div>
             </div>
           </div>
@@ -656,7 +656,7 @@ export function Docs() {
                     onClick={() => setActiveSection(item.id)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-[14px] font-medium transition-colors ${
                       activeSection === item.id
-                        ? 'bg-azure-600/10 text-[#8b7cf6] dark:text-[#a78bfa]'
+                        ? 'bg-azure-600/10 text-[#007aff] dark:text-[#4da3ff]'
                         : 'text-apple-ink-muted dark:text-white/60 hover:bg-apple-parchment dark:hover:bg-apple-tile-1'
                     }`}
                   >
@@ -676,7 +676,7 @@ export function Docs() {
                     onClick={() => setActiveSection(item.id)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-[14px] font-medium transition-colors ${
                       activeSection === item.id
-                        ? 'bg-azure-600/10 text-[#8b7cf6] dark:text-[#a78bfa]'
+                        ? 'bg-azure-600/10 text-[#007aff] dark:text-[#4da3ff]'
                         : 'text-apple-ink-muted dark:text-white/60 hover:bg-apple-parchment dark:hover:bg-apple-tile-1'
                     }`}
                   >
@@ -700,7 +700,7 @@ export function Docs() {
                   onClick={() => setActiveSection(item.id)}
                   className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors ${
                     activeSection === item.id
-                      ? 'bg-[#8b7cf6] text-white shadow-sm'
+                      ? 'bg-[#007aff] text-white shadow-sm'
                       : 'bg-apple-parchment dark:bg-apple-tile-2 text-apple-ink-muted dark:text-white/60'
                   }`}
                 >

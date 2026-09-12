@@ -28,7 +28,7 @@ interface BucketDef {
 
 const BUCKETS: Record<Bucket, BucketDef> = {
   image:  { icon: FileImage,      color: 'text-[#0a7d33]',      bg: 'bg-[#e8f6ee]',      bgDark: 'dark:bg-[#10261a]' },
-  video:  { icon: FileVideo,      color: 'text-[#7b2dd3]',      bg: 'bg-[#f3ecfd]',      bgDark: 'dark:bg-[#1e1430]' },
+  video:  { icon: FileVideo,      color: 'text-[#7b2dd3]',      bg: 'bg-[#eaf4ff]',      bgDark: 'dark:bg-[#1e1430]' },
   audio:  { icon: FileAudio,      color: 'text-[#c2185b]',      bg: 'bg-[#fdeef4]',      bgDark: 'dark:bg-[#2a1220]' },
   pdf:    { icon: FileText,       color: 'text-[#c62828]',      bg: 'bg-[#fdeeee]',      bgDark: 'dark:bg-[#2b1212]' },
   doc:    { icon: FilePen,        color: 'text-[#1565c0]',      bg: 'bg-[#e8f1fc]',      bgDark: 'dark:bg-[#0f1d30]' },
@@ -37,7 +37,7 @@ const BUCKETS: Record<Bucket, BucketDef> = {
   archive:{ icon: FileArchive,    color: 'text-[#8d6e00]',      bg: 'bg-[#faf3dd]',      bgDark: 'dark:bg-[#231d0c]' },
   code:   { icon: FileCode,       color: 'text-[#00695c]',      bg: 'bg-[#e4f4f1]',      bgDark: 'dark:bg-[#0d211d]' },
   text:   { icon: FileType,       color: 'text-[#455a64]',      bg: 'bg-[#ecf0f2]',      bgDark: 'dark:bg-[#141b1e]' },
-  data:   { icon: FileJson,       color: 'text-[#6a1b9a]',      bg: 'bg-[#f4ecfa]',      bgDark: 'dark:bg-[#201230]' },
+  data:   { icon: FileJson,       color: 'text-[#6a1b9a]',      bg: 'bg-[#eaf4ff]',      bgDark: 'dark:bg-[#201230]' },
   font:   { icon: FileType,       color: 'text-[#37474f]',      bg: 'bg-[#eaeff1]',      bgDark: 'dark:bg-[#131a1c]' },
   exec:   { icon: AppWindow,      color: 'text-[#283593]',      bg: 'bg-[#e8eaf6]',      bgDark: 'dark:bg-[#141735]' },
   generic:{ icon: File,           color: 'text-[#546e7a]',      bg: 'bg-[#e9eff1]',      bgDark: 'dark:bg-[#141b1e]' },

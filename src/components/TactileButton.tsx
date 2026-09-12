@@ -42,23 +42,28 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
   lg: 'px-7 py-3.5 text-[15px] gap-3.5 rounded-[10px] min-h-[48px]',
 };
 
-// Each variant defines its own surface gradient + shadow layers
+// Each variant defines its own surface gradient + shadow layers.
+// Primary is INK (near-black in light, white in dark) — the same visual
+// language as Apple's own marketing CTAs and the app's "New session"
+// button. Blue is an accent, not a paint bucket: it lives in links and
+// smaller actions. Shadows are neutral black at low alpha — a colored glow
+// shadow is the single loudest tell of template-grade UI.
 const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; shadowHover: string; shadowPress: string; gradient: string }> = {
   primary: {
-    base: 'text-white',
-    shadowIdle: '0 1px 2px rgba(0,0,0,0.22), 0 6px 16px -4px rgba(139,124,246,0.45)',
-    shadowHover: '0 6px 12px rgba(0,0,0,0.16), 0 16px 32px -6px rgba(139,124,246,0.55)',
-    shadowPress: '0 1px 2px rgba(0,0,0,0.22), 0 2px 6px -1px rgba(139,124,246,0.2)',
-    gradient: 'linear-gradient(180deg, #b18ffc 0%, #8b7cf6 45%, #7a69e4 100%)',
+    base: 'text-white dark:text-night-900',
+    shadowIdle: '0 1px 2px rgba(0,0,0,0.16), 0 4px 10px -4px rgba(0,0,0,0.2)',
+    shadowHover: '0 4px 10px rgba(0,0,0,0.12), 0 12px 26px -8px rgba(0,0,0,0.26)',
+    shadowPress: '0 1px 2px rgba(0,0,0,0.18)',
+    gradient: 'var(--st-btn-primary-grad)',
   },
   secondary: {
-    // The gradient reads from a theme-aware CSS variable (defined in
-    // index.css) so dark mode gets a dark lavender surface instead of a
-    // washed-out light pill with low-contrast text.
-    base: 'text-[#4c2baa] dark:text-[#c4b5fd]',
-    shadowIdle: '0 1px 1.5px rgba(139,124,246,0.14), 0 3px 8px -2px rgba(139,124,246,0.1)',
-    shadowHover: '0 5px 10px rgba(139,124,246,0.16), 0 12px 24px -4px rgba(139,124,246,0.18)',
-    shadowPress: '0 1px 2px rgba(139,124,246,0.1), 0 2px 4px -1px rgba(139,124,246,0.08)',
+    // A paper tile with a hairline edge — sits on the canvas without
+    // competing with the primary. Gradient reads from a theme-aware CSS
+    // variable (index.css) so dark mode gets a graphite surface.
+    base: 'text-apple-ink dark:text-white',
+    shadowIdle: '0 1px 2px rgba(0,0,0,0.05)',
+    shadowHover: '0 3px 8px rgba(0,0,0,0.07), 0 8px 20px -6px rgba(0,0,0,0.1)',
+    shadowPress: '0 1px 2px rgba(0,0,0,0.05)',
     gradient: 'var(--st-btn-secondary-grad)',
   },
   ghost: {
@@ -73,8 +78,8 @@ const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; 
 
 // Surface fill under the gradient overlay
 const SURFACE_FILLS: Record<ButtonVariant, string> = {
-  primary: 'bg-azure-600',
-  secondary: 'bg-azure-100 dark:bg-azure-600/20',
+  primary: 'bg-apple-ink dark:bg-white',
+  secondary: 'bg-white dark:bg-apple-tile-2',
   ghost: '',
 };
 

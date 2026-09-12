@@ -548,7 +548,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   return (
     <div
       data-app-state="connected"
-      className={cn("relative flex flex-col bg-[#f4ecdd] dark:bg-[#110c20] font-sans", panelMode === "embedded" ? "h-full" : "h-dvh")}
+      className={cn("relative flex flex-col bg-[#f4f2ec] dark:bg-[#0f0f11] font-sans", panelMode === "embedded" ? "h-full" : "h-dvh")}
       style={visualHeight ? { height: `${visualHeight}px` } : undefined}
     >
       {/* Transfer flight overlay — the file traveling device-to-device. */}
@@ -571,7 +571,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           names, live status, and one tap to details (rename, encryption,
           rejoin code). The parent keeps `relative` so the details popover
           anchors just under the bar. */}
-      <div className="relative flex items-center justify-between gap-2 px-3 sm:px-5 py-2.5 shrink-0 border-b border-apple-divider/50 dark:border-white/[0.08] bg-[#f4ecdd]/85 dark:bg-[#110c20]/85 backdrop-blur-2xl backdrop-saturate-[1.8] z-30">
+      <div className="relative flex items-center justify-between gap-2 px-3 sm:px-5 py-2.5 shrink-0 border-b border-apple-divider/50 dark:border-white/[0.08] bg-[#f4f2ec]/85 dark:bg-[#0f0f11]/85 backdrop-blur-2xl backdrop-saturate-[1.8] z-30">
         <button
           type="button"
           data-testid="connection-details"
@@ -580,10 +580,15 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           aria-label={t('details.aria')}
           className="flex items-center gap-2 min-w-0 max-w-full rounded-full px-1.5 py-1 -ml-1.5 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
         >
-          <span className="shrink-0 flex items-center justify-center w-8 h-8 rounded-[10px] bg-[#8b7cf6]/10 dark:bg-[#a78bfa]/10 border border-[#8b7cf6]/20 dark:border-[#a78bfa]/20 text-[#8b7cf6] dark:text-[#a78bfa]">
+          {/* Phones show only the PARTNER — the other device is the room's
+              identity, and two truncated names + icons cannot share 375px
+              with the header controls (they collided before). Your own name
+              lives one tap away in the details sheet; sm+ shows the pair. */}
+          <span className="hidden sm:shrink-0 sm:flex sm:items-center sm:justify-center w-8 h-8 rounded-[10px] bg-azure-600/10 border border-azure-600/20 text-azure-600">
             <ThisDeviceIcon className="w-4 h-4" />
-          </span>            <span className="flex flex-col items-start min-w-0 leading-tight">
-            <span className="text-[12px] font-semibold text-apple-ink dark:text-white truncate max-w-[34vw] sm:max-w-[160px]">
+          </span>
+          <span className="hidden sm:flex flex-col items-start min-w-0 leading-tight">
+            <span className="text-[12px] font-semibold text-apple-ink dark:text-white truncate max-w-[160px]">
               {session.deviceName}
             </span>
             <span className="flex items-center gap-1 text-[10.5px] font-medium text-apple-ink-muted dark:text-white/45">
@@ -595,15 +600,26 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
               {disconnected ? t('chat.offline') : t('chat.online')}
             </span>
           </span>
-          <ArrowRightLeft className="w-3.5 h-3.5 shrink-0 text-apple-ink-muted/50 dark:text-white/30" />
-          <span className="shrink-0 flex items-center justify-center w-8 h-8 rounded-[10px] bg-status-success/10 dark:bg-status-success/10 border border-status-success/20 dark:border-status-success/20 text-status-success">
+          <ArrowRightLeft className="hidden sm:block w-3.5 h-3.5 shrink-0 text-apple-ink-muted/50 dark:text-white/30" />
+          <span className="shrink-0 flex items-center justify-center w-8 h-8 rounded-[10px] bg-status-success/10 border border-status-success/20 text-status-success">
             <PartnerDeviceIcon className="w-4 h-4" />
-          </span>            <span className="flex flex-col items-start min-w-0 leading-tight">
-            <span className="text-[12px] font-semibold text-apple-ink dark:text-white truncate max-w-[34vw] sm:max-w-[160px]">
+          </span>
+          <span className="flex flex-col items-start min-w-0 leading-tight">
+            <span className="text-[12px] font-semibold text-apple-ink dark:text-white truncate max-w-[38vw] sm:max-w-[160px]">
               {session.partnerName || t('chat.pairedDevice')}
             </span>
             <span className="flex items-center gap-1 text-[10.5px] font-medium text-apple-ink-muted dark:text-white/45">
-              {disconnected ? t('chat.disconnected') : t('common.connected')}
+              {disconnected ? (
+                <>
+                  <span className="sm:hidden w-1.5 h-1.5 rounded-full bg-status-warning" />
+                  {t('chat.disconnected')}
+                </>
+              ) : (
+                <>
+                  <span className="sm:hidden w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" />
+                  {t('common.connected')}
+                </>
+              )}
             </span>
           </span>
         </button>
@@ -653,8 +669,8 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
               {/* The two devices — tap your name to rename; the other device
                   sees the change immediately. */}
               <div className="flex items-center gap-2">
-                <div className="flex-1 flex flex-col items-center gap-1 rounded-[14px] bg-[#8b7cf6]/5 dark:bg-[#a78bfa]/5 border border-apple-divider/60 dark:border-apple-tile-3 p-2.5 min-w-0">
-                  <ThisDeviceIcon className="w-5 h-5 text-[#8b7cf6] dark:text-[#a78bfa]" />
+                <div className="flex-1 flex flex-col items-center gap-1 rounded-[14px] bg-[#007aff]/5 dark:bg-[#4da3ff]/5 border border-apple-divider/60 dark:border-apple-tile-3 p-2.5 min-w-0">
+                  <ThisDeviceIcon className="w-5 h-5 text-[#007aff] dark:text-[#4da3ff]" />
                   {editingName ? (
                     <input
                       autoFocus
@@ -667,7 +683,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                       }}
                       aria-label={t('pair.renameField')}
                       maxLength={32}
-                      className="w-full text-center text-[12px] font-medium text-apple-ink dark:text-white bg-transparent border-b border-[#8b7cf6]/50 dark:border-[#a78bfa]/50 outline-none"
+                      className="w-full text-center text-[12px] font-medium text-apple-ink dark:text-white bg-transparent border-b border-[#007aff]/50 dark:border-[#4da3ff]/50 outline-none"
                     />
                   ) : (
                     <button
@@ -703,8 +719,8 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
               {/* One-time auto-rename explanation (mobile joiners never see
                   the desktop summary) — dismissible. */}
               {nameNoticeOpen && (
-                <div role="status" className="mt-3 flex items-start gap-2 p-2.5 rounded-[12px] bg-[#8b7cf6]/8 dark:bg-[#a78bfa]/10 border border-[#8b7cf6]/15 dark:border-[#a78bfa]/15 text-[12px] text-apple-ink-muted dark:text-white/60 leading-snug">
-                  <Info className="w-3.5 h-3.5 text-[#8b7cf6] dark:text-[#a78bfa] shrink-0 mt-px" />
+                <div role="status" className="mt-3 flex items-start gap-2 p-2.5 rounded-[12px] bg-[#007aff]/8 dark:bg-[#4da3ff]/10 border border-[#007aff]/15 dark:border-[#4da3ff]/15 text-[12px] text-apple-ink-muted dark:text-white/60 leading-snug">
+                  <Info className="w-3.5 h-3.5 text-[#007aff] dark:text-[#4da3ff] shrink-0 mt-px" />
                   <span className="flex-1">{t('pair.autoRename', { name: session.deviceName })}</span>
                   <button
                     onPointerDown={() => setNameNoticeOpen(false)}
@@ -929,7 +945,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
         )}
       </div>
       {/* Input Area */}
-      <div className="p-3 sm:p-5 bg-white/80 dark:bg-[#120e22]/80 border-t border-black/[0.06] dark:border-white/[0.04] z-10 pb-[env(safe-area-inset-bottom)] relative">
+      <div className="p-3 sm:p-5 bg-white/80 dark:bg-[#131315]/80 border-t border-black/[0.06] dark:border-white/[0.04] z-10 pb-[env(safe-area-inset-bottom)] relative">
         <form onSubmit={handleSend} className="max-w-3xl mx-auto flex flex-col gap-2">
           <div className="hidden sm:flex items-center justify-end gap-1.5 text-[11px] font-medium text-apple-ink-muted/70 dark:text-white/40 px-1">
             <kbd className="px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">{t('composer.enter')}</kbd>
@@ -953,7 +969,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           {inputText.length >= 1024 && (
             <div className="hidden sm:flex items-center justify-end gap-1.5 text-[11px] font-medium text-apple-ink-muted/70 dark:text-white/40 px-1" aria-live="polite">
               {isLargeInput && (
-                <span className="text-[#8b7cf6] dark:text-[#a78bfa] font-semibold">{t('composer.largePayload')}</span>
+                <span className="text-[#007aff] dark:text-[#4da3ff] font-semibold">{t('composer.largePayload')}</span>
               )}
               <span className={cn('tnum', isLargeInput && 'font-semibold')}>{formatBytes(inputBytes)}</span>
             </div>
@@ -964,7 +980,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             <input type="file" ref={audioInputRef} accept="audio/*" multiple className="hidden" onChange={(e) => handleFileSelect(e, 'audio')} />
             <input type="file" ref={fileInputRef} multiple className="hidden" onChange={(e) => handleFileSelect(e, 'file')} />
           </div>
-          <motion.div layout className={cn("relative rounded-[24px] bg-white dark:bg-[#1a1a22] overflow-visible shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_28px_-14px_rgba(0,0,0,0.14)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.2),0_12px_32px_-14px_rgba(0,0,0,0.5)] transition-motion focus-within:ring-2 focus-within:ring-[#8b7cf6]/30 border border-black/[0.04] dark:border-white/[0.06]", showAttachmentMenu ? "z-[45]" : "z-20")}>
+          <motion.div layout className={cn("relative rounded-[24px] bg-white dark:bg-[#1f1f24] overflow-visible shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_28px_-14px_rgba(0,0,0,0.14)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.2),0_12px_32px_-14px_rgba(0,0,0,0.5)] transition-motion focus-within:ring-2 focus-within:ring-[#007aff]/30 border border-black/[0.04] dark:border-white/[0.06]", showAttachmentMenu ? "z-[45]" : "z-20")}>
           {/* The composer sits above the attachment panel's full-screen
               backdrop while the menu is open, so the + button (and the whole
               composer) stays clickable — otherwise the backdrop eats the click
@@ -1032,8 +1048,8 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 aria-label={t('attach.add')}
                 aria-expanded={showAttachmentMenu}
                 className={cn(
-                  "min-w-[40px] min-h-[40px] -m-[3px] rounded-full flex items-center justify-center shrink-0 text-[#8b7cf6] dark:text-[#a78bfa] hover:bg-[#8b7cf6]/10 dark:hover:bg-[#8b7cf6]/10 transition-motion active:scale-90",
-                  showAttachmentMenu && "text-[#8b7cf6] dark:text-[#a78bfa] bg-[#8b7cf6]/10 rotate-45"
+                  "min-w-[40px] min-h-[40px] -m-[3px] rounded-full flex items-center justify-center shrink-0 text-[#007aff] dark:text-[#4da3ff] hover:bg-[#007aff]/10 dark:hover:bg-[#007aff]/10 transition-motion active:scale-90",
+                  showAttachmentMenu && "text-[#007aff] dark:text-[#4da3ff] bg-[#007aff]/10 rotate-45"
                 )}
               >
                 <Plus className="w-5 h-5 transition-transform" />
@@ -1065,7 +1081,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 onPointerDown={handleSend}
                 disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
                 aria-label={t('composer.send')}
-                className="min-w-[40px] min-h-[40px] -m-[1px] rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-90 text-white disabled:opacity-30 disabled:bg-[#d9cdb2] dark:disabled:bg-[#3a3a42] disabled:shadow-none bg-gradient-to-b from-[#a78bfa] to-[#7c6ce0] shadow-[0_1px_2px_rgba(0,0,0,0.2),0_4px_10px_-2px_rgba(139,124,246,0.4)]"
+                className="min-w-[40px] min-h-[40px] -m-[1px] rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-90 text-white disabled:opacity-40 disabled:bg-apple-hairline dark:disabled:bg-white/15 disabled:shadow-none enabled:bg-apple-ink dark:enabled:bg-white dark:enabled:text-night-900 shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
               >
                 <AnimatedIcon animate="send" active={!((!inputText.trim() && attachments.length === 0) || !session.partnerConnected)}>
                   <ArrowUp className="w-5 h-5" strokeWidth={2.4} />

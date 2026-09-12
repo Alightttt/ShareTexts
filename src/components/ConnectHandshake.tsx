@@ -41,7 +41,7 @@ function DeviceTile({ kind, accent, glow, kindIcon }: { kind: 'local' | 'partner
     <div
       className={cn(
         'relative flex items-center justify-center rounded-[20px] shrink-0',
-        'bg-white dark:bg-[#251b40] border shadow-sm'
+        'bg-white dark:bg-[#1e2430] border shadow-sm'
       )}
       style={{
         width: TILE,
@@ -87,7 +87,9 @@ export function ConnectHandshake({ phase, localIcon = 'phone', partnerName }: Co
     if (connected) setConverged(true);
   }, [connected]);
 
-  const accent = 'var(--ht-accent, #8b7cf6)';
+  // Beam/status accent tracks the phase: blue while linking, the system
+  // green only when the link is actually live. One hue telling the truth.
+  const accent = connected ? '#34c759' : 'var(--ht-accent, #007aff)';
   const gap = converged ? 40 : connecting ? 84 : 120;
 
   const status = connected ? t('connect.linked') : connecting ? t('connect.establishing') : t('connect.searching');
