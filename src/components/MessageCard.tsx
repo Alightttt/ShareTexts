@@ -66,7 +66,7 @@ function SelectionRing({ selected }: { selected: boolean }) {
       className={cn(
         'absolute top-1/2 -translate-y-1/2 w-[22px] h-[22px] rounded-full border-2 flex items-center justify-center shrink-0 pointer-events-none',
         selected
-          ? 'bg-[#007aff] border-[#007aff]'
+          ? 'bg-[#f06413] border-[#f06413]'
           : 'bg-transparent border-apple-ink-muted/40 dark:border-white/35'
       )}
     >
@@ -518,7 +518,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
       {selectMode && <SelectionRing selected={selected} />}
       <div className={cn(
         "flex flex-col gap-0 max-w-[85%] sm:max-w-[65%] w-full transition-shadow",
-        selected && "ring-2 ring-[#007aff]/60",
+        selected && "ring-2 ring-[#f06413]/60",
         isMe ? "items-end" : "items-start"
       )}>
         <div className={cn(

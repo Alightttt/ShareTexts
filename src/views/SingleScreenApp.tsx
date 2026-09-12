@@ -16,7 +16,7 @@
  */
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useSession } from '../lib/SessionContext';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { ShareTextLogo } from '../components/ShareTextLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { LiveCodeDisplay } from '../components/LiveCodeDisplay';
@@ -28,12 +28,14 @@ import { InlineConfirm } from '../components/InlineConfirm';
 import { ConnectHandshake } from '../components/ConnectHandshake';
 import { CommandBar, CommandBarChip } from '../components/CommandBar';
 import { signalingConfigIssue } from '../lib/socket';
+import { ConnectError, describeConnectFailure } from '../lib/errors';
+import { HeroTransferScene } from '../components/HeroTransferScene';
 import { useI18n } from '../lib/i18n';
 import { LanguageMenu } from '../components/LanguageMenu';
 import { cn, shortCodeOf, sanitizeDeviceName } from '../lib/utils';
 import {
   LogOut, QrCode, Link2, Copy, Check,
-  Smartphone, Monitor, X, Wifi, ArrowRightLeft, Info, Pencil, Lock
+  Smartphone, Monitor, X, Wifi, ArrowRightLeft, Info, Pencil, WifiOff, ServerOff
 } from 'lucide-react';
 import { generateTOTP } from '../lib/totp';
 import { useFocusTrap } from '../lib/useFocusTrap';
@@ -88,7 +90,7 @@ function useIsDesktopLayout() {
 function DevicePair({ state }: { state: 'idle' | 'connecting' | 'connected' }) {
   const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
   const muted = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
-  const accent = isDark ? '#4da3ff' : '#007aff';
+  const accent = isDark ? '#fb9243' : '#f06413';
   const beamColor = state === 'connected' ? accent : muted;
   const deviceColor = state === 'connected'
     ? (isDark ? 'rgba(167,139,250,0.15)' : 'rgba(139,124,246,0.10)')
@@ -134,8 +136,9 @@ export function SingleScreenApp() {
   const isDesktopLayout = useIsDesktopLayout();
   const [panelMode, setPanelMode] = useState<PanelMode>('idle');
   const [isCreating, setIsCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<{ text: string; icon: 'offline' | 'server' | 'time' | 'info' } | null>(null);
   const [showQROverlay, setShowQROverlay] = useState(false);
+  const reduceMotion = useReducedMotion();
   const [showQRScan, setShowQRScan] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
@@ -243,6 +246,27 @@ export function SingleScreenApp() {
   const MAX_RETRIES = 2;
   const createAbortRef = useRef(0);
 
+  /**
+   * Map a thrown connect failure to { translated copy, icon key }.
+   * Replaces the old substring matching on raw English strings, which never
+   * matched the actual copy and surfaced untranslated errors. Each branch
+   * names the real cause: the device's network, our service, or timing.
+   */
+  const friendlyConnectError = useCallback((e: unknown): { text: string; icon: 'offline' | 'server' | 'time' | 'info' } => {
+    const code = describeConnectFailure(e);
+    if (code === 'OFFLINE') return { text: t('err.offline'), icon: 'offline' };
+    if (code === 'UNREACHABLE') return { text: t('err.unreachable'), icon: 'server' };
+    if (code === 'CONFIG') return { text: (e instanceof Error && e.message) || t('err.config'), icon: 'server' };
+    if (code === 'RATE_LIMITED') return { text: t('err.ratelimited'), icon: 'time' };
+    if (code === 'TIMEOUT') return { text: t('err.timeout2'), icon: 'time' };
+    // REJECTED carries server copy already localized by humanizeError.
+    if (e instanceof ConnectError && e.code === 'REJECTED') return { text: e.message, icon: 'info' };
+    if (e instanceof Error && e.message && !/^CONNECT|^[A-Z_]+$/.test(e.message) && signalingConfigIssue()) {
+      return { text: e.message, icon: 'info' };
+    }
+    return { text: t('err.generic'), icon: 'info' };
+  }, [t]);
+
   const handleSend = useCallback(async () => {
     if (isCreating) return;
     setPanelMode('sending');
@@ -252,23 +276,14 @@ export function SingleScreenApp() {
     try {
       await createSession();
       if (thisAttempt === createAbortRef.current) setRetryCount(0);
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (thisAttempt !== createAbortRef.current) return;
-      const raw = e.message || "Could not start a session.";
-      const msg = raw.includes("connection service")
-        ? (signalingConfigIssue() || raw)
-        : raw;
-      const friendly = msg.includes("having trouble")
-        ? t('err.connectFailed')
-        : msg.includes("Taking too long")
-        ? t('err.timeout')
-        : msg;
-      setCreateError(friendly);
+      setCreateError(friendlyConnectError(e));
       setPanelMode('idle');
     } finally {
       if (thisAttempt === createAbortRef.current) setIsCreating(false);
     }
-  }, [isCreating, createSession, t]);
+  }, [isCreating, createSession, t, friendlyConnectError]);
 
   const handleReceive = useCallback(() => { setPanelMode('receiving'); setCreateError(null); setJoinError(null); }, []);
 
@@ -286,11 +301,13 @@ export function SingleScreenApp() {
         // show the connecting overlay until the channel actually opens.
         setPanelMode('connecting');
       }
-    } catch {
+    } catch (e: unknown) {
       setIsJoining(false);
-      setJoinError(signalingConfigIssue() || t('err.generic'));
+      // Same honest classification as the Send path: no more generic
+      // "check your internet" for what might be a dead service.
+      setJoinError(friendlyConnectError(e).text);
     }
-  }, [isJoining, joinWithCode, t]);
+  }, [isJoining, joinWithCode, t, friendlyConnectError]);
 
   const handleDisconnect = useCallback(() => { setPanelMode('idle'); abandonSession(); setCreateError(null); setIsCreating(false); setJoinError(null); }, [abandonSession]);
   const handleCancel = useCallback(() => {
@@ -340,14 +357,16 @@ export function SingleScreenApp() {
   const headerNode = (
     <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
         <div className="flex items-center gap-2.5">
-          <ShareTextLogo size={20} className="text-azure-600 dark:text-azure-400" />
+          <ShareTextLogo size={20} />
           <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>
         </div>
-        <div className="flex items-center gap-1">
+        {/* Even, breathing room between nav items — no negative-margin
+            cramming; the toggle gets clear separation from Docs. */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <CommandBarChip onClick={() => setCmdOpen(true)} />
           <LanguageMenu />
-          <a href="/docs" className="min-w-[40px] min-h-[40px] flex items-center justify-center -mx-[5px] -my-[10px] text-[13px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.docs')}</a>
-          <ThemeToggle />
+          <a href="/docs" className="px-2 py-2 text-[13px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors rounded-lg">{t('nav.docs')}</a>
+          <div className="ml-1"><ThemeToggle /></div>
         </div>
     </header>
   );
@@ -359,13 +378,7 @@ export function SingleScreenApp() {
             // Deterministic first paint: the hero renders visible immediately;
             // only the swap-out fades. Never gate first paint on animation.
             <motion.div key="idle" exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto">
-              {/* Trust badge — the privacy promise, stated before the pitch. */}
-              <div className="flex justify-center sm:justify-start mb-4">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#007aff]/10 dark:bg-[#4da3ff]/10 border border-[#007aff]/15 dark:border-[#4da3ff]/15 text-[#007aff] dark:text-[#4da3ff] text-[11px] font-semibold">
-                  <Lock className="w-3 h-3" aria-hidden="true" /> {t('home.badge.private')}
-                </span>
-              </div>
-              <h1 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold tracking-[-0.03em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left">
+              <h1 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold tracking-[-0.035em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left" style={{ fontFamily: 'var(--font-display)' }}>
                 {(() => { const [a, b] = t('home.title').split('\n'); return (<>{a}{b ? <><br />{b}</> : null}</>); })()}
               </h1>
               <p className="mt-4 text-[15px] sm:text-[16px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[36ch] text-center sm:text-left">
@@ -381,11 +394,34 @@ export function SingleScreenApp() {
                   <span className="text-[11.5px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.receiveHint')}</span>
                 </div>
               </div>
+              {/* The product working, before any signup: text, photo, and
+                  file fly phone → laptop on a loop (mobile/tablet only — on
+                  desktop the same scene lives in the right room pane). */}
+              {/* Scaled to fit below the CTAs without pushing the footer:
+                  0.52 at ph, 0.62 from sm, and generous negative margin to
+                  reclaim the unscaled box height. */}
+              <div className="lg:hidden mt-8 flex justify-center origin-top scale-[0.52] sm:scale-[0.62] -mb-[150px] sm:-mb-[118px]">
+                <HeroTransferScene />
+              </div>
               {createError && (
-                <div role="alert" className="mt-4">
-                  <p className="text-[13px] font-medium text-status-danger leading-relaxed">{createError}</p>
-                  <button onClick={handleSend} className="mt-2 px-4 py-2 min-h-[36px] rounded-full text-[12px] font-semibold bg-status-danger/10 text-status-danger hover:bg-status-danger/20 transition-colors">{t('home.retry')}</button>
-                </div>
+                <motion.div
+                  role="alert"
+                  initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+                  className="mt-4 p-3.5 rounded-[14px] bg-status-danger/[0.07] dark:bg-status-danger/10 border border-status-danger/20 flex items-start gap-3"
+                >
+                  <span className="shrink-0 w-8 h-8 rounded-full bg-status-danger/15 flex items-center justify-center">
+                    {createError.icon === 'offline' ? <WifiOff className="w-4 h-4 text-status-danger" />
+                      : createError.icon === 'server' ? <ServerOff className="w-4 h-4 text-status-danger" />
+                      : createError.icon === 'time' ? <Info className="w-4 h-4 text-status-danger" />
+                      : <Info className="w-4 h-4 text-status-danger" />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-medium text-status-danger leading-relaxed">{createError.text}</p>
+                    <button onClick={handleSend} className="mt-2 px-4 py-1.5 min-h-[36px] rounded-full text-[12px] font-semibold bg-status-danger/10 text-status-danger hover:bg-status-danger/20 transition-colors active:scale-95">{t('home.retry')}</button>
+                  </div>
+                </motion.div>
               )}
             </motion.div>
           )}
@@ -399,7 +435,7 @@ export function SingleScreenApp() {
               </div>
               {isCreating && !session.secret ? (
                 <div className="flex flex-col items-center py-8">
-                  <ShareTextLogo size={20} motion="connecting" className="text-azure-600 dark:text-azure-400 mb-4" />
+                  <ShareTextLogo size={20} motion="connecting" />
                   <p className="text-[14px] font-medium text-apple-ink-muted dark:text-white/50">{t('create.creating')}</p>
                 </div>
               ) : (
@@ -427,8 +463,10 @@ export function SingleScreenApp() {
                     {/* Equal-weight paper tiles: the code is the hero of this
                         screen, so the three sharing tools don't compete — no
                         one blue pill outranking the others arbitrarily. */}
-                    <button onClick={() => setShowQROverlay(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] rounded-full text-[14px] font-semibold text-apple-ink dark:text-white min-h-[48px] transition-colors active:scale-[0.97]">
-                      <QrCode className="w-4 h-4 text-apple-ink-muted dark:text-white/60" /> {t('create.showQr')}
+                    {/* Show QR is the primary action on this screen — scanning
+                        is the fastest pairing path on any phone. */}
+                    <button onClick={() => setShowQROverlay(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 text-white rounded-full text-[14px] font-semibold min-h-[48px] transition-colors active:scale-[0.97] shadow-sm bg-ember hover:bg-[#d9560e]">
+                      <QrCode className="w-4 h-4" /> {t('create.showQr')}
                     </button>
                     <button onClick={shareLink} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] rounded-full text-[13px] font-semibold text-apple-ink dark:text-white/90 transition-colors active:scale-[0.97] min-h-[44px]">
                       {copiedLink ? <AnimatedIcon animate="check" active><Check className="w-4 h-4 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="link"><Link2 className="w-4 h-4 text-apple-ink-muted dark:text-white/50" /></AnimatedIcon>}
@@ -468,7 +506,7 @@ export function SingleScreenApp() {
                     <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] rounded-full text-[14px] font-semibold text-apple-ink dark:text-white min-h-[48px] transition-colors active:scale-[0.97]">
                       <QrCode className="w-4 h-4 text-apple-ink-muted dark:text-white/60" /> {t('receive.scan')}
                     </button>
-                    <div className="p-6 bg-white dark:bg-[#1e2430] border border-apple-divider dark:border-white/10 rounded-[20px] shadow-card">
+                    <div className="p-6 bg-white dark:bg-[#1a1a1e] border border-apple-divider dark:border-white/10 rounded-[20px] shadow-card">
                       <LiveCodeInput onComplete={handleCodeComplete} isJoining={isJoining} error={joinError} />
                     </div>
                     <p className="mt-4 text-[12px] text-apple-ink-muted/60 dark:text-white/35 text-center">{t('receive.note')}</p>
@@ -505,9 +543,9 @@ export function SingleScreenApp() {
                   <div className="flex flex-col items-center gap-1.5">
                     <div className={cn(
                       "w-14 h-14 rounded-[16px] flex items-center justify-center",
-                      "bg-[#007aff]/10 dark:bg-[#4da3ff]/10 border border-[#007aff]/15 dark:border-[#4da3ff]/15"
+                      "bg-[#f06413]/10 dark:bg-[#fb9243]/10 border border-[#f06413]/15 dark:border-[#fb9243]/15"
                     )}>
-                      <ThisDeviceIcon className="w-6 h-6 text-[#007aff] dark:text-[#4da3ff]" />
+                      <ThisDeviceIcon className="w-6 h-6 text-[#f06413] dark:text-[#fb9243]" />
                     </div>
                     {editingName ? (
                       <input
@@ -521,7 +559,7 @@ export function SingleScreenApp() {
                         }}
                         aria-label={t('pair.renameField')}
                         maxLength={32}
-                        className="w-[120px] text-center text-[11px] font-medium text-apple-ink dark:text-white bg-transparent border-b border-[#007aff]/50 dark:border-[#4da3ff]/50 outline-none px-0.5"
+                        className="w-[120px] text-center text-[11px] font-medium text-apple-ink dark:text-white bg-transparent border-b border-[#f06413]/50 dark:border-[#fb9243]/50 outline-none px-0.5"
                       />
                     ) : (                        <button
                           onClick={startEditName}
@@ -540,9 +578,9 @@ export function SingleScreenApp() {
                       transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
                       className="flex items-center gap-1"
                     >
-                      <span className="w-1 h-1 rounded-full bg-[#007aff]/40 dark:bg-[#4da3ff]/40" />
-                      <ArrowRightLeft className="w-4 h-4 text-[#007aff] dark:text-[#4da3ff]" />
-                      <span className="w-1 h-1 rounded-full bg-[#007aff]/40 dark:bg-[#4da3ff]/40" />
+                      <span className="w-1 h-1 rounded-full bg-[#f06413]/40 dark:bg-[#fb9243]/40" />
+                      <ArrowRightLeft className="w-4 h-4 text-[#f06413] dark:text-[#fb9243]" />
+                      <span className="w-1 h-1 rounded-full bg-[#f06413]/40 dark:bg-[#fb9243]/40" />
                     </motion.div>
                     <span className={cn("text-[11px] font-medium mt-1", session.connectionType === 'disconnected' ? "text-status-warning" : "text-status-success")}>
                       {session.connectionType === 'disconnected' ? t('pair.reconnecting') : t('common.connected')}
@@ -563,8 +601,8 @@ export function SingleScreenApp() {
 
                 {/* One-time notice when the auto-disambiguation renamed us. */}
                 {session.nameAutoAdjusted && !dismissedNameNotice && (
-                  <div role="status" className="w-full sm:max-w-[340px] flex items-start gap-2 px-3 py-2 rounded-[12px] bg-[#007aff]/8 dark:bg-[#4da3ff]/10 border border-[#007aff]/15 dark:border-[#4da3ff]/15 text-[12px] text-apple-ink-muted dark:text-white/60 leading-snug">
-                    <Info className="w-3.5 h-3.5 text-[#007aff] dark:text-[#4da3ff] shrink-0 mt-px" />
+                  <div role="status" className="w-full sm:max-w-[340px] flex items-start gap-2 px-3 py-2 rounded-[12px] bg-[#f06413]/8 dark:bg-[#fb9243]/10 border border-[#f06413]/15 dark:border-[#fb9243]/15 text-[12px] text-apple-ink-muted dark:text-white/60 leading-snug">
+                    <Info className="w-3.5 h-3.5 text-[#f06413] dark:text-[#fb9243] shrink-0 mt-px" />
                     <span className="flex-1">
                       {(() => { const parts = t('pair.autoRename', { name: '\u0000' }).split('\u0000'); return (<>{parts[0]}<span className="font-semibold text-apple-ink dark:text-white">{session.deviceName}</span>{parts[1]}</>); })()}
                     </span>
@@ -609,7 +647,7 @@ export function SingleScreenApp() {
                   [t('conn.guidance.3t'), t('conn.guidance.3s')],
                 ].map(([ti, si]) => (
                   <div key={ti} className="flex items-center gap-2.5 text-[12px]">
-                    <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-[#007aff]/50 dark:bg-[#4da3ff]/50" />
+                    <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-[#f06413]/50 dark:bg-[#fb9243]/50" />
                     <span className="font-semibold text-apple-ink dark:text-white/85">{ti}</span>
                     <span className="text-apple-ink-muted/70 dark:text-white/40">— {si}</span>
                   </div>
@@ -622,18 +660,24 @@ export function SingleScreenApp() {
 
   const footerNode = (
     <footer className="shrink-0 px-6 lg:px-10 py-4 border-t border-apple-divider/60 dark:border-white/[0.06] pb-[env(safe-area-inset-bottom)]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-5 text-[12px] font-medium text-apple-ink-muted dark:text-white/40">
-            <a href="/docs" className="min-w-[40px] min-h-[40px] flex items-center justify-center -mx-[5px] -my-[10px] hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.docs')}</a>
-            <a href="https://x.com/0xalyt" target="_blank" rel="noopener noreferrer" className="min-h-[40px] flex items-center gap-1.5 -my-[10px] hover:text-apple-ink dark:hover:text-white transition-colors" aria-label={t('footer.followAria')}>@0xalyt<svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg></a>
-          </div>
-          <div className="hidden sm:flex items-center gap-2.5 text-[11px] text-apple-ink-muted/40 dark:text-white/20">
-            <span>{t('footer.noApp')}</span>
-            <span className="text-apple-ink-muted/20 dark:text-white/10">·</span>
-            <span>{t('footer.noAccount')}</span>
-            <span className="text-apple-ink-muted/20 dark:text-white/10">·</span>
-            <span>{t('footer.temporary')}</span>
-          </div>
+        {/* One line: links with real gaps, the handle as a compact chip so
+            the X glyph and name can never wrap or split. */}
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <nav className="flex items-center gap-6 text-[12.5px] font-medium text-apple-ink-muted dark:text-white/45">
+            <a href="/docs" className="hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.docs')}</a>
+            <a href="/privacy" className="hover:text-apple-ink dark:hover:text-white transition-colors">Privacy</a>
+            <a href="/terms" className="hover:text-apple-ink dark:hover:text-white transition-colors">Terms</a>
+          </nav>
+          <a
+            href="https://x.com/0xalyt"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={t('footer.followAria')}
+            className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full border border-apple-divider/70 dark:border-white/10 text-[12px] font-semibold text-apple-ink-muted dark:text-white/50 hover:text-apple-ink hover:border-apple-ink/30 dark:hover:text-white dark:hover:border-white/25 transition-colors whitespace-nowrap"
+          >
+            <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+            @0xalyt
+          </a>
         </div>
     </footer>
   );
@@ -661,7 +705,7 @@ export function SingleScreenApp() {
       {/* Room header */}
       <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-[#f4f2ec]/80 dark:bg-[#0f0f11]/80 backdrop-blur-xl z-10">
         <div className="flex items-center gap-2.5">
-          <ShareTextLogo size={16} className="text-azure-600 dark:text-azure-400" />
+          <ShareTextLogo size={16} />
           <span className="text-[13px] font-semibold text-apple-ink dark:text-white">
             {panelMode === 'connected' ? t('room.transfer') : t('room.title')}
           </span>
@@ -701,7 +745,7 @@ export function SingleScreenApp() {
       {/* Room content */}
       <div className="flex-1 min-h-0 flex flex-col">
         {panelMode === 'connected' ? (
-          <Suspense fallback={<div className="h-full flex items-center justify-center"><ShareTextLogo size={24} motion="connecting" className="text-azure-600 dark:text-azure-400" /></div>}>
+          <Suspense fallback={<div className="h-full flex items-center justify-center"><ShareTextLogo size={24} motion="connecting" /></div>}>
             {/* Definite-height flex wrapper: keeps ChatView's h-full resolved on
                 the desktop two-pane layout (Suspense itself is not a flex item). */}
             <div className="flex-1 min-h-0 flex flex-col">
@@ -727,17 +771,18 @@ export function SingleScreenApp() {
               className="h-full flex flex-col items-center justify-center text-center px-8 flex-1"
             >
               {/* Connecting shows the same handshake scene as the left half —
-                  one story on both panes. Other states keep the quiet pair
-                  illustration with their status copy. */}
+                  one story on both panes. Idle keeps the hero transfer demo
+                  running here too: the right pane teaches the product while
+                  the left pane asks for action. */}
               {panelMode === 'connecting' ? (
                 <div className="mb-4">
                   <ConnectHandshake phase="connecting" localIcon={isMobileDevice ? 'phone' : 'monitor'} />
                 </div>
               ) : (
                 <>
-                  {/* Device pair illustration */}
+                  {/* Live transfer demo (was a static pair illustration) */}
                   <div className="mb-5">
-                    <DevicePair state={panelMode === 'idle' ? 'idle' : 'connecting'} />
+                    <HeroTransferScene />
                   </div>
 
                   {/* State-specific messaging */}
@@ -798,7 +843,7 @@ export function SingleScreenApp() {
         panelMode === 'connected' ? (
           <Suspense fallback={
             <div className="h-full flex items-center justify-center bg-[#f4f2ec] dark:bg-[#0f0f11]">
-              <ShareTextLogo size={26} motion="connecting" className="text-azure-600 dark:text-azure-400" />
+              <ShareTextLogo size={26} motion="connecting" />
             </div>
           }>
             <motion.div
@@ -830,7 +875,7 @@ export function SingleScreenApp() {
       <AnimatePresence>
         {showQRScan && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/50 dark:bg-black/70 flex items-center justify-center p-4" onClick={() => setShowQRScan(false)}>
-            <motion.div ref={qrScanTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[360px] bg-white dark:bg-[#1e2430] rounded-[24px] p-6 shadow-2xl relative" role="dialog" aria-modal="true" aria-label={t('receive.scan')}>
+            <motion.div ref={qrScanTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[360px] bg-white dark:bg-[#1a1a1e] rounded-[24px] p-6 shadow-2xl relative" role="dialog" aria-modal="true" aria-label={t('receive.scan')}>
               <button onClick={() => setShowQRScan(false)} className="absolute top-3 right-3 min-w-[44px] min-h-[44px] rounded-full bg-apple-parchment dark:bg-white/5 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors z-10" aria-label={t('common.close')}><X className="w-4 h-4" /></button>
               <kbd aria-hidden="true" className="hidden sm:inline absolute top-5 right-16 px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-white/10 bg-white/60 dark:bg-white/5 text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">Esc</kbd>
               <h3 className="text-[16px] font-semibold text-apple-ink dark:text-white mb-2">{t('qr.scan.title')}</h3>
@@ -852,14 +897,22 @@ export function SingleScreenApp() {
       <AnimatePresence>
         {showQROverlay && session.roomId && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/50 dark:bg-black/70 flex items-center justify-center p-6" onClick={() => setShowQROverlay(false)}>
-            <motion.div ref={qrDisplayTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[340px] bg-white dark:bg-[#1e2430] rounded-[24px] p-6 shadow-2xl text-center relative" role="dialog" aria-modal="true" aria-label={t('qr.display.title')}>
+            <motion.div ref={qrDisplayTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[340px] bg-apple-canvas dark:bg-[#1a1a1e] rounded-[24px] p-6 shadow-2xl text-center relative border border-apple-divider/50 dark:border-white/[0.08]" role="dialog" aria-modal="true" aria-label={t('qr.display.title')}>
               <button onClick={() => setShowQROverlay(false)} className="absolute top-3 right-3 min-w-[44px] min-h-[44px] rounded-full bg-apple-parchment dark:bg-white/5 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors" aria-label={t('common.close')}><X className="w-4 h-4" /></button>
               <kbd aria-hidden="true" className="hidden sm:inline absolute top-5 right-16 px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-white/10 bg-white/60 dark:bg-white/5 text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">Esc</kbd>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/60 mb-4 leading-relaxed">
                 {(() => { const parts = t('qr.display.body', { receive: '\u0000' }).split('\u0000'); return (<>{parts[0]}<strong className="text-apple-ink dark:text-white">{t('qr.display.receive')}</strong>{parts[1]}</>); })()}
               </p>
-              <div className="bg-white p-4 rounded-[18px] inline-flex items-center justify-center mb-4 shadow-sm border border-apple-divider/30"><QROverlayInner value={qrValue} /></div>
-              <button onClick={() => setShowQROverlay(false)} className="w-full py-2.5 min-h-[44px] bg-apple-parchment dark:bg-white/5 hover:bg-apple-divider dark:hover:bg-white/10 rounded-[12px] text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.98]">{t('qr.close')}</button>
+              <div className="bg-white p-4 rounded-[18px] inline-flex items-center justify-center mb-4 shadow-sm border border-apple-divider/30 relative">
+                <QROverlayInner value={qrValue} />
+                {/* Scanner-frame corners in ember — the recognized visual
+                    grammar for "aim your camera here", quieter than a
+                    moving line and it never covers the code. */}
+                {['top-1.5 left-1.5 border-t-2 border-l-2 rounded-tl-[8px]', 'top-1.5 right-1.5 border-t-2 border-r-2 rounded-tr-[8px]', 'bottom-1.5 left-1.5 border-b-2 border-l-2 rounded-bl-[8px]', 'bottom-1.5 right-1.5 border-b-2 border-r-2 rounded-br-[8px]'].map(pos => (
+                  <span key={pos} aria-hidden className={`absolute w-5 h-5 border-ember ${pos}`} />
+                ))}
+              </div>
+              <button onClick={() => setShowQROverlay(false)} className="w-full py-2.5 min-h-[44px] bg-apple-parchment dark:bg-white/5 hover:bg-apple-divider dark:hover:bg-white/10 rounded-full text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.98]">{t('qr.close')}</button>
             </motion.div>
           </motion.div>
         )}

@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { SessionState, ChatMessage, ConnectionType } from '../types';
-import { getSocket, devLog, signalingConfigIssue, resolveShortCode, refreshCode as refreshCodeRPC } from './socket';
+import { getSocket, devLog, signalingConfigIssue, probeSignalingHealth, resolveShortCode, refreshCode as refreshCodeRPC } from './socket';
 import { PeerManager, TransferCancelledError, hasSendProgress, clearAllTransferState, clearTransferState, getPartialInfo, chunkCountForSize } from './webrtc';
 import { generateKey } from './crypto';
-import { humanizeError } from './errors';
+import { humanizeError, ConnectError, describeConnectFailure } from './errors';
 import { diag, roomCreateDiagStart, roomCreateDiagEnd } from './diag';
 import { sanitizeFilename } from './utils';
 import { normalizePastedText } from './textFidelity';
@@ -148,23 +148,38 @@ export function guessDeviceName(): string {
 }
 
 /**
- * Wait until the shared socket is connected, or fail with a friendly error.
+ * Wait until the shared socket is connected, or fail with a CLASSIFIED error.
  *
  * The socket.io transport already retries with bounded exponential backoff
- * (reconnectionAttempts: 60, delay 2–8s), so a single transient connect_error
- * must NOT reject the request — the connection commonly comes up on the very
- * next attempt. Only the overall window is terminal. This was the root cause
- * of intermittent "Couldn't reach ShareText." on flaky networks: the first
- * failed WS attempt failed the whole create/join instantly.
+ * (reconnectionAttempts: 60, delay 2–8s, polling fallback), so a single
+ * transient connect_error must NOT reject the request — the connection
+ * commonly comes up on the very next attempt. Only the overall window is
+ * terminal, and the failure carries a code (OFFLINE / UNREACHABLE / TIMEOUT /
+ * CONFIG) so the UI can say what actually happened.
  */
-function ensureSocketConnected(timeoutMs = 5000): Promise<void> {
+function ensureSocketConnected(timeoutMs = 6000): Promise<void> {
   const socket = getSocket();
   if (socket.connected) return Promise.resolve();
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       cleanup();
       diag('connect.timeout', false, `waited ${timeoutMs}ms`);
-      reject(new Error(configIssueMessage() || "ShareText is having trouble connecting. Try again."));
+      // Classify before rejecting: a device with no network or a dead
+      // service gets a different, honest message than a slow one.
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        reject(new ConnectError('OFFLINE'));
+        return;
+      }
+      const config = signalingConfigIssue();
+      if (config) {
+        reject(new ConnectError('CONFIG', config));
+        return;
+      }
+      // Probe the service: up → our transport failed locally; down → the
+      // service itself is out. The probe result picks the truthful copy.
+      void probeSignalingHealth().then((health) => {
+        reject(new ConnectError(health === 'ok' ? 'TIMEOUT' : health === 'slow' ? 'TIMEOUT' : 'UNREACHABLE'));
+      });
     }, timeoutMs);
     const onConnect = () => { cleanup(); diag('connect.ok', true); resolve(); };
     const onError = () => { /* transient — keep waiting for the retry */ };
@@ -177,12 +192,6 @@ function ensureSocketConnected(timeoutMs = 5000): Promise<void> {
     socket.once('connect_error', onError);
   });
 }
-
-/** In production with no signaling URL baked into the bundle, say so. */
-function configIssueMessage(): string | null {
-  return signalingConfigIssue();
-}
-
 /**
  * Friendly, actionable error messages based on the failure code.
  * Users should always know WHAT went wrong and WHAT to try next.
@@ -951,9 +960,75 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * One create_room round-trip with a bounded ack window.
+   *
+   * The socket.io path previously had NO ack timeout: when the connection
+   * dropped between "connected" and the emit, the callback never fired and
+   * the Send button hung on "Creating room…" forever. Every transport now
+   * resolves within ACK_TIMEOUT, and a transient-looking failure (timeout,
+   * unreachable) is retried ONCE silently before surfacing — flaky networks
+   * usually connect on the second attempt and the user never sees an error.
+   */
+  const createRoomOnce = (attempt: number): Promise<void> => {
+    const ACK_TIMEOUT = 9000;
+    return new Promise<void>((resolve, reject) => {
+      const socket = getSocket();
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        diag('room.create_ack_timeout', true, `attempt ${attempt}`);
+        // A dropped connection may recover on its own — force the transport
+        // to restart now instead of waiting for its backoff.
+        try { (socket as any).connect?.(); } catch { /* best effort */ }
+        reject(new ConnectError('TIMEOUT'));
+      }, ACK_TIMEOUT);
+
+      try {
+        socket.emit('create_room', (res: { success: boolean; roomId?: string; secret?: string; createdAt?: number; error?: string; code?: string }) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          diag('room.create', !!res.success, res.success ? res.roomId : (res.error || 'unknown'));
+          if (res.success && res.roomId && res.secret) {
+            saveStoredSession({ roomId: res.roomId, secret: res.secret, isCreator: true, createdAt: res.createdAt });
+            setSession({
+              roomId: res.roomId,
+              secret: res.secret,
+              createdAt: res.createdAt,
+              isCreator: true,
+              partnerConnected: false,
+              partnerConnecting: false,
+              connectionType: 'waiting',
+              messages: [],
+              closedReason: null,
+              deviceName: session.deviceName,
+              partnerName: null
+            });
+            resolve();
+          } else {
+            const code = res.code || res.error || '';
+            roomCreateDiagEnd(createDiagRequestRef.current, 'failure', 'ROOM_CREATE_REJECTED', code);
+            if (/too many attempts|rate/i.test(code)) reject(new ConnectError('RATE_LIMITED'));
+            else reject(new ConnectError('REJECTED', humanizeError(res.code, res.error || "Couldn't start a session.")));
+          }
+        });
+      } catch (e) {
+        settled = true;
+        clearTimeout(timer);
+        reject(new ConnectError('UNKNOWN', String(e)));
+      }
+    });
+  };
+
+  // RequestId for the diag timeline, set by createSession before attempts.
+  const createDiagRequestRef = { current: '' } as { current: string };
+
   const createSession = async () => {
     abandonedRef.current = false;
     const requestId = crypto.randomUUID();
+    createDiagRequestRef.current = requestId;
     devLog('Create Session clicked — connecting to socket…');
     roomCreateDiagStart(requestId, 'socket');
     try {
@@ -963,41 +1038,29 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       throw e;
     }
     devLog('Socket connected — sending create request');
-    return new Promise<void>((resolve, reject) => {
-      const socket = getSocket();
 
-      // No redundant timeout here — CloudflareSocket's own WS_OPEN_TIMEOUT
-      // (8s) + request timeout (4s) handles the total window. Adding a second
-      // timeout here creates confusing dual-timeout behavior where the outer
-      // timeout fires first and the inner one is orphaned.
-
-      socket.emit('create_room', (res: { success: boolean; roomId?: string; secret?: string; createdAt?: number; error?: string; code?: string }) => {
-        diag('room.create', !!res.success, res.success ? res.roomId : (res.error || 'unknown'));
-        if (res.success && res.roomId && res.secret) {
-          roomCreateDiagEnd(requestId, 'success');
-          devLog('Room created — navigating');
-          saveStoredSession({ roomId: res.roomId, secret: res.secret, isCreator: true, createdAt: res.createdAt });
-          setSession({
-            roomId: res.roomId,
-            secret: res.secret,
-            createdAt: res.createdAt,
-            isCreator: true,
-            partnerConnected: false,
-            partnerConnecting: false,
-            connectionType: 'waiting',
-            messages: [],
-            closedReason: null,
-            deviceName: session.deviceName,
-            partnerName: null
-          });
-          resolve();
-        } else {
-          roomCreateDiagEnd(requestId, 'failure', 'ROOM_CREATE_REJECTED', res.code || res.error);
-          devLog('Create request failed:', res.code || res.error);
-          reject(new Error(configIssueMessage() || humanizeError(res.code, res.error || "Couldn't start a session.")));
-        }
-      });
-    });
+    const MAX_ATTEMPTS = 2;
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        await createRoomOnce(attempt);
+        roomCreateDiagEnd(requestId, 'success');
+        devLog('Room created — navigating');
+        return;
+      } catch (e) {
+        lastError = e;
+        const code = describeConnectFailure(e);
+        // One silent retry for transient shapes (timeout / unreachable).
+        // Deterministic rejections (room rejected, rate limit, config) fail
+        // immediately — retrying them just burns the user's time.
+        const transient = code === 'TIMEOUT' || code === 'UNREACHABLE' || code === 'UNKNOWN';
+        if (!transient || attempt === MAX_ATTEMPTS) break;
+        diag('room.create_retry', true, `attempt ${attempt + 1} after ${code}`);
+        try { await ensureSocketConnected(4000); } catch { break; }
+      }
+    }
+    roomCreateDiagEnd(requestId, 'failure', 'CLIENT_INIT_FAILURE', String(lastError));
+    throw lastError instanceof Error ? lastError : new ConnectError('UNKNOWN');
   };
 
   const joinWithCode = async (code: string) => {

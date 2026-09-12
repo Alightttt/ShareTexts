@@ -36,10 +36,13 @@ interface TactileButtonProps {
   type?: 'button' | 'submit' | 'reset';
 }
 
+// Shape lock: every TactileButton is a full pill. The rest of the app
+// (pairing actions, QR/copy buttons, chips) already speaks pill; these 8–10px
+// radii were the one inconsistent corner family.
 const SIZE_CLASSES: Record<ButtonSize, string> = {
-  sm: 'px-4 py-2 text-[13px] gap-2 rounded-[8px] min-h-[36px]',
-  md: 'px-5 py-2.5 text-[14px] gap-2.5 rounded-[10px] min-h-[40px]',
-  lg: 'px-7 py-3.5 text-[15px] gap-3.5 rounded-[10px] min-h-[48px]',
+  sm: 'px-4 py-2 text-[13px] gap-2 rounded-full min-h-[36px]',
+  md: 'px-5 py-2.5 text-[14px] gap-2.5 rounded-full min-h-[40px]',
+  lg: 'px-7 py-3.5 text-[15px] gap-3.5 rounded-full min-h-[48px]',
 };
 
 // Each variant defines its own surface gradient + shadow layers.
@@ -50,11 +53,11 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
 // shadow is the single loudest tell of template-grade UI.
 const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; shadowHover: string; shadowPress: string; gradient: string }> = {
   primary: {
-    base: 'text-white dark:text-night-900',
-    shadowIdle: '0 1px 2px rgba(0,0,0,0.16), 0 4px 10px -4px rgba(0,0,0,0.2)',
-    shadowHover: '0 4px 10px rgba(0,0,0,0.12), 0 12px 26px -8px rgba(0,0,0,0.26)',
-    shadowPress: '0 1px 2px rgba(0,0,0,0.18)',
-    gradient: 'var(--st-btn-primary-grad)',
+    base: 'text-white',
+    shadowIdle: '0 1px 2px rgba(240,100,19,0.25), 0 4px 10px -4px rgba(240,100,19,0.35)',
+    shadowHover: '0 4px 10px rgba(240,100,19,0.2), 0 12px 26px -8px rgba(240,100,19,0.4)',
+    shadowPress: '0 1px 2px rgba(240,100,19,0.3)',
+    gradient: 'linear-gradient(180deg, #f9743a 0%, #f06413 60%, #e05c0f 100%)',
   },
   secondary: {
     // A paper tile with a hairline edge — sits on the canvas without
@@ -78,7 +81,8 @@ const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; 
 
 // Surface fill under the gradient overlay
 const SURFACE_FILLS: Record<ButtonVariant, string> = {
-  primary: 'bg-apple-ink dark:bg-white',
+  // Primary speaks the brand: ember fill, white text in both themes.
+  primary: 'bg-ember',
   secondary: 'bg-white dark:bg-apple-tile-2',
   ghost: '',
 };

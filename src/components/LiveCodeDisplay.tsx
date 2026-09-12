@@ -42,22 +42,23 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
     "relative flex items-center justify-center rounded-[10px] sm:rounded-[14px] shadow-sm overflow-hidden",
     "flex-1 min-w-0",
     "h-[52px] sm:h-[64px] lg:h-[72px]",
-    "bg-apple-parchment dark:bg-[#221a3c] border border-apple-divider/60 dark:border-[#362b58]"
+    "bg-apple-parchment dark:bg-[#212126] border border-apple-divider/60 dark:border-[#2c2c33]"
   );
 
   return (
     <div className="flex flex-col items-center w-full bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 rounded-[14px] sm:rounded-[20px] shadow-card overflow-hidden">
-      {/* Countdown + status */}
-      <div className="flex items-center gap-2 sm:gap-3 py-4 sm:py-5">
-        <div className={cn("relative flex items-center justify-center transition-transform", isUrgent && "scale-105")}>
-          <svg width="28" height="28" viewBox="0 0 44 44" className="transform -rotate-90 sm:w-8 sm:h-8">
-            <circle cx="22" cy="22" r="18" fill="transparent" stroke="currentColor" strokeWidth="2.5" className="text-apple-divider dark:text-apple-tile-3" />
+      {/* Countdown + status — the ring depletes counter-clockwise like a
+          real timer; color only shifts when it truly matters (≤10s). */}
+      <div className="flex items-center gap-2.5 sm:gap-3 py-4 sm:py-5">
+        <div className={cn("relative flex items-center justify-center transition-transform", isUrgent && "scale-110")}>
+          <svg width="30" height="30" viewBox="0 0 44 44" className="transform -rotate-90 sm:w-9 sm:h-9">
+            <circle cx="22" cy="22" r="18" fill="transparent" stroke="currentColor" strokeWidth="3" className="text-apple-divider/60 dark:text-white/[0.08]" />
             <circle
               cx="22" cy="22" r="18"
               fill="transparent"
               stroke="currentColor"
-              strokeWidth="2.5"
-              className={cn(isCritical ? "text-status-danger" : isUrgent ? "text-status-warning" : "text-azure-500")}
+              strokeWidth="3"
+              className={cn(isCritical || isUrgent ? "text-status-danger" : "text-ember")}
               strokeDasharray={113.097}
               strokeDashoffset={113.097 - (progress * 113.097)}
               strokeLinecap="round"
@@ -68,15 +69,15 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
               }}
             />
           </svg>
-          <span className={cn("absolute text-[9px] sm:text-[10px] font-semibold tabular-nums transition-colors duration-300", isCritical ? "text-status-danger" : isUrgent ? "text-status-warning" : "text-apple-ink-muted dark:text-white/60")}>
+          <span className={cn("absolute text-[10px] font-bold tabular-nums transition-colors duration-300", isCritical || isUrgent ? "text-status-danger" : "text-apple-ink dark:text-white/85")}>
             {Math.ceil(remaining)}
           </span>
         </div>
         <p
           aria-live="polite"
           className={cn(
-            "text-[11px] sm:text-[12px] font-medium transition-colors duration-300",
-            isCritical ? "text-status-danger" : isUrgent ? "text-status-warning dark:text-status-warning-ink-dark" : "text-apple-ink-muted dark:text-white/55"
+            "text-[12px] font-medium transition-colors duration-300",
+            isCritical || isUrgent ? "text-status-danger" : "text-apple-ink-muted dark:text-white/55"
           )}
         >
           {statusText}

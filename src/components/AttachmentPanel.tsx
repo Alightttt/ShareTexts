@@ -180,7 +180,7 @@ function MenuItem({ icon, label, description, onClick, delay = 0 }: MenuItemProp
         variants={{ rest: { scale: 1, x: 0 }, hover: { scale: 1.08, x: 2 } }}
         initial="rest"
         whileHover="hover"
-        className="w-10 h-10 rounded-full bg-[#007aff]/10 dark:bg-[#4da3ff]/20 flex items-center justify-center text-[#007aff] dark:text-[#4da3ff]"
+        className="w-10 h-10 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/20 flex items-center justify-center text-[#f06413] dark:text-[#fb9243]"
       >
         {icon}
       </motion.div>

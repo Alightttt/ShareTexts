@@ -462,6 +462,10 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           : 'file';
     addFiles(files, type);
   };
+  // Send morph: after a send, the button's arrow becomes a checkmark for a
+  // beat (peak-end: the completion moment gets the reward animation), then
+  // settles back to the arrow.
+  const [sentPulse, setSentPulse] = useState(false);
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!inputText.trim() && attachments.length === 0) return;
@@ -480,6 +484,8 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     setInputText('');
     setAttachments([]);
     void clearDraft(session.roomId);
+    setSentPulse(true);
+    setTimeout(() => setSentPulse(false), 900);
     // On mobile, blur the textarea to dismiss the keyboard after sending.
     textareaRef.current?.blur();
   };
@@ -669,8 +675,8 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
               {/* The two devices — tap your name to rename; the other device
                   sees the change immediately. */}
               <div className="flex items-center gap-2">
-                <div className="flex-1 flex flex-col items-center gap-1 rounded-[14px] bg-[#007aff]/5 dark:bg-[#4da3ff]/5 border border-apple-divider/60 dark:border-apple-tile-3 p-2.5 min-w-0">
-                  <ThisDeviceIcon className="w-5 h-5 text-[#007aff] dark:text-[#4da3ff]" />
+                <div className="flex-1 flex flex-col items-center gap-1 rounded-[14px] bg-[#f06413]/5 dark:bg-[#fb9243]/5 border border-apple-divider/60 dark:border-apple-tile-3 p-2.5 min-w-0">
+                  <ThisDeviceIcon className="w-5 h-5 text-[#f06413] dark:text-[#fb9243]" />
                   {editingName ? (
                     <input
                       autoFocus
@@ -683,7 +689,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                       }}
                       aria-label={t('pair.renameField')}
                       maxLength={32}
-                      className="w-full text-center text-[12px] font-medium text-apple-ink dark:text-white bg-transparent border-b border-[#007aff]/50 dark:border-[#4da3ff]/50 outline-none"
+                      className="w-full text-center text-[12px] font-medium text-apple-ink dark:text-white bg-transparent border-b border-[#f06413]/50 dark:border-[#fb9243]/50 outline-none"
                     />
                   ) : (
                     <button
@@ -719,8 +725,8 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
               {/* One-time auto-rename explanation (mobile joiners never see
                   the desktop summary) — dismissible. */}
               {nameNoticeOpen && (
-                <div role="status" className="mt-3 flex items-start gap-2 p-2.5 rounded-[12px] bg-[#007aff]/8 dark:bg-[#4da3ff]/10 border border-[#007aff]/15 dark:border-[#4da3ff]/15 text-[12px] text-apple-ink-muted dark:text-white/60 leading-snug">
-                  <Info className="w-3.5 h-3.5 text-[#007aff] dark:text-[#4da3ff] shrink-0 mt-px" />
+                <div role="status" className="mt-3 flex items-start gap-2 p-2.5 rounded-[12px] bg-[#f06413]/8 dark:bg-[#fb9243]/10 border border-[#f06413]/15 dark:border-[#fb9243]/15 text-[12px] text-apple-ink-muted dark:text-white/60 leading-snug">
+                  <Info className="w-3.5 h-3.5 text-[#f06413] dark:text-[#fb9243] shrink-0 mt-px" />
                   <span className="flex-1">{t('pair.autoRename', { name: session.deviceName })}</span>
                   <button
                     onPointerDown={() => setNameNoticeOpen(false)}
@@ -751,7 +757,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             role="status"
             className="absolute top-[76px] sm:top-[80px] left-1/2 -translate-x-1/2 z-40 px-4 py-2.5 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 shadow-float flex items-center gap-2 text-[13.5px] font-semibold whitespace-nowrap"
           >
-            <ShareTextLogo size={16} motion="complete" className="text-white dark:text-night-900" />
+            <ShareTextLogo size={16} motion="complete" mono />
             {t('toast.connected')}
           </motion.div>
         )}
@@ -969,7 +975,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           {inputText.length >= 1024 && (
             <div className="hidden sm:flex items-center justify-end gap-1.5 text-[11px] font-medium text-apple-ink-muted/70 dark:text-white/40 px-1" aria-live="polite">
               {isLargeInput && (
-                <span className="text-[#007aff] dark:text-[#4da3ff] font-semibold">{t('composer.largePayload')}</span>
+                <span className="text-[#f06413] dark:text-[#fb9243] font-semibold">{t('composer.largePayload')}</span>
               )}
               <span className={cn('tnum', isLargeInput && 'font-semibold')}>{formatBytes(inputBytes)}</span>
             </div>
@@ -980,7 +986,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             <input type="file" ref={audioInputRef} accept="audio/*" multiple className="hidden" onChange={(e) => handleFileSelect(e, 'audio')} />
             <input type="file" ref={fileInputRef} multiple className="hidden" onChange={(e) => handleFileSelect(e, 'file')} />
           </div>
-          <motion.div layout className={cn("relative rounded-[24px] bg-white dark:bg-[#1f1f24] overflow-visible shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_28px_-14px_rgba(0,0,0,0.14)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.2),0_12px_32px_-14px_rgba(0,0,0,0.5)] transition-motion focus-within:ring-2 focus-within:ring-[#007aff]/30 border border-black/[0.04] dark:border-white/[0.06]", showAttachmentMenu ? "z-[45]" : "z-20")}>
+          <motion.div layout className={cn("relative rounded-[24px] bg-white dark:bg-[#1f1f24] overflow-visible shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_28px_-14px_rgba(0,0,0,0.14)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.2),0_12px_32px_-14px_rgba(0,0,0,0.5)] transition-motion focus-within:ring-2 focus-within:ring-[#f06413]/30 border border-black/[0.04] dark:border-white/[0.06]", showAttachmentMenu ? "z-[45]" : "z-20")}>
           {/* The composer sits above the attachment panel's full-screen
               backdrop while the menu is open, so the + button (and the whole
               composer) stays clickable — otherwise the backdrop eats the click
@@ -1048,8 +1054,8 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 aria-label={t('attach.add')}
                 aria-expanded={showAttachmentMenu}
                 className={cn(
-                  "min-w-[40px] min-h-[40px] -m-[3px] rounded-full flex items-center justify-center shrink-0 text-[#007aff] dark:text-[#4da3ff] hover:bg-[#007aff]/10 dark:hover:bg-[#007aff]/10 transition-motion active:scale-90",
-                  showAttachmentMenu && "text-[#007aff] dark:text-[#4da3ff] bg-[#007aff]/10 rotate-45"
+                  "min-w-[40px] min-h-[40px] -m-[3px] rounded-full flex items-center justify-center shrink-0 text-[#f06413] dark:text-[#fb9243] hover:bg-[#f06413]/10 dark:hover:bg-[#f06413]/10 transition-motion active:scale-90",
+                  showAttachmentMenu && "text-[#f06413] dark:text-[#fb9243] bg-[#f06413]/10 rotate-45"
                 )}
               >
                 <Plus className="w-5 h-5 transition-transform" />
@@ -1081,11 +1087,37 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 onPointerDown={handleSend}
                 disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
                 aria-label={t('composer.send')}
-                className="min-w-[40px] min-h-[40px] -m-[1px] rounded-full flex items-center justify-center shrink-0 transition-motion active:scale-90 text-white disabled:opacity-40 disabled:bg-apple-hairline dark:disabled:bg-white/15 disabled:shadow-none enabled:bg-apple-ink dark:enabled:bg-white dark:enabled:text-night-900 shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
+                className="min-w-[40px] min-h-[40px] -m-[1px] rounded-full flex items-center justify-center shrink-0 transition-all duration-200 active:scale-90 text-white disabled:opacity-40 disabled:bg-apple-hairline dark:disabled:bg-white/15 disabled:shadow-none enabled:bg-apple-ink dark:enabled:bg-white dark:enabled:text-night-900 shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
               >
-                <AnimatedIcon animate="send" active={!((!inputText.trim() && attachments.length === 0) || !session.partnerConnected)}>
-                  <ArrowUp className="w-5 h-5" strokeWidth={2.4} />
-                </AnimatedIcon>
+                {/* Arrow ↔ check morph: the arrow lifts away, a check springs
+                    in — a real shape transition, not a crossfade. */}
+                <span className="relative flex items-center justify-center w-5 h-5">
+                  <AnimatePresence initial={false} mode="wait">
+                    {sentPulse ? (
+                      <motion.span
+                        key="check"
+                        initial={{ scale: 0.3, opacity: 0, rotate: -30 }}
+                        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                        exit={{ scale: 0.5, opacity: 0 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 24 }}
+                        className="absolute inset-0 flex items-center justify-center"
+                      >
+                        <Check className="w-5 h-5 text-status-success dark:text-status-success" strokeWidth={2.8} />
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="arrow"
+                        initial={{ y: 6, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: -8, opacity: 0, transition: { duration: 0.14 } }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 26 }}
+                        className="absolute inset-0 flex items-center justify-center"
+                      >
+                        <ArrowUp className="w-5 h-5" strokeWidth={2.4} />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </span>
               </button>
 
             </div>

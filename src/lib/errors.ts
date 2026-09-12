@@ -25,3 +25,45 @@ export function humanizeError(code: string | undefined, fallback: string): strin
   if (code && ERROR_COPY[code]) return ERROR_COPY[code];
   return fallback;
 }
+
+/**
+ * Structured connect failures.
+ *
+ * The old path matched raw English error strings with `.includes()` and
+ * blamed "your internet" even when ShareText's own server was down. Every
+ * connect/create/join failure now carries a machine-readable code so the UI
+ * can say what ACTUALLY happened and translate it:
+ *
+ *   OFFLINE      the device has no network (navigator.onLine === false)
+ *   UNREACHABLE  the signaling service is down / blocked (health probe failed)
+ *   TIMEOUT      the service is alive but too slow to answer
+ *   CONFIG       deployed build has no signaling URL baked in (operator error)
+ *   RATE_LIMITED the server answered and asked us to slow down
+ *   REJECTED     the server answered and refused this specific request
+ *   UNKNOWN      anything else
+ */
+export type ConnectFailureCode =
+  | 'OFFLINE' | 'UNREACHABLE' | 'TIMEOUT' | 'CONFIG'
+  | 'RATE_LIMITED' | 'REJECTED' | 'UNKNOWN';
+
+export class ConnectError extends Error {
+  readonly code: ConnectFailureCode;
+  constructor(code: ConnectFailureCode, message?: string) {
+    super(message || code);
+    this.name = 'ConnectError';
+    this.code = code;
+  }
+}
+
+/** Map any thrown value to a ConnectFailureCode. Cheap heuristics only run
+ *  when the thrower didn't attach a code itself. */
+export function describeConnectFailure(e: unknown): ConnectFailureCode {
+  if (e instanceof ConnectError) return e.code;
+  const msg = e instanceof Error ? e.message : String(e ?? '');
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'OFFLINE';
+  if (/offline|network/i.test(msg)) return 'OFFLINE';
+  if (/reach|unreachable|not allowed/i.test(msg)) return 'UNREACHABLE';
+  if (/long|timeout|slow/i.test(msg)) return 'TIMEOUT';
+  if (/many attempts|rate/i.test(msg)) return 'RATE_LIMITED';
+  return 'UNKNOWN';
+}

@@ -180,7 +180,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
 
       {isJoining && (
         <div role="status" className="flex flex-col items-center justify-center mt-6 sm:mt-8">
-          <ShareTextLogo size={20} motion="connecting" className="text-apple-blue dark:text-azure-400 mb-3 sm:mb-4" />
+          <ShareTextLogo size={20} motion="connecting" />
           <p className="text-[14px] sm:text-[15px] font-medium text-apple-ink-muted">{t('code.verifying')}</p>
         </div>
       )}

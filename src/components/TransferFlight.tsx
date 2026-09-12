@@ -98,7 +98,7 @@ export function TransferFlight({ feedRef, progress, reverse, name, size }: Trans
         animate={{ transform: `translate3d(${lineBase}px, ${track.y + CHIP_H / 2 - 1}px, 0) scaleX(${p})` }}
         transition={{ duration: 0.25, ease: EASE_IN_OUT }}
       >
-        <div className="h-px bg-[#007aff]/25 dark:bg-[#4da3ff]/25" style={{ width }} />
+        <div className="h-px bg-[#f06413]/25 dark:bg-[#fb9243]/25" style={{ width }} />
       </motion.div>
 
       {/* The traveling object. */}
@@ -122,8 +122,8 @@ export function TransferFlight({ feedRef, progress, reverse, name, size }: Trans
           transition={{ duration: 0.2, ease: EASE_OUT }}
           className="flex items-center gap-2 pl-1.5 pr-3 rounded-[10px] bg-white dark:bg-[#151b2b] border border-apple-divider dark:border-white/10 shadow-[0_10px_28px_rgba(15,18,32,0.16)]"
         >
-          <span className="w-7 h-7 rounded-[7px] bg-[#007aff]/12 dark:bg-[#4da3ff]/14 flex items-center justify-center shrink-0">
-            <FileText className="w-3.5 h-3.5 text-[#0066d6] dark:text-[#4da3ff]" />
+          <span className="w-7 h-7 rounded-[7px] bg-[#f06413]/12 dark:bg-[#fb9243]/14 flex items-center justify-center shrink-0">
+            <FileText className="w-3.5 h-3.5 text-[#d9560e] dark:text-[#fb9243]" />
           </span>
           <span className="max-w-[96px] truncate text-[12px] font-semibold text-apple-ink dark:text-white" title={name}>{name}</span>
           <span className="text-[10px] font-medium text-apple-ink-muted/70 dark:text-white/40 whitespace-nowrap">{formatBytes(size)}</span>

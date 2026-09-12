@@ -3,24 +3,21 @@ import { useTheme } from '../lib/theme';
 import { IOSToggle } from './IOSToggle';
 
 /**
- * iOS-style theme toggle using a spring-animated switch.
+ * iOS-style theme toggle. The wide switch handles all physics (spring,
+ * drag, squish); this wrapper only owns the theme crossfade.
  */
 export function ThemeToggle({ className = '' }: { className?: string }) {
   const { resolved, toggle } = useTheme();
   const isDark = resolved === 'dark';
 
   const handleToggle = () => {
+    // One crossfade for the whole tree — quiet, 300ms, no flash layer.
     document.documentElement.classList.add('theme-transitioning');
-    const flash = document.createElement('div');
-    flash.className = 'theme-flash';
-    flash.style.backgroundColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-    document.body.appendChild(flash);
     toggle();
     setTimeout(() => {
       document.documentElement.classList.remove('theme-transitioning');
-      flash.remove();
     }, 350);
   };
 
-  return <IOSToggle checked={isDark} onToggle={handleToggle} size="sm" className={className} />;
+  return <IOSToggle checked={isDark} onToggle={handleToggle} size="md" className={className} label="Toggle dark mode" />;
 }

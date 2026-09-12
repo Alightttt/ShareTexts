@@ -13,6 +13,7 @@ import { ShareTextLogo } from './components/ShareTextLogo';
 // JS; SingleScreenApp and Docs stream in only when needed.
 const Docs = lazy(() => import('./views/Docs').then(m => ({ default: m.Docs })));
 const SingleScreenApp = lazy(() => import('./views/SingleScreenApp').then(m => ({ default: m.SingleScreenApp })));
+const Legal = lazy(() => import('./views/Legal').then(m => ({ default: m.Legal })));
 
 function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, onNewSession: () => void, onHome: () => void }) {
   const { t } = useI18n();
@@ -41,7 +42,7 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#120e22] p-6 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#131315] p-6 text-center">
       <ShareTextLogo
         size={56}
         motion={reason === 'expired' ? undefined : 'complete'}
@@ -89,10 +90,10 @@ function AppSkeleton({ docs = false }: { docs?: boolean }) {
   // Stable brand frame while the route hydrates: header + skeleton lines,
   // so a slow load never reads as a broken or blank page.
   return (
-    <div className="min-h-screen bg-apple-canvas dark:bg-[#120e22] flex flex-col">
+    <div className="min-h-screen bg-apple-canvas dark:bg-[#131315] flex flex-col">
       <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4 border-b border-apple-divider/60 dark:border-white/[0.06]">
         <div className="flex items-center gap-2.5">
-          <ShareTextLogo size={20} className="text-azure-600 dark:text-azure-400" />
+          <ShareTextLogo size={20} />
           <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>
         </div>
         <div className="flex items-center gap-3">
@@ -112,16 +113,19 @@ function AppSkeleton({ docs = false }: { docs?: boolean }) {
             </div>
           </>
         ) : (
+          /* Home skeleton mirrors the real hero's geometry — headline,
+             subtitle, and the two pill CTAs at their true sizes — so the
+             swap to the loaded page is nearly invisible. */
           <>
-            <div className="h-8 w-3/4 rounded-lg bg-apple-divider/70 dark:bg-white/10 animate-pulse" />
-            <div className="mt-3 h-8 w-1/2 rounded-lg bg-apple-divider/70 dark:bg-white/10 animate-pulse" />
+            <div className="h-[42px] w-[76%] rounded-[10px] bg-apple-divider/70 dark:bg-white/10 animate-pulse" />
+            <div className="mt-3 h-[42px] w-[52%] rounded-[10px] bg-apple-divider/70 dark:bg-white/10 animate-pulse" />
             <div className="mt-5 space-y-2">
-              <div className="h-4 w-full rounded bg-apple-divider/50 dark:bg-white/[0.06] animate-pulse" />
-              <div className="h-4 w-2/3 rounded bg-apple-divider/50 dark:bg-white/[0.06] animate-pulse" />
+              <div className="h-4 w-full max-w-[380px] rounded bg-apple-divider/50 dark:bg-white/[0.06] animate-pulse" />
+              <div className="h-4 w-[68%] max-w-[260px] rounded bg-apple-divider/50 dark:bg-white/[0.06] animate-pulse" />
             </div>
-            <div className="mt-8 flex gap-3">
-              <div className="h-12 w-28 rounded-[10px] bg-azure-600/25 dark:bg-azure-600/30 animate-pulse" />
-              <div className="h-12 w-28 rounded-[10px] border border-apple-divider dark:border-white/10 animate-pulse" />
+            <div className="mt-8 flex gap-6">
+              <div className="h-12 w-32 rounded-full bg-ember/25 dark:bg-ember/20 animate-pulse" />
+              <div className="h-12 w-32 rounded-full border border-apple-divider dark:border-white/10 animate-pulse" />
             </div>
           </>
         )}
@@ -135,17 +139,17 @@ function ErrorFallback({ onReset }: { onReset: () => void }) {
   // Rendered by the class boundary, which sits above the providers — static
   // English is intentional (recovery copy must never depend on a broken tree).
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#120e22] p-6 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#131315] p-6 text-center">
       <div className="w-16 h-16 bg-apple-parchment dark:bg-apple-tile-1 rounded-[20px] flex items-center justify-center mb-6">
-        <ShareTextLogo size={28} className="text-apple-ink-muted" />
+        <ShareTextLogo size={28} />
       </div>
-      <h2 className="text-[24px] font-semibold text-apple-ink dark:text-white mb-2">Something went wrong</h2>
-      <p className="text-[16px] text-apple-ink-muted dark:text-white/60 max-w-sm mb-6">
+      <h2 className="text-[24px] font-semibold text-apple-ink dark:text-white mb-2 tracking-tight">Something went wrong</h2>
+      <p className="text-[15px] text-apple-ink-muted dark:text-white/60 max-w-sm mb-7 leading-relaxed">
         ShareText couldn't load properly. Your data is safe.
       </p>
       <button
         onClick={onReset}
-        className="px-7 py-3.5 bg-azure-600 hover:bg-azure-500 text-white rounded-[12px] text-[15px] font-semibold min-h-[48px]"
+        className="px-7 py-3.5 bg-ember hover:bg-[#d9560e] text-white rounded-full text-[15px] font-semibold min-h-[48px] transition-colors active:scale-[0.97]"
       >
         Return to ShareText
       </button>
@@ -172,10 +176,18 @@ function AppContent() {
     return <Suspense fallback={<AppSkeleton docs />}><Docs /></Suspense>;
   }
 
+  if (typeof window !== 'undefined' && window.location.pathname === '/privacy') {
+    return <Suspense fallback={<AppSkeleton docs />}><Legal page="privacy" /></Suspense>;
+  }
+
+  if (typeof window !== 'undefined' && window.location.pathname === '/terms') {
+    return <Suspense fallback={<AppSkeleton docs />}><Legal page="terms" /></Suspense>;
+  }
+
   if (typeof window !== 'undefined' && window.location.pathname !== '/' && !window.location.pathname.startsWith('/s/')) {
     return (
       <div
-        className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#120e22] p-6 text-center">
+        className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#131315] p-6 text-center">
         <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">{t('app.404.title')}</h2>
         <p className="text-[16px] text-apple-ink-muted dark:text-white/60 font-medium max-w-sm mb-9">{t('app.404.body')}</p>
         <button onClick={() => { window.location.href = '/'; }}

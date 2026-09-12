@@ -15,8 +15,8 @@ async function pair() {
   const errs = [];
   A.on('pageerror', e => errs.push('A:' + String(e).slice(0, 100)));
   B.on('pageerror', e => errs.push('B:' + String(e).slice(0, 100)));
-  await A.goto('http://localhost:3000', { waitUntil: 'networkidle' });
-  await B.goto('http://localhost:3000', { waitUntil: 'networkidle' });
+  await A.goto('http://localhost:3010', { waitUntil: 'networkidle' });
+  await B.goto('http://localhost:3010', { waitUntil: 'networkidle' });
   await sleep(900);
   await A.getByRole('button', { name: 'Send', exact: true }).first().click();
   await A.waitForSelector('[aria-label="Pairing code"]', { timeout: 8000 });

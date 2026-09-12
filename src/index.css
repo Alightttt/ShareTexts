@@ -3,6 +3,19 @@
 /* Class-based dark mode */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ── Display font: Geist Variable, self-hosted (55KB) ─────────────────
+   One display face for hero + headings; body/UI stays on the native system
+   stack so the app still feels like the OS it runs on. font-display: swap
+   keeps first paint instant; the swap is imperceptible at heading sizes. */
+@font-face {
+  font-family: "Geist Var";
+  src: url("/fonts/Geist-Variable.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 102%;
+}
+
 @theme {
   /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      SHARETEXT DESIGN SYSTEM
@@ -15,12 +28,22 @@
      fingerprint — the app should feel native on every OS it runs on. */
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --font-display: "Geist Var", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", sans-serif;
 
-  /* ── Brand ──────────────────────────────────────────────────────────── */
-  --color-brand: #007aff;
-  --color-brand-strong: #0066d6;
-  --color-brand-light: #eef6ff;
-  --color-brand-dark: #4da3ff;
+  /* ── Brand: EMBER — the one accent across the entire app ──────
+     Ember is the brand color, full stop: buttons, links, focus,
+     selection, code rings — everything interactive speaks ember.
+     (The old blue accent is retired; no component should introduce it.) */
+  --color-brand: #f06413;
+  --color-brand-strong: #d9560e;
+  --color-brand-light: #fff4ea;
+  --color-brand-dark: #fb9243;
+
+  /* ── Ember: the brand material AND the interactive accent ────── */
+  --color-ember: #f06413;
+  --color-honey: #feab30;
+  --gradient-ember: linear-gradient(165deg, #feab30 0%, #f97b3d 55%, #f06413 100%);
+  --gradient-ember-dark: linear-gradient(165deg, #ffc25c 0%, #fb9243 55%, #fb7a2e 100%);
 
   /* ── Text ───────────────────────────────────────────────────────────── */
   --color-text: #211f1a;
@@ -49,26 +72,28 @@
   --color-error-light: #ffeaea;
 
   /* ── Focus ──────────────────────────────────────────────────────────── */
-  --color-focus: #007aff;
+  --color-focus: #f06413;
 
-  /* ── Semantic aliases (warm paper + blue accent) ─────────────────────── */
+  /* ── Semantic aliases — the "apple-*" names now resolve to ember.
+     (Historic token names kept so every existing component re-skins
+     instantly; new code should prefer --color-ember / --color-brand.) */
   --color-apple-canvas: #f6f0e6;
   --color-apple-parchment: #f0e7d6;
   --color-apple-ink: #211f1a;
   --color-apple-ink-muted: #68655e;
-  --color-apple-blue: #007aff;
-  --color-apple-blue-focus: #0066d6;
+  --color-apple-blue: #f06413;
+  --color-apple-blue-focus: #d9560e;
   --color-apple-divider: #e4d9c5;
   --color-apple-hairline: #d9cdb6;
-  --color-azure-50: #eef6ff;
-  --color-azure-100: #e0f0ff;
-  --color-azure-200: #b8dfff;
-  --color-azure-400: #4da3ff;
-  --color-azure-500: #1e90ff;
-  --color-azure-600: #007aff;
-  --color-azure-700: #0066d6;
-  --color-azure-800: #0050aa;
-  --color-azure-900: #003a7a;
+  --color-azure-50: #fff4ea;
+  --color-azure-100: #ffe6d1;
+  --color-azure-200: #ffcda3;
+  --color-azure-400: #fb9243;
+  --color-azure-500: #f97b3d;
+  --color-azure-600: #f06413;
+  --color-azure-700: #d9560e;
+  --color-azure-800: #b3450b;
+  --color-azure-900: #8a3608;
 
   /* ── Warm accent (kept for heritage accents; use sparingly) ──────────── */
   --color-peach-100: #ffead9;
@@ -117,7 +142,7 @@
   --motion-slow: 350ms;
 
   /* ── Tactile surfaces (theme-aware button gradients) ────────────────── */
-  --st-btn-primary-grad: linear-gradient(180deg, #3a3833 0%, #211f1a 55%, #17150f 100%);
+  --st-btn-primary-grad: linear-gradient(180deg, #f9743a 0%, #f06413 60%, #e05c0f 100%);
   --st-btn-secondary-grad: linear-gradient(180deg, #ffffff 0%, #f4f1ea 55%, #ebe6dc 100%);
 }
 
@@ -175,21 +200,34 @@
     --color-apple-hairline: #3a3a41;
     --color-apple-ink: #f2f0eb;
     --color-apple-ink-muted: #a5a19a;
-    --color-azure-400: #7cc4ff;
-    --color-azure-500: #4da3ff;
-    --color-azure-600: #0a84ff;
-    --color-azure-700: #0074e0;
-    --st-btn-primary-grad: linear-gradient(180deg, #ffffff 0%, #ececea 55%, #d8d8dc 100%);
+    --color-azure-400: #ffc591;
+    --color-azure-500: #fb9243;
+    --color-azure-600: #fb7a2e;
+    --color-azure-700: #f06413;
+    --color-ember: #fb7a2e;
+    --color-honey: #ffc25c;
+    --gradient-ember: var(--gradient-ember-dark);
+    --st-btn-primary-grad: linear-gradient(180deg, #fb8447 0%, #f06413 60%, #d9560e 100%);
     --st-btn-secondary-grad: linear-gradient(180deg, #2b2b31 0%, #26262c 55%, #212127 100%);
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  /* Display face carries headings; system stack carries everything else.
+     Tracking tightens as size grows (display −0.035em) per the ramp. */
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.03em;
+  }
+  h1 { letter-spacing: -0.035em; }
+  h4, h5, h6 {
     @apply font-semibold;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.02em;
+  }
+  h1, h2, h3 {
+    @apply font-semibold;
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-apple-blue);
+    outline: 2px solid var(--color-ember);
     outline-offset: 2px;
     border-radius: 6px;
   }
@@ -198,10 +236,10 @@
   }
 
   ::selection {
-    background: rgba(0, 122, 255, 0.22);
+    background: rgba(240, 100, 19, 0.22);
   }
   html.dark ::selection {
-    background: rgba(10, 132, 255, 0.4);
+    background: rgba(251, 122, 46, 0.4);
   }
 }
 
@@ -209,6 +247,17 @@
   .tnum {
     font-feature-settings: "tnum";
     font-variant-numeric: tabular-nums;
+  }
+
+  /* The ember gradient as text — brand-mark contexts only. */
+  .text-ember-gradient {
+    background: var(--gradient-ember);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .bg-ember-gradient {
+    background: var(--gradient-ember);
   }
 
   .transition-motion {

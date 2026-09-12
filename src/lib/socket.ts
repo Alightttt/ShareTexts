@@ -93,6 +93,48 @@ export function signalingConfigIssue(): string | null {
   return "ShareText couldn't reach its connection server. Please try again later.";
 }
 
+/**
+ * Base URL of the ACTIVE signaling backend, for reachability probes.
+ * Null when the transport is same-origin socket.io (probe /health there).
+ */
+function signalingHttpBase(): string | null {
+  if (mode === 'cloudflare' && url) {
+    return url.replace(/\/+$/, '').replace(/\/ws$/i, '').replace(/^ws/, 'http');
+  }
+  if (mode === 'socketio' && url) return url;
+  return typeof window === 'undefined' ? null : window.location.origin;
+}
+
+/**
+ * Ask the ACTIVE signaling backend whether it is alive, so an error can say
+ * "our service is down" instead of blaming the user's internet. Mirrors the
+ * probe CloudflareSocket already runs for its own transport.
+ *
+ *   'ok'          /health answered — the service is up; the failure was local
+ *                 (transport blocked, momentary drop)
+ *   'down'        the service answered with an error or is unreachable
+ *   'slow'        the probe itself timed out — network is struggling
+ */
+export async function probeSignalingHealth(): Promise<'ok' | 'down' | 'slow'> {
+  const base = signalingHttpBase();
+  if (!base) return 'down';
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 3500);
+  try {
+    const res = await fetch(base + '/health', {
+      method: 'GET',
+      credentials: 'omit',
+      signal: controller.signal,
+      cache: 'no-store',
+    });
+    return res.ok ? 'ok' : 'down';
+  } catch (err) {
+    return (err as Error)?.name === 'AbortError' ? 'slow' : 'down';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 let instance: SignalingSocket | null = null;
 
 export function getSocket(): SignalingSocket {
@@ -101,7 +143,13 @@ export function getSocket(): SignalingSocket {
       mode === 'cloudflare'
         ? new CloudflareSocket(url!)
         : io(url, {
-            transports: ['websocket'],
+            // WebSocket first (fastest), polling as automatic fallback. A
+            // websocket-only transport dies permanently behind proxies that
+            // don't forward upgrades (corporate networks, some preview
+            // environments) and the user saw an "internet connection" error
+            // that was never their internet's fault. socket.io downgrades to
+            // polling by itself when 'polling' is in the list.
+            transports: ['websocket', 'polling'],
             autoConnect: true,
             reconnection: true,
             // Cover multi-minute network blips so the recovery window can
