@@ -384,7 +384,7 @@ export function SingleScreenApp() {
               <p className="mt-4 text-[15px] sm:text-[16px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[36ch] text-center sm:text-left">
                 {t('home.subtitle')}
               </p>
-              <div className="mt-7 flex gap-6 justify-center sm:justify-start">
+              <div className="mt-6 flex gap-6 justify-center sm:justify-start">
                 <div className="flex flex-col items-center gap-1.5">
                   <TactileButton onClick={handleSend} variant="primary" size="lg" icon={<SendCircleIcon size={18} />} disabled={isCreating}>{t('home.send')}</TactileButton>
                   <span className="text-[11.5px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.sendHint')}</span>
@@ -394,13 +394,11 @@ export function SingleScreenApp() {
                   <span className="text-[11.5px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.receiveHint')}</span>
                 </div>
               </div>
-              {/* The product working, before any signup: text, photo, and
-                  file fly phone → laptop on a loop (mobile/tablet only — on
-                  desktop the same scene lives in the right room pane). */}
-              {/* Scaled to fit below the CTAs without pushing the footer:
-                  0.52 at ph, 0.62 from sm, and generous negative margin to
-                  reclaim the unscaled box height. */}
-              <div className="lg:hidden mt-8 flex justify-center origin-top scale-[0.52] sm:scale-[0.62] -mb-[150px] sm:-mb-[118px]">
+              {/* The product, as it actually looks — laptop + phone running
+                  the real connected UI. Scales itself; breaks out of the
+                  hero column to use the full half-pane width. Desktop shows
+                  the same scene in the room pane, so hide it here. */}
+              <div className="lg:hidden mt-4 sm:mt-8 -mb-2 -mx-6 sm:-mx-10 flex justify-center">
                 <HeroTransferScene />
               </div>
               {createError && (
@@ -659,7 +657,7 @@ export function SingleScreenApp() {
   );
 
   const footerNode = (
-    <footer className="shrink-0 px-6 lg:px-10 py-4 border-t border-apple-divider/60 dark:border-white/[0.06] pb-[env(safe-area-inset-bottom)]">
+    <footer className="shrink-0 px-6 lg:px-10 py-3 border-t border-apple-divider/60 dark:border-white/[0.06] pb-[env(safe-area-inset-bottom)]">
         {/* One line: links with real gaps, the handle as a compact chip so
             the X glyph and name can never wrap or split. */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -687,7 +685,7 @@ export function SingleScreenApp() {
       {ambientGlow}
       {headerNode}
       {/* Hero area — flex-1 centers each state's content in the half */}
-      <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 py-4 sm:py-6 min-h-0 overflow-hidden">
+      <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 py-3 sm:py-6 min-h-0 overflow-hidden">
         {heroContent}
       </div>
       {footerNode}
@@ -780,8 +778,8 @@ export function SingleScreenApp() {
                 </div>
               ) : (
                 <>
-                  {/* Live transfer demo (was a static pair illustration) */}
-                  <div className="mb-5">
+                  {/* The product itself, shown as it looks when connected */}
+                  <div className="mb-5 w-full max-w-[640px]">
                     <HeroTransferScene />
                   </div>
 
