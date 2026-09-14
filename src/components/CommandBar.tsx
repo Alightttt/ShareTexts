@@ -4,6 +4,7 @@ import { useSession } from '../lib/SessionContext';
 import { useTheme } from '../lib/theme';
 import { LANGS, useI18n } from '../lib/i18n';
 import { cn, shortCodeOf } from '../lib/utils';
+import { hapticTap } from '../lib/haptics';
 import {
   Send, Download, QrCode, Link2, Copy, RefreshCw, LogOut,
   Sun, Moon, Languages, FileText, ChevronLeft, Check, Search
@@ -122,7 +123,16 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
           id: 'send', label: t('home.send'), group: t('command.group.actions'),
           hint: t('home.sendHint'),
           icon: <Send className="w-4 h-4" />, keywords: 'create room start new session host share',
-          run: () => { void createSession(); },
+          run: () => {
+            // Same surface as the hero button: panel-mode flips to 'sending'
+            // immediately, so the "Creating room…" state is visible the
+            // instant ⌘K closes (the palette used to vanish with NO visible
+            // reaction until the room arrived — that read as "did it work?").
+            const btn = Array.from(document.querySelectorAll('button'))
+              .find(b => b.textContent?.trim() === t('home.send'));
+            btn?.click();
+            void createSession();
+          },
         },
         {
           id: 'receive', label: t('home.receive'), group: t('command.group.actions'),
@@ -216,9 +226,11 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
 
   const runCmd = (cmd: Cmd) => {
     if (cmd.opensSub) { setSubOpen(true); return; }
+    hapticTap();
     // Close FIRST (synchronously), then run — the action targets state that
     // assumes the palette is gone, and focus restoration happens before the
-    // command's own focus changes.
+    // command's own focus changes. The run lands on the NEXT frame so the
+    // palette's exit is already underway when the room panel appears.
     close();
     requestAnimationFrame(() => cmd.run());
   };

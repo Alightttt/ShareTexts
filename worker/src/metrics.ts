@@ -3,6 +3,10 @@ import { json, type Env } from './types';
 
 const BUCKET_MS = 60 * 60 * 1000; // hourly buckets
 const KEEP_BUCKETS = 48;          // 48 hours of history
+/** Durable storage key holding the LIFETIME rooms-created counter. Buckets
+ *  roll off after 48h; the landing page's "rooms made" tracker must never
+ *  shrink, so the count lives on its own storage key instead. */
+const LIFETIME_ROOMS_KEY = 'lifetime:rooms.created';
 
 /**
  * Metrics — anonymous aggregate counters for operating the service.
@@ -46,6 +50,14 @@ export class Metrics extends DurableObject<Env> {
     counts[name] = (counts[name] ?? 0) + 1;
     await this.ctx.storage.put(key, counts);
 
+    // Lifetime counters for metrics that must never roll off with the 48h
+    // buckets (currently: total rooms ever created). Guarded to the known
+    // name so nothing unbounded can grow here.
+    if (name === 'rooms.created') {
+      const lifetime = (await this.ctx.storage.get<number>(LIFETIME_ROOMS_KEY)) ?? 0;
+      await this.ctx.storage.put(LIFETIME_ROOMS_KEY, lifetime + 1);
+    }
+
     // Opportunistic trim: drop buckets older than the retention window.
     const all = await this.ctx.storage.list({ prefix: 'h:' });
     const cutoff = bucket - KEEP_BUCKETS;
@@ -68,11 +80,16 @@ export class Metrics extends DurableObject<Env> {
         totals[m] = (totals[m] ?? 0) + c;
       }
     }
+    // Lifetime counters ride alongside the rolling-window totals; /stats
+    // reads roomsCreated from here so the number only ever grows.
+    const lifetimeRooms = (await this.ctx.storage.get<number>(LIFETIME_ROOMS_KEY)) ?? 0;
+    if (lifetimeRooms > (totals['rooms.created'] ?? 0)) totals['rooms.created'] = lifetimeRooms;
     return json({
       service: 'sharetext-signaling-cf',
       generated_at: new Date().toISOString(),
       retention_hours: KEEP_BUCKETS,
       totals,
+      lifetime_rooms_created: lifetimeRooms,
       by_hour: byHour,
     });
   }

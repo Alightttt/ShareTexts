@@ -25,6 +25,7 @@ import { AnimatedIcon } from '../components/AnimatedIcon';
 import { SendCircleIcon, ReceiveCircleIcon, DisconnectGlyph } from '../components/TransferIcons';
 import { TactileButton } from '../components/TactileButton';
 import { InlineConfirm } from '../components/InlineConfirm';
+import { BookOpen } from '@gravity-ui/icons';
 import { ConnectHandshake } from '../components/ConnectHandshake';
 import { CommandBar, CommandBarChip } from '../components/CommandBar';
 import { signalingConfigIssue } from '../lib/socket';
@@ -372,9 +373,10 @@ export function SingleScreenApp() {
           <ShareTextLogo size={26} className="w-6 sm:w-[26px] h-auto" />
           <span className="font-semibold tracking-tight text-[17px] sm:text-[19px] text-apple-ink dark:text-white">ShareText</span>
         </a>
-        {/* Aligned nav cluster: identical 6px gaps, every item on the same
-            40px centerline. No special-cased margins. */}
-        <div className="flex items-center gap-1.5">
+        {/* Aligned nav cluster: one consistent medium gap (8px) between
+            every item — language, docs, toggle keep the same breathing
+            room at every breakpoint, all on the same 40px centerline. */}
+        <div className="flex items-center gap-2">
           <CommandBarChip onClick={() => setCmdOpen(true)} />
           <LanguageMenu />
           {/* Docs — an OPEN book icon; the name appears as a tooltip on hover. */}
@@ -384,8 +386,8 @@ export function SingleScreenApp() {
             title={t('nav.docs')}
             className="flex items-center justify-center min-w-[40px] min-h-[40px] rounded-full text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-white/[0.07] transition-colors"
           >
-            {/* Open book (lucide book-open): two facing pages */}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
+            {/* Docs — Gravity UI's open book with writing on the page. */}
+            <BookOpen width="18" height="18" aria-hidden />
           </a>
           <ThemeToggle />
         </div>
@@ -398,14 +400,40 @@ export function SingleScreenApp() {
           {panelMode === 'idle' && (
             // Deterministic first paint: the hero renders visible immediately;
             // only the swap-out fades. Never gate first paint on animation.
-            <motion.div key="idle" exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto">
-              <h1 className="text-[34px] sm:text-[42px] lg:text-[56px] font-bold tracking-[-0.035em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left" style={{ fontFamily: 'var(--font-display)' }}>
+            <motion.div key="idle" exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto flex flex-col">
+              {/* Flex + order lets the live tracker sit between the subtitle
+                  and the buttons on mobile, but BELOW the buttons on desktop
+                  — one DOM, two honest layouts. */}
+              <h1 className="order-1 text-[34px] sm:text-[42px] lg:text-[56px] font-bold tracking-[-0.035em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left" style={{ fontFamily: 'var(--font-display)' }}>
                 {(() => { const [a, b] = t('home.title').split('\n'); return (<>{a}{b ? <><br />{b}</> : null}</>); })()}
               </h1>
-              <p className="mt-4 text-[16.5px] sm:text-[18px] lg:text-[20px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[40ch] text-center sm:text-left">
+              <p className="order-2 mt-4 text-[16.5px] sm:text-[18px] lg:text-[20px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[40ch] text-center sm:text-left">
                 {t('home.subtitle')}
               </p>
-              <div className="mt-6 flex gap-6 justify-center sm:justify-start">
+              {/* Live activity tracker — MOBILE position: between the subtitle
+                  and the buttons. Real lifetime rooms from the signaling
+                  service; hidden entirely until the service answers with a
+                  non-zero count — never a fake 0. */}
+              {!!roomsCreated && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4, duration: 0.5 }}
+                  className="order-3 lg:order-4 mt-5 flex items-center justify-center sm:justify-start gap-2.5 whitespace-nowrap"
+                >
+                  {/* Halo dot: two slow radar rings drift outward from a solid
+                      glowing core — layered, staggered, so it reads as breath,
+                      not alarm. Halts under prefers-reduced-motion. */}
+                  <span className="relative flex items-center justify-center w-4 h-4 shrink-0" aria-hidden>
+                    <span className="st-halo-ring absolute inset-0 rounded-full bg-status-success/40" />
+                    <span className="st-halo-ring st-halo-lag absolute inset-0 rounded-full bg-status-success/25" />
+                    <span className="relative w-2 h-2 rounded-full bg-status-success shadow-[0_0_6px_rgba(52,199,89,0.7)]" />
+                  </span>
+                  <span className="text-[15px] font-bold text-apple-ink dark:text-white tnum leading-none">{roomsCreated.toLocaleString()}</span>
+                  <span className="text-[13.5px] font-medium text-apple-ink-muted dark:text-white/50 leading-none">{t('home.roomsMade')}</span>
+                </motion.div>
+              )}
+              <div className="order-4 lg:order-3 mt-6 flex gap-6 justify-center sm:justify-start">
                 <div className="flex flex-col items-center gap-1.5">
                   <TactileButton onClick={handleSend} variant="primary" size="lg" className="lg:text-[16.5px] lg:min-h-[56px] lg:px-9" icon={<SendCircleIcon size={18} />} disabled={isCreating}>{t('home.send')}</TactileButton>
                   <span className="text-[11.5px] lg:text-[13px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.sendHint')}</span>
@@ -420,35 +448,13 @@ export function SingleScreenApp() {
                   hero column to use the full half-pane width. Desktop shows
                   the same scene in the room pane, so hide it here. */}
               {/* Mobile: sized to sit INSIDE the column borders — slightly
-                  narrower than the text above so nothing touches the edges. */}
-              <div className="lg:hidden mt-4 sm:mt-8 -mb-4 flex justify-center">
+                  narrower than the text above so nothing touches the edges.
+                  order-5 keeps it last inside this ordered flex column. */}
+              <div className="order-5 lg:hidden mt-4 sm:mt-8 -mb-4 flex justify-center">
                 <div className="w-full max-w-[340px] px-1">
                   <HeroTransferScene />
                 </div>
               </div>
-              {/* Live activity tracker — one quiet line, ALWAYS centered:
-                  a living status dot (the pulse is the data moving), a bold
-                  tabular count, a muted label. Real numbers from the service;
-                  hidden entirely until the first answer arrives. */}
-              {roomsCreated !== null && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.4, duration: 0.5 }}
-                  className="mt-3 flex items-center justify-center gap-2.5 whitespace-nowrap"
-                >
-                  {/* Halo dot: two slow radar rings drift outward from a solid
-                      glowing core — layered, staggered, so it reads as breath,
-                      not alarm. Halts under prefers-reduced-motion. */}
-                  <span className="relative flex items-center justify-center w-4 h-4 shrink-0" aria-hidden>
-                    <span className="st-halo-ring absolute inset-0 rounded-full bg-status-success/40" />
-                    <span className="st-halo-ring st-halo-lag absolute inset-0 rounded-full bg-status-success/25" />
-                    <span className="relative w-2 h-2 rounded-full bg-status-success shadow-[0_0_6px_rgba(52,199,89,0.7)]" />
-                  </span>
-                  <span className="text-[15px] font-bold text-apple-ink dark:text-white tnum leading-none">{roomsCreated.toLocaleString()}</span>
-                  <span className="text-[13.5px] font-medium text-apple-ink-muted dark:text-white/50 leading-none">{t('home.roomsMade')}</span>
-                </motion.div>
-              )}
               {createError && (
                 <motion.div
                   role="alert"
@@ -693,20 +699,9 @@ export function SingleScreenApp() {
                 </button>
               </div>
 
-              {/* Quiet guidance — what the right pane is for */}
-              <div className="mt-6 grid grid-cols-1 gap-1.5 max-w-[340px]">
-                {[
-                  [t('conn.guidance.1t'), t('conn.guidance.1s')],
-                  [t('conn.guidance.2t'), t('conn.guidance.2s')],
-                  [t('conn.guidance.3t'), t('conn.guidance.3s')],
-                ].map(([ti, si]) => (
-                  <div key={ti} className="flex items-center gap-2.5 text-[12px]">
-                    <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-[#f06413]/50 dark:bg-[#fb9243]/50" />
-                    <span className="font-semibold text-apple-ink dark:text-white/85">{ti}</span>
-                    <span className="text-apple-ink-muted/70 dark:text-white/40">— {si}</span>
-                  </div>
-                ))}
-              </div>
+              {/* The right pane (desktop) or the room itself (mobile) is
+                  self-explanatory — the old bullet list here repeated what
+                  the UI already shows. Quiet beats busy. */}
             </motion.div>
           )}
     </AnimatePresence>
@@ -834,22 +829,21 @@ export function SingleScreenApp() {
                   <ConnectHandshake phase="connecting" localIcon={isMobileDevice ? 'phone' : 'monitor'} />
                 </div>
               ) : panelMode === 'idle' ? (
-                /* Desktop idle, top to bottom: the room header (already
-                   above), then the three steps, then the hero image at the
-                   bottom. Nothing else. */
-                <div className="w-full max-w-[560px] flex flex-col items-center h-full justify-end">
-                  {/* The three steps — numbered, quiet, readable */}
-                  <div className="w-full max-w-[360px] space-y-3 text-left mb-8">
+                /* Desktop idle: everything centered — the steps and the
+                   product scene share one centerline, like the rest of the
+                   app's empty states. */
+                <div className="w-full max-w-[640px] flex flex-col items-center justify-center h-full">
+                  {/* The three steps — numbered, quiet, centered */}
+                  <div className="w-full max-w-[400px] space-y-3 text-center mb-8">
                     {[t('room.step.1'), t('room.step.2'), t('room.step.3')].map((step, i) => (
-                      <div key={i} className="flex items-center gap-3">
+                      <div key={i} className="flex items-center justify-center gap-3">
                         <span className="shrink-0 w-6 h-6 rounded-full bg-ember/[0.1] dark:bg-ember/[0.16] text-ember dark:text-[#fb9243] text-[12px] font-bold flex items-center justify-center">{i + 1}</span>
                         <span className="text-[14px] font-medium text-apple-ink/80 dark:text-white/60">{step}</span>
                       </div>
                     ))}
                   </div>
-                  {/* The product itself, shown as it looks when connected —
-                      anchored at the bottom of the pane */}
-                  <div className="w-full max-w-[640px]">
+                  {/* The product itself, shown as it looks when connected */}
+                  <div className="w-full max-w-[640px] flex justify-center">
                     <HeroTransferScene />
                   </div>
                 </div>

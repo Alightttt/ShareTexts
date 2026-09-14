@@ -93,8 +93,11 @@ async function main() {
     await page.screenshot({ path: pathOut, clip: { x: 0, y: 0, width: w, height: h }, omitBackground: true });
   };
 
-  // --- OG card 1200x630 ---
-  await write(path.join(pub, 'og', 'sharetext-og-v9.png'), ogHtml, 1200, 630);
+  // --- OG card: the shipped og is v10, the user-supplied artwork (logo +
+  // product shot), which this generator does NOT own. ogHtml above is kept
+  // only as documentation of the retired generated card. Do not regenerate
+  // public/og/sharetext-og-v10.png from here.
+  void ogHtml;
 
   // --- PWA icons: warm canvas field, ember-gradient glyph (maskable keeps
   // the glyph inside the 80% safe zone; its solid ember field survives
@@ -118,7 +121,7 @@ async function main() {
 
   // Verify PNG dimensions from their headers (bytes 16..24 = width/height).
   const png = (p) => { const b = fs.readFileSync(p); return { w: b.readUInt32BE(16), h: b.readUInt32BE(20), kb: Math.round(b.length / 1024) }; };
-  for (const p of ['og/sharetext-og-v9.png', 'icon-512.png', 'icon-192.png', 'icon-maskable-512.png', 'icon-maskable-192.png', 'apple-touch-icon.png', 'favicon-16.png', 'favicon-32.png', 'favicon-48.png']) {
+  for (const p of ['icon-512.png', 'icon-192.png', 'icon-maskable-512.png', 'icon-maskable-192.png', 'apple-touch-icon.png', 'favicon-16.png', 'favicon-32.png', 'favicon-48.png']) {
     const f = path.join(pub, p);
     const r = png(f);
     console.log(`${p}: ${r.w}x${r.h} ${r.kb}KB`);

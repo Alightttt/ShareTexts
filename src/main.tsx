@@ -3,11 +3,17 @@ import {createRoot} from 'react-dom/client';
 import { MotionConfig } from 'motion/react';
 import App from './App.tsx';
 import { installDiagGlobal } from './lib/diag';
+import { prewarmSignaling } from './lib/socket';
 import './index.css';
 
 // Lifecycle diagnostics for the signaling/transfer journey — read them via
 // window.__sharetextDiag.snapshot() when a connect or transfer fails.
 installDiagGlobal();
+
+// Prewarm the signaling transport in the background so creating a room (or
+// joining with a code) skips the cold TLS/upgrade handshake when the user
+// finally commits. The connection is reused as-is by both flows.
+prewarmSignaling();
 
 // Remove the branded loading shell now that React is painting
 const shell = document.getElementById("loading-shell");

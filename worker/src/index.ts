@@ -153,8 +153,13 @@ export default {
       let roomsCreated = 0;
       if (metricsRes && metricsRes.ok) {
         try {
-          const totals = (await metricsRes.json() as { totals?: Record<string, number> }).totals;
-          roomsCreated = totals?.['rooms.created'] ?? 0;
+          const data = await metricsRes.json() as { totals?: Record<string, number>; lifetime_rooms_created?: number };
+          // Prefer the durable lifetime counter (never rolls off with the
+          // 48h metric buckets); fall back to the window total.
+          roomsCreated = Math.max(
+            data.lifetime_rooms_created ?? 0,
+            data.totals?.['rooms.created'] ?? 0,
+          );
         } catch { /* roomsCreated stays 0 */ }
       }
       return json({ ...payload, roomsCreated }, statsRes.status, cors);

@@ -25,48 +25,35 @@ export function ReceiveCircleIcon({ className = '', size = 20 }: { className?: s
 }
 
 /**
- * DisconnectGlyph — a refined "gate out" mark: an open door frame with an
- * arrow leaving through it. Reads as "walk out of the room" at 16px in both
- * themes — the door is the room, the arrow is you leaving it.
+ * DisconnectGlyph — a clean "leave the room" mark: an open door frame with
+ * an arrow walking out of it. Drawn on a 24-grid so the stroke joins are
+ * crisp at 14–17px in both themes: the door occupies the left half, the
+ * arrow exits right through the open doorway.
  */
 export function DisconnectGlyph({ className = '', size = 16 }: { className?: string; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      {/* Door frame — open on the right side */}
+      {/* Door: top rail, left jamb, threshold — open on the right edge */}
       <path
-        d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"
+        d="M14 4h5a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 19 20h-5"
         stroke="currentColor"
-        strokeWidth="2.1"
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      {/* Arrow shaft leaving through the doorway */}
+      {/* Arrow — one continuous stroke, exiting through the doorway */}
       <path
-        d="M10 12h9"
+        d="M4 12h13.5"
         stroke="currentColor"
-        strokeWidth="2.1"
+        strokeWidth="2"
         strokeLinecap="round"
       />
-      {/* Arrow head */}
       <path
-        d="M15.5 8.5L19 12l-3.5 3.5"
+        d="M13.5 7.5 18 12l-4.5 4.5"
         stroke="currentColor"
-        strokeWidth="2.1"
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
-      {/* Door edge — the frame's left jamb the arrow passes */}
-      <path
-        d="M13 4v3"
-        stroke="currentColor"
-        strokeWidth="2.1"
-        strokeLinecap="round"
-      />
-      <path
-        d="M13 17v3"
-        stroke="currentColor"
-        strokeWidth="2.1"
-        strokeLinecap="round"
       />
     </svg>
   );

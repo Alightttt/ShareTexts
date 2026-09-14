@@ -489,8 +489,11 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     void clearDraft(session.roomId);
     setSentPulse(true);
     setTimeout(() => setSentPulse(false), 900);
-    // On mobile, blur the textarea to dismiss the keyboard after sending.
-    textareaRef.current?.blur();
+    // Dismiss the on-screen keyboard after sending — on TOUCH only. A
+    // desktop click on the send button used to blur the textarea too,
+    // killing the type → click → type flow.
+    const isTouch = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+    if (isTouch) textareaRef.current?.blur();
   };
   const inputBytes = useMemo(() => new TextEncoder().encode(inputText).length, [inputText]);
   const isLargeInput = inputBytes > 50000;
@@ -822,19 +825,28 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
       >
         <div className="max-w-3xl mx-auto flex flex-col h-full">
           {session.messages.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3 min-h-[40vh]">
+            <div className="flex-1 flex flex-col items-center justify-center text-center min-h-[40vh]">
               {disconnected ? (
                 <>
                   <p className="text-[16px] font-semibold text-apple-ink dark:text-white">{t('chat.peerOffline.title')}</p>
-                  <p className="text-[13px] text-apple-ink-muted max-w-[260px] leading-relaxed">
+                  <p className="text-[13px] text-apple-ink-muted max-w-[260px] leading-relaxed mt-3">
                     {t('chat.peerOffline.body')}
                   </p>
                 </>
               ) : (
+                /* Connected empty room: the two devices, linked, breathing
+                    quietly. No headline — the room is obvious; the copy
+                    under the illustration says the one true thing. */
                 <div className="flex flex-col items-center">
-                  <EmptyRoomIllustration />
-                  <p className="text-[15px] font-semibold text-apple-ink dark:text-white mt-4">{t('chat.ready')}</p>
-                  <p className="text-[13px] text-apple-ink-muted max-w-[260px] leading-relaxed mt-1">
+                  {/* Illustration + the riding packet share one relative
+                      wrapper so the dot stays exactly on the drawn link. */}
+                  <div className="relative">
+                    <EmptyRoomIllustration connected />
+                    <div className="absolute inset-0 pointer-events-none">
+                      <EmptyRoomPacket />
+                    </div>
+                  </div>
+                  <p className="text-[13px] text-apple-ink-muted max-w-[280px] leading-relaxed mt-5">
                     {t('chat.empty.body')}
                   </p>
                 </div>
@@ -1088,7 +1100,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
               <button
                 type="button"
                 data-testid="send"
-                onPointerDown={handleSend}
+                onClick={handleSend}
                 disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
                 aria-label={t('composer.send')}
                 className="min-w-[40px] min-h-[40px] -m-[1px] rounded-full flex items-center justify-center shrink-0 transition-all duration-200 active:scale-90 text-white disabled:opacity-40 disabled:bg-apple-hairline dark:disabled:bg-white/15 disabled:shadow-none enabled:bg-apple-ink dark:enabled:bg-white dark:enabled:text-night-900 shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
@@ -1177,29 +1189,62 @@ function RemoveAttachmentButton({ onClick }: { onClick: () => void }) {
     </button>
   );
 }
-/** Simple device-to-device illustration for the empty room state. */
-function EmptyRoomIllustration() {
+/**
+ * Empty-room illustration: a desktop and a phone, side by side, joined by a
+ * level link with a soft packet dot crossing it. Drawn on a strict grid so
+ * both devices share one visual centerline (the old version had a sloped,
+ * lopsided composition) — the PC on the left, phone on the right, link
+ * meeting each device at its screen center. The traveling dot is motion/react
+ * driven, so it flattens under prefers-reduced-motion like every other
+ * animation in the app.
+ */
+function EmptyRoomIllustration({ connected = true }: { connected?: boolean }) {
   return (
-    <svg width="120" height="72" viewBox="0 0 120 72" fill="none" className="select-none pointer-events-none" aria-hidden="true">
-      {/* Phone (left) */}
-      <rect x="10" y="10" width="30" height="52" rx="7" fill="currentColor" fillOpacity="0.07" stroke="currentColor" strokeOpacity="0.12" strokeWidth="1.2" />
-      <rect x="15" y="16" width="20" height="32" rx="2.5" fill="currentColor" fillOpacity="0.03" />
-      {/* Computer (right) */}
-      <rect x="80" y="8" width="30" height="42" rx="5" fill="currentColor" fillOpacity="0.07" stroke="currentColor" strokeOpacity="0.12" strokeWidth="1.2" />
-      <rect x="84" y="12" width="22" height="28" rx="2" fill="currentColor" opacity="0.03" />
-      <rect x="90" y="50" width="10" height="3.5" rx="1.5" fill="currentColor" opacity="0.12" />
-      <rect x="85" y="53.5" width="20" height="2" rx="1" fill="currentColor" opacity="0.12" />
-      {/* Connection dots — breathing animation */}
-      <circle cx="50" cy="32" r="2" fill="currentColor" opacity="0.15">
-        <animate attributeName="opacity" values="0.15;0.3;0.15" dur="2.5s" repeatCount="indefinite" />
-      </circle>
-      <circle cx="56" cy="28" r="2.5" fill="currentColor" opacity="0.25">
-        <animate attributeName="opacity" values="0.25;0.45;0.25" dur="2s" repeatCount="indefinite" />
-      </circle>
-      <circle cx="62" cy="32" r="2" fill="currentColor" opacity="0.15">
-        <animate attributeName="opacity" values="0.15;0.3;0.15" dur="2.5s" repeatCount="indefinite" begin="0.5s" />
-      </circle>
+    <svg
+      width="208"
+      height="104"
+      viewBox="0 0 208 104"
+      fill="none"
+      className="select-none pointer-events-none text-apple-ink-muted dark:text-white"
+      aria-hidden="true"
+    >
+      {/* ══ Desktop computer (left) ══ — screen centered on y=44 */}
+      <rect x="14" y="12" width="66" height="44" rx="6" fill="currentColor" fillOpacity="0.05" stroke="currentColor" strokeOpacity="0.18" strokeWidth="1.5" />
+      <rect x="20" y="18" width="54" height="32" rx="3" fill="currentColor" fillOpacity="0.04" />
+      {/* Stand: neck + base, centered under the screen (x-center 47) */}
+      <rect x="43" y="56" width="8" height="10" rx="2" fill="currentColor" fillOpacity="0.16" />
+      <rect x="31" y="66" width="32" height="4" rx="2" fill="currentColor" fillOpacity="0.16" />
+
+      {/* ══ Phone (right) ══ — screen centered on y=44, mirroring the PC */}
+      <rect x="156" y="12" width="38" height="64" rx="9" fill="currentColor" fillOpacity="0.05" stroke="currentColor" strokeOpacity="0.18" strokeWidth="1.5" />
+      <rect x="162" y="20" width="26" height="48" rx="3" fill="currentColor" fillOpacity="0.04" />
+      {/* Notch line, centered */}
+      <rect x="170" y="15.5" width="10" height="2" rx="1" fill="currentColor" fillOpacity="0.18" />
+
+      {/* ══ Link between them ══ — one level line at y=44, meeting each
+          device at its edge with a small terminal dot on both ends */}
+      {connected && (
+        <>
+          <line x1="82" y1="44" x2="154" y2="44" stroke="currentColor" strokeOpacity="0.28" strokeWidth="1.5" strokeDasharray="1.5 4" strokeLinecap="round" />
+          <circle cx="82" cy="44" r="2.5" fill="#f06413" fillOpacity="0.85" />
+          <circle cx="154" cy="44" r="2.5" fill="#34c759" fillOpacity="0.9" />
+        </>
+      )}
     </svg>
+  );
+}
+
+/** The traveling packet that rides the empty-room link (separated from the
+ *  static SVG so it can be motion-driven and thus reduced-motion aware). */
+function EmptyRoomPacket() {
+  return (
+    <motion.span
+      aria-hidden="true"
+      className="absolute left-1/2 top-1/2 block w-[7px] h-[7px] -mt-[3.5px] rounded-full bg-[#f06413] dark:bg-[#fb9243] shadow-[0_0_8px_rgba(240,100,19,0.5)]"
+      initial={{ x: -36, opacity: 0 }}
+      animate={{ x: 36, opacity: [0, 1, 1, 0] }}
+      transition={{ duration: 2.2, times: [0, 0.18, 0.82, 1], repeat: Infinity, ease: 'easeInOut' }}
+    />
   );
 }
 /** Compact live pairing code — used inside Connection details, so a dropped

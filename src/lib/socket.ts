@@ -151,6 +151,12 @@ export function getSocket(): SignalingSocket {
             // that was never their internet's fault. socket.io downgrades to
             // polling by itself when 'polling' is in the list.
             transports: ['websocket', 'polling'],
+            // Try EVERY transport in the list before giving up. Without this,
+            // socket.io v4 attempts only the FIRST entry (websocket) and dies
+            // behind proxies that block the upgrade handshake — the user sat
+            // through the full 10s timeout and saw "Couldn't reach ShareText"
+            // even though polling worked fine the whole time.
+            tryAllTransports: true,
             autoConnect: true,
             reconnection: true,
             // Cover multi-minute network blips so the recovery window can
@@ -161,6 +167,21 @@ export function getSocket(): SignalingSocket {
           });
   }
   return instance;
+}
+
+/**
+ * Prewarm the signaling transport — create the socket (and kick its
+ * connect) as soon as the app mounts, long before the user commits to
+ * creating a room or entering a code. The TLS + upgrade handshake (often
+ * the single largest latency in "create room") then happens in the
+ * background while they read the page. Idempotent: getSocket() returns the
+ * singleton on every later call, and ensureSocketConnected() resolves
+ * immediately when the connection is already up.
+ */
+export function prewarmSignaling(): void {
+  try {
+    getSocket();
+  } catch { /* never let telemetry warm-up break the page */ }
 }
 
 /**

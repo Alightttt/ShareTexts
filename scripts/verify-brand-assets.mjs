@@ -48,22 +48,21 @@ const alpha = (p) => p[3] < 10;
 const checks = [];
 const check = (name, cond) => checks.push([name, cond]);
 
-// ── OG card 1200x630 ──
-const og = await sample('/og/sharetext-og-v9.png');
+// ── OG card 1200x630 (v10 — the user-supplied artwork: logo + wordmark on
+// top, laptop + phone product shot below, white background) ──
+const og = await sample('/og/sharetext-og-v10.png');
 check('og is 1200x630', og.w === 1200 && og.h === 630);
-for (const [x, y] of [[600, 315]]) {
-  // Center may be cream canvas or the ink CTA pill — both by design; it
-  // must never be a mid-tone artifact.
-  const p = at(og.data, og.w, x, y);
-  check(`og point (${x},${y}) cream or ink`, cream(p) || ink(p));
+{
+  // Background is white in v10; the brand glyph is ember; the laptop bezel
+  // and wordmark are ink. Sample generously — exact coordinates would couple
+  // the check to the artwork's layout.
+  const p = at(og.data, og.w, 600, 315);
+  check(`og point (600,315) light`, p[0] > 200 && p[1] > 200 && p[2] > 200);
+  const anyInk = count(og.data, og.w, 0, 0, og.w, og.h, ink, 6);
+  check(`og ink artwork present (${anyInk} px)`, anyInk > 50);
+  const anyEmber = count(og.data, og.w, 0, 0, og.w, og.h, ember, 4);
+  check(`og ember brand glyph present (${anyEmber} px)`, anyEmber > 20);
 }
-check('og ember glyph in brand mark', count(og.data, og.w, 80, 70, 140, 135, ember) > 0);
-check('og ember glyph in side art', count(og.data, og.w, 800, 150, 1150, 480, ember) > 0);
-const inkHeadline = count(og.data, og.w, 84, 190, 700, 360, ink);
-check(`og ink headline present (${inkHeadline} px)`, inkHeadline > 2000);
-check('og nothing clipped at right/bottom 4px strips',
-  count(og.data, og.w, og.w - 4, 0, og.w, og.h, ink) === 0 &&
-  count(og.data, og.w, 0, og.h - 4, og.w, og.h, ink) === 0);
 
 // ── Maskable icon: glyph must stay inside the central safe zone ──
 const mk = await sample('/icon-maskable-512.png');
