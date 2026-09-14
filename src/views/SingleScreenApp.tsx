@@ -364,11 +364,12 @@ export function SingleScreenApp() {
   const ambientGlow = null;
   const headerNode = (
     <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
-        {/* Brand lockup — one unit: mark + name at a tight, consistent
-            optical gap, sized up a step on desktop. */}
+        {/* Brand lockup — ONE svg (two responsive copies would put the shared
+            gradient defs inside the display:none copy, which browsers refuse
+            to paint — the desktop mark vanished). CSS overrides the intrinsic
+            size for the responsive step. */}
         <a href="/" className="flex items-center gap-[7px] shrink-0" aria-label="ShareText — home">
-          <ShareTextLogo size={24} className="sm:hidden" />
-          <ShareTextLogo size={26} className="hidden sm:block" />
+          <ShareTextLogo size={26} className="w-6 sm:w-[26px] h-auto" />
           <span className="font-semibold tracking-tight text-[17px] sm:text-[19px] text-apple-ink dark:text-white">ShareText</span>
         </a>
         {/* Aligned nav cluster: identical 6px gaps, every item on the same
@@ -410,7 +411,7 @@ export function SingleScreenApp() {
                   <span className="text-[11.5px] lg:text-[13px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.sendHint')}</span>
                 </div>
                 <div className="flex flex-col items-center gap-1.5">
-                  <TactileButton onClick={handleReceive} variant="secondary" size="lg" className="lg:text-[16.5px] lg:min-h-[56px] lg:px-9" icon={<ReceiveCircleIcon size={18} />}>{t('home.receive')}</TactileButton>
+                  <TactileButton onClick={handleReceive} variant="soft" size="lg" className="lg:text-[16.5px] lg:min-h-[56px] lg:px-9" icon={<ReceiveCircleIcon size={18} />}>{t('home.receive')}</TactileButton>
                   <span className="text-[11.5px] lg:text-[13px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.receiveHint')}</span>
                 </div>
               </div>
@@ -420,25 +421,31 @@ export function SingleScreenApp() {
                   the same scene in the room pane, so hide it here. */}
               {/* Mobile: sized to sit INSIDE the column borders — slightly
                   narrower than the text above so nothing touches the edges. */}
-              <div className="lg:hidden mt-4 sm:mt-8 -mb-3 flex justify-center">
+              <div className="lg:hidden mt-4 sm:mt-8 -mb-4 flex justify-center">
                 <div className="w-full max-w-[340px] px-1">
                   <HeroTransferScene />
                 </div>
-              </div>              {/* Live activity tracker — one quiet line: pulsing green dot
-                  (live), bold count, plain label. Real numbers from the
-                  service; hidden entirely until the first answer arrives. */}
+              </div>
+              {/* Live activity tracker — one quiet line, ALWAYS centered:
+                  a living status dot (the pulse is the data moving), a bold
+                  tabular count, a muted label. Real numbers from the service;
+                  hidden entirely until the first answer arrives. */}
               {roomsCreated !== null && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.4, duration: 0.5 }}
-                  className="mt-2 flex items-center justify-center sm:justify-start gap-2 whitespace-nowrap"
+                  className="mt-3 flex items-center justify-center gap-2.5 whitespace-nowrap"
                 >
-                  <span className="relative flex w-2.5 h-2.5 shrink-0">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-status-success opacity-60 animate-ping" />
-                    <span className="relative inline-flex w-2.5 h-2.5 rounded-full bg-status-success" />
+                  {/* Halo dot: two slow radar rings drift outward from a solid
+                      glowing core — layered, staggered, so it reads as breath,
+                      not alarm. Halts under prefers-reduced-motion. */}
+                  <span className="relative flex items-center justify-center w-4 h-4 shrink-0" aria-hidden>
+                    <span className="st-halo-ring absolute inset-0 rounded-full bg-status-success/40" />
+                    <span className="st-halo-ring st-halo-lag absolute inset-0 rounded-full bg-status-success/25" />
+                    <span className="relative w-2 h-2 rounded-full bg-status-success shadow-[0_0_6px_rgba(52,199,89,0.7)]" />
                   </span>
-                  <span className="text-[14px] font-bold text-apple-ink dark:text-white tnum leading-none">{roomsCreated}</span>
+                  <span className="text-[15px] font-bold text-apple-ink dark:text-white tnum leading-none">{roomsCreated.toLocaleString()}</span>
                   <span className="text-[13.5px] font-medium text-apple-ink-muted dark:text-white/50 leading-none">{t('home.roomsMade')}</span>
                 </motion.div>
               )}

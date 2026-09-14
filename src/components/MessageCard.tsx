@@ -391,7 +391,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
           isMe
             // Sent items carry a whisper of the brand so the eye instantly
             // separates what left this device from what arrived.
-            ? "bg-[#e2efff] dark:bg-[#1f3350] text-apple-ink dark:text-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+            ? "bg-[#fdeee2] dark:bg-[#2b2018] text-apple-ink dark:text-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
             : "bg-white dark:bg-[#1f1f24] border border-apple-divider/40 dark:border-white/[0.06] text-apple-ink dark:text-white",
           isMe && isGroupEnd && "rounded-br-[4px]",
           !isMe && isGroupEnd && "rounded-bl-[4px]",
@@ -526,8 +526,8 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
           // Sent bubbles carry the brand tint; received stay neutral — the
           // color tells you whose message it is before you read a word.
           isMe
-            ? "bg-[#e2efff] dark:bg-[#2a2152] border border-azure-600/20 dark:border-azure-400/25 shadow-[0_1px_3px_rgba(139,124,246,0.12)]"
-            : "bg-white dark:bg-[#1d1733] border border-apple-divider/40 dark:border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
+            ? "bg-[#fdeee2] dark:bg-[#2b2018] border border-[#f06413]/20 dark:border-[#fb9243]/20 shadow-[0_1px_3px_rgba(240,100,19,0.10)]"
+            : "bg-white dark:bg-[#1c1c21] border border-apple-divider/40 dark:border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
           isMe && isGroupEnd && "rounded-br-[4px]",
           !isMe && isGroupEnd && "rounded-bl-[4px]",
           isMe && !isGroupEnd && "rounded-br-[14px]",

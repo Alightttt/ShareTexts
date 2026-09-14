@@ -1,7 +1,7 @@
 /* ShareText Guide Pages — Design System
  * Matches the main app's Apple-inspired visual language:
  * - SF Pro typography
- * - Blue brand (#0a66f0)
+ * - Blue brand (#f06413)
  * - Clean surfaces with subtle depth
  * - Layered dark mode (not inverted)
  * - Rounded corners (12-20px)
@@ -12,10 +12,10 @@
 
 :root {
   /* Brand */
-  --brand: #0a66f0;
-  --brand-hover: #0757d5;
-  --brand-light: rgba(10,102,240,.06);
-  --brand-border: rgba(10,102,240,.15);
+  --brand: #f06413;
+  --brand-hover: #d9560e;
+  --brand-light: rgba(240,100,19,.06);
+  --brand-border: rgba(240,100,19,.15);
   
   /* Surface */
   --bg: #ffffff;

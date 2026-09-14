@@ -20,7 +20,7 @@ import { cn } from '../lib/utils';
 //   - Content shifts down on press, up on hover
 // ---------------------------------------------------------------------------
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost';
+type ButtonVariant = 'primary' | 'soft' | 'secondary' | 'ghost';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface TactileButtonProps {
@@ -59,6 +59,15 @@ const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; 
     shadowPress: '0 1px 2px rgba(240,100,19,0.3)',
     gradient: 'linear-gradient(180deg, #f9743a 0%, #f06413 60%, #e05c0f 100%)',
   },
+  soft: {
+    // The primary's sibling: same filled anatomy, one step lighter on the
+    // ember ramp — reads as "same family, quieter choice" (Send vs Receive).
+    base: 'text-white',
+    shadowIdle: '0 1px 2px rgba(240,100,19,0.16), 0 4px 10px -4px rgba(240,100,19,0.22)',
+    shadowHover: '0 4px 10px rgba(240,100,19,0.13), 0 12px 26px -8px rgba(240,100,19,0.26)',
+    shadowPress: '0 1px 2px rgba(240,100,19,0.2)',
+    gradient: 'linear-gradient(180deg, #fb9a56 0%, #f98b41 60%, #f07d33 100%)',
+  },
   secondary: {
     // A paper tile with a hairline edge — sits on the canvas without
     // competing with the primary. Gradient reads from a theme-aware CSS
@@ -83,6 +92,7 @@ const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; 
 const SURFACE_FILLS: Record<ButtonVariant, string> = {
   // Primary speaks the brand: ember fill, white text in both themes.
   primary: 'bg-ember',
+  soft: 'bg-[#f98b41]',
   secondary: 'bg-white dark:bg-apple-tile-2',
   ghost: '',
 };
