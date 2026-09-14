@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 
 /**
  * HeroMockupScene — the landing hero IS the reference composition, as an
@@ -6,10 +6,14 @@ import React, { useRef } from 'react';
  * (/hero-composition.webp with transparency, PNG fallback) and scales
  * fluidly to the container width at the true aspect ratio. No DOM
  * recreation, no SVG redrawing, no bleed tricks.
+ *
+ * On load the image fades-settles in (never pops); the intrinsic
+ * width/height reserves layout space so nothing shifts around it.
  */
 
 export function HeroMockupScene({ className }: { className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [loaded, setLoaded] = useState(false);
 
   return (
     <div ref={ref} className={className}>
@@ -21,7 +25,8 @@ export function HeroMockupScene({ className }: { className?: string }) {
           src="/hero-composition.png"
           alt="ShareText running on a laptop and iPhone — devices connected and transferring"
           draggable={false}
-          className="block w-full h-auto select-none"
+          onLoad={() => setLoaded(true)}
+          className={`block w-full h-auto select-none st-img-fade ${loaded ? 'st-img-loaded' : ''}`}
           width={1622}
           height={969}
         />

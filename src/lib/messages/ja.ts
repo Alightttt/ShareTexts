@@ -23,6 +23,7 @@ const ja: Dict = {
   'home.sendHint': 'ルームを作成',
   'home.receive': '受信',
   'home.receiveHint': 'コードで参加',
+  'home.roomsMade': '室がこれまでに作成',
   'home.retry': 'もう一度試す',
   'footer.noApp': 'アプリ不要',
   'footer.noAccount': 'アカウント不要',

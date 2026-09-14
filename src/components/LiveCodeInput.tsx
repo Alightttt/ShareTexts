@@ -134,12 +134,13 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
               <span className="font-semibold text-apple-ink dark:text-white tracking-tighter font-mono leading-none select-none" style={{ fontSize: 'clamp(22px, 7vw, 40px)' }}>
                 {code[i] || ''}
               </span>
+              {/* The typing caret — plain CSS blink so it survives reduced-
+                  motion flattening (MotionConfig zeroes keyframe loops);
+                  under reduced motion it simply stays visible, steady. */}
               {!isJoining && code.length === i && (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: [1, 0] }}
-                  transition={{ repeat: Infinity, duration: 1 }}
-                  className="w-[2px] h-7 sm:h-9 bg-apple-blue absolute rounded-full"
+                <span
+                  aria-hidden="true"
+                  className="st-caret absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[2px] h-7 sm:h-9 bg-ember dark:bg-[#fb9243] rounded-full"
                 />
               )}
             </div>

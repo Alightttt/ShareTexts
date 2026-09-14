@@ -10,9 +10,9 @@ import { fileURLToPath } from 'url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pub = path.join(root, 'public');
 
-const CANVAS = '#f6f0e6';   // --color-apple-canvas
-const INK = '#211f1a';      // --color-apple-ink
-const MUTED = '#68655e';    // --color-apple-ink-muted
+const CANVAS = '#f7f4ee';   // --color-apple-canvas
+const INK = '#1e1c18';      // --color-apple-ink
+const MUTED = '#635f57';    // --color-apple-ink-muted
 const EMBER = '#f06413';    // --color-ember
 const HONEY = '#feab30';    // --color-honey
 const NIGHT = '#131315';    // dark canvas

@@ -147,12 +147,15 @@ async function main() {
   await sleep(1200);
   ok((await M.locator('body').innerText()).includes('Reply from the desktop'), 'A → M text delivered');
 
-  // Empty composer: send disabled with warm parchment
+  // Empty composer: send disabled — muted parchment, not the ember fill.
+  // Expected value tracks the disabled-state token; update it deliberately
+  // when the design system changes, not by re-recording a failing run.
   const disabledBg = await A.evaluate(() => {
     const btn = document.querySelector('button[data-testid="send"]');
     return btn && btn.disabled ? getComputedStyle(btn).backgroundColor : null;
   });
-  ok(disabledBg === 'rgb(217, 205, 182)', `empty-composer send disabled in warm parchment (${disabledBg})`);
+  const DISABLED_SEND_BG = 'rgb(215, 209, 194)'; // --color-apple-divider @ /50 on parchment
+  ok(disabledBg === DISABLED_SEND_BG, `empty-composer send disabled in muted parchment (${disabledBg})`);
 
   // New design: mobile connected = full-bleed room with ChatView's own slim
   // header. No separate Fullscreen/Minimize toggle exists anymore — the room
@@ -170,13 +173,14 @@ async function main() {
   console.log('  small targets M:', JSON.stringify(smallM));
   console.log('  small targets A:', JSON.stringify(smallA));
 
-  // Disconnect from the room header → two-press inline confirm (arm, then
-  // confirm) → "That's it." end screen → 'Start a transfer' CTA → idle.
-  // The end screen is the designed closure moment (privacy message + fresh
-  // start), not a bug.
+  // Disconnect from the room header → Apple-style confirm sheet (open, then
+  // confirm inside the dialog) → "That's it." end screen → 'Start a transfer'
+  // CTA → idle. The end screen is the designed closure moment (privacy
+  // message + fresh start), not a bug.
   const disconnectBtn = M.getByTestId('end-session').first();
-  await disconnectBtn.click(); // arms the inline confirm
-  await disconnectBtn.click(); // confirms within the countdown
+  await disconnectBtn.click(); // opens the confirm sheet
+  const sheetConfirm = M.getByRole('dialog').getByRole('button', { name: 'Disconnect' });
+  await sheetConfirm.click(); // confirms in the sheet
   await sleep(1200);
   const endedShown = await M.evaluate(() => document.body.innerText.includes("That's it."));
   ok(endedShown, 'manual close shows the designed end screen');

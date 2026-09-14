@@ -157,13 +157,17 @@ export function guessDeviceName(): string {
  * terminal, and the failure carries a code (OFFLINE / UNREACHABLE / TIMEOUT /
  * CONFIG) so the UI can say what actually happened.
  */
-function ensureSocketConnected(timeoutMs = 6000): Promise<void> {
+function ensureSocketConnected(timeoutMs = 10000): Promise<void> {
   const socket = getSocket();
   if (socket.connected) return Promise.resolve();
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       cleanup();
       diag('connect.timeout', false, `waited ${timeoutMs}ms`);
+      // A dropped/idle connection may recover on its own — force the
+      // transport to restart NOW instead of waiting out its backoff while
+      // the user stares at a spinner.
+      try { (socket as any).connect?.(); } catch { /* best effort */ }
       // Classify before rejecting: a device with no network or a dead
       // service gets a different, honest message than a slow one.
       if (typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -208,6 +212,18 @@ function humanJoinError(code: string | undefined, fallback: string): string {
       return "This session expired. Ask the other device to create a new room.";
     default:
       return fallback;
+  }
+}
+/** Friendly copy when a join THROWS (socket never came up) — mirrors the
+ *  Send-side classification so both paths speak the same language. */
+function friendlyJoinCopy(e: unknown): string {
+  const code = describeConnectFailure(e);
+  switch (code) {
+    case 'OFFLINE': return "You're offline. Check your internet and try again.";
+    case 'UNREACHABLE': return "ShareText's connection server isn't reachable right now. Try again in a moment.";
+    case 'CONFIG': return (e instanceof Error && e.message) || "ShareText couldn't reach its connection server. Please try again later.";
+    case 'TIMEOUT': return "The connection took too long. One more try usually fixes it.";
+    default: return "Couldn't reach ShareText. Check your connection and try again.";
   }
 }
 
@@ -1067,11 +1083,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const requestId = crypto.randomUUID();
     roomCreateDiagStart(requestId, 'join');
     await ensureSocketConnected();
+    const joinOnce = async (): Promise<{ success: boolean; error?: string }> => {
+    await ensureSocketConnected();
     return new Promise<{ success: boolean; error?: string }>((resolve) => {
       const timeout = setTimeout(() => {
         roomCreateDiagEnd(requestId, 'failure', 'SIGNALING_TIMEOUT', 'join timed out');
+        // Kick the transport like createRoomOnce does — the next attempt
+        // then starts from a fresh connection, not a stale backoff.
+        try { (getSocket() as any).connect?.(); } catch { /* best effort */ }
         resolve({ success: false, error: "Couldn't reach ShareText." });
-      }, 10000);
+      }, 12000);
       getSocket().emit('join_with_code', { code }, (res: { success: boolean; roomId?: string; secret?: string; createdAt?: number; error?: string; code?: string }) => {
         clearTimeout(timeout);
         diag('room.join', !!res.success, res.success ? 'ok' : (res.code || res.error || 'unknown'));
@@ -1085,13 +1106,39 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       });
     });
   };
+  // Same resilience as Send: one silent retry when the failure looks like a
+  // transport problem (slow handshake, dead socket) — a correct code should
+  // NEVER die to a flaky first connection.
+  const MAX_JOIN_ATTEMPTS = 2;
+  let lastJoin: { success: boolean; error?: string } = { success: false };
+  for (let attempt = 1; attempt <= MAX_JOIN_ATTEMPTS; attempt++) {
+    try {
+      lastJoin = await joinOnce();
+    } catch (e) {
+      const reason = describeConnectFailure(e);
+      if ((reason === 'TIMEOUT' || reason === 'UNREACHABLE' || reason === 'UNKNOWN') && attempt < MAX_JOIN_ATTEMPTS) {
+        diag('room.join_retry', true, `attempt ${attempt + 1} after ${reason}`);
+        try { await ensureSocketConnected(6000); continue; } catch { lastJoin = { success: false, error: friendlyJoinCopy(e) }; break; }
+      }
+      lastJoin = { success: false, error: friendlyJoinCopy(e) };
+      break;
+    }
+    if (lastJoin.success || !/Couldn't reach ShareText/.test(lastJoin.error || '')) break;
+    if (attempt < MAX_JOIN_ATTEMPTS) {
+      diag('room.join_retry', true, `attempt ${attempt + 1} after emit timeout`);
+      try { await ensureSocketConnected(6000); } catch { break; }
+    }
+  }
+  return lastJoin;
+};
 
   const joinWithLink = async (roomId: string) => {
-    await ensureSocketConnected();
-    return new Promise<{ success: boolean; error?: string }>((resolve) => {
+    const linkOnce = () => new Promise<{ success: boolean; error?: string }>((resolve) => {
       const timeout = setTimeout(() => {
+        // Kick the transport so a retry starts from a fresh connection.
+        try { (getSocket() as any).connect?.(); } catch { /* best effort */ }
         resolve({ success: false, error: "Couldn't reach ShareText." });
-      }, 10000);
+      }, 12000);
       getSocket().emit('join_with_link', { roomId }, (res: { success: boolean; roomId?: string; secret?: string; createdAt?: number; error?: string; code?: string }) => {
         clearTimeout(timeout);
         diag('room.join_link', !!res.success, res.success ? 'ok' : (res.code || res.error || 'unknown'));
@@ -1101,6 +1148,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         resolve({ ...res, error: humanJoinError(res.code, humanizeError(res.code, res.error || "Couldn't reach ShareText. Check your connection and try again.")) });
       });
     });
+    // One silent retry for transport-shaped failures, same as code joins:
+    // an /s/ link tap should never die to one slow handshake.
+    let res = await linkOnce();
+    if (!res.success && /Couldn't reach ShareText/.test(res.error || '')) {
+      diag('room.join_link_retry', true, 'retrying after emit timeout');
+      try { await ensureSocketConnected(6000); res = await linkOnce(); } catch { /* keep first result */ }
+    }
+    return res;
   };
 
   /**

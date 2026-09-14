@@ -94,10 +94,11 @@ export function signalingConfigIssue(): string | null {
 }
 
 /**
- * Base URL of the ACTIVE signaling backend, for reachability probes.
+ * Base URL of the ACTIVE signaling backend, for reachability probes and any
+ * other HTTP call to the backend itself (e.g. the live /stats widget).
  * Null when the transport is same-origin socket.io (probe /health there).
  */
-function signalingHttpBase(): string | null {
+export function signalingHttpBase(): string | null {
   if (mode === 'cloudflare' && url) {
     return url.replace(/\/+$/, '').replace(/\/ws$/i, '').replace(/^ws/, 'http');
   }

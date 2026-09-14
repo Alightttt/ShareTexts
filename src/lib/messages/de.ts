@@ -23,6 +23,7 @@ const de: Dict = {
   'home.sendHint': 'Raum erstellen',
   'home.receive': 'Empfangen',
   'home.receiveHint': 'Mit Code beitreten',
+  'home.roomsMade': 'Räume bisher erstellt',
   'home.retry': 'Erneut versuchen',
   'footer.noApp': 'Keine App',
   'footer.noAccount': 'Kein Konto',

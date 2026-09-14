@@ -19,11 +19,12 @@ const en = {
   // ── brand / nav / landing ──────────────────────────────────────────
   'nav.docs': 'Docs',
   'home.title': 'Move anything\nbetween your devices.',
-  'home.subtitle': "Phone to laptop, iPhone to PC. No app, no account. Original quality, encrypted, gone when you close the tab.",
+  'home.subtitle': "Windows to IPhone, Mobile to PC, you can share Texts/Files/Images across any devices. thats why we call it AirDrop for any Device",
   'home.send': 'Send',
   'home.sendHint': 'Create a room',
   'home.receive': 'Receive',
   'home.receiveHint': 'Join with a code',
+  'home.roomsMade': 'rooms made till now',
   'home.retry': 'Try again',
   'footer.noApp': 'No app',
   'footer.noAccount': 'No account',
@@ -106,7 +107,7 @@ const en = {
   'room.receiveHint': 'Enter the code from the other device.',
   'room.step.1': 'Open ShareText on both devices.',
   'room.step.2': 'Tap Send on one, Receive on the other.',
-  'room.step.3': 'Type, paste, or drop. It lands instantly, and photos stay original.',
+  'room.step.3': 'Connect both and you good to go.',
 
   // ── QR overlays ────────────────────────────────────────────────────
   'qr.close': 'Close',

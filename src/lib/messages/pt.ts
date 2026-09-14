@@ -23,6 +23,7 @@ const pt: Dict = {
   'home.sendHint': 'Criar uma sala',
   'home.receive': 'Receber',
   'home.receiveHint': 'Entrar com um código',
+  'home.roomsMade': 'salas criadas até agora',
   'home.retry': 'Tentar novamente',
   'footer.noApp': 'Sem app',
   'footer.noAccount': 'Sem conta',

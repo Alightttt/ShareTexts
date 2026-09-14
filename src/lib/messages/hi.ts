@@ -23,6 +23,7 @@ const hi: Dict = {
   'home.sendHint': 'रूम बनाएँ',
   'home.receive': 'प्राप्त करें',
   'home.receiveHint': 'कोड से जुड़ें',
+  'home.roomsMade': 'रूम अब तक बनीं',
   'home.retry': 'फिर कोशिश करें',
   'footer.noApp': 'कोई ऐप नहीं',
   'footer.noAccount': 'कोई खाता नहीं',

@@ -23,6 +23,7 @@ const ar: Dict = {
   'home.sendHint': 'إنشاء غرفة',
   'home.receive': 'استقبال',
   'home.receiveHint': 'الانضمام برمز',
+  'home.roomsMade': 'غرفة تم إنشاؤها حتى الآن',
   'home.retry': 'إعادة المحاولة',
   'footer.noApp': 'بلا تطبيق',
   'footer.noAccount': 'بلا حساب',

@@ -23,6 +23,7 @@ const es: Dict = {
   'home.sendHint': 'Crear una sala',
   'home.receive': 'Recibir',
   'home.receiveHint': 'Unirse con un código',
+  'home.roomsMade': 'salas creadas hasta ahora',
   'home.retry': 'Intentar de nuevo',
   'footer.noApp': 'Sin app',
   'footer.noAccount': 'Sin cuenta',

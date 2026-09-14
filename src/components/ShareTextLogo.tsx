@@ -102,7 +102,7 @@ function Mark({ motion, mono }: { motion?: BrandMotion; mono?: boolean }) {
       {motion === 'complete' && (
         <path
           d="M159 178 l13 13 l25 -28"
-          stroke={mono ? 'var(--color-bg, #f6f0e6)' : '#fffdf9'}
+          stroke={mono ? 'var(--color-bg, #f7f4ee)' : '#fffefb'}
           strokeWidth="15"
           strokeLinecap="round"
           strokeLinejoin="round"

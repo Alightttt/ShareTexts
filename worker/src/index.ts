@@ -139,13 +139,25 @@ export default {
 
     if (path === '/stats') {
       // Live seated-device count for the landing-page social-proof widget
-      // (see stats.ts). Public by design — it reveals one aggregate number.
-      const stub = env.STATS.get(env.STATS.idFromName('stats'));
-      const res = await stub.fetch(new Request('https://internal/stats'));
-      return new Response(res.body, {
-        status: res.status,
-        headers: { 'content-type': 'application/json', ...cors },
-      });
+      // (see stats.ts). Public by design — it reveals only aggregate
+      // numbers, never room ids, codes, or IPs. roomsCreated comes from the
+      // Metrics DO so the landing tracker can show "N rooms made".
+      const statsStub = env.STATS.get(env.STATS.idFromName('stats'));
+      const metricsStub = env.METRICS.get(env.METRICS.idFromName('metrics'));
+      const [statsRes, metricsRes] = await Promise.all([
+        statsStub.fetch(new Request('https://internal/stats')),
+        metricsStub.fetch(new Request('https://internal/metrics')).catch(() => null),
+      ]);
+      let payload: Record<string, unknown> = {};
+      try { payload = await statsRes.json() as Record<string, unknown>; } catch { /* keep defaults */ }
+      let roomsCreated = 0;
+      if (metricsRes && metricsRes.ok) {
+        try {
+          const totals = (await metricsRes.json() as { totals?: Record<string, number> }).totals;
+          roomsCreated = totals?.['rooms.created'] ?? 0;
+        } catch { /* roomsCreated stays 0 */ }
+      }
+      return json({ ...payload, roomsCreated }, statsRes.status, cors);
     }
 
     return json({

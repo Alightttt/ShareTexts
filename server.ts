@@ -70,7 +70,11 @@ app.get('/metrics', (_req, res) => {
 
 // Live seated-device count for the landing-page social-proof widget. Only a
 // single aggregate number is exposed — never room ids, codes, or IPs.
+// CORS: the landing page may be served from a different origin (e.g. Vercel)
+// than this signaling server, so this read-only aggregate is open to browsers
+// while every signaling route stays behind the socket.io origin allowlist.
 app.get('/stats', (_req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
   const seated = new Set<string>();
   for (const room of rooms.values()) {
     for (const pid of room.activePeers) seated.add(pid);
@@ -79,7 +83,8 @@ app.get('/stats', (_req, res) => {
     service: 'sharetext-signaling',
     generated_at: new Date().toISOString(),
     users: seated.size,
-    note: 'approximate live count of seated devices',
+    roomsCreated: metrics['rooms.created'] ?? 0,
+    note: 'approximate live count of seated devices + total rooms ever created (in-memory, resets on restart)',
   });
 });
 

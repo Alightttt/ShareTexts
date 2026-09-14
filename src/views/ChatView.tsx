@@ -10,7 +10,8 @@ import {
 } from 'lucide-react';
 import { FileTypeIcon } from '../components/FileTypeIcon';
 import { AnimatedIcon } from '../components/AnimatedIcon';
-import { InlineConfirm } from '../components/InlineConfirm';
+import { DisconnectGlyph } from '../components/TransferIcons';
+import { ConfirmSheet } from '../components/ConfirmSheet';
 import { cn, formatBytes, sanitizeDeviceName } from '../lib/utils';
 import { Attachment } from '../types';
 import { MessageCard } from '../components/MessageCard';
@@ -46,6 +47,8 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   // standalone mode (the paired screen owns it on desktop instead).
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState('');
+  // Bottom-sheet confirmation before really ending the session.
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const startEditName = () => { setDraftName(session.deviceName); setEditingName(true); };
   const saveName = () => {
     const clean = sanitizeDeviceName(draftName);
@@ -633,14 +636,15 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           <ThemeToggle />
           {/* Two-press inline confirm replaces the old modal: arm fills the
               pill with a danger countdown, second press disconnects. */}
-          <InlineConfirm
-            testId="end-session"
-            label={t('common.disconnect')}
-            confirmLabel={t('end.tapAgain')}
-            onConfirm={closeSession}
-            className="sm:rounded-[8px]"
-            size="sm"
-          />
+          <button
+            type="button"
+            data-testid="end-session"
+            onClick={() => setConfirmDisconnect(true)}
+            className="flex items-center gap-1.5 rounded-full font-semibold min-h-[40px] px-3 text-[12.5px] text-apple-ink-muted hover:text-status-danger hover:bg-status-danger/10 active:scale-[0.96] transition-colors"
+          >
+            <DisconnectGlyph size={14} />
+            <span className="hidden sm:inline">{t('common.disconnect')}</span>
+          </button>
         </div>
         <AnimatePresence>
           {showConnectionDetails && (
@@ -1145,6 +1149,16 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           setFlightFromRect(null);
           setFlightToRect(null);
         }}
+      />
+      {/* Apple-style bottom-sheet confirmation before really ending the session. */}
+      <ConfirmSheet
+        open={confirmDisconnect}
+        title={t('common.disconnect')}
+        body={t('end.body')}
+        confirmLabel={t('common.disconnect')}
+        cancelLabel={t('cancel')}
+        onConfirm={() => { setConfirmDisconnect(false); closeSession(); }}
+        onCancel={() => setConfirmDisconnect(false)}
       />
     </div>
   );

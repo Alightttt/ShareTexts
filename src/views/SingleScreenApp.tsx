@@ -22,7 +22,7 @@ import { ThemeToggle } from '../components/ThemeToggle';
 import { LiveCodeDisplay } from '../components/LiveCodeDisplay';
 import { LiveCodeInput } from '../components/LiveCodeInput';
 import { AnimatedIcon } from '../components/AnimatedIcon';
-import { SendCircleIcon, ReceiveCircleIcon } from '../components/TransferIcons';
+import { SendCircleIcon, ReceiveCircleIcon, DisconnectGlyph } from '../components/TransferIcons';
 import { TactileButton } from '../components/TactileButton';
 import { InlineConfirm } from '../components/InlineConfirm';
 import { ConnectHandshake } from '../components/ConnectHandshake';
@@ -30,12 +30,15 @@ import { CommandBar, CommandBarChip } from '../components/CommandBar';
 import { signalingConfigIssue } from '../lib/socket';
 import { ConnectError, describeConnectFailure } from '../lib/errors';
 import { HeroTransferScene } from '../components/HeroTransferScene';
+import { useLiveStats } from '../lib/useLiveStats';
+import { hapticTap } from '../lib/haptics';
+import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useI18n } from '../lib/i18n';
 import { LanguageMenu } from '../components/LanguageMenu';
 import { cn, shortCodeOf, sanitizeDeviceName } from '../lib/utils';
 import {
   LogOut, QrCode, Link2, Copy, Check,
-  Smartphone, Monitor, X, Wifi, ArrowRightLeft, Info, Pencil, WifiOff, ServerOff
+  Smartphone, Monitor, X, Wifi, ArrowRightLeft, ArrowLeft, Info, Pencil, WifiOff, ServerOff
 } from 'lucide-react';
 import { generateTOTP } from '../lib/totp';
 import { useFocusTrap } from '../lib/useFocusTrap';
@@ -134,8 +137,12 @@ export function SingleScreenApp() {
   const { t } = useI18n();
   const { session, createSession, abandonSession, joinWithCode, setDeviceName } = useSession();
   const isDesktopLayout = useIsDesktopLayout();
+  // Live activity tracker — real aggregate numbers from the signaling
+  // service: devices seated right now + rooms ever created.
+  const { roomsCreated } = useLiveStats();
   const [panelMode, setPanelMode] = useState<PanelMode>('idle');
   const [isCreating, setIsCreating] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [createError, setCreateError] = useState<{ text: string; icon: 'offline' | 'server' | 'time' | 'info' } | null>(null);
   const [showQROverlay, setShowQROverlay] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -269,6 +276,7 @@ export function SingleScreenApp() {
 
   const handleSend = useCallback(async () => {
     if (isCreating) return;
+    hapticTap();
     setPanelMode('sending');
     setIsCreating(true);
     setCreateError(null);
@@ -285,7 +293,7 @@ export function SingleScreenApp() {
     }
   }, [isCreating, createSession, t, friendlyConnectError]);
 
-  const handleReceive = useCallback(() => { setPanelMode('receiving'); setCreateError(null); setJoinError(null); }, []);
+  const handleReceive = useCallback(() => { hapticTap(); setPanelMode('receiving'); setCreateError(null); setJoinError(null); }, []);
 
   const handleCodeComplete = useCallback(async (code: string) => {
     if (isJoining) return;
@@ -356,17 +364,29 @@ export function SingleScreenApp() {
   const ambientGlow = null;
   const headerNode = (
     <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
-        <div className="flex items-center gap-2.5">
-          <ShareTextLogo size={20} />
-          <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>
-        </div>
-        {/* Even, breathing room between nav items — no negative-margin
-            cramming; the toggle gets clear separation from Docs. */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        {/* Brand lockup — one unit: mark + name at a tight, consistent
+            optical gap, sized up a step on desktop. */}
+        <a href="/" className="flex items-center gap-[7px] shrink-0" aria-label="ShareText — home">
+          <ShareTextLogo size={24} className="sm:hidden" />
+          <ShareTextLogo size={26} className="hidden sm:block" />
+          <span className="font-semibold tracking-tight text-[17px] sm:text-[19px] text-apple-ink dark:text-white">ShareText</span>
+        </a>
+        {/* Aligned nav cluster: identical 6px gaps, every item on the same
+            40px centerline. No special-cased margins. */}
+        <div className="flex items-center gap-1.5">
           <CommandBarChip onClick={() => setCmdOpen(true)} />
           <LanguageMenu />
-          <a href="/docs" className="px-2 py-2 text-[13px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors rounded-lg">{t('nav.docs')}</a>
-          <div className="ml-1"><ThemeToggle /></div>
+          {/* Docs — an OPEN book icon; the name appears as a tooltip on hover. */}
+          <a
+            href="/docs"
+            aria-label={t('nav.docs')}
+            title={t('nav.docs')}
+            className="flex items-center justify-center min-w-[40px] min-h-[40px] rounded-full text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-white/[0.07] transition-colors"
+          >
+            {/* Open book (lucide book-open): two facing pages */}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
+          </a>
+          <ThemeToggle />
         </div>
     </header>
   );
@@ -378,29 +398,50 @@ export function SingleScreenApp() {
             // Deterministic first paint: the hero renders visible immediately;
             // only the swap-out fades. Never gate first paint on animation.
             <motion.div key="idle" exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto">
-              <h1 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold tracking-[-0.035em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left" style={{ fontFamily: 'var(--font-display)' }}>
+              <h1 className="text-[34px] sm:text-[42px] lg:text-[56px] font-bold tracking-[-0.035em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left" style={{ fontFamily: 'var(--font-display)' }}>
                 {(() => { const [a, b] = t('home.title').split('\n'); return (<>{a}{b ? <><br />{b}</> : null}</>); })()}
               </h1>
-              <p className="mt-4 text-[15px] sm:text-[16px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[36ch] text-center sm:text-left">
+              <p className="mt-4 text-[16.5px] sm:text-[18px] lg:text-[20px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[40ch] text-center sm:text-left">
                 {t('home.subtitle')}
               </p>
               <div className="mt-6 flex gap-6 justify-center sm:justify-start">
                 <div className="flex flex-col items-center gap-1.5">
-                  <TactileButton onClick={handleSend} variant="primary" size="lg" icon={<SendCircleIcon size={18} />} disabled={isCreating}>{t('home.send')}</TactileButton>
-                  <span className="text-[11.5px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.sendHint')}</span>
+                  <TactileButton onClick={handleSend} variant="primary" size="lg" className="lg:text-[16.5px] lg:min-h-[56px] lg:px-9" icon={<SendCircleIcon size={18} />} disabled={isCreating}>{t('home.send')}</TactileButton>
+                  <span className="text-[11.5px] lg:text-[13px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.sendHint')}</span>
                 </div>
                 <div className="flex flex-col items-center gap-1.5">
-                  <TactileButton onClick={handleReceive} variant="secondary" size="lg" icon={<ReceiveCircleIcon size={18} />}>{t('home.receive')}</TactileButton>
-                  <span className="text-[11.5px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.receiveHint')}</span>
+                  <TactileButton onClick={handleReceive} variant="secondary" size="lg" className="lg:text-[16.5px] lg:min-h-[56px] lg:px-9" icon={<ReceiveCircleIcon size={18} />}>{t('home.receive')}</TactileButton>
+                  <span className="text-[11.5px] lg:text-[13px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.receiveHint')}</span>
                 </div>
               </div>
               {/* The product, as it actually looks — laptop + phone running
                   the real connected UI. Scales itself; breaks out of the
                   hero column to use the full half-pane width. Desktop shows
                   the same scene in the room pane, so hide it here. */}
-              <div className="lg:hidden mt-4 sm:mt-8 -mb-2 -mx-6 sm:-mx-10 flex justify-center">
-                <HeroTransferScene />
-              </div>
+              {/* Mobile: sized to sit INSIDE the column borders — slightly
+                  narrower than the text above so nothing touches the edges. */}
+              <div className="lg:hidden mt-4 sm:mt-8 -mb-3 flex justify-center">
+                <div className="w-full max-w-[340px] px-1">
+                  <HeroTransferScene />
+                </div>
+              </div>              {/* Live activity tracker — one quiet line: pulsing green dot
+                  (live), bold count, plain label. Real numbers from the
+                  service; hidden entirely until the first answer arrives. */}
+              {roomsCreated !== null && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4, duration: 0.5 }}
+                  className="mt-2 flex items-center justify-center sm:justify-start gap-2 whitespace-nowrap"
+                >
+                  <span className="relative flex w-2.5 h-2.5 shrink-0">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-status-success opacity-60 animate-ping" />
+                    <span className="relative inline-flex w-2.5 h-2.5 rounded-full bg-status-success" />
+                  </span>
+                  <span className="text-[14px] font-bold text-apple-ink dark:text-white tnum leading-none">{roomsCreated}</span>
+                  <span className="text-[13.5px] font-medium text-apple-ink-muted dark:text-white/50 leading-none">{t('home.roomsMade')}</span>
+                </motion.div>
+              )}
               {createError && (
                 <motion.div
                   role="alert"
@@ -427,9 +468,12 @@ export function SingleScreenApp() {
           {/* ── SENDING: pair the other device ────────────────────── */}
           {panelMode === 'sending' && (
             <motion.div key="sending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md w-full mx-auto overflow-hidden">
-              <div className="flex items-center justify-between mb-4">
+              {/* Back arrow leads the title — iOS navigation pattern. */}
+              <div className="flex items-center gap-1 mb-4">
+                <button onClick={handleCancel} aria-label={t('cancel')} className="flex items-center justify-center min-w-[40px] min-h-[40px] -ml-2 rounded-full text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:scale-95 transition-colors">
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
                 <h2 className="text-[22px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em]">{t('create.title')}</h2>
-                <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-semibold text-status-danger hover:bg-status-danger/15 px-3 py-2 min-h-[40px] rounded-full active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> {t('cancel')}</button>
               </div>
               {isCreating && !session.secret ? (
                 <div className="flex flex-col items-center py-8">
@@ -486,9 +530,11 @@ export function SingleScreenApp() {
           {/* ── RECEIVING: enter code ────────────────────────────── */}
           {panelMode === 'receiving' && (
             <motion.div key="receiving" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-1 mb-4">
+                <button onClick={handleCancel} aria-label={t('cancel')} className="flex items-center justify-center min-w-[40px] min-h-[40px] -ml-2 rounded-full text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:scale-95 transition-colors">
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
                 <h2 className="text-[22px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em]">{t('receive.title')}</h2>
-                <button onClick={handleCancel} className="flex items-center gap-1 text-[13px] font-medium text-status-danger hover:bg-status-danger/10 px-3 py-2 min-h-[40px] rounded-full active:scale-95 transition-colors"><X className="w-3.5 h-3.5" /> {t('cancel')}</button>
               </div>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/50 font-medium mb-5">{t('receive.hint')}</p>
               {/* While the code verifies, the entry UI steps aside for the
@@ -501,13 +547,15 @@ export function SingleScreenApp() {
                   </motion.div>
                 ) : (
                   <motion.div key="code-entry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-                    <button onClick={() => setShowQRScan(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 mb-3 bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] rounded-full text-[14px] font-semibold text-apple-ink dark:text-white min-h-[48px] transition-colors active:scale-[0.97]">
-                      <QrCode className="w-4 h-4 text-apple-ink-muted dark:text-white/60" /> {t('receive.scan')}
-                    </button>
                     <div className="p-6 bg-white dark:bg-[#1a1a1e] border border-apple-divider dark:border-white/10 rounded-[20px] shadow-card">
                       <LiveCodeInput onComplete={handleCodeComplete} isJoining={isJoining} error={joinError} />
                     </div>
                     <p className="mt-4 text-[12px] text-apple-ink-muted/60 dark:text-white/35 text-center">{t('receive.note')}</p>
+                    {/* Scan QR — the alternative path, parked at the BOTTOM
+                        of the code screen: type first, scan as fallback. */}
+                    <button onClick={() => setShowQRScan(true)} className="mt-5 w-full flex items-center justify-center gap-2 px-5 py-3 bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] rounded-full text-[14px] font-semibold text-apple-ink dark:text-white min-h-[48px] transition-colors active:scale-[0.97]">
+                      <QrCode className="w-4 h-4 text-apple-ink-muted dark:text-white/60" /> {t('receive.scan')}
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -627,14 +675,15 @@ export function SingleScreenApp() {
                     {session.connectionType === 'relay' ? t('conn.relay') : session.connectionType === 'local' ? t('conn.local') : session.connectionType === 'direct' ? t('conn.direct') : t('common.connected')}
                   </span>
                 </div>
-                <InlineConfirm
-                  testId="end-session"
-                  label={t('common.disconnect')}
-                  confirmLabel={t('end.tapAgain')}
-                  onConfirm={handleDisconnect}
-                  className="text-status-danger/80 hover:text-status-danger"
-                  size="sm"
-                />
+                <button
+                  type="button"
+                  data-testid="end-session"
+                  onClick={() => setConfirmDisconnect(true)}
+                  className="flex items-center gap-1.5 rounded-full font-semibold min-h-[40px] px-3 text-[12.5px] text-status-danger/80 hover:text-status-danger hover:bg-status-danger/10 active:scale-[0.96] transition-colors"
+                >
+                  <DisconnectGlyph size={14} />
+                  {t('common.disconnect')}
+                </button>
               </div>
 
               {/* Quiet guidance — what the right pane is for */}
@@ -657,24 +706,27 @@ export function SingleScreenApp() {
   );
 
   const footerNode = (
-    <footer className="shrink-0 px-6 lg:px-10 py-3 border-t border-apple-divider/60 dark:border-white/[0.06] pb-[env(safe-area-inset-bottom)]">
+    <footer className="shrink-0 px-6 lg:px-10 pt-3 pb-[max(env(safe-area-inset-bottom),8px)] sm:pb-3 border-t border-apple-divider/60 dark:border-white/[0.06]">
         {/* One line: links with real gaps, the handle as a compact chip so
-            the X glyph and name can never wrap or split. */}
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <nav className="flex items-center gap-6 text-[12.5px] font-medium text-apple-ink-muted dark:text-white/45">
+            the X glyph and name can never wrap or split. Links are a step
+            bolder than the classic muted footer so they read as navigation. */}
+        <div className="flex items-center justify-between gap-x-5 gap-y-2 flex-wrap">
+          <nav className="flex items-center gap-5 sm:gap-7 text-[13px] font-semibold text-apple-ink/75 dark:text-white/60">
             <a href="/docs" className="hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.docs')}</a>
             <a href="/privacy" className="hover:text-apple-ink dark:hover:text-white transition-colors">Privacy</a>
             <a href="/terms" className="hover:text-apple-ink dark:hover:text-white transition-colors">Terms</a>
           </nav>
+          {/* X (Twitter) — logo only, no handle text. Crisp bold glyph,
+              links to the author's X profile. */}
           <a
             href="https://x.com/0xalyt"
             target="_blank"
             rel="noopener noreferrer"
             aria-label={t('footer.followAria')}
-            className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full border border-apple-divider/70 dark:border-white/10 text-[12px] font-semibold text-apple-ink-muted dark:text-white/50 hover:text-apple-ink hover:border-apple-ink/30 dark:hover:text-white dark:hover:border-white/25 transition-colors whitespace-nowrap"
+            title="x.com/0xalyt"
+            className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] -my-2.5 rounded-full text-apple-ink/80 dark:text-white/60 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
           >
-            <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
-            @0xalyt
+            <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
           </a>
         </div>
     </footer>
@@ -726,7 +778,7 @@ export function SingleScreenApp() {
           )}
         </div>
         <button
-          onClick={handleDisconnect}
+          onClick={() => setConfirmDisconnect(true)}
           className={cn(
             "flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg transition-all duration-150",
             panelMode === 'connected'
@@ -736,7 +788,7 @@ export function SingleScreenApp() {
           disabled={panelMode !== 'connected'}
           aria-label={t('common.disconnectAria')}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <DisconnectGlyph size={17} />
         </button>
       </div>
 
@@ -769,44 +821,43 @@ export function SingleScreenApp() {
               className="h-full flex flex-col items-center justify-center text-center px-8 flex-1"
             >
               {/* Connecting shows the same handshake scene as the left half —
-                  one story on both panes. Idle keeps the hero transfer demo
-                  running here too: the right pane teaches the product while
-                  the left pane asks for action. */}
+                  one story on both panes. */}
               {panelMode === 'connecting' ? (
                 <div className="mb-4">
                   <ConnectHandshake phase="connecting" localIcon={isMobileDevice ? 'phone' : 'monitor'} />
                 </div>
-              ) : (
-                <>
-                  {/* The product itself, shown as it looks when connected */}
-                  <div className="mb-5 w-full max-w-[640px]">
+              ) : panelMode === 'idle' ? (
+                /* Desktop idle, top to bottom: the room header (already
+                   above), then the three steps, then the hero image at the
+                   bottom. Nothing else. */
+                <div className="w-full max-w-[560px] flex flex-col items-center h-full justify-end">
+                  {/* The three steps — numbered, quiet, readable */}
+                  <div className="w-full max-w-[360px] space-y-3 text-left mb-8">
+                    {[t('room.step.1'), t('room.step.2'), t('room.step.3')].map((step, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <span className="shrink-0 w-6 h-6 rounded-full bg-ember/[0.1] dark:bg-ember/[0.16] text-ember dark:text-[#fb9243] text-[12px] font-bold flex items-center justify-center">{i + 1}</span>
+                        <span className="text-[14px] font-medium text-apple-ink/80 dark:text-white/60">{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {/* The product itself, shown as it looks when connected —
+                      anchored at the bottom of the pane */}
+                  <div className="w-full max-w-[640px]">
                     <HeroTransferScene />
                   </div>
-
-                  {/* State-specific messaging */}
+                </div>
+              ) : (
+                /* sending / receiving: quiet state messaging */
+                <>
                   <p className="text-[15px] font-semibold text-apple-ink/70 dark:text-white/50 mb-1.5">
-                    {panelMode === 'idle' && t('room.ready')}
                     {panelMode === 'sending' && (isCreating && !session.secret ? t('create.creating') : t('room.created'))}
                     {panelMode === 'receiving' && t('room.waiting')}
                   </p>
                   <p className="text-[12.5px] text-apple-ink-muted/50 dark:text-white/25 max-w-[260px] leading-relaxed">
-                    {panelMode === 'idle' && t('room.idleHint')}
                     {panelMode === 'sending' && (isCreating && !session.secret ? t('room.setup') : t('room.sendHint'))}
                     {panelMode === 'receiving' && t('room.receiveHint')}
                   </p>
                 </>
-              )}
-              {/* A compact three-step guide keeps the room panel informative
-                  while disconnected, instead of a large empty surface. */}
-              {panelMode === 'idle' && (
-                <div className="mt-8 space-y-2.5 text-left">
-                  {[t('room.step.1'), t('room.step.2'), t('room.step.3')].map((step, i) => (
-                    <div key={i} className="flex items-center gap-2.5">
-                      <span className="shrink-0 w-5 h-5 rounded-full bg-azure-600/10 dark:bg-azure-600/20 text-azure-700 dark:text-azure-400 text-[11px] font-bold flex items-center justify-center">{i + 1}</span>
-                      <span className="text-[12.5px] font-medium text-apple-ink-muted/80 dark:text-white/45">{step}</span>
-                    </div>
-                  ))}
-                </div>
               )}
             </motion.div>
           </AnimatePresence>
@@ -915,6 +966,16 @@ export function SingleScreenApp() {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Apple-style bottom-sheet confirmation before really ending the session. */}
+      <ConfirmSheet
+        open={confirmDisconnect}
+        title={t('common.disconnect')}
+        body={t('end.body')}
+        confirmLabel={t('common.disconnect')}
+        cancelLabel={t('cancel')}
+        onConfirm={() => { setConfirmDisconnect(false); handleDisconnect(); }}
+        onCancel={() => setConfirmDisconnect(false)}
+      />
     </div>
   );
 }

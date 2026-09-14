@@ -29,6 +29,8 @@ export interface InlineConfirmProps {
   /** Sizing hooks for the two contexts that use it (header chip / pill). */
   size?: 'sm' | 'md';
   disabled?: boolean;
+  /** Optional leading glyph (e.g. the disconnect broken-link mark). */
+  icon?: React.ReactNode;
 }
 
 export function InlineConfirm({
@@ -40,6 +42,7 @@ export function InlineConfirm({
   testId,
   size = 'md',
   disabled,
+  icon,
 }: InlineConfirmProps) {
   const [armed, setArmed] = useState(false);
   const disarmTimer = useRef<number | null>(null);
@@ -124,6 +127,7 @@ export function InlineConfirm({
         />
       )}
       <span className={cn('relative z-10 flex items-center gap-1.5', armed && 'text-white')}>
+        {icon}
         {armed ? confirmLabel : label}
       </span>
     </button>

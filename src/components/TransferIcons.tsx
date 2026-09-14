@@ -23,3 +23,51 @@ export function ReceiveCircleIcon({ className = '', size = 20 }: { className?: s
     </svg>
   );
 }
+
+/**
+ * DisconnectGlyph — a refined "gate out" mark: an open door frame with an
+ * arrow leaving through it. Reads as "walk out of the room" at 16px in both
+ * themes — the door is the room, the arrow is you leaving it.
+ */
+export function DisconnectGlyph({ className = '', size = 16 }: { className?: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      {/* Door frame — open on the right side */}
+      <path
+        d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"
+        stroke="currentColor"
+        strokeWidth="2.1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Arrow shaft leaving through the doorway */}
+      <path
+        d="M10 12h9"
+        stroke="currentColor"
+        strokeWidth="2.1"
+        strokeLinecap="round"
+      />
+      {/* Arrow head */}
+      <path
+        d="M15.5 8.5L19 12l-3.5 3.5"
+        stroke="currentColor"
+        strokeWidth="2.1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Door edge — the frame's left jamb the arrow passes */}
+      <path
+        d="M13 4v3"
+        stroke="currentColor"
+        strokeWidth="2.1"
+        strokeLinecap="round"
+      />
+      <path
+        d="M13 17v3"
+        stroke="currentColor"
+        strokeWidth="2.1"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}

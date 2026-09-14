@@ -52,7 +52,7 @@ export function applyTheme(choice: ThemeChoice) {
   // Keep the browser chrome (address bar / status bar) in sync.
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   if (meta) {
-    meta.content = resolved === 'dark' ? '#060a13' : '#ffffff';
+    meta.content = resolved === 'dark' ? '#131315' : '#f7f4ee';
   }
 }
 

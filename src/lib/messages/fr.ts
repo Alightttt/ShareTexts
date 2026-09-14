@@ -23,6 +23,7 @@ const fr: Dict = {
   'home.sendHint': 'Créer un salon',
   'home.receive': 'Recevoir',
   'home.receiveHint': 'Rejoindre avec un code',
+  'home.roomsMade': 'salons créés jusqu’ici',
   'home.retry': 'Réessayer',
   'footer.noApp': 'Sans appli',
   'footer.noAccount': 'Sans compte',

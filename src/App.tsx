@@ -9,10 +9,11 @@ import { I18nProvider, useI18n } from './lib/i18n';
 import { Send, Home, Share2, Check } from 'lucide-react';
 import { ShareTextLogo } from './components/ShareTextLogo';
 
-// Lazy-load the remaining views — the app shell paints with only the core
-// JS; SingleScreenApp and Docs stream in only when needed.
+// SingleScreenApp (the landing IS the app) loads eagerly — one less network
+// round-trip before the hero is interactive. Docs/Legal stay lazy: they are
+// separate routes, streamed in only when visited.
+import { SingleScreenApp } from './views/SingleScreenApp';
 const Docs = lazy(() => import('./views/Docs').then(m => ({ default: m.Docs })));
-const SingleScreenApp = lazy(() => import('./views/SingleScreenApp').then(m => ({ default: m.SingleScreenApp })));
 const Legal = lazy(() => import('./views/Legal').then(m => ({ default: m.Legal })));
 
 function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, onNewSession: () => void, onHome: () => void }) {
@@ -81,11 +82,11 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
 }
 
 /**
- * Root error boundary — catches rendering errors and never leaves #root empty.
- * Shows a safe recovery screen so the user can get back to the home screen.
+ * AppSkeleton — a premium, calm loading frame that mirrors the real page's
+ * geometry exactly, so the swap to loaded content is nearly invisible.
+ * A single soft shimmer sweeps down the page (one gradient, CSS-only, GPU
+ * cheap) instead of each block pulsing on its own timer.
  */
-// Lightweight error boundary — function components cannot catch render errors.
-// Uses an untyped class because React 19 ships no .d.ts and @types/react is absent.
 function AppSkeleton({ docs = false }: { docs?: boolean }) {
   // Stable brand frame while the route hydrates: header + skeleton lines,
   // so a slow load never reads as a broken or blank page.
@@ -97,35 +98,35 @@ function AppSkeleton({ docs = false }: { docs?: boolean }) {
           <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="w-9 h-4 rounded-full bg-apple-divider/80 dark:bg-white/10 animate-pulse" />
-          <span className="w-12 h-7 rounded-full bg-apple-divider/80 dark:bg-white/10 animate-pulse" />
+          <span className="w-9 h-4 rounded-full bg-apple-divider/80 dark:bg-white/10" />
+          <span className="w-[58px] h-[34px] rounded-[17px] bg-apple-divider/80 dark:bg-white/10" />
         </div>
       </header>
-      <div className="flex-1 w-full max-w-xl mx-auto px-6 lg:px-10 py-14 sm:py-20">
+      <div className="relative flex-1 w-full max-w-xl mx-auto px-6 lg:px-10 py-14 sm:py-20 overflow-hidden st-skeleton-sweep">
         {docs ? (
           <>
-            <div className="h-7 w-1/3 rounded-lg bg-apple-divider/70 dark:bg-white/10 animate-pulse" />
+            <div className="h-7 w-1/3 rounded-lg bg-apple-divider/60 dark:bg-white/[0.08]" />
             <div className="mt-6 space-y-3">
-              <div className="h-4 w-full rounded bg-apple-divider/50 dark:bg-white/[0.06] animate-pulse" />
-              <div className="h-4 w-5/6 rounded bg-apple-divider/50 dark:bg-white/[0.06] animate-pulse" />
-              <div className="h-4 w-2/3 rounded bg-apple-divider/50 dark:bg-white/[0.06] animate-pulse" />
-              <div className="mt-8 h-64 w-full rounded-[20px] bg-apple-parchment dark:bg-white/[0.04] animate-pulse" />
+              <div className="h-4 w-full rounded bg-apple-divider/40 dark:bg-white/[0.05]" />
+              <div className="h-4 w-5/6 rounded bg-apple-divider/40 dark:bg-white/[0.05]" />
+              <div className="h-4 w-2/3 rounded bg-apple-divider/40 dark:bg-white/[0.05]" />
+              <div className="mt-8 h-64 w-full rounded-[20px] bg-apple-parchment dark:bg-white/[0.04]" />
             </div>
           </>
         ) : (
           /* Home skeleton mirrors the real hero's geometry — headline,
-             subtitle, and the two pill CTAs at their true sizes — so the
-             swap to the loaded page is nearly invisible. */
+             subtitle, the two pill CTAs, and the device image at their true
+             sizes and rhythm. */
           <>
-            <div className="h-[42px] w-[76%] rounded-[10px] bg-apple-divider/70 dark:bg-white/10 animate-pulse" />
-            <div className="mt-3 h-[42px] w-[52%] rounded-[10px] bg-apple-divider/70 dark:bg-white/10 animate-pulse" />
+            <div className="h-[42px] w-[76%] rounded-[10px] bg-apple-divider/60 dark:bg-white/[0.08]" />
+            <div className="mt-3 h-[42px] w-[52%] rounded-[10px] bg-apple-divider/60 dark:bg-white/[0.08]" />
             <div className="mt-5 space-y-2">
-              <div className="h-4 w-full max-w-[380px] rounded bg-apple-divider/50 dark:bg-white/[0.06] animate-pulse" />
-              <div className="h-4 w-[68%] max-w-[260px] rounded bg-apple-divider/50 dark:bg-white/[0.06] animate-pulse" />
+              <div className="h-4 w-full max-w-[380px] rounded bg-apple-divider/40 dark:bg-white/[0.05]" />
+              <div className="h-4 w-[68%] max-w-[260px] rounded bg-apple-divider/40 dark:bg-white/[0.05]" />
             </div>
             <div className="mt-8 flex gap-6">
-              <div className="h-12 w-32 rounded-full bg-ember/25 dark:bg-ember/20 animate-pulse" />
-              <div className="h-12 w-32 rounded-full border border-apple-divider dark:border-white/10 animate-pulse" />
+              <div className="h-12 w-32 rounded-full bg-ember/25 dark:bg-ember/20" />
+              <div className="h-12 w-32 rounded-full border border-apple-divider dark:border-white/10" />
             </div>
           </>
         )}

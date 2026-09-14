@@ -21,3 +21,6 @@ shots/
 .wrangler/
 worker/.wrangler/
 .dev.vars
+
+# Freebuff local runtime state (logs, dev DBs, launch scripts)
+.freebuff/

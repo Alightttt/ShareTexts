@@ -1,23 +1,44 @@
 import React from 'react';
 import { useTheme } from '../lib/theme';
-import { IOSToggle } from './IOSToggle';
+import { IOSWideToggle } from './IOSWideToggle';
 
 /**
- * iOS-style theme toggle. The wide switch handles all physics (spring,
- * drag, squish); this wrapper only owns the theme crossfade.
+ * The app's theme switch — the custom wide iOS toggle (IOSWideToggle).
+ * This wrapper owns only the crossfade around the state change:
+ *
+ *  · View Transitions API (Chromium/Safari): one composited crossfade of
+ *    the whole tree — the fastest, smoothest path. The class flip happens
+ *    inside the transition callback, so old and new states are captured
+ *    atomically. No flash, no jank.
+ *  · Fallback (Firefox/reduced-motion): the .theme-transitioning CSS class
+ *    for a short color crossfade.
  */
 export function ThemeToggle({ className = '' }: { className?: string }) {
   const { resolved, toggle } = useTheme();
   const isDark = resolved === 'dark';
 
   const handleToggle = () => {
-    // One crossfade for the whole tree — quiet, 300ms, no flash layer.
+    const doc = document as Document & {
+      startViewTransition?: (cb: () => void) => unknown;
+    };
+    if (typeof doc.startViewTransition === 'function' &&
+        !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      doc.startViewTransition(() => toggle());
+      return;
+    }
     document.documentElement.classList.add('theme-transitioning');
     toggle();
     setTimeout(() => {
       document.documentElement.classList.remove('theme-transitioning');
-    }, 350);
+    }, 260);
   };
 
-  return <IOSToggle checked={isDark} onToggle={handleToggle} size="md" className={className} label="Toggle dark mode" />;
+  return (
+    <IOSWideToggle
+      checked={isDark}
+      onChange={handleToggle}
+      className={className}
+      label="Toggle dark mode"
+    />
+  );
 }

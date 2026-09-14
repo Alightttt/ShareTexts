@@ -23,6 +23,7 @@ const zh: Dict = {
   'home.sendHint': '创建房间',
   'home.receive': '接收',
   'home.receiveHint': '使用代码加入',
+  'home.roomsMade': '个房间已创建',
   'home.retry': '重试',
   'footer.noApp': '无需应用',
   'footer.noAccount': '无需账号',
