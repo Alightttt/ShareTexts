@@ -1,22 +1,20 @@
 /**
- * ConnectHandshake — the pairing moment. Simplified to one calm scene:
+ * ConnectHandshake — the pairing moment. One still, calm scene:
  *
- *   searching   — two devices apart, a quiet dotted line between them
- *   connecting  — the devices glide closer, a single ember dot crosses the
- *                 gap once per pass (one direction, then the other) —
- *                 no bounce, no pulsing chip, no gradient sweep
- *   connected   — the link draws in solid green and a check fades in at
- *                 its center; the scene then holds perfectly still
+ *   searching   — two devices, a quiet dotted line between them
+ *   connecting  — the same scene; a single ember dot crosses the straight
+ *                 gap (one direction, then the other). The devices never
+ *                 move — no glide, no slide, no "slope" feel.
+ *   connected   — the dotted line becomes solid green and a check fades in
+ *                 at its center; the scene then holds perfectly still
  *
- * Everything eases on the app's Apple-like curve (cubic-bezier(0.23,1,0.32,1))
- * and settles — nothing loops except the single traveling dot while
- * connecting. Reduced-motion flattens it via MotionConfig.
+ * Everything eases on the app's Apple-like curve and settles. Reduced-motion
+ * flattens it via MotionConfig.
  */
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Check, Smartphone, Monitor } from 'lucide-react';
 import { useI18n } from '../lib/i18n';
-import { cn } from '../lib/utils';
 
 export type HandshakePhase = 'searching' | 'connecting' | 'connected';
 
@@ -54,16 +52,11 @@ export function ConnectHandshake({ phase, localIcon = 'phone', partnerName }: Co
   const connected = phase === 'connected';
   const isPhone = localIcon === 'phone';
 
-  // Freeze the convergence once connected so the tiles don't spring back —
-  // state transitions are one-way in the real flow (connecting → connected).
-  const [converged, setConverged] = useState(false);
-  useEffect(() => {
-    if (connected) setConverged(true);
-  }, [connected]);
-
   // One hue telling the truth: ember while linking, system green when live.
   const accent = connected ? '#34c759' : 'var(--ht-accent, #f06413)';
-  const gap = converged ? 44 : connecting ? 76 : 112;
+  // Fixed gap — the devices never move, so the scene is always level and
+  // still (the animated width read as a diagonal "slide").
+  const gap = 72;
 
   const status = connected ? t('connect.linked') : connecting ? t('connect.establishing') : t('connect.searching');
 
@@ -80,32 +73,33 @@ export function ConnectHandshake({ phase, localIcon = 'phone', partnerName }: Co
           <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45">{t('connect.thisDevice')}</span>
         </motion.div>
 
-        {/* The middle: width animates between phases (the devices glide) */}
-        <motion.div
+        {/* The middle: fixed width — a level bridge between the tiles */}
+        <div
           className="relative flex items-center justify-center"
-          initial={false}
-          animate={{ width: gap }}
-          transition={{ duration: 0.55, ease: EASE }}
-          style={{ height: TILE }}
+          style={{ width: gap, height: TILE }}
         >
-          {/* Idle dotted guide so the gap never reads as dead space */}
-          {!connecting && !connected && (
+          {/* Dotted guide — present while searching AND connecting so the
+              gap always reads as "a line is forming here", never dead space. */}
+          {!connected && (
             <div aria-hidden="true" className="absolute inset-x-1 top-1/2 -translate-y-1/2 border-t border-dashed border-apple-divider dark:border-white/15" />
           )}
 
-          {/* Traveling dot — the only loop. One dot, one direction at a
-              time, slow enough to read as data in flight, not energy. */}
+          {/* Traveling dot — the only loop, and the simplest honest one: a
+              dot glides level left → right, then back, along the straight
+              dotted line. No bounce, no tilt, no scale. */}
           {connecting && (
             <motion.span
               aria-hidden="true"
-              className="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full"
-              style={{ background: accent }}
-              initial={{ left: '0%', opacity: 0 }}
-              animate={{ left: ['0%', '92%', '0%'], opacity: [0, 1, 1, 0], transition: { duration: 2.2, times: [0, 0.45, 0.55, 1], repeat: Infinity, ease: 'easeInOut' } }}
+              className="absolute top-1/2 w-1.5 h-1.5 rounded-full"
+              style={{ background: accent, left: '50%', marginTop: -3 }}
+              initial={{ x: -gap / 2 + 4, opacity: 0 }}
+              animate={{
+                x: [-gap / 2 + 4, gap / 2 - 4, gap / 2 - 4, -gap / 2 + 4],
+                opacity: [0, 1, 1, 0],
+                transition: { duration: 2.4, times: [0, 0.42, 0.58, 1], repeat: Infinity, ease: 'easeInOut' },
+              }}
             />
           )}
-
-          {/* Locked link — a solid line drawn outward once, then still */}
           <AnimatePresence>
             {connected && (
               <motion.div
@@ -134,7 +128,7 @@ export function ConnectHandshake({ phase, localIcon = 'phone', partnerName }: Co
               </motion.span>
             )}
           </AnimatePresence>
-        </motion.div>
+        </div>
 
         {/* Partner tile */}
         <motion.div className="relative z-10 flex flex-col items-center gap-2">

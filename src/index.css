@@ -373,6 +373,39 @@ html.dark .st-skeleton-sweep::after {
   *::-webkit-scrollbar { display: none; }
 }
 
+/* ── Room message scroller — visible on mobile AND desktop, quiet ──── */
+/* App-design friendly: hairline thumb in each theme, never brand orange,
+   overlay-style so it never shifts layout. Desktop global rules above make
+   every scrollbar hairline thin; here the room's own scroller gets a
+   slightly more present thumb, and mobile gets the same quiet treatment. */
+.room-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+  scroll-behavior: smooth;
+}
+.dark .room-scroll {
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+.room-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.room-scroll::-webkit-scrollbar-track { background: transparent; }
+.room-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.16);
+  border-radius: 999px;
+}
+.dark .room-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+}
+.room-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.28);
+}
+.dark .room-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+@media (max-width: 767px) {
+  .room-scroll { scrollbar-width: thin; -ms-overflow-style: auto; }
+  .room-scroll::-webkit-scrollbar { display: block; }
+}
+
 /* Respect reduced transparency */
 @media (prefers-reduced-transparency: reduce) {
   .backdrop-blur-sm, .backdrop-blur, .backdrop-blur-md, .backdrop-blur-lg, .backdrop-blur-xl,

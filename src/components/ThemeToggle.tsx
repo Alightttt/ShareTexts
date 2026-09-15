@@ -20,12 +20,16 @@ import { useTheme } from '../lib/theme';
  *                                    track; release settles by midpoint
  *   keyboard (Enter/Space)         → toggle; role=switch + aria-checked
  *
- * The visible pill stays 60×34; the clickable/keyboard target is an
- * invisible padded wrapper (~72×44) so the hit area stays comfortable
+ * The visible pill stays 52×30; the clickable/keyboard target is an
+ * invisible padded wrapper (~62×40) so the hit area stays comfortable
  * without ever changing the visual size.
  */
 
-/* ── Geometry ─────────────────────────────────────────────────────────── */
+/* ── Geometry ───────────────────────────────────────────────────────────
+ * The web-header spec: 60×34 track, 30×30 thumb, 2px inset, 26px travel.
+ * Same wide-pill silhouette at every breakpoint — all sizes FIXED:
+ * no vw, no clamp(), no responsive prefixes, no aspect-ratio.
+ */
 const TRACK_W = 60;
 const TRACK_H = 34;
 const INSET = 2;                      // (34 − 30) / 2

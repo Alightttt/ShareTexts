@@ -2,13 +2,13 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { AttachmentPanel } from '../components/AttachmentPanel';
-import { AttachmentFlight } from '../components/AttachmentFlight';
 import { TransferFlight } from '../components/TransferFlight';
 import {
   X, Plus, Copy, Check, Play, AlertCircle, ChevronDown, ArrowUp, ShieldCheck,
   Smartphone, Monitor, Pencil, ArrowRightLeft, Info
 } from 'lucide-react';
 import { FileTypeIcon } from '../components/FileTypeIcon';
+import { DraggableImage } from '../components/DraggableImage';
 import { AnimatedIcon } from '../components/AnimatedIcon';
 import { DisconnectGlyph } from '../components/TransferIcons';
 import { ConfirmSheet } from '../components/ConfirmSheet';
@@ -87,7 +87,6 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [showConnectionDetails, setShowConnectionDetails] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [copiedAll, setCopiedAll] = useState(false);
   // Message selection (bencho selection-list): long-press a bubble to enter,
   // tap to toggle, floating bar copies or exits. Long-press keeps the copy
   // button free; a fresh selection always starts with the pressed message.
@@ -149,10 +148,6 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   const videoInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const plusButtonRef = useRef<HTMLButtonElement>(null);
-  const composerStripRef = useRef<HTMLDivElement>(null);
-  const [flyingFiles, setFlyingFiles] = useState<File[]>([]);
-  const [flightFromRect, setFlightFromRect] = useState<DOMRect | null>(null);
-  const [flightToRect, setFlightToRect] = useState<DOMRect | null>(null);
   // Object URLs for staged image previews, keyed by attachment id; revoked
   // when the set changes (or on unmount) so we never leak blob URLs.
   const previewUrls = useMemo(() => {
@@ -277,18 +272,29 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
       setAnnouncement(tr('chat.messageReceived'));
     }
   }, [session.messages]);
+  // "Connected" toast — fire ONCE per room, the moment the channel first
+  // opens (room entry), never again for the life of the room. The old
+  // condition re-ran on every message/connection-type blip, so the toast
+  // seemed to appear when sending instead of when entering.
+  const connectedToastRoomRef = useRef<string | null>(null);
   useEffect(() => {
     const tr = tRef.current;
     if (session.partnerConnected && session.connectionType !== 'disconnected') {
       setAnnouncement(tr('common.connected'));
-      // The visible alert — a short toast when the room opens.
-      setShowConnected(true);
-      const t2 = setTimeout(() => setShowConnected(false), 2800);
-      return () => clearTimeout(t2);
+      if (connectedToastRoomRef.current !== session.roomId) {
+        connectedToastRoomRef.current = session.roomId;
+        setShowConnected(true);
+        // No cleanup-return here: connectionType keeps settling for a few
+        // seconds after connect ('connecting' → 'local' → 'direct'), and an
+        // effect cleanup would cancel the dismissal mid-flight — leaving the
+        // toast stuck on screen. An uncancelled self-dismissal is correct:
+        // it runs once per room, then the toast goes away on its own.
+        setTimeout(() => setShowConnected(false), 2800);
+      }
     } else if (session.connectionType === 'disconnected') {
       setAnnouncement(tr('chat.peerDisconnected'));
     }
-  }, [session.partnerConnected, session.connectionType]);
+  }, [session.partnerConnected, session.connectionType, session.roomId]);
   // Post-transfer moment: after the very first transfer, a quiet "That's it."
   // appears once, then the app gets out of the way. Direction-aware: sending
   // and receiving tell different truths ("it's on the other device" vs "it
@@ -371,17 +377,6 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
       setErrorMsg(null);
       setAttachments(prev => [...prev, ...accepted]);
       setShowAttachmentMenu(false);
-      // The strip mounts AFTER this state update commits, so defer measuring
-      // until the DOM has the new thumbnails — then fly the picked files from
-      // the + button to the strip (AttachmentFlight).
-      setTimeout(() => {
-        const from = plusButtonRef.current?.getBoundingClientRect();
-        const to = composerStripRef.current?.getBoundingClientRect();
-        if (!from || !to) return;
-        setFlightFromRect(from);
-        setFlightToRect(to);
-        setFlyingFiles(accepted.map(a => a.file));
-      }, 50);
     }
   };
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'file' | 'video' | 'audio') => {
@@ -510,17 +505,6 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     setSelectionCopied(true);
     setTimeout(() => { setSelectionCopied(false); exitSelectMode(); }, 600);
   };
-  const copyAll = async () => {
-    const texts = session.messages.map(m => m.text).filter(t => t.trim());
-    if (texts.length === 0) return;
-    try {
-      await navigator.clipboard.writeText(texts.join('\n\n'));
-      setCopiedAll(true);
-      setTimeout(() => setCopiedAll(false), 2000);
-    } catch {
-      setErrorMsg(t('composer.copyFailed'));
-    }
-  };
   // Desktop embedded: land focus in the composer when the room opens (the
   // right pane mounts fresh on connect). Mobile standalone deliberately does
   // NOT autofocus — popping the keyboard over the takeover animation is jarring.
@@ -596,7 +580,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
               identity, and two truncated names + icons cannot share 375px
               with the header controls (they collided before). Your own name
               lives one tap away in the details sheet; sm+ shows the pair. */}
-          <span className="hidden sm:shrink-0 sm:flex sm:items-center sm:justify-center w-8 h-8 rounded-[10px] bg-azure-600/10 border border-azure-600/20 text-azure-600">
+          <span className="hidden sm:shrink-0 sm:flex sm:items-center sm:justify-center w-8 h-8 rounded-[10px] bg-ember/10 border border-ember/20 text-ember">
             <ThisDeviceIcon className="w-4 h-4" />
           </span>
           <span className="hidden sm:flex flex-col items-start min-w-0 leading-tight">
@@ -784,6 +768,15 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse shrink-0" />
                 {t('banner.peerGone')}
               </span>
+              {session.secret && (
+                <span
+                  data-testid="banner-rejoin-code"
+                  title={t('details.rejoinNote')}
+                  className="hidden sm:flex items-center gap-1.5 font-mono tnum text-[13px] font-bold tracking-widest text-status-warning-ink dark:text-status-warning-ink-dark bg-status-warning/15 rounded-full px-2.5 py-1"
+                >
+                  <LiveRejoinCode secret={session.secret} createdAt={session.createdAt} />
+                </span>
+              )}
               <button
                 data-testid="reconnect"
                 onPointerDown={() => void requestReconnect()}
@@ -817,7 +810,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
       <div
         ref={scrollRef}
         onScroll={onMessagesScroll}
-        className="flex-1 overflow-y-auto p-4 sm:p-6 relative"
+        className="room-scroll flex-1 overflow-y-auto p-4 sm:p-6 relative"
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -854,22 +847,6 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             </div>
           ) : (
             <>
-              {session.messages.length >= 2 && (
-                <div className="flex justify-end">
-                  <button
-                    onPointerDown={copyAll}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3.5 py-2.5 min-h-[40px] rounded-full text-[13px] font-semibold transition-motion active:scale-95",
-                      copiedAll
-                        ? "bg-status-success/15 text-status-success"
-                        : "bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white"
-                    )}
-                  >
-                    {copiedAll ? <AnimatedIcon animate="check" active={copiedAll}><Check className="w-3.5 h-3.5" /></AnimatedIcon> : <AnimatedIcon animate="copy" active={copiedAll}><Copy className="w-3.5 h-3.5" /></AnimatedIcon>}
-                    {copiedAll ? t('chat.copiedAll', { count: session.messages.length }) : t('chat.copyAll')}
-                  </button>
-                </div>
-              )}
               <AnimatePresence initial={false}>
                 {session.messages.map((msg, idx) => {
                   // Date separators: a quiet chip between days. Today is the
@@ -955,10 +932,10 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           )}
         </AnimatePresence>
         {dragOver && (
-          <div className="absolute inset-0 z-20 m-2 rounded-[20px] border-2 border-dashed border-apple-blue dark:border-azure-400 bg-apple-blue/10 dark:bg-azure-500/10 pointer-events-none flex items-center justify-center">
-            <div className="flex flex-col items-center gap-2 px-8 py-6 bg-white dark:bg-surface-dark rounded-[20px] border border-apple-blue/20 dark:border-azure-400/20">
-              <div className="w-12 h-12 rounded-full bg-apple-blue/10 dark:bg-azure-400/10 flex items-center justify-center">
-                <ArrowUp className="w-5 h-5 text-apple-blue dark:text-azure-400" />
+          <div className="absolute inset-0 z-20 m-2 rounded-[20px] border-2 border-dashed border-ember dark:border-[#fb9243] bg-ember/10 dark:bg-[#fb9243]/10 pointer-events-none flex items-center justify-center">
+            <div className="flex flex-col items-center gap-2 px-8 py-6 bg-white dark:bg-surface-dark rounded-[20px] border border-ember/20 dark:border-[#fb9243]/20">
+              <div className="w-12 h-12 rounded-full bg-ember/10 dark:bg-[#fb9243]/10 flex items-center justify-center">
+                <ArrowUp className="w-5 h-5 text-ember dark:text-[#fb9243]" />
               </div>
               <span className="text-[15px] font-semibold text-apple-ink dark:text-white">{t('chat.drop.title')}</span>
               <span className="text-[13px] text-apple-ink-muted dark:text-white/50">{t('chat.drop.subtitle')}</span>
@@ -1002,17 +979,28 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             <input type="file" ref={audioInputRef} accept="audio/*" multiple className="hidden" onChange={(e) => handleFileSelect(e, 'audio')} />
             <input type="file" ref={fileInputRef} multiple className="hidden" onChange={(e) => handleFileSelect(e, 'file')} />
           </div>
-          <motion.div layout className={cn("relative rounded-[24px] bg-white dark:bg-[#1f1f24] overflow-visible shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_28px_-14px_rgba(0,0,0,0.14)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.2),0_12px_32px_-14px_rgba(0,0,0,0.5)] transition-motion focus-within:ring-2 focus-within:ring-[#f06413]/30 border border-black/[0.04] dark:border-white/[0.06]", showAttachmentMenu ? "z-[45]" : "z-20")}>
-          {/* The composer sits above the attachment panel's full-screen
-              backdrop while the menu is open, so the + button (and the whole
-              composer) stays clickable — otherwise the backdrop eats the click
-              that should toggle the menu closed. */}
+          {/* Composer — one calm row: a circular + beside the input pill.
+              The pill (and the + with it) sits above the attachment panel's
+              full-screen backdrop while the menu is open, so the dismissal
+              click is never eaten. */}
+          <div className={cn("relative flex items-end gap-2", showAttachmentMenu ? "z-[45]" : "z-20")}>
+            <button
+              ref={plusButtonRef}
+              type="button"
+              data-testid="add-attachment"
+              onPointerDown={() => setShowAttachmentMenu(!showAttachmentMenu)}
+              aria-label={t('attach.add')}
+              aria-expanded={showAttachmentMenu}
+              className="min-w-[46px] min-h-[46px] rounded-full flex items-center justify-center shrink-0 bg-white dark:bg-[#232327] border border-apple-divider/70 dark:border-white/[0.08] shadow-[0_1px_2px_rgba(0,0,0,0.05)] text-apple-ink dark:text-white hover:bg-apple-parchment dark:hover:bg-[#2b2b30] transition-colors active:scale-90"
+            >
+              <Plus className={cn("w-5 h-5 transition-transform duration-200", showAttachmentMenu && "rotate-45")} />
+            </button>
+            <motion.div layout className="relative flex-1 min-w-0 rounded-[26px] bg-white dark:bg-[#232327] overflow-visible shadow-[0_1px_2px_rgba(0,0,0,0.05),0_10px_28px_-14px_rgba(0,0,0,0.16)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-14px_rgba(0,0,0,0.55)] border border-black/[0.04] dark:border-white/[0.06] focus-within:ring-2 focus-within:ring-ember/25 transition-shadow">
             {/* Multi-attachment preview strip — up to 20 files, each with a
                 circular remove button that's always visible and tappable. */}
             <AnimatePresence>
               {attachments.length > 0 && (
                 <motion.div
-                  ref={composerStripRef}
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0, filter: 'blur(4px)' }}
@@ -1041,7 +1029,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                             </div>
                           ) : a.type === 'image' && a.file && previewUrls.has(a.id) ? (
                             <div className="w-[88px] h-[88px] sm:w-[104px] sm:h-[104px] rounded-[14px] overflow-hidden bg-apple-canvas dark:bg-black border border-apple-divider dark:border-apple-tile-3 shadow-sm">
-                              <img src={previewUrls.get(a.id)} alt={a.name} className="w-full h-full object-cover" />
+                              <DraggableImage src={previewUrls.get(a.id)!} name={a.name} className="w-full h-full object-cover" />
                             </div>
                           ) : (
                             <div className="w-[88px] h-[88px] sm:w-[104px] sm:h-[104px] rounded-[14px] bg-apple-parchment dark:bg-surface-dark-2 border border-apple-divider dark:border-apple-tile-3 flex flex-col items-center justify-center gap-0.5 p-1.5">
@@ -1061,21 +1049,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 </motion.div>
               )}
             </AnimatePresence>
-            <div className="flex items-end gap-0.5 p-1 relative">
-              <button
-                ref={plusButtonRef}
-                type="button"
-                data-testid="add-attachment"
-                onPointerDown={() => setShowAttachmentMenu(!showAttachmentMenu)}
-                aria-label={t('attach.add')}
-                aria-expanded={showAttachmentMenu}
-                className={cn(
-                  "min-w-[40px] min-h-[40px] -m-[3px] rounded-full flex items-center justify-center shrink-0 text-[#f06413] dark:text-[#fb9243] hover:bg-[#f06413]/10 dark:hover:bg-[#f06413]/10 transition-motion active:scale-90",
-                  showAttachmentMenu && "text-[#f06413] dark:text-[#fb9243] bg-[#f06413]/10 rotate-45"
-                )}
-              >
-                <Plus className="w-5 h-5 transition-transform" />
-              </button>
+            <div className="flex items-end gap-1.5 px-2.5 pb-[7px] relative">
               <textarea
                 ref={textareaRef}
                 data-testid="composer"
@@ -1095,7 +1069,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 placeholder={t('composer.placeholder')}
                 aria-label={t('composer.aria')}
                 title={t('composer.title')}
-                className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[9px] pl-0.5 pr-0.5 text-apple-ink dark:text-white placeholder:text-[#a89a80] dark:placeholder:text-white/25 focus:outline-none text-[16px] leading-[26px]"
+                className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[9px] pl-2 pr-1 text-apple-ink dark:text-white placeholder:text-[#a89a80] dark:placeholder:text-white/25 focus:outline-none text-[16px] leading-[26px]"
               />
               <button
                 type="button"
@@ -1103,7 +1077,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 onClick={handleSend}
                 disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
                 aria-label={t('composer.send')}
-                className="min-w-[40px] min-h-[40px] -m-[1px] rounded-full flex items-center justify-center shrink-0 transition-all duration-200 active:scale-90 text-white disabled:opacity-40 disabled:bg-apple-hairline dark:disabled:bg-white/15 disabled:shadow-none enabled:bg-apple-ink dark:enabled:bg-white dark:enabled:text-night-900 shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
+                className="w-[38px] h-[38px] mb-[3px] rounded-full flex items-center justify-center shrink-0 transition-all duration-200 active:scale-90 text-white bg-ember hover:bg-[#d9560e] disabled:bg-apple-hairline dark:disabled:bg-white/15 disabled:shadow-none shadow-[0_1px_3px_rgba(240,100,19,0.35)]"
               >
                 {/* Arrow ↔ check morph: the arrow lifts away, a check springs
                     in — a real shape transition, not a crossfade. */}
@@ -1137,7 +1111,8 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
               </button>
 
             </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </form>
       </div>
       <AttachmentPanel
@@ -1151,16 +1126,6 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           else fileInputRef.current?.click();
         }}
         buttonRef={plusButtonRef}
-      />
-      <AttachmentFlight
-        files={flyingFiles}
-        fromRect={flightFromRect}
-        toRect={flightToRect}
-        onComplete={() => {
-          setFlyingFiles([]);
-          setFlightFromRect(null);
-          setFlightToRect(null);
-        }}
       />
       {/* Apple-style bottom-sheet confirmation before really ending the session. */}
       <ConfirmSheet
@@ -1247,6 +1212,18 @@ function EmptyRoomPacket() {
     />
   );
 }
+/** Live rejoin code for the disconnect banner — same TOTP the connect screen
+ *  shows, ticking with the 30s window so the code on the waiting device is
+ *  always the one a returning device should enter in Receive. */
+function LiveRejoinCode({ secret, createdAt }: { secret: string, createdAt?: number }) {
+  const [code, setCode] = useState(() => generateTOTP(secret, createdAt));
+  useEffect(() => {
+    const t = setInterval(() => setCode(generateTOTP(secret, createdAt)), 1000);
+    return () => clearInterval(t);
+  }, [secret, createdAt]);
+  return <>{code.slice(0, 3)}&thinsp;{code.slice(3)}</>;
+}
+
 /** Compact live pairing code — used inside Connection details, so a dropped
  *  device can rejoin without reopening the Connect screen, without exposing
  *  the code continuously on screen. Re-ticks every second. */

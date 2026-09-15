@@ -25,31 +25,39 @@ export function ReceiveCircleIcon({ className = '', size = 20 }: { className?: s
 }
 
 /**
- * DisconnectGlyph — a clean "leave the room" mark: an open door frame with
- * an arrow walking out of it. Drawn on a 24-grid so the stroke joins are
- * crisp at 14–17px in both themes: the door occupies the left half, the
- * arrow exits right through the open doorway.
+ * DisconnectGlyph — the classic "exit through the door" mark: a door frame
+ * with its door swung open and an arrow walking out through the doorway.
+ * Drawn on a 24-grid so the stroke joins are crisp at 14–17px in both
+ * themes. The door sits on the right (open on its left edge); the arrow
+ * exits leftward through the opening — unambiguous "leave this room".
  */
 export function DisconnectGlyph({ className = '', size = 16 }: { className?: string; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      {/* Door: top rail, left jamb, threshold — open on the right edge */}
+      {/* Door frame: outer wall opening to the left where the door swings */}
       <path
-        d="M14 4h5a1.5 1.5 0 0 1 1.5 1.5v13A1.5 1.5 0 0 1 19 20h-5"
+        d="M10 4h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-8"
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      {/* Arrow — one continuous stroke, exiting through the doorway */}
+      {/* The door itself — swung open toward the viewer, hinge on the right */}
       <path
-        d="M4 12h13.5"
+        d="M14 4v16"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      {/* Arrow walking OUT through the doorway (leftward) */}
+      <path
+        d="M3 12h11"
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
       />
       <path
-        d="M13.5 7.5 18 12l-4.5 4.5"
+        d="M7.5 7.5 3 12l4.5 4.5"
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"

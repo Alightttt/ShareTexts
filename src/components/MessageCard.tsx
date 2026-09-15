@@ -15,6 +15,7 @@ import {
   Terminal, ZoomIn
 } from 'lucide-react';
 import { FileTypeIcon } from './FileTypeIcon';
+import { DraggableImage } from './DraggableImage';
 import { cn, formatBytes, sanitizeFilename } from '../lib/utils';
 import { useI18n } from '../lib/i18n';
 import type { I18nApi } from '../lib/i18n';
@@ -556,20 +557,25 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                 >
                   {/* Soft reveal on arrival — the completed photo settles in
                       instead of popping. Rendered from the received original
-                      bytes (object-contain, never cropped or stretched). */}
-                  <motion.img
-                    src={a.url}
-                    alt={a.name}
+                      bytes (object-contain, never cropped or stretched).
+                      Draggable out of the browser: drag it into a folder,
+                      chat, or editor — the drop target gets the real file. */}
+                  <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.22, ease: 'easeOut' }}
-                    className="w-full h-auto object-contain max-h-[60vh] block"
-                    onLoad={(e) => {
-                      const el = e.currentTarget;
-                      if (el.naturalWidth > 0) setImgMeta({ w: el.naturalWidth, h: el.naturalHeight });
-                    }}
-                    onError={() => setDecodeFailed(true)}
-                  />
+                  >
+                    <DraggableImage
+                      src={a.url}
+                      name={a.name}
+                      className="w-full h-auto object-contain max-h-[60vh] block cursor-grab active:cursor-grabbing"
+                      onLoad={(e) => {
+                        const el = e.currentTarget;
+                        if (el.naturalWidth > 0) setImgMeta({ w: el.naturalWidth, h: el.naturalHeight });
+                      }}
+                      onError={() => setDecodeFailed(true)}
+                    />
+                  </motion.div>
                   <span className="absolute bottom-2.5 right-2.5 flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-black/55 text-white text-[12px] font-semibold backdrop-blur opacity-90 group-hover:opacity-100 transition-opacity pointer-events-none">
                     <ZoomIn className="w-3.5 h-3.5" /> View
                   </span>

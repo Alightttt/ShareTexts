@@ -157,7 +157,7 @@ export function guessDeviceName(): string {
  * terminal, and the failure carries a code (OFFLINE / UNREACHABLE / TIMEOUT /
  * CONFIG) so the UI can say what actually happened.
  */
-function ensureSocketConnected(timeoutMs = 10000): Promise<void> {
+function ensureSocketConnected(timeoutMs = 16000): Promise<void> {
   const socket = getSocket();
   if (socket.connected) return Promise.resolve();
   return new Promise((resolve, reject) => {
@@ -1175,7 +1175,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const setupJoiner = (roomId: string, secret: string, createdAt?: number) => {
     abandonedRef.current = false;
-    saveStoredSession({ roomId, secret, isCreator: false, createdAt });
+    // Rejoining the SAME room (device dropped, re-entered the code): keep
+    // this device's own history. Stored messages are reloaded below, and
+    // partner files we no longer hold are re-requested on channel open.
+    const isRejoin = session.roomId === roomId && session.messages.length > 0;
+    const keptMessages = isRejoin ? session.messages : [];
+    saveStoredSession({ roomId, secret, isCreator: false, createdAt, messages: keptMessages.length ? keptMessages : sanitizeStoredMessages(loadStoredSession()?.messages) });
     setSession({
       roomId,
       secret,
@@ -1184,7 +1189,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       partnerConnected: false,
       partnerConnecting: false,
       connectionType: 'waiting',
-      messages: [],
+      messages: keptMessages,
       closedReason: null,
       deviceName: session.deviceName,
       partnerName: null

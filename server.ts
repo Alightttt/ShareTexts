@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import path from 'path';
 import * as OTPAuth from 'otpauth';
 import crypto from 'crypto';
+import { readFileSync, writeFileSync } from 'fs';
 import helmet from 'helmet';
 
 const app = express();
@@ -51,11 +52,22 @@ app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'sharetext-signaling' });
 });
 
-// Anonymous aggregate counters (in-memory, reset on restart). Only event
-// categories are counted — never room ids, codes, contents, or IPs.
+// Anonymous aggregate counters. `metrics` is in-memory and resets on
+// restart; `roomsCreatedTotal` is persisted to a tiny JSON file next to the
+// server so the landing page's "rooms made till now" tracker SURVIVES
+// restarts (the number only ever grows — it is a lifetime total).
 const metrics: Record<string, number> = {};
+const ROOMS_TOTAL_FILE = path.join(process.cwd(), '.rooms-total.json');
+let roomsCreatedTotal = 0;
+try {
+  roomsCreatedTotal = JSON.parse(readFileSync(ROOMS_TOTAL_FILE, 'utf8')).count || 0;
+} catch { /* first run — starts at 0 and grows from here */ }
 function count(name: string) {
   metrics[name] = (metrics[name] ?? 0) + 1;
+  if (name === 'rooms.created') {
+    roomsCreatedTotal++;
+    try { writeFileSync(ROOMS_TOTAL_FILE, JSON.stringify({ count: roomsCreatedTotal })); } catch { /* read-only fs — counter stays in memory */ }
+  }
 }
 
 app.get('/metrics', (_req, res) => {
@@ -83,8 +95,9 @@ app.get('/stats', (_req, res) => {
     service: 'sharetext-signaling',
     generated_at: new Date().toISOString(),
     users: seated.size,
-    roomsCreated: metrics['rooms.created'] ?? 0,
-    note: 'approximate live count of seated devices + total rooms ever created (in-memory, resets on restart)',
+    // Lifetime total, persisted across restarts — never resets to 0.
+    roomsCreated: Math.max(roomsCreatedTotal, metrics['rooms.created'] ?? 0),
+    note: 'approximate live count of seated devices + total rooms ever created (lifetime, persisted)',
   });
 });
 
@@ -253,8 +266,13 @@ const allowedOrigins = new Set<string>([
   'https://sharetexts.online',
   ...(process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
 ]);
-
 const PORT = process.env.PORT || 3000;
+// Same-origin deployments: the frontend served by THIS server (any port,
+// localhost or 127.0.0.1) is always a legitimate signaling client. Without
+// this, running dev on a nonstandard port (e.g. 3001) made the app's own
+// websocket/POST handshakes fail CORS — GETs work, the room never opens.
+allowedOrigins.add(`http://localhost:${PORT}`);
+allowedOrigins.add(`http://127.0.0.1:${PORT}`);
 
 // Rooms are deliberately long-lived so a session can be rejoined for hours.
 const ROOM_TTL = 12 * 60 * 60 * 1000;     // rooms idle-expire after 12 hours
@@ -279,6 +297,12 @@ const io = new Server(httpServer, {
   },
   // Cap inbound socket payloads (SDP offers and relayed messages are small).
   maxHttpBufferSize: 1e6,
+  // Patient liveness probes: a phone locking its screen or a brief network
+  // blip must not read as a dead socket. 25s ping / 40s timeout means the
+  // server waits up to ~40s of silence before declaring a peer gone — and
+  // the client-side reconnect usually lands well inside that window.
+  pingInterval: 25000,
+  pingTimeout: 40000,
   // Allow a briefly-disconnected device to come back to the same room
   // without losing membership (the reconnection grace period).
   connectionStateRecovery: {
@@ -318,6 +342,39 @@ const rooms = new Map<string, Room>();
 // Track which rooms a just-disconnected socket belonged to so that when it
 // reconnects via connectionStateRecovery we can notify the other peer.
 const socketRooms = new Map<string, Set<string>>();
+
+// Disconnect grace: a device that briefly closes its tab (or blips off the
+// network) must NOT tear the room down for the other device. We hold its
+// seat and stay quiet for this window; only if it truly does not come back
+// do we free the seat and tell the peer. Recovery/rejoin cancels the timer.
+const DISCONNECT_GRACE_MS = 60_000;
+const pendingGrace = new Map<string, ReturnType<typeof setTimeout>>();
+
+function cancelGrace(socketId: string) {
+  const t = pendingGrace.get(socketId);
+  if (t) {
+    clearTimeout(t);
+    pendingGrace.delete(socketId);
+  }
+}
+
+/**
+ * Free any seat this socket still holds in rooms other than `keepRoomId`.
+ * Covers the "reconnect with a code" flow: the returning device often comes
+ * back on a FRESH socket (its old one was reaped), so `resume_room` alone
+ * can't clean up. Without this sweep, the room's old seat blocks the rejoin
+ * with "This session already has two devices" forever.
+ */
+function releaseStaleSeats(socketId: string, keepRoomId?: string) {
+  for (const [rid, room] of rooms.entries()) {
+    if (rid === keepRoomId) continue;
+    if (!room.activePeers.has(socketId)) continue;
+    room.activePeers.delete(socketId);
+    if (room.creatorId === socketId) room.creatorId = '';
+    if (room.joinerId === socketId) room.joinerId = undefined;
+    io.to(rid).emit('peer_disconnected', { peerId: socketId, remaining: room.activePeers.size });
+  }
+}
 
 setInterval(() => {
   const now = Date.now();
@@ -394,6 +451,10 @@ io.on('connection', (socket) => {
       return cb({ success: false, error: 'Invalid or expired code' });
     }
 
+    // The joiner may still hold a stale seat elsewhere (reconnect flow, or
+    // a room that closed without a clean leave). Free it before seating.
+    releaseStaleSeats(socket.id);
+
     let matchedRoom: Room | null = null;
 
     for (const room of rooms.values()) {
@@ -453,6 +514,9 @@ io.on('connection', (socket) => {
       return cb({ success: false, error: 'This session already has two devices.' });
     }
 
+    // Reconnect path: free this socket's stale seat in any OTHER room.
+    releaseStaleSeats(socket.id, roomId);
+
     room.joinerId = socket.id;
     room.lastActive = Date.now();
     room.activePeers.add(socket.id);
@@ -489,16 +553,21 @@ io.on('connection', (socket) => {
     }
 
     // Drop stale peers that are no longer connected so the returning device
-    // can take its seat back.
+    // can take its seat back. Cancel their grace timers — the device is
+    // back under a new socket, so the "really gone" notice must never fire.
     for (const pid of [room.creatorId, room.joinerId]) {
       if (pid && pid !== socket.id && !io.sockets.sockets.get(pid) && room.activePeers.has(pid)) {
         room.activePeers.delete(pid);
+        cancelGrace(pid);
       }
     }
 
     if (room.activePeers.size >= 2 && !room.activePeers.has(socket.id)) {
       return cb({ success: false, error: 'This session already has two devices.' });
     }
+
+    // Reconnect path: free this socket's stale seat in any OTHER room.
+    releaseStaleSeats(socket.id, roomId);
 
     if (!room.activePeers.has(socket.id)) {
       room.activePeers.add(socket.id);
@@ -586,16 +655,29 @@ io.on('connection', (socket) => {
     const affected = new Set<string>();
     for (const [id, room] of rooms.entries()) {
       if (room.activePeers.has(socket.id)) {
-        room.activePeers.delete(socket.id);
+        // Hold the seat through the grace window instead of evicting
+        // immediately — the other device keeps its room without a scary
+        // "disconnected" state for a tab refresh or a brief network blip.
         room.lastActive = Date.now();
         affected.add(id);
-        socket.to(id).emit('peer_disconnected', { peerId: socket.id, remaining: room.activePeers.size });
+        cancelGrace(socket.id);
+        const timer = setTimeout(() => {
+          pendingGrace.delete(socket.id);
+          const r = rooms.get(id);
+          if (!r) return;
+          // The socket came back within the window — keep the seat.
+          if (io.sockets.sockets.has(socket.id)) return;
+          if (r.activePeers.has(socket.id)) r.activePeers.delete(socket.id);
+          log('peer disconnect confirmed', id.slice(0, 8), 'peer', socket.id.slice(0, 8));
+          socket.to(id).emit('peer_disconnected', { peerId: socket.id, remaining: r.activePeers.size });
+        }, DISCONNECT_GRACE_MS);
+        pendingGrace.set(socket.id, timer);
       }
     }
     if (affected.size > 0) {
       socketRooms.set(socket.id, affected);
     }
-    log('socket disconnected', socket.id.slice(0, 8), 'rooms affected', affected.size);
+    log('socket disconnected', socket.id.slice(0, 8), 'rooms affected', affected.size, 'grace', DISCONNECT_GRACE_MS);
   });
 });
 
@@ -604,6 +686,9 @@ io.on('connection', (socket) => {
 // re-established.
 io.on('connection', (socket) => {
   if (socket.recovered) {
+    // Same socket is back within the recovery window — cancel any pending
+    // "really gone" eviction from its earlier disconnect.
+    cancelGrace(socket.id);
     const roomsToNotify = socketRooms.get(socket.id);
     if (roomsToNotify) {
       socketRooms.delete(socket.id);

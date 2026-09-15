@@ -99,8 +99,8 @@ function AppSkeleton({ docs = false }: { docs?: boolean }) {
         </div>
         <div className="flex items-center gap-3">
           <span className="w-9 h-4 rounded-full bg-apple-divider/80 dark:bg-white/10" />
-          {/* Skeleton mirrors the real theme toggle's 110×48 pill */}
-          <span className="w-[110px] h-[48px] rounded-full bg-apple-divider/80 dark:bg-white/10" />
+          {/* Skeleton mirrors the real theme toggle's 62×40 pill */}
+          <span className="w-[62px] h-[40px] rounded-full bg-apple-divider/80 dark:bg-white/10" />
         </div>
       </header>
       <div className="relative flex-1 w-full max-w-xl mx-auto px-6 lg:px-10 py-14 sm:py-20 overflow-hidden st-skeleton-sweep">

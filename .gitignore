@@ -24,3 +24,6 @@ worker/.wrangler/
 
 # Freebuff local runtime state (logs, dev DBs, launch scripts)
 .freebuff/
+
+# lifetime rooms counter (runtime state)
+.rooms-total.json

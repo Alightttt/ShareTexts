@@ -27,7 +27,12 @@ export default defineConfig(() => {
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      watch: process.env.DISABLE_HMR === 'true' ? null : {
+        // The signaling server writes runtime state into the project root
+        // (.rooms-total.json — the lifetime rooms counter). Without this,
+        // every room creation force-reloads every open page mid-session.
+        ignored: ['**/.rooms-total.json'],
+      },
     },
   };
 });

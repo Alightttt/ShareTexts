@@ -18,7 +18,7 @@ const en = {
 
   // ── brand / nav / landing ──────────────────────────────────────────
   'nav.docs': 'Docs',
-  'home.title': 'Move anything\nbetween your devices.',
+  'home.title': 'AirDrop for\nany device.',
   'home.subtitle': "Windows to IPhone, Mobile to PC, you can share Texts/Files/Images across any devices. thats why we call it AirDrop for any Device",
   'home.send': 'Send',
   'home.sendHint': 'Create a room',
@@ -77,6 +77,13 @@ const en = {
   'pair.dismiss': 'Dismiss',
   'conn.ready': 'Ready to transfer',
   'conn.readyBody': 'Send text, photos, or files from either device. They land on the other device instantly, in original quality, byte for byte.',
+  'conn.stats.title': 'This session',
+  'conn.stats.messages': 'Messages',
+  'conn.stats.files': 'Files',
+  'conn.stats.data': 'Shared',
+  'conn.invite': 'Copy join link',
+  'conn.inviteHint': 'Handy if a device needs to reconnect.',
+  'conn.inviteCopied': 'Link copied',
   'conn.relay': 'Relay',
   'conn.local': 'Same network',
   'conn.direct': 'Direct',

@@ -36,7 +36,7 @@ import { hapticTap } from '../lib/haptics';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useI18n } from '../lib/i18n';
 import { LanguageMenu } from '../components/LanguageMenu';
-import { cn, shortCodeOf, sanitizeDeviceName } from '../lib/utils';
+import { cn, shortCodeOf, sanitizeDeviceName, formatBytes } from '../lib/utils';
 import {
   LogOut, QrCode, Link2, Copy, Check,
   Smartphone, Monitor, X, Wifi, ArrowRightLeft, ArrowLeft, Info, Pencil, WifiOff, ServerOff
@@ -136,7 +136,7 @@ function DevicePair({ state }: { state: 'idle' | 'connecting' | 'connected' }) {
 /* ------------------------------------------------------------------ */
 export function SingleScreenApp() {
   const { t } = useI18n();
-  const { session, createSession, abandonSession, joinWithCode, setDeviceName } = useSession();
+  const { session, createSession, abandonSession, joinWithCode, joinWithShortCode, setDeviceName } = useSession();
   const isDesktopLayout = useIsDesktopLayout();
   // Live activity tracker — real aggregate numbers from the signaling
   // service: devices seated right now + rooms ever created.
@@ -163,6 +163,28 @@ export function SingleScreenApp() {
   // The QR overlay closes itself once this room links — one dismissal per
   // room id, so a transient reconnect blip never re-opens it.
   const qrDismissedForRoomRef = useRef<string | null>(null);
+  // /s/<code> share links: opening one should JOIN the room, not show the
+  // landing page. The old multi-screen app handled this in JoinSession; the
+  // single-screen consolidation dropped it. Restored: on mount, a /s/<code>
+  // path auto-joins once the signaling socket is up. One attempt per code —
+  // the effect re-runs only when the path changes, and a failed join shows
+  // the normal idle screen where the user can enter a code manually.
+  const joinedShortCodeRef = useRef<string | null>(null);
+  useEffect(() => {
+    const m = window.location.pathname.match(/^\/s\/([0-9a-f]{8})$/i);
+    if (!m) return;
+    const code = m[1].toLowerCase();
+    if (joinedShortCodeRef.current === code) return;
+    joinedShortCodeRef.current = code;
+    setPanelMode('connecting');
+    void joinWithShortCode(code).then((res) => {
+      if (!res.success) {
+        // Dead link — back to the landing screen; the user can pair manually.
+        if (session.roomId === null) setPanelMode('idle');
+      }
+    }).catch(() => { if (session.roomId === null) setPanelMode('idle'); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [window.location.pathname]);
   // Set when the creator deliberately backs out of the connecting screen.
   // While set (until the link opens or the room changes) the auto-sync must
   // not bounce them straight back to 'connecting' — that would make the
@@ -369,14 +391,14 @@ export function SingleScreenApp() {
             gradient defs inside the display:none copy, which browsers refuse
             to paint — the desktop mark vanished). CSS overrides the intrinsic
             size for the responsive step. */}
-        <a href="/" className="flex items-center gap-[7px] shrink-0" aria-label="ShareText — home">
-          <ShareTextLogo size={26} className="w-6 sm:w-[26px] h-auto" />
-          <span className="font-semibold tracking-tight text-[17px] sm:text-[19px] text-apple-ink dark:text-white">ShareText</span>
+        <a href="/" className="flex items-center gap-[8px] shrink-0" aria-label="ShareText — home">
+          <ShareTextLogo size={30} className="w-7 sm:w-[30px] h-auto" />
+          <span className="font-semibold tracking-tight text-[19px] sm:text-[21px] text-apple-ink dark:text-white">ShareText</span>
         </a>
-        {/* Aligned nav cluster: one consistent medium gap (8px) between
-            every item — language, docs, toggle keep the same breathing
+        {/* Aligned nav cluster: one consistent small gap (6px) between
+            every item — language, docs, toggle keep tight breathing
             room at every breakpoint, all on the same 40px centerline. */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <CommandBarChip onClick={() => setCmdOpen(true)} />
           <LanguageMenu />
           {/* Docs — an OPEN book icon; the name appears as a tooltip on hover. */}
@@ -412,14 +434,15 @@ export function SingleScreenApp() {
               </p>
               {/* Live activity tracker — MOBILE position: between the subtitle
                   and the buttons. Real lifetime rooms from the signaling
-                  service; hidden entirely until the service answers with a
-                  non-zero count — never a fake 0. */}
-              {!!roomsCreated && (
+                  service. Shows whenever the service ANSWERED (the count is
+                  real, even when it is 0) — a dead service stays hidden
+                  instead of showing a fake number. */}
+              {roomsCreated !== null && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.4, duration: 0.5 }}
-                  className="order-3 lg:order-4 mt-5 flex items-center justify-center sm:justify-start gap-2.5 whitespace-nowrap"
+                  className="order-4 mt-5 flex items-center justify-center sm:justify-start gap-2.5 whitespace-nowrap px-3.5 py-2.5 rounded-full bg-apple-ink/[0.92] dark:bg-white/[0.09] shadow-sm w-fit"
                 >
                   {/* Halo dot: two slow radar rings drift outward from a solid
                       glowing core — layered, staggered, so it reads as breath,
@@ -429,11 +452,11 @@ export function SingleScreenApp() {
                     <span className="st-halo-ring st-halo-lag absolute inset-0 rounded-full bg-status-success/25" />
                     <span className="relative w-2 h-2 rounded-full bg-status-success shadow-[0_0_6px_rgba(52,199,89,0.7)]" />
                   </span>
-                  <span className="text-[15px] font-bold text-apple-ink dark:text-white tnum leading-none">{roomsCreated.toLocaleString()}</span>
-                  <span className="text-[13.5px] font-medium text-apple-ink-muted dark:text-white/50 leading-none">{t('home.roomsMade')}</span>
+                  <span className="text-[19px] font-extrabold text-white tnum leading-none">{roomsCreated.toLocaleString()}</span>
+                  <span className="text-[16px] font-medium text-white/90 leading-none">{t('home.roomsMade')}</span>
                 </motion.div>
               )}
-              <div className="order-4 lg:order-3 mt-6 flex gap-6 justify-center sm:justify-start">
+              <div className="order-3 mt-6 flex gap-6 justify-center sm:justify-start">
                 <div className="flex flex-col items-center gap-1.5">
                   <TactileButton onClick={handleSend} variant="primary" size="lg" className="lg:text-[16.5px] lg:min-h-[56px] lg:px-9" icon={<SendCircleIcon size={18} />} disabled={isCreating}>{t('home.send')}</TactileButton>
                   <span className="text-[11.5px] lg:text-[13px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.sendHint')}</span>
@@ -680,8 +703,31 @@ export function SingleScreenApp() {
                 </p>
               </div>
 
+              {/* Live session stats — the left pane earns its place by
+                  reporting the room it's hosting: real counts, not copy. */}
+              {(() => {
+                const msgs = session.messages;
+                const fileCount = msgs.filter(m => m.attachment && m.attachment.status === 'complete').length;
+                const bytes = msgs.reduce((n, m) => n + (m.attachment?.status === 'complete' ? (m.attachment.size ?? 0) : 0), 0);
+                const stat = (label: string, value: string) => (
+                  <div key={label} className="flex-1 flex flex-col items-center gap-0.5 py-2.5">
+                    <span className="text-[17px] font-bold text-apple-ink dark:text-white tnum leading-none">{value}</span>
+                    <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45 leading-none">{label}</span>
+                  </div>
+                );
+                return (
+                  <div className="mb-4 rounded-[16px] border border-apple-divider/50 dark:border-white/[0.07] bg-white/60 dark:bg-white/[0.04] p-1.5 flex items-stretch">
+                    {stat(t('conn.stats.messages'), String(msgs.length))}
+                    <span className="w-px bg-apple-divider/50 dark:bg-white/[0.07]" aria-hidden />
+                    {stat(t('conn.stats.files'), String(fileCount))}
+                    <span className="w-px bg-apple-divider/50 dark:bg-white/[0.07]" aria-hidden />
+                    {stat(t('conn.stats.data'), bytes > 0 ? formatBytes(bytes) : '0')}
+                  </div>
+                );
+              })()}
+
               {/* Connection type + disconnect */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-apple-parchment dark:bg-white/[0.05] border border-apple-divider/50 dark:border-white/[0.08]">
                   <Wifi className="w-3 h-3 text-status-success" />
                   <span className="text-[12px] font-medium text-apple-ink-muted dark:text-white/50">
@@ -702,6 +748,17 @@ export function SingleScreenApp() {
               {/* The right pane (desktop) or the room itself (mobile) is
                   self-explanatory — the old bullet list here repeated what
                   the UI already shows. Quiet beats busy. */}
+              <button
+                type="button"
+                onClick={copyLink}
+                className="mt-4 w-full flex items-center justify-between gap-2 px-4 py-3 rounded-[14px] bg-apple-parchment dark:bg-white/[0.05] border border-apple-divider/50 dark:border-white/[0.08] hover:border-apple-divider dark:hover:border-white/[0.14] transition-colors text-left"
+              >
+                <span className="flex flex-col min-w-0">
+                  <span className="text-[13px] font-semibold text-apple-ink dark:text-white">{copiedLink ? t('conn.inviteCopied') : t('conn.invite')}</span>
+                  <span className="text-[11.5px] text-apple-ink-muted dark:text-white/45 truncate">{t('conn.inviteHint')}</span>
+                </span>
+                <Link2 className="w-4 h-4 shrink-0 text-apple-ink-muted dark:text-white/50" />
+              </button>
             </motion.div>
           )}
     </AnimatePresence>
