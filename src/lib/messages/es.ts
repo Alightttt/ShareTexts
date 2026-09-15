@@ -17,7 +17,7 @@ const es: Dict = {
   'app.ended.share': 'Envía ShareText a alguien que conozcas',
   'app.ended.shareDone': 'Enlace copiado',
   'nav.docs': 'Documentación',
-  'home.title': 'Mueve lo que quieras\nentre tus dispositivos.',
+  'home.title': 'AirDrop para\ncualquier dispositivo.',
   'home.subtitle': 'Del teléfono al portátil, o del portátil al teléfono. Sin app que instalar, sin cuenta. Fotos y archivos llegan con calidad original: nada se comprime. Al cerrar la pestaña, desaparece.',
   'home.send': 'Enviar',
   'home.sendHint': 'Crear una sala',

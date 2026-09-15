@@ -17,7 +17,7 @@ const zh: Dict = {
   'app.ended.share': '把 ShareText 推荐给身边的人',
   'app.ended.shareDone': '链接已复制',
   'nav.docs': '文档',
-  'home.title': '在设备之间\n传递一切。',
+  'home.title': '所有设备的\nAirDrop。',
   'home.subtitle': '手机到电脑，或电脑到手机。无需安装应用，无需注册账号。照片和文件以原始画质到达——不做任何压缩。关闭标签页，一切即消失。',
   'home.send': '发送',
   'home.sendHint': '创建房间',

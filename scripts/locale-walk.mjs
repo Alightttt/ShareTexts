@@ -120,13 +120,13 @@ async function runLocale(lang, labels) {
 
 await runLocale('ar', {
   send: 'إرسال', receive: 'استقبال', pairingCode: 'رمز الاقتران',
-  readyMarker: 'جاهز وقتما تشاء', // chat.ready (exact ar string)
+  readyMarker: 'جاهز للنقل', // chat.ready (exact ar string)
   testMsg: 'مرحبا من الجهاز الأول',
   shots: true,
 });
 await runLocale('es', {
   send: 'Enviar', receive: 'Recibir', pairingCode: 'Código de emparejamiento',
-  readyMarker: 'Listo cuando lo estés', // chat.ready
+  readyMarker: 'Listo para transferir', // chat.ready
   testMsg: 'Hola desde el dispositivo uno',
   shots: true,
 });
