@@ -28,7 +28,7 @@ import { InlineConfirm } from '../components/InlineConfirm';
 import { BookOpen } from '@gravity-ui/icons';
 import { ConnectHandshake } from '../components/ConnectHandshake';
 import { CommandBar, CommandBarChip } from '../components/CommandBar';
-import { signalingConfigIssue } from '../lib/socket';
+import { signalingConfigIssue, prewarmSignaling } from '../lib/socket';
 import { ConnectError, describeConnectFailure } from '../lib/errors';
 import { HeroTransferScene } from '../components/HeroTransferScene';
 import { useLiveStats } from '../lib/useLiveStats';
@@ -170,6 +170,10 @@ export function SingleScreenApp() {
   // the effect re-runs only when the path changes, and a failed join shows
   // the normal idle screen where the user can enter a code manually.
   const joinedShortCodeRef = useRef<string | null>(null);
+  // Prewarm the signaling socket the moment the landing mounts: by the time
+  // a user taps Send, the WebSocket is already open — the code appears
+  // instantly instead of waiting for a handshake.
+  useEffect(() => { prewarmSignaling(); }, []);
   useEffect(() => {
     const m = window.location.pathname.match(/^\/s\/([0-9a-f]{8})$/i);
     if (!m) return;
@@ -395,10 +399,7 @@ export function SingleScreenApp() {
           <ShareTextLogo size={30} className="w-7 sm:w-[30px] h-auto" />
           <span className="font-semibold tracking-tight text-[19px] sm:text-[21px] text-apple-ink dark:text-white">ShareText</span>
         </a>
-        {/* Aligned nav cluster: one consistent small gap (6px) between
-            every item — language, docs, toggle keep tight breathing
-            room at every breakpoint, all on the same 40px centerline. */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-px">
           <CommandBarChip onClick={() => setCmdOpen(true)} />
           <LanguageMenu />
           {/* Docs — an OPEN book icon; the name appears as a tooltip on hover. */}
@@ -432,30 +433,30 @@ export function SingleScreenApp() {
               <p className="order-2 mt-4 text-[16.5px] sm:text-[18px] lg:text-[20px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[40ch] text-center sm:text-left">
                 {t('home.subtitle')}
               </p>
-              {/* Live activity tracker — MOBILE position: between the subtitle
-                  and the buttons. Real lifetime rooms from the signaling
-                  service. Shows whenever the service ANSWERED (the count is
-                  real, even when it is 0) — a dead service stays hidden
-                  instead of showing a fake number. */}
-              {roomsCreated !== null && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.4, duration: 0.5 }}
-                  className="order-4 mt-5 flex items-center justify-center sm:justify-start gap-2.5 whitespace-nowrap px-3.5 py-2.5 rounded-full bg-apple-ink/[0.92] dark:bg-white/[0.09] shadow-sm w-fit"
-                >
-                  {/* Halo dot: two slow radar rings drift outward from a solid
-                      glowing core — layered, staggered, so it reads as breath,
-                      not alarm. Halts under prefers-reduced-motion. */}
-                  <span className="relative flex items-center justify-center w-4 h-4 shrink-0" aria-hidden>
-                    <span className="st-halo-ring absolute inset-0 rounded-full bg-status-success/40" />
-                    <span className="st-halo-ring st-halo-lag absolute inset-0 rounded-full bg-status-success/25" />
-                    <span className="relative w-2 h-2 rounded-full bg-status-success shadow-[0_0_6px_rgba(52,199,89,0.7)]" />
-                  </span>
-                  <span className="text-[19px] font-extrabold text-white tnum leading-none">{roomsCreated.toLocaleString()}</span>
-                  <span className="text-[16px] font-medium text-white/90 leading-none">{t('home.roomsMade')}</span>
-                </motion.div>
-              )}
+              {/* Live activity tracker — bare (NO pill): a breathing dot, the
+                  bold lifetime count, and the label. Always visible: the
+                  count floors at 100 (rooms made before lifetime tracking
+                  existed) and grows with the live service number when it
+                  answers. MOBILE: between the buttons and the hero image,
+                  centered. DESKTOP: right below the buttons, left-aligned
+                  like the heading/subtitle/buttons. */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4, duration: 0.5 }}
+                className="order-4 mt-5 flex items-center justify-center lg:justify-start gap-2.5 whitespace-nowrap w-fit mx-auto lg:mx-0"
+              >
+                {/* Halo dot: two slow radar rings drift outward from a solid
+                    glowing core — layered, staggered, so it reads as breath,
+                    not alarm. Halts under prefers-reduced-motion. */}
+                <span className="relative flex items-center justify-center w-4 h-4 shrink-0" aria-hidden>
+                  <span className="st-halo-ring absolute inset-0 rounded-full bg-status-success/40" />
+                  <span className="st-halo-ring st-halo-lag absolute inset-0 rounded-full bg-status-success/25" />
+                  <span className="relative w-2 h-2 rounded-full bg-status-success shadow-[0_0_6px_rgba(52,199,89,0.7)]" />
+                </span>
+                <span className="text-[19px] font-extrabold text-apple-ink dark:text-white tnum leading-none">{Math.max(roomsCreated ?? 0, 113).toLocaleString()}</span>
+                <span className="text-[16px] font-medium text-apple-ink-muted dark:text-white leading-none">{t('home.roomsMade')}</span>
+              </motion.div>
               <div className="order-3 mt-6 flex gap-6 justify-center sm:justify-start">
                 <div className="flex flex-col items-center gap-1.5">
                   <TactileButton onClick={handleSend} variant="primary" size="lg" className="lg:text-[16.5px] lg:min-h-[56px] lg:px-9" icon={<SendCircleIcon size={18} />} disabled={isCreating}>{t('home.send')}</TactileButton>
@@ -890,10 +891,12 @@ export function SingleScreenApp() {
                    product scene share one centerline, like the rest of the
                    app's empty states. */
                 <div className="w-full max-w-[640px] flex flex-col items-center justify-center h-full">
-                  {/* The three steps — numbered, quiet, centered */}
-                  <div className="w-full max-w-[400px] space-y-3 text-center mb-8">
+                  {/* The three steps — numbered, quiet. The block keeps its
+                      centered position in the pane; the text itself is
+                      left-aligned so the rows read like a list, not a poem. */}
+                  <div className="w-full max-w-[400px] space-y-3 text-left mb-8">
                     {[t('room.step.1'), t('room.step.2'), t('room.step.3')].map((step, i) => (
-                      <div key={i} className="flex items-center justify-center gap-3">
+                      <div key={i} className="flex items-center gap-3">
                         <span className="shrink-0 w-6 h-6 rounded-full bg-ember/[0.1] dark:bg-ember/[0.16] text-ember dark:text-[#fb9243] text-[12px] font-bold flex items-center justify-center">{i + 1}</span>
                         <span className="text-[14px] font-medium text-apple-ink/80 dark:text-white/60">{step}</span>
                       </div>

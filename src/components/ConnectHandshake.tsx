@@ -96,7 +96,7 @@ export function ConnectHandshake({ phase, localIcon = 'phone', partnerName }: Co
               animate={{
                 x: [-gap / 2 + 4, gap / 2 - 4, gap / 2 - 4, -gap / 2 + 4],
                 opacity: [0, 1, 1, 0],
-                transition: { duration: 2.4, times: [0, 0.42, 0.58, 1], repeat: Infinity, ease: 'easeInOut' },
+                transition: { duration: 1.6, times: [0, 0.42, 0.58, 1], repeat: Infinity, ease: 'easeInOut' },
               }}
             />
           )}

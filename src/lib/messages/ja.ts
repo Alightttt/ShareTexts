@@ -17,7 +17,7 @@ const ja: Dict = {
   'app.ended.share': 'ShareText を誰かに教える',
   'app.ended.shareDone': 'リンクをコピーしました',
   'nav.docs': 'ドキュメント',
-  'home.title': 'あらゆるデバイスの\nAirDrop。',
+  'home.title': 'デバイス間で\nなんでも送ろう。',
   'home.subtitle': 'スマホからパソコンへ、パソコンからスマホへ。アプリのインストールもアカウント作成も不要。写真もファイルも元の画質のまま届きます — 圧縮は一切なし。タブを閉じれば消えます。',
   'home.send': '送信',
   'home.sendHint': 'ルームを作成',

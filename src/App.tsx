@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { SessionProvider, useSession } from './lib/SessionContext';
 import { I18nProvider, useI18n } from './lib/i18n';
-import { Send, Home, Share2, Check } from 'lucide-react';
+import { X, DoorOpen } from 'lucide-react';
 import { ShareTextLogo } from './components/ShareTextLogo';
 
 // SingleScreenApp (the landing IS the app) loads eagerly — one less network
@@ -16,9 +16,14 @@ import { SingleScreenApp } from './views/SingleScreenApp';
 const Docs = lazy(() => import('./views/Docs').then(m => ({ default: m.Docs })));
 const Legal = lazy(() => import('./views/Legal').then(m => ({ default: m.Legal })));
 
-function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, onNewSession: () => void, onHome: () => void }) {
+/**
+ * DisconnectToast — the "that's it" moment, demoted from a full screen to a
+ * quiet banner. The user is returned to the landing page instantly; this
+ * small toast simply tells them WHY, then fades itself out. Auto-dismisses
+ * after ~5.5s and can be closed with the ✕.
+ */
+function DisconnectToast({ reason, onDone }: { reason: string, onDone: () => void }) {
   const { t } = useI18n();
-  // One honest line about what happened, then one clear action.
   const heading = reason === 'expired'
     ? t('app.ended.heading.expired')
     : reason === 'manual_close'
@@ -29,53 +34,31 @@ function SessionEndedScreen({ reason, onNewSession, onHome }: { reason: string, 
     : reason === 'manual_close'
       ? t('app.ended.body.manual')
       : t('app.ended.body.closed');
-  const sub = t('app.ended.sub');
-
-  const [shared, setShared] = useState(false);
-  const shareApp = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.origin);
-    } catch {
-      /* fall back to the buttons */
-    }
-    setShared(true);
-    setTimeout(() => setShared(false), 2000);
-  };
+  // Auto-fade: the message is auxiliary, it must never trap attention.
+  useEffect(() => {
+    const timer = setTimeout(onDone, 5500);
+    return () => clearTimeout(timer);
+  }, [onDone]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#131315] p-6 text-center">
-      <ShareTextLogo
-        size={56}
-        motion={reason === 'expired' ? undefined : 'complete'}
-        className="text-apple-ink dark:text-white mb-7 opacity-80"
-      />
-      <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">{heading}</h2>
-      <p className="text-[16px] text-apple-ink-muted dark:text-white/60 font-medium max-w-sm mb-1.5">{copy}</p>
-      <p className="text-[13.5px] text-apple-ink-muted/80 dark:text-white/40 font-medium max-w-xs mb-9">{sub}</p>
-
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full max-w-sm sm:max-w-none sm:w-auto">
-        <button
-          onPointerDown={onNewSession}
-          className="px-7 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold transition-motion active:scale-[0.97] shadow-sm hover:opacity-90 min-h-[48px] flex items-center justify-center gap-2"
-        >
-          <Send className="w-4 h-4" /> {t('app.ended.cta')}
-        </button>
-        <button
-          onPointerDown={onHome}
-          className="px-6 py-3 rounded-[12px] text-[14px] font-medium text-apple-ink-muted dark:text-white/60 border border-apple-divider dark:border-white/15 hover:text-apple-ink dark:hover:text-white hover:border-apple-ink/30 dark:hover:border-white/30 transition-motion active:scale-[0.97] min-h-[48px] flex items-center justify-center gap-1.5"
-        >
-          <Home className="w-4 h-4" /> {t('app.ended.home')}
-        </button>
-      </div>
-
-      {/* The quiet referral moment — ShareText is free, and every session
-          needs a second device, so sharing IS the product loop. */}
+    <div
+      role="status"
+      data-testid="disconnect-toast"
+      className="fixed top-4 left-1/2 -translate-x-1/2 z-[90] max-w-[min(92vw,460px)] flex items-start gap-3 pl-3.5 pr-2 py-3 rounded-[16px] bg-white/95 dark:bg-[#232327]/95 backdrop-blur border border-black/[0.08] dark:border-white/[0.1] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)] animate-[toast-in_0.28s_cubic-bezier(0.22,1,0.36,1)]"
+    >
+      <span className="shrink-0 w-8 h-8 rounded-full bg-apple-parchment dark:bg-white/[0.07] flex items-center justify-center">
+        <DoorOpen className="w-4 h-4 text-apple-ink-muted dark:text-white/60" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[13.5px] font-semibold text-apple-ink dark:text-white leading-snug">{heading}</span>
+        <span className="block text-[12.5px] text-apple-ink-muted dark:text-white/55 leading-snug mt-0.5">{copy}</span>
+      </span>
       <button
-        onPointerDown={shareApp}
-        className="mt-8 flex items-center gap-2 px-4 py-2 rounded-full text-[13.5px] font-medium text-apple-ink-muted dark:text-white/55 hover:text-apple-ink dark:hover:text-white border border-transparent hover:border-apple-divider dark:hover:border-white/15 transition-motion active:scale-95 min-h-[44px]"
+        onClick={onDone}
+        aria-label={t('details.close')}
+        className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-apple-ink-muted/60 hover:text-apple-ink dark:text-white/40 dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.08] transition-colors"
       >
-        {shared ? <Check className="w-4 h-4 text-status-success" /> : <Share2 className="w-4 h-4" />}
-        {shared ? t('app.ended.shareDone') : t('app.ended.share')}
+        <X className="w-3.5 h-3.5" />
       </button>
     </div>
   );
@@ -99,8 +82,8 @@ function AppSkeleton({ docs = false }: { docs?: boolean }) {
         </div>
         <div className="flex items-center gap-3">
           <span className="w-9 h-4 rounded-full bg-apple-divider/80 dark:bg-white/10" />
-          {/* Skeleton mirrors the real theme toggle's 62×40 pill */}
-          <span className="w-[62px] h-[40px] rounded-full bg-apple-divider/80 dark:bg-white/10" />
+          {/* Skeleton mirrors the real theme toggle's 92×46 hit pill */}
+          <span className="w-[82px] h-[36px] rounded-full bg-apple-divider/80 dark:bg-white/10" />
         </div>
       </header>
       <div className="relative flex-1 w-full max-w-xl mx-auto px-6 lg:px-10 py-14 sm:py-20 overflow-hidden st-skeleton-sweep">
@@ -194,7 +177,18 @@ const ErrorBoundary = class extends (React.Component as any) {
 
 function AppContent() {
   const { t } = useI18n();
-  const { session, leaveView, createSession, closeSession } = useSession();
+  const { session, leaveView } = useSession();
+  // When a room ends (closed, expired, or the peer hung up), the user goes
+  // STRAIGHT back to the landing page — no "session ended" screen. The
+  // reason surfaces as a small toast instead. Captured in state first: the
+  // reset below clears closedReason before the render that shows the toast.
+  const [disconnectToast, setDisconnectToast] = useState<string | null>(null);
+  useEffect(() => {
+    if (session.closedReason) {
+      setDisconnectToast(session.closedReason);
+      leaveView();
+    }
+  }, [session.closedReason, leaveView]);
 
   if (typeof window !== 'undefined' && window.location.pathname === '/docs') {
     return <Suspense fallback={<AppSkeleton docs />}><Docs /></Suspense>;
@@ -220,21 +214,10 @@ function AppContent() {
     );
   }
 
-  if (session.closedReason) {
-    return (
-      <>
-        <SessionEndedScreen
-          reason={session.closedReason}
-          onNewSession={() => { leaveView(); void createSession(); }}
-          onHome={() => { leaveView(); window.location.href = '/'; }}
-        />
-      </>
-    );
-  }
-
   return (
     <Suspense fallback={<AppSkeleton />}>
       <SingleScreenApp />
+      {disconnectToast && <DisconnectToast reason={disconnectToast} onDone={() => setDisconnectToast(null)} />}
     </Suspense>
   );
 }

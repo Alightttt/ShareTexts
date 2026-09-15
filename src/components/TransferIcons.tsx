@@ -25,41 +25,44 @@ export function ReceiveCircleIcon({ className = '', size = 20 }: { className?: s
 }
 
 /**
- * DisconnectGlyph — the classic "exit through the door" mark: a door frame
- * with its door swung open and an arrow walking out through the doorway.
- * Drawn on a 24-grid so the stroke joins are crisp at 14–17px in both
- * themes. The door sits on the right (open on its left edge); the arrow
- * exits leftward through the opening — unambiguous "leave this room".
+ * DisconnectGlyph — "leave through the door": a door frame whose leaf has
+ * been swung open, with an arrow walking out through the doorway. Redrawn
+ * on a 24-grid with a true open leaf (hinge on the frame's left edge, the
+ * panel swinging toward the viewer) so the metaphor reads instantly at
+ * 14–19px in both themes.
  */
 export function DisconnectGlyph({ className = '', size = 16 }: { className?: string; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      {/* Door frame: outer wall opening to the left where the door swings */}
+      {/* Door frame — right portion of the wall, opening on its left edge */}
       <path
-        d="M10 4h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-8"
+        d="M13 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="1.9"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      {/* The door itself — swung open toward the viewer, hinge on the right */}
+      {/* The leaf, swung open toward the viewer: hinge on the frame's left
+          edge (x=13), the free edge swung out to x=9.5 — the opening the
+          arrow walks through. */}
       <path
-        d="M14 4v16"
+        d="M13 3.5 9.5 5.2v13.6L13 20.5"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Arrow out through the doorway, to the left */}
+      <path
+        d="M2.5 12h8"
+        stroke="currentColor"
+        strokeWidth="1.9"
         strokeLinecap="round"
       />
-      {/* Arrow walking OUT through the doorway (leftward) */}
       <path
-        d="M3 12h11"
+        d="M6.5 7.5 2.5 12l4 4.5"
         stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M7.5 7.5 3 12l4.5 4.5"
-        stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="1.9"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

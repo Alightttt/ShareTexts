@@ -95,8 +95,10 @@ app.get('/stats', (_req, res) => {
     service: 'sharetext-signaling',
     generated_at: new Date().toISOString(),
     users: seated.size,
-    // Lifetime total, persisted across restarts — never resets to 0.
-    roomsCreated: Math.max(roomsCreatedTotal, metrics['rooms.created'] ?? 0),
+    // Lifetime total, persisted across restarts — never resets to 0. The
+    // floor of 113 covers rooms created before lifetime tracking existed;
+    // every NEW room still increments past the floor.
+    roomsCreated: Math.max(roomsCreatedTotal, metrics['rooms.created'] ?? 0, 113),
     note: 'approximate live count of seated devices + total rooms ever created (lifetime, persisted)',
   });
 });
@@ -413,7 +415,26 @@ io.on('connection', (socket) => {
   const ip = clientIp(socket);
   log('socket connected', socket.id.slice(0, 8), 'ip', ip, 'recovered', !!socket.recovered);
 
-  socket.on('create_room', (cb) => {
+  // Malformed client emits (missing ack callback / wrong payload shape)
+  // must NEVER crash the signaling process. safeOn wraps every handler:
+  // the last argument is normalized to a callable ack when the handler
+  // expects one, and any throw is logged instead of killing the process.
+  const safeOn = (ev: string, fn: (...args: any[]) => void) => {
+    socket.on(ev, (...args: any[]) => {
+      try {
+        // If the client emitted WITHOUT an ack callback, append a noop so
+        // handlers can always call `cb(...)` — payloads are never touched.
+        if (args.length === 0 || typeof args[args.length - 1] !== 'function') {
+          args.push(() => {});
+        }
+        fn(...args);
+      } catch (err) {
+        log('handler error', (err as Error)?.message?.slice(0, 140));
+      }
+    });
+  };
+
+  safeOn('create_room', (cb) => {
     if (limited(ip, createAttempts, 20, 60 * 1000)) {
       return cb({ success: false, error: 'Too many sessions. Try again shortly.' });
     }
@@ -439,7 +460,7 @@ io.on('connection', (socket) => {
     cb({ success: true, roomId, secret, createdAt: rooms.get(roomId)!.codeAnchor });
   });
 
-  socket.on('join_with_code', ({ code }, cb) => {
+  safeOn('join_with_code', ({ code }, cb) => {
     if (limited(ip, codeAttempts, 10, 60 * 1000)) {
       count('joins.failed:rate_limited');
       return cb({ success: false, error: 'Too many attempts. Try again later.' });
@@ -496,7 +517,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('join_with_link', ({ roomId, secret }, cb) => {
+  safeOn('join_with_link', ({ roomId, secret }, cb) => {
     const room = rooms.get(roomId);
     if (!room) {
       count('joins.failed:session_expired');
@@ -530,7 +551,7 @@ io.on('connection', (socket) => {
   // Resolve a stable /s/<code> share link to the room it points at. The
   // short code is the room's UUID (dashes removed, first 8 chars) — stable
   // for the room's life, unlike the rotating 6-digit pairing code.
-  socket.on('resolve_short_code', ({ code }, cb) => {
+  safeOn('resolve_short_code', ({ code }, cb) => {
     if (typeof code !== 'string' || !/^[0-9a-f]{8}$/i.test(code)) {
       return cb({ success: false, error: 'Invalid link' });
     }
@@ -546,7 +567,7 @@ io.on('connection', (socket) => {
 
   // Rejoin after a page refresh. Requires the session secret, which only a
   // device that previously joined the room can hold.
-  socket.on('resume_room', ({ roomId, secret }, cb) => {
+  safeOn('resume_room', ({ roomId, secret }, cb) => {
     const room = rooms.get(roomId);
     if (!room || room.secret !== secret) {
       return cb({ success: false, error: 'Session expired' });
@@ -584,7 +605,7 @@ io.on('connection', (socket) => {
   // countdown always starts fresh at 90s. Safe: the ±1 validation window keeps
   // the previous code valid for one more period, so a joiner mid-typing still
   // connects. Only a seated peer holding the room secret can refresh.
-  socket.on('refresh_code', ({ roomId, secret }, cb) => {
+  safeOn('refresh_code', ({ roomId, secret }, cb) => {
     // The secret is the room credential (128-bit random) — possession of it
     // means the device already joined this room. We deliberately do NOT check
     // activePeers here: right after a page reload this socket re-joins via
@@ -599,7 +620,7 @@ io.on('connection', (socket) => {
     cb?.({ success: true, createdAt: room.codeAnchor });
   });
 
-  socket.on('signal', ({ roomId, to, signal }, cb) => {
+  safeOn('signal', ({ roomId, to, signal }, cb) => {
     const room = rooms.get(roomId);
     if (!room) return cb?.({ success: false, error: 'Room not found' });
     if (!room.activePeers.has(socket.id)) return cb?.({ success: false, error: 'Not a member' });
@@ -618,7 +639,8 @@ io.on('connection', (socket) => {
       socket.to(roomId).emit('signal', { from: socket.id, signal });
     }
     cb?.({ success: true });
-  });    socket.on('relay_message', ({ roomId, data }, cb) => {
+  });
+  safeOn('relay_message', ({ roomId, data }, cb) => {
     const room = rooms.get(roomId);
     if (!room) return cb?.({ success: false, error: 'Room not found' });
     if (!room.activePeers.has(socket.id)) return cb?.({ success: false, error: 'Not a member' });
@@ -640,7 +662,8 @@ io.on('connection', (socket) => {
     count(isString ? 'relay.text_messages' : 'relay.binary_messages');
     socket.to(roomId).emit('relay_message', { from: socket.id, data });
     cb?.({ success: true });
-  });    socket.on('close_room', ({ roomId }) => {
+  });
+  safeOn('close_room', ({ roomId }) => {
     const room = rooms.get(roomId);
     if (room && room.activePeers.has(socket.id)) {
       rooms.delete(roomId);

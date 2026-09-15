@@ -33,7 +33,12 @@ export function useLiveStats(pollMs = 10_000): { devices: number | null; roomsCr
     };
     void load();
     const timer = setInterval(load, pollMs);
-    return () => { cancelled = true; clearInterval(timer); };
+    // Returning to the tab (e.g. after finishing a room) refreshes at once,
+    // so the tracker shows the room just created without waiting a full
+    // polling interval.
+    const onVisible = () => { if (document.visibilityState === 'visible') void load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { cancelled = true; clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
   }, [pollMs]);
 
   return { devices, roomsCreated };

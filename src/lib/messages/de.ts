@@ -17,7 +17,7 @@ const de: Dict = {
   'app.ended.share': 'Empfiehl ShareText jemandem, den du kennst',
   'app.ended.shareDone': 'Link kopiert',
   'nav.docs': 'Dokumentation',
-  'home.title': 'AirDrop für\njedes Gerät.',
+  'home.title': 'Bewege alles\nzwischen deinen Geräten.',
   'home.subtitle': 'Vom Telefon zum Laptop oder umgekehrt. Keine App zum Installieren, kein Konto. Fotos und Dateien kommen in Originalqualität an – nichts wird komprimiert. Schließt du den Tab, ist alles weg.',
   'home.send': 'Senden',
   'home.sendHint': 'Raum erstellen',

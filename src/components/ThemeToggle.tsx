@@ -7,10 +7,10 @@ import { useTheme } from '../lib/theme';
  *
  * Visual contract (fixed at every breakpoint — never scales with viewport):
  *
- *   TRACK  60 × 34 · radius 17 · green when on, gray when off
- *   THUMB  30 × 30 · perfectly circular · 2px inset all around
+ *   TRACK  82 × 36 · radius 18 · green when on, gray when off
+ *   THUMB  50 × 32  · radius 16 · 2px inset all around
  *
- * The thumb fills 88% of the track height — a large white circle inside a
+ * The thumb fills 88% of the track height — a large white pill inside a
  * slim colored margin. The silhouette never changes; the only animations
  * are the thumb sliding on x and the track's color.
  *
@@ -20,22 +20,25 @@ import { useTheme } from '../lib/theme';
  *                                    track; release settles by midpoint
  *   keyboard (Enter/Space)         → toggle; role=switch + aria-checked
  *
- * The visible pill stays 52×30; the clickable/keyboard target is an
- * invisible padded wrapper (~62×40) so the hit area stays comfortable
+ * The visible pill stays 82×36; the clickable/keyboard target is an
+ * invisible padded wrapper (~92×46) so the hit area stays comfortable
  * without ever changing the visual size.
  */
 
 /* ── Geometry ───────────────────────────────────────────────────────────
- * The web-header spec: 60×34 track, 30×30 thumb, 2px inset, 26px travel.
- * Same wide-pill silhouette at every breakpoint — all sizes FIXED:
- * no vw, no clamp(), no responsive prefixes, no aspect-ratio.
+ * Reference-measured spec, scaled to a medium header footprint: 82×36
+ * track, 50×32 thumb, 2px inset, 28px travel. Same wide-pill silhouette
+ * at every breakpoint — all sizes FIXED: no vw, no clamp(), no responsive
+ * prefixes, no aspect-ratio.
  */
-const TRACK_W = 60;
-const TRACK_H = 34;
-const INSET = 2;                      // (34 − 30) / 2
-const THUMB = TRACK_H - 2 * INSET;    // 30, perfectly circular
-const X_ON = TRACK_W - THUMB - 2 * INSET; // 26 — thumb's travel distance
-const RADIUS_TRACK = TRACK_H / 2;     // 17
+const TRACK_W = 82;
+const TRACK_H = 36;
+const INSET = 2;                      // (36 − 32) / 2
+const THUMB_W = 50;
+const THUMB_H = 32;
+const X_ON = TRACK_W - THUMB_W - 2 * INSET; // 28 — thumb's travel distance
+const RADIUS_TRACK = 18;
+const RADIUS_THUMB = 16;
 /* iOS settle: quick ease-out without overshoot. */
 const SPRING = { type: 'spring', stiffness: 550, damping: 38 } as const;
 
@@ -169,9 +172,13 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
             position: 'absolute',
             top: INSET,
             left: INSET,
-            width: THUMB,
-            height: THUMB,
-            borderRadius: THUMB / 2,
+          width: THUMB_W,
+          height: THUMB_H,
+          minWidth: THUMB_W,
+          maxWidth: THUMB_W,
+          minHeight: THUMB_H,
+          maxHeight: THUMB_H,
+          borderRadius: RADIUS_THUMB,
             backgroundColor: '#ffffff',
             boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
             x,
