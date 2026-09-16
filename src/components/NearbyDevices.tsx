@@ -162,6 +162,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
       <AnimatePresence>
         {devices.length > 0 && (
           <motion.div
+            key="nearby-devices"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
@@ -209,7 +210,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
       <AnimatePresence>
         {(phase.kind === 'inviting' || phase.kind === 'error') && (
           <motion.p
-            key={phase.kind + (phase.kind === 'error' ? phase.text : '')}
+            key={phase.kind === 'error' ? `error:${phase.text}` : 'inviting'}
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}

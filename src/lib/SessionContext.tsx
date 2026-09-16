@@ -342,6 +342,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   // room) dedupe against the CURRENT list, not the one from the first render.
   const messagesRef = useRef(session.messages);
   messagesRef.current = session.messages;
+  // Synchronous received-id ledger. The mirror above only updates on RENDER,
+  // so two deliveries of the same message inside one batch (the classic case:
+  // the data channel opens mid-transfer and BOTH it and the relay fallback
+  // deliver the same payload) both pass a `messagesRef`-based check and append
+  // twice — duplicate bubbles and duplicate React keys. A Set updated in the
+  // handler itself is immune to batching.
+  const receivedIdsRef = useRef<Set<string>>(new Set());
   // In-flight agent-push file chunks, keyed by push message id. The server
   // delivers files as ~45KB base64 chunks (to fit WS frame caps on both
   // transports); this buffer reassembles them before the bubble appears.
@@ -701,7 +708,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           // New structured format. Dedupe by message id so a retried transfer
           // (metadata re-sent after a failure) doesn't create a duplicate
           // bubble, while still (re)registering the binary expectation.
-          const isDuplicate = messagesRef.current.some(m => m.id === parsed.id);
+          const isDuplicate = receivedIdsRef.current.has(parsed.id);
+          receivedIdsRef.current.add(parsed.id);
           if (!isDuplicate) {
             // A peer's 'sending' is our 'receiving'.
             // Sanitize the sender-provided filename to prevent path traversal,
@@ -1596,6 +1604,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
     // 3. Clear in-flight state
     pendingFilesRef.current.clear();
+    receivedIdsRef.current.clear();
     progressRef.current.clear();
     pushBuffersRef.current.clear();
     // 4. Clear transfer state and revoke object URLs

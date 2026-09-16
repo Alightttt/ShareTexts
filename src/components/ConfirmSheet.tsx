@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useI18n } from '../lib/i18n';
 import { useFocusTrap } from '../lib/useFocusTrap';
@@ -48,7 +49,7 @@ export function ConfirmSheet({
     return () => { window.removeEventListener('keydown', onKey); cancelAnimationFrame(raf); };
   }, [open, onCancel]);
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -107,6 +108,10 @@ export function ConfirmSheet({
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    // Portal to <body>: fixed overlays must paint above EVERY pane. The
+    // desktop room pane creates a stacking context (relative isolate) that
+    // otherwise traps the sheet beneath it, making buttons unclickable.
+    typeof document !== 'undefined' ? document.body : null
   );
 }
