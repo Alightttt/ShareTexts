@@ -247,6 +247,21 @@ const es: Dict = {
   'stay.rejoinHint': 'Tu sala con conexión permanente te espera, con tu historial.',
   'stay.rejoining': 'Reconectando…',
 
+  // ── nearby device discovery ───────────────────────────────────────
+  'nearby.hint': 'Abre ShareTexts en otro dispositivo',
+  'nearby.sectionTitle': 'Dispositivos cercanos',
+  'nearby.nearby': 'Cerca',
+  'nearby.waiting': 'Esperando para conectar…',
+  'nearby.connectingTo': 'Conectando con {name}…',
+  'nearby.found': 'Dispositivo cercano encontrado',
+  'nearby.gone': 'Este dispositivo ya no está disponible',
+  'nearby.declined': 'El otro dispositivo rechazó o no está disponible',
+  'nearby.inviteTitle': '{name} quiere conectarse',
+  'nearby.inviteBody': '¿Iniciar una transferencia directa con este dispositivo?',
+  'nearby.accept': 'Aceptar',
+  'nearby.decline': 'Rechazar',
+  'nearby.connectAria': 'Conectar con {name}',
+
 };
 
 export default es;

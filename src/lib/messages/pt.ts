@@ -247,6 +247,21 @@ const pt: Dict = {
   'stay.rejoinHint': 'A sua sala ligada está à espera, com o seu histórico.',
   'stay.rejoining': 'A reconectar…',
 
+  // ── nearby device discovery ───────────────────────────────────────
+  'nearby.hint': 'Abra o ShareTexts em outro dispositivo',
+  'nearby.sectionTitle': 'Dispositivos por perto',
+  'nearby.nearby': 'Por perto',
+  'nearby.waiting': 'Aguardando conexão…',
+  'nearby.connectingTo': 'Conectando a {name}…',
+  'nearby.found': 'Dispositivo por perto encontrado',
+  'nearby.gone': 'Este dispositivo não está mais disponível',
+  'nearby.declined': 'O outro dispositivo recusou ou não está disponível',
+  'nearby.inviteTitle': '{name} quer se conectar',
+  'nearby.inviteBody': 'Iniciar uma transferência direta com este dispositivo?',
+  'nearby.accept': 'Aceitar',
+  'nearby.decline': 'Recusar',
+  'nearby.connectAria': 'Conectar a {name}',
+
 };
 
 export default pt;

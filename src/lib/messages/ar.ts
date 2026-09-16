@@ -247,6 +247,21 @@ const ar: Dict = {
   'stay.rejoinHint': 'غرفتك دائمة الاتصال بانتظارك، مع سجلّك.',
   'stay.rejoining': 'جارٍ إعادة الاتصال…',
 
+  // ── nearby device discovery ───────────────────────────────────────
+  'nearby.hint': 'افتح ShareTexts على جهاز آخر',
+  'nearby.sectionTitle': 'الأجهزة القريبة',
+  'nearby.nearby': 'قريب',
+  'nearby.waiting': 'في انتظار الاتصال…',
+  'nearby.connectingTo': 'جارٍ الاتصال بـ {name}…',
+  'nearby.found': 'تم العثور على جهاز قريب',
+  'nearby.gone': 'هذا الجهاز لم يعد متاحًا',
+  'nearby.declined': 'رفض الجهاز الآخر أو غير متاح',
+  'nearby.inviteTitle': '{name} يريد الاتصال',
+  'nearby.inviteBody': 'بدء نقل مباشر مع هذا الجهاز؟',
+  'nearby.accept': 'قبول',
+  'nearby.decline': 'رفض',
+  'nearby.connectAria': 'الاتصال بـ {name}',
+
 };
 
 export default ar;

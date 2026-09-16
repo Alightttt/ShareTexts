@@ -247,6 +247,21 @@ const ja: Dict = {
   'stay.rejoinHint': '履歴ごと、維持中のルームが待っています。',
   'stay.rejoining': '再接続中…',
 
+  // ── nearby device discovery ───────────────────────────────────────
+  'nearby.hint': '別のデバイスでShareTextsを開く',
+  'nearby.sectionTitle': '近くのデバイス',
+  'nearby.nearby': '付近',
+  'nearby.waiting': '接続を待っています…',
+  'nearby.connectingTo': '{name} に接続中…',
+  'nearby.found': '近くのデバイスが見つかりました',
+  'nearby.gone': 'このデバイスは利用できなくなりました',
+  'nearby.declined': '相手のデバイスが拒否したか、利用できません',
+  'nearby.inviteTitle': '{name} が接続を求めています',
+  'nearby.inviteBody': 'このデバイスと直接転送を開始しますか？',
+  'nearby.accept': '受け入れる',
+  'nearby.decline': '拒否',
+  'nearby.connectAria': '{name} に接続',
+
 };
 
 export default ja;

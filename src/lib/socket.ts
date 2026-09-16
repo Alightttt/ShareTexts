@@ -66,6 +66,13 @@ const { mode, url } = resolveEndpoints();
 devLog('Signaling transport:', mode, url || '(same origin)');
 diag('transport.choose', true, `${mode}${url ? ' ' + url : ' (same origin)'}`);
 
+/** Which signaling transport the build is using ('socketio' | 'cloudflare').
+ *  Nearby discovery runs only on the socket.io transport; callers use this to
+ *  degrade gracefully (hint line only) on the Cloudflare transport. */
+export function signalingTransportMode(): 'cloudflare' | 'socketio' {
+  return mode;
+}
+
 /**
  * Absolute URL of the agent push endpoint on the ACTIVE transport, for the
  * connect screen's "Send from your computer" curl command. Same-origin (dev /

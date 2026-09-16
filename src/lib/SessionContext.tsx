@@ -44,7 +44,9 @@ async function sha256Hex(blob: Blob): Promise<string> {
 
 interface SessionContextValue {
   session: SessionState;
-  createSession: () => Promise<void>;
+  /** Creates a room; resolves with the fresh credentials once the server
+   *  acknowledges (callers that don't need them may ignore the value). */
+  createSession: () => Promise<{ roomId: string; secret: string }>;
   joinWithCode: (code: string) => Promise<{ success: boolean; error?: string }>;
   joinWithLink: (roomId: string) => Promise<{ success: boolean; error?: string }>;
   joinWithShortCode: (code: string) => Promise<{ success: boolean; error?: string }>;
@@ -1051,9 +1053,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
    * unreachable) is retried ONCE silently before surfacing — flaky networks
    * usually connect on the second attempt and the user never sees an error.
    */
-  const createRoomOnce = (attempt: number): Promise<void> => {
+  const createRoomOnce = (attempt: number): Promise<{ roomId: string; secret: string }> => {
     const ACK_TIMEOUT = 9000;
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<{ roomId: string; secret: string }>((resolve, reject) => {
       const socket = getSocket();
       let settled = false;
       const timer = setTimeout(() => {
@@ -1089,7 +1091,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
               stayConnected: false,
               lastStayRoom: session.lastStayRoom
             });
-            resolve();
+            resolve({ roomId: res.roomId, secret: res.secret });
           } else {
             const code = res.code || res.error || '';
             roomCreateDiagEnd(createDiagRequestRef.current, 'failure', 'ROOM_CREATE_REJECTED', code);
@@ -1108,7 +1110,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   // RequestId for the diag timeline, set by createSession before attempts.
   const createDiagRequestRef = { current: '' } as { current: string };
 
-  const createSession = async () => {
+  const createSession = async (): Promise<{ roomId: string; secret: string }> => {
     abandonedRef.current = false;
     const requestId = crypto.randomUUID();
     createDiagRequestRef.current = requestId;
@@ -1126,10 +1128,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     let lastError: unknown = null;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
-        await createRoomOnce(attempt);
+        const created = await createRoomOnce(attempt);
         roomCreateDiagEnd(requestId, 'success');
         devLog('Room created — navigating');
-        return;
+        return created;
       } catch (e) {
         lastError = e;
         const code = describeConnectFailure(e);
@@ -1145,7 +1147,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     roomCreateDiagEnd(requestId, 'failure', 'CLIENT_INIT_FAILURE', String(lastError));
     throw lastError instanceof Error ? lastError : new ConnectError('UNKNOWN');
   };
-
   const joinWithCode = async (code: string) => {
     const requestId = crypto.randomUUID();
     roomCreateDiagStart(requestId, 'join');

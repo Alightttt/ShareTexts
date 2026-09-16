@@ -390,6 +390,95 @@ function forgetStayRoom(roomId: string): void {
 
 loadStayRooms();
 
+// --- Nearby device discovery ------------------------------------------------
+// An optional, ephemeral presence pool for the landing page: devices that are
+// merely OPEN on ShareTexts (not seated in a room) can appear to each other so
+// the user can tap a device and start the EXISTING create→link-join flow.
+//
+// Scope & privacy rules:
+//   · Presence is EPHEMERAL — entries expire after PRESENCE_TTL without a
+//     keepalive announce, and every withdrawal/expiry is broadcast.
+//   · The frontend never receives IPs or permanent identifiers. Each announce
+//     gets a rotating opaque token (sha256(deviceId + server secret)) — the
+//     deviceId itself stays on the server, so a long-lived id can't be tracked
+//     across sessions from the wire.
+//   · Discovery ≠ connection: nothing here opens a WebRTC session. Selecting
+//     a device sends an INVITE; the receiving user must ACCEPT; only then is
+//     the inviter given a fresh roomId+secret through the normal join_with_link
+//     path, reusing every existing room/security/transfer mechanism.
+//   · Only roomless sockets may announce. A seated device is invisible here.
+const PRESENCE_TTL = 90_000;          // an entry dies after 90s without keepalive
+const PRESENCE_SWEEP_MS = 30_000;     // sweep cadence (also broadcasts removals)
+const PRESENCE_BROADCAST_MIN_MS = 800;// coalesce list broadcasts (no per-announce spam)
+const PRESENCE_MAX_DEVICES = 24;      // pool cap — this is a pairing lobby, not a directory
+const PRESENCE_NAME_MAX = 32;
+
+// Rotating-token salt: a random per-process value. Tokens are thus only
+// meaningful within one server lifetime — another ephemeral layer.
+const presenceSalt = crypto.randomBytes(16).toString('hex');
+interface PresenceEntry { socketId: string; name: string; token: string; announcedAt: number; }
+const presenceByDevice = new Map<string, PresenceEntry>();
+const presenceBySocket = new Map<string, string>(); // socketId → deviceId
+
+function presenceToken(deviceId: string): string {
+  return crypto.createHash('sha256').update(deviceId + presenceSalt).digest('hex').slice(0, 32);
+}
+
+function sanitizePresenceName(raw: unknown): string {
+  const s = typeof raw === 'string' ? raw : '';
+  const clean = s
+    .replace(/[\x00-\x1F\x7F]/g, '') // control chars (incl. newlines — names render as text)
+    .replace(/[<>]/g, '')            // angle brackets: names must never read as markup
+    .trim()
+    .replace(/\s+/g, ' ')
+    .slice(0, PRESENCE_NAME_MAX);
+  return clean || 'Unnamed device';
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Push the current device list to every connected socket. Coalesced: at most
+ *  one broadcast per PRESENCE_BROADCAST_MIN_MS, always the latest state. */
+let presenceBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
+function broadcastPresenceList(): void {
+  if (presenceBroadcastTimer) return;
+  presenceBroadcastTimer = setTimeout(() => {
+    presenceBroadcastTimer = null;
+    const devices = [...presenceByDevice.values()]
+      .sort((a, b) => a.announcedAt - b.announcedAt)
+      .map(e => ({ id: e.token, name: e.name }));
+    io.emit('presence_list', { devices });
+  }, PRESENCE_BROADCAST_MIN_MS);
+}
+
+function withdrawPresence(socketId: string): void {
+  const deviceId = presenceBySocket.get(socketId);
+  if (!deviceId) return;
+  const entry = presenceByDevice.get(deviceId);
+  presenceBySocket.delete(socketId);
+  if (entry && entry.socketId === socketId) {
+    presenceByDevice.delete(deviceId);
+    broadcastPresenceList();
+  }
+}
+
+// Nearby-discovery sweep: expire stale announcements (device closed the tab /
+// network blip) and broadcast removals on the coalesced cadence.
+setInterval(() => {
+  const now = Date.now();
+  let changed = false;
+  for (const [deviceId, entry] of presenceByDevice.entries()) {
+    if (now - entry.announcedAt > PRESENCE_TTL || !io.sockets.sockets.has(entry.socketId)) {
+      presenceByDevice.delete(deviceId);
+      if (presenceBySocket.get(entry.socketId) === deviceId) presenceBySocket.delete(entry.socketId);
+      changed = true;
+    }
+  }
+  if (changed) broadcastPresenceList();
+}, PRESENCE_SWEEP_MS);
+
+
+
 // Track which rooms a just-disconnected socket belonged to so that when it
 // reconnects via connectionStateRecovery we can notify the other peer.
 const socketRooms = new Map<string, Set<string>>();
@@ -779,7 +868,113 @@ io.on('connection', (socket) => {
     cb?.({ success: true, enabled: false });
   });
 
+safeOn('presence_announce', (payload: { deviceId?: unknown; name?: unknown }, cb) => {
+  // Roomless devices only: a seated device already has a partner and must not
+  // appear in the landing-page lobby.
+  const seated = [...rooms.values()].some(r => r.activePeers.has(socket.id));
+  if (seated) return cb?.({ success: false, error: 'In a room' });
+  if (!payload || typeof payload.deviceId !== 'string' || !UUID_RE.test(payload.deviceId)) {
+    return cb?.({ success: false, error: 'Invalid deviceId' });
+  }
+  const name = sanitizePresenceName(payload.name);
+  const now = Date.now();
+  const prev = presenceByDevice.get(payload.deviceId);
+  if (prev && prev.socketId !== socket.id && presenceBySocket.get(prev.socketId) === payload.deviceId) {
+    presenceBySocket.delete(prev.socketId); // same device re-announced from a fresh socket
+  }
+  presenceByDevice.set(payload.deviceId, {
+    socketId: socket.id,
+    name,
+    token: presenceToken(payload.deviceId),
+    announcedAt: now,
+  });
+  presenceBySocket.set(socket.id, payload.deviceId);
+  socket.join('presence'); // lobby room: invites target the pool without scanning every socket
+  count('presence.announced');
+  cb?.({ success: true, token: presenceToken(payload.deviceId) });
+  broadcastPresenceList();
+});
+
+safeOn('presence_withdraw', () => {
+  withdrawPresence(socket.id);
+});
+
+safeOn('presence_update', (payload: { name?: unknown }) => {
+  const deviceId = presenceBySocket.get(socket.id);
+  if (!deviceId) return;
+  const entry = presenceByDevice.get(deviceId);
+  if (!entry || entry.socketId !== socket.id) return;
+  const name = sanitizePresenceName(payload?.name);
+  if (name !== entry.name) {
+    entry.name = name;
+    broadcastPresenceList();
+  }
+});
+
+// Selecting a nearby device. The inviter only says WHICH device; the server
+// resolves its current socket and forwards the invitation. If the invitee
+// accepts, THEIR client calls create_room and hands the inviter the fresh
+// roomId+secret — the inviter joins via the normal link path, so the secret
+// originates from the accepting device's own room creation.
+safeOn('presence_invite', ({ deviceId }: { deviceId?: unknown }, cb) => {
+  const fromDeviceId = presenceBySocket.get(socket.id);
+  if (!fromDeviceId) return cb?.({ success: false, error: 'Not present' });
+  if (typeof deviceId !== 'string' || deviceId.length !== 32 || !/^[0-9a-f]{32}$/.test(deviceId)) {
+    return cb?.({ success: false, error: 'Invalid deviceId' });
+  }
+  const entry = presenceByDevice.get(fromDeviceId);
+  if (!entry) return cb?.({ success: false, error: 'Not present' });
+  const target = [...presenceByDevice.entries()].find(([, e]) => e.token === deviceId);
+  if (!target) {
+    count('presence.invite_failed:gone');
+    return cb?.({ success: false, error: 'Device no longer available' });
+  }
+  const [targetDeviceId, targetEntry] = target;
+  if (targetDeviceId === fromDeviceId) return cb?.({ success: false, error: 'Invalid deviceId' });
+  const targetSocket = io.sockets.sockets.get(targetEntry.socketId);
+  if (!targetSocket) {
+    presenceByDevice.delete(targetDeviceId);
+    broadcastPresenceList();
+    return cb?.({ success: false, error: 'Device no longer available' });
+  }
+  targetSocket.emit('presence_invitation', { from: entry.token, name: entry.name });
+  count('presence.invited');
+  cb?.({ success: true });
+});
+
+// The invitee's answer. For accept, the invitee's client ALSO created a room
+// and passes its fresh roomId+secret; the server relays those to the inviter
+// only (never broadcast). The inviter then runs the ordinary join_with_link.
+safeOn('presence_invite_result', (payload: { to?: unknown; accepted?: unknown; roomId?: unknown; secret?: unknown }, cb) => {
+  const fromDeviceId = presenceBySocket.get(socket.id);
+  if (!fromDeviceId) return cb?.({ success: false, error: 'Not present' });
+  const entry = presenceByDevice.get(fromDeviceId);
+  if (!entry) return cb?.({ success: false, error: 'Not present' });
+  if (typeof payload?.to !== 'string' || payload.to.length !== 32) {
+    return cb?.({ success: false, error: 'Invalid target' });
+  }
+  const accepted = payload.accepted === true;
+  let fwd: { accepted: boolean; roomId?: string; secret?: string } = { accepted };
+  if (accepted) {
+    if (typeof payload.roomId !== 'string' || !UUID_RE.test(payload.roomId) ||
+        typeof payload.secret !== 'string' || payload.secret.length < 16 || payload.secret.length > 64) {
+      return cb?.({ success: false, error: 'Invalid room' });
+    }
+    fwd = { accepted: true, roomId: payload.roomId, secret: payload.secret };
+  }
+  const target = [...presenceByDevice.entries()].find(([, e]) => e.token === payload.to);
+  if (!target) return cb?.({ success: false, error: 'Device no longer available' });
+  const targetSocket = io.sockets.sockets.get(target[1].socketId);
+  if (!targetSocket) return cb?.({ success: false, error: 'Device no longer available' });
+  targetSocket.emit('presence_invite_result', fwd);
+  count(accepted ? 'presence.accepted' : 'presence.declined');
+  cb?.({ success: true });
+});
+
   socket.on('disconnect', () => {
+    // Leave the nearby-discovery lobby: the device must disappear for others
+    // the moment its socket dies (before the TTL sweep would remove it).
+    withdrawPresence(socket.id);
     // Remember membership so we can emit peer_recovered if this socket comes
     // back through connectionStateRecovery.
     const affected = new Set<string>();

@@ -127,3 +127,42 @@ Vercel (static frontend)  ──wss://──▶  Render (Node signaling server)
 - Server: `render.yaml` blueprint — Express + socket.io on `process.env.PORT`,
   serving the built frontend too (same-origin deployments work), with a
   `/health` endpoint for uptime checks.
+
+## Nearby device discovery (socket.io transport)
+
+An OPTIONAL landing-page convenience layer: devices that are merely OPEN on
+ShareTexts (roomless) can appear to each other, so a tap replaces typing a
+code. It reuses the room protocol end-to-end — discovery never transfers data
+and never bypasses the room/secret/WebRTC machinery.
+
+Client → server (JSON payloads, existing socket):
+
+| Event | Payload | Ack | Notes |
+|---|---|---|---|
+| `presence_announce` | `{ deviceId: UUIDv4, name }` | `{ success, token }` | Roomless sockets only. Name sanitized (control chars + `<>` stripped, ≤32 chars). Joins the `presence` lobby room. Acts as keepalive — entries expire after 90s without one. |
+| `presence_withdraw` | — | — | Leave the pool (also implied by disconnect or seating into a room). |
+| `presence_update` | `{ name }` | — | Rename while present. |
+| `presence_invite` | `{ deviceId: token }` | `{ success }` | Server resolves the token to the target's CURRENT socket and relays `{ from: token, name }`. |
+| `presence_invite_result` | `{ to, accepted, roomId?, secret? }` | `{ success }` | Accept MUST carry a fresh UUID room + its secret; validated server-side and relayed only to the inviter. |
+
+Server → client:
+
+| Event | Payload | Notes |
+|---|---|---|
+| `presence_list` | `{ devices: [{ id: token, name }] }` | Coalesced broadcast (≥800ms apart). Tokens are `sha256(deviceId + per-process salt)` truncated to 32 hex — deviceIds NEVER leave the server. |
+| `presence_invitation` | `{ from: token, name }` | To the invited device. |
+| `presence_invite_result` | `{ accepted, roomId?, secret? }` | To the inviter. |
+
+Flow: select device → invite → invitee accepts → invitee's client runs the
+NORMAL `create_room` → answers with credentials → inviter runs the NORMAL
+`join_with_link`. From there it is the standard room: same secret, same
+WebRTC, same transfer checks. Decline/gone → nothing is shared.
+
+Privacy posture: no IPs, no persistent ids on the wire (rotating tokens),
+presence is ephemeral (90s TTL, 30s sweep), pool capped at 24 devices, and a
+seated device is invisible. Validation covers deviceId UUID shape, token
+shape (32 hex), room UUID + secret length, and name sanitization; client-side
+parsing re-validates every list entry before render.
+
+Test suite: `npm run test:nearby` (protocol tests incl. existing-flow
+regression, duplicates, withdrawal, seated-device removal, XSS-name handling).

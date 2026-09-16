@@ -247,6 +247,21 @@ const hi: Dict = {
   'stay.rejoinHint': 'आपका जुड़ा हुआ कमरा इतिहास सहित इंतज़ार कर रहा है।',
   'stay.rejoining': 'दोबारा जुड़ रहे हैं…',
 
+  // ── nearby device discovery ───────────────────────────────────────
+  'nearby.hint': 'दूसरे डिवाइस पर ShareTexts खोलें',
+  'nearby.sectionTitle': 'नज़दीकी डिवाइस',
+  'nearby.nearby': 'नज़दीक',
+  'nearby.waiting': 'कनेक्शन की प्रतीक्षा…',
+  'nearby.connectingTo': '{name} से कनेक्ट हो रहे हैं…',
+  'nearby.found': 'नज़दीकी डिवाइस मिला',
+  'nearby.gone': 'यह डिवाइस अब उपलब्ध नहीं है',
+  'nearby.declined': 'दूसरे डिवाइस ने अस्वीकार किया या उपलब्ध नहीं है',
+  'nearby.inviteTitle': '{name} कनेक्ट होना चाहता है',
+  'nearby.inviteBody': 'इस डिवाइस के साथ सीधा ट्रांसफ़र शुरू करें?',
+  'nearby.accept': 'स्वीकार करें',
+  'nearby.decline': 'अस्वीकार करें',
+  'nearby.connectAria': '{name} से कनेक्ट करें',
+
 };
 
 export default hi;

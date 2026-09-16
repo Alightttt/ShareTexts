@@ -247,6 +247,21 @@ const zh: Dict = {
   'stay.rejoinHint': '你的常连房间正在等待，历史记录都在。',
   'stay.rejoining': '正在重新连接…',
 
+  // ── nearby device discovery ───────────────────────────────────────
+  'nearby.hint': '在另一台设备上打开 ShareTexts',
+  'nearby.sectionTitle': '附近的设备',
+  'nearby.nearby': '附近',
+  'nearby.waiting': '等待连接…',
+  'nearby.connectingTo': '正在连接 {name}…',
+  'nearby.found': '发现附近的设备',
+  'nearby.gone': '此设备已不可用',
+  'nearby.declined': '对方设备已拒绝或不可用',
+  'nearby.inviteTitle': '{name} 想要连接',
+  'nearby.inviteBody': '与此设备开始直接传输？',
+  'nearby.accept': '接受',
+  'nearby.decline': '拒绝',
+  'nearby.connectAria': '连接到 {name}',
+
 };
 
 export default zh;

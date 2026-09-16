@@ -274,6 +274,21 @@ const en = {
   'stay.rejoinHint': 'Your Stay Connected room is waiting — with your history.',
   'stay.rejoining': 'Rejoining…',
 
+  // ── nearby device discovery ───────────────────────────────────────
+  'nearby.hint': 'Open ShareTexts in another device',
+  'nearby.sectionTitle': 'Nearby devices',
+  'nearby.nearby': 'Nearby',
+  'nearby.waiting': 'Waiting to connect…',
+  'nearby.connectingTo': 'Connecting to {name}…',
+  'nearby.found': 'Nearby device found',
+  'nearby.gone': 'This device is no longer available',
+  'nearby.declined': 'The other device declined or is unavailable',
+  'nearby.inviteTitle': '{name} wants to connect',
+  'nearby.inviteBody': 'Start a direct transfer with this device?',
+  'nearby.accept': 'Accept',
+  'nearby.decline': 'Decline',
+  'nearby.connectAria': 'Connect to {name}',
+
 };
 
 export default en;

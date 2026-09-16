@@ -247,6 +247,21 @@ const de: Dict = {
   'stay.rejoinHint': 'Dein dauerhaft verbundener Raum wartet – samt Verlauf.',
   'stay.rejoining': 'Verbinde erneut…',
 
+  // ── nearby device discovery ───────────────────────────────────────
+  'nearby.hint': 'Öffne ShareTexts auf einem anderen Gerät',
+  'nearby.sectionTitle': 'Geräte in der Nähe',
+  'nearby.nearby': 'In der Nähe',
+  'nearby.waiting': 'Warte auf Verbindung…',
+  'nearby.connectingTo': 'Verbinde mit {name}…',
+  'nearby.found': 'Gerät in der Nähe gefunden',
+  'nearby.gone': 'Dieses Gerät ist nicht mehr verfügbar',
+  'nearby.declined': 'Das andere Gerät hat abgelehnt oder ist nicht verfügbar',
+  'nearby.inviteTitle': '{name} möchte sich verbinden',
+  'nearby.inviteBody': 'Direkte Übertragung mit diesem Gerät starten?',
+  'nearby.accept': 'Annehmen',
+  'nearby.decline': 'Ablehnen',
+  'nearby.connectAria': 'Mit {name} verbinden',
+
 };
 
 export default de;

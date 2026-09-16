@@ -5,12 +5,12 @@ import { ThemeToggle } from '../components/ThemeToggle';
 import {
   Send, Inbox, Copy, Download, Share2, QrCode, Link2,
   Shield, Zap, Monitor, Smartphone, ChevronRight, ChevronDown,
-  Terminal, Key, Clock, RefreshCw, AlertCircle, Check, Lock, ArrowLeft
+  Terminal, Key, Clock, RefreshCw, AlertCircle, Check, Lock, ArrowLeft, Radio
 } from 'lucide-react';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-type Section = 'overview' | 'transfer' | 'pairing' | 'troubleshooting' | 'privacy' | 'devices' | 'faq' | 'developer' | 'api';
+type Section = 'overview' | 'transfer' | 'pairing' | 'nearby' | 'troubleshooting' | 'privacy' | 'devices' | 'faq' | 'developer' | 'api';
 
 interface NavItem {
   id: Section;
@@ -24,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'overview', label: 'Getting Started', icon: <Monitor className="w-4 h-4" />, group: 'user' },
   { id: 'transfer', label: 'How to Transfer', icon: <Send className="w-4 h-4" />, group: 'user' },
   { id: 'pairing', label: 'Pairing & QR', icon: <QrCode className="w-4 h-4" />, group: 'user' },
+  { id: 'nearby', label: 'Nearby Devices', icon: <Radio className="w-4 h-4" />, group: 'user' },
   { id: 'troubleshooting', label: 'Troubleshooting', icon: <RefreshCw className="w-4 h-4" />, group: 'user' },
   { id: 'privacy', label: 'Privacy & Security', icon: <Shield className="w-4 h-4" />, group: 'user' },
   { id: 'devices', label: 'Supported Devices', icon: <Smartphone className="w-4 h-4" />, group: 'user' },
@@ -110,7 +111,7 @@ function TransferSection() {
       <div className="space-y-4">
         {[
           { n: '1', title: 'Open on both devices', desc: 'Go to sharetexts.online on both.' },
-          { n: '2', title: 'Connect', desc: 'Tap Send on one device, Receive on the other. Enter the 6-digit code.' },
+          { n: '2', title: 'Connect', desc: 'Tap Send on one device, Receive on the other. Enter the 6-digit code — or, if the other device is nearby and open, just tap it under Nearby devices.' },
           { n: '3', title: 'Transfer', desc: 'Type, paste, or attach. It appears instantly on the other device.' },
         ].map((s, i) => (
           <div key={i} className="flex gap-4 items-start">
@@ -172,8 +173,48 @@ function PairingSection() {
   );
 }
 
-function TroubleshootingSection() {
+
+
+function NearbySection() {
   return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-4">Nearby Devices</h2>
+        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-2xl">
+          Open ShareTexts on another device. If both devices are on the same supported local network, the other device can appear automatically — tap it to start a transfer.
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-[18px] font-semibold text-apple-ink dark:text-white">How it works</h3>
+        <div className="space-y-3 text-[15px] text-apple-ink-muted dark:text-white/60 leading-relaxed">
+          <p><strong className="text-apple-ink dark:text-white">Open ShareTexts on both devices.</strong> When another ShareTexts device is nearby and idle, it appears under the Send and Receive buttons on your home screen.</p>
+          <p><strong className="text-apple-ink dark:text-white">Tap the device.</strong> The other device gets an invitation and must accept. Once accepted, the connection is established exactly like any other ShareText connection.</p>
+          <p>Prefer a code? The 6-digit code, QR code, and share link always remain available as alternative methods.</p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-[18px] font-semibold text-apple-ink dark:text-white">Privacy</h3>
+        <div className="space-y-3 text-[15px] text-apple-ink-muted dark:text-white/60 leading-relaxed">
+          <p>Nearby discovery is <strong className="text-apple-ink dark:text-white">not a global device list</strong>. A device is only visible while ShareTexts is open on it, and presence expires automatically within about a minute of the tab closing. Devices are not Bluetooth scans, and nothing is broadcast over your local network.</p>
+          <p>Other devices only ever see a temporary label such as "Windows PC" or "iPhone". No IP addresses, account information, or permanent identifiers are shared. A device that is already connected to a room is not listed.</p>
+          <p>Discovery only identifies a candidate device. Selecting one sends an invitation, and the actual connection always uses the same secure end-to-end encrypted channel as code, QR, and link connections.</p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-[18px] font-semibold text-apple-ink dark:text-white">Limits</h3>
+        <div className="space-y-3 text-[15px] text-apple-ink-muted dark:text-white/60 leading-relaxed">
+          <p>Nearby discovery works between devices that reach the same ShareTexts signaling service. Two devices on completely different networks (for example, separate mobile carriers) will not see each other — use the code, QR, or share link instead.</p>
+          <p>This feature requires the standard signaling deployment. It is not available on every hosting configuration; when unavailable, the home screen simply shows the hint line without a device list, and every other method works unchanged.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TroubleshootingSection() {  return (
     <div className="space-y-8">
       <div>
         <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-4">Troubleshooting</h2>
@@ -522,6 +563,14 @@ function FAQSection() {
       a: 'ShareText is a temporary bridge between two devices. Move text, links, photos, videos, and files directly from one screen to another. No app, no account, nothing kept.'
     },
     {
+      q: 'How do devices discover each other?',
+      a: 'There are four ways to connect: Nearby device, the 6-digit code, the QR code, and the share link. For Nearby device, open ShareTexts on both devices — if both are on the same supported network, the other device appears automatically. Tap it, the other device accepts, and the connection starts.'
+    },
+    {
+      q: 'Is nearby discovery private?',
+      a: 'Yes. Your device only appears while ShareTexts is open on it, and it disappears within about a minute of closing the tab. Other devices see only a temporary label like "Windows PC" — never your IP, accounts, or any permanent identifier. Devices already connected to a room are not listed, and this is never a global list of ShareTexts users.'
+    },
+    {
       q: 'Is it free?',
       a: 'Yes. ShareText is completely free to use.'
     },
@@ -616,6 +665,7 @@ export function Docs() {
       case 'overview': return <OverviewSection />;
       case 'transfer': return <TransferSection />;
       case 'pairing': return <PairingSection />;
+      case 'nearby': return <NearbySection />;
       case 'troubleshooting': return <TroubleshootingSection />;
       case 'privacy': return <PrivacySection />;
       case 'devices': return <DevicesSection />;

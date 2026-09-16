@@ -35,6 +35,7 @@ import { useLiveStats } from '../lib/useLiveStats';
 import { hapticTap } from '../lib/haptics';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { StayConnectedToggle, StayBadge } from '../components/StayConnectedToggle';
+import { NearbyDevices } from '../components/NearbyDevices';
 import { useI18n } from '../lib/i18n';
 import { LanguageMenu } from '../components/LanguageMenu';
 import { cn, shortCodeOf, sanitizeDeviceName, formatBytes } from '../lib/utils';
@@ -158,6 +159,8 @@ export function SingleScreenApp() {
   // say the room is gone (after a close or expiry) instead of blinking.
   const [stayGone, setStayGone] = useState(false);
   const [isRejoining, setIsRejoining] = useState(false);
+  // Nearby discovery status, lifted into the existing activity tracker line.
+  const [nearbyStatus, setNearbyStatus] = useState<string | null>(null);
   // Device-name editing in the connected pair visual (tap your name to
   // rename — the other device sees the change immediately).
   const [editingName, setEditingName] = useState(false);
@@ -474,6 +477,12 @@ export function SingleScreenApp() {
                   <span className="st-halo-ring st-halo-lag absolute inset-0 rounded-full bg-status-success/25" />
                   <span className="relative w-2 h-2 rounded-full bg-status-success shadow-[0_0_6px_rgba(52,199,89,0.7)]" />
                 </span>
+                {nearbyStatus
+                  ? <span className="text-[16px] font-medium text-apple-ink-muted dark:text-white/70 leading-none">{nearbyStatus}</span>
+                  : <>
+                <span className="text-[19px] font-extrabold text-apple-ink dark:text-white tnum leading-none">{Math.max(roomsCreated ?? 0, 113).toLocaleString()}</span>
+                <span className="text-[16px] font-medium text-apple-ink-muted dark:text-white leading-none">{t('home.roomsMade')}</span>
+                  </>}
                 <span className="text-[19px] font-extrabold text-apple-ink dark:text-white tnum leading-none">{Math.max(roomsCreated ?? 0, 113).toLocaleString()}</span>
                 <span className="text-[16px] font-medium text-apple-ink-muted dark:text-white leading-none">{t('home.roomsMade')}</span>
               </motion.div>
@@ -527,6 +536,15 @@ export function SingleScreenApp() {
                   );
                 })()}
               </AnimatePresence>
+              {/* Nearby device discovery — an OPTIONAL extra path to the same
+                  connection. Sits directly under Send/Receive; the existing
+                  methods stay primary. Renders the exact hint line always,
+                  device rows only when eligible devices are present. */}
+              <div className="order-3 mt-4 w-full flex flex-col items-center lg:items-start">
+                <div className="w-full max-w-md lg:max-w-none">
+                  <NearbyDevices onStatus={setNearbyStatus} />
+                </div>
+              </div>
               {/* The product, as it actually looks — laptop + phone running
                   the real connected UI. Scales itself; breaks out of the
                   hero column to use the full half-pane width. Desktop shows
