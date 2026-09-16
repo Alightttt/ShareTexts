@@ -415,35 +415,30 @@ html.dark .st-skeleton-sweep::after {
   }
 }
 
-/* Theme transition — CSS fallback for browsers without the View Transitions
-   API. The real path is a single composited crossfade (see ThemeToggle). */
-.theme-transitioning,
-.theme-transitioning *,
-.theme-transitioning *::before,
-.theme-transitioning *::after {
-  transition: background-color 0.22s ease, color 0.18s ease, border-color 0.22s ease, fill 0.22s ease, stroke 0.22s ease, box-shadow 0.22s ease !important;
+/* Theme flips are INSTANT (a single class change on <html>); the toggle's
+   thumb spring carries the perceived motion. Cross-fading every element
+   (the old .theme-transitioning rule) transitioned 6 properties on every
+   node in the tree — that was the reported lag on mobile. */
+/* Kill the white flash on screen switches and overscroll: html and #root
+   always carry the active theme's canvas color, and the UA is told which
+   form controls/chrome to render (color-scheme) in both themes. */
+html {
+  background-color: #f7f4ee;
+  color-scheme: light;
+}
+html.dark {
+  background-color: #131315;
+  color-scheme: dark;
 }
 
-/* View Transitions path: a fast, gentle cross-fade of the whole tree —
-   noticeably snappier than per-element CSS transitions. */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 240ms;
-  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
-  mix-blend-mode: normal;
+/* Route-lazy Suspense and AnimatePresence swaps must never show a white
+   frame while dark — every full-screen wrapper paints its own theme color
+   (AppSkeleton, room fallbacks already do). This guards any future wrapper
+   that forgets. */
+#root {
+  background-color: inherit;
 }
-::view-transition-old(root) {
-  animation-name: st-fade-out;
-}
-::view-transition-new(root) {
-  animation-name: st-fade-in;
-}
-@keyframes st-fade-out {
-  to { opacity: 0; }
-}
-@keyframes st-fade-in {
-  from { opacity: 0; }
-}
+
 /* Disconnect toast entrance: settle down from 8px above, no bounce. */
 @keyframes toast-in {
   from { opacity: 0; transform: translate(-50%, -8px); }

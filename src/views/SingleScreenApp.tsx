@@ -91,48 +91,6 @@ function useIsDesktopLayout() {
   return desktop;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Device pair illustration — explains the product visually           */
-/* ------------------------------------------------------------------ */
-function DevicePair({ state }: { state: 'idle' | 'connecting' | 'connected' }) {
-  const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
-  const muted = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
-  const accent = isDark ? '#fb9243' : '#f06413';
-  const beamColor = state === 'connected' ? accent : muted;
-  const deviceColor = state === 'connected'
-    ? (isDark ? 'rgba(167,139,250,0.15)' : 'rgba(139,124,246,0.10)')
-    : muted;
-
-  return (
-    <svg width="120" height="80" viewBox="0 0 120 80" fill="none" className="select-none pointer-events-none">
-      {/* Phone (left) */}
-      <rect x="8" y="12" width="36" height="56" rx="8" fill={deviceColor} stroke={state === 'connected' ? accent : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')} strokeWidth="1.5" />
-      <rect x="14" y="18" width="24" height="38" rx="3" fill={state === 'connected' ? (isDark ? 'rgba(167,139,250,0.08)' : 'rgba(139,124,246,0.06)') : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)')} />
-      {/* Computer (right) */}
-      <rect x="76" y="8" width="36" height="48" rx="6" fill={deviceColor} stroke={state === 'connected' ? accent : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')} strokeWidth="1.5" />
-      <rect x="81" y="13" width="26" height="33" rx="2" fill={state === 'connected' ? (isDark ? 'rgba(167,139,250,0.08)' : 'rgba(139,124,246,0.06)') : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)')} />
-      <rect x="88" y="56" width="12" height="4" rx="1.5" fill={state === 'connected' ? accent : muted} />
-      <rect x="82" y="60" width="24" height="2.5" rx="1.25" fill={state === 'connected' ? accent : muted} />
-      {/* Connection beam */}
-      <line x1="44" y1="40" x2="76" y2="32" stroke={beamColor} strokeWidth="2" strokeDasharray={state === 'connecting' ? '4 3' : 'none'}>
-        {state === 'connecting' && (
-          <animate attributeName="stroke-dashoffset" from="0" to="-14" dur="1s" repeatCount="indefinite" />
-        )}
-      </line>
-      {/* Packet dot */}
-      {state === 'connected' && (
-        <circle r="3" fill={accent}>
-          <animateMotion dur="1.6s" repeatCount="indefinite" keyPoints="0;1;0" keyTimes="0;0.5;1" calcMode="linear" path="M 44 40 L 76 32" />
-        </circle>
-      )}
-      {state === 'connecting' && (
-        <circle r="2.5" fill={accent} opacity="0.6">
-          <animateMotion dur="1.2s" repeatCount="indefinite" keyPoints="0;1;0" keyTimes="0;0.5;1" calcMode="linear" path="M 44 40 L 76 32" />
-        </circle>
-      )}
-    </svg>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /*  Main component                                                    */
@@ -172,6 +130,22 @@ export function SingleScreenApp() {
   // The QR overlay closes itself once this room links — one dismissal per
   // room id, so a transient reconnect blip never re-opens it.
   const qrDismissedForRoomRef = useRef<string | null>(null);
+  // Perceived speed: prewarm the lazily-loaded surfaces while the landing
+  // page is idle, so tapping Receive (scanner), Show QR (renderer), or
+  // completing a pairing (room) never waits on a network round-trip for
+  // the chunk. Fire once, after first paint, completely off the hot path.
+  useEffect(() => {
+    const idle = (cb: () => void) => {
+      const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+      if (typeof w.requestIdleCallback === 'function') w.requestIdleCallback(cb, { timeout: 3000 });
+      else setTimeout(cb, 1200);
+    };
+    idle(() => {
+      void import('./ChatView');
+      void import('../components/QRScanner');
+      void import('qrcode.react');
+    });
+  }, []);
   // /s/<code> share links: opening one should JOIN the room, not show the
   // landing page. The old multi-screen app handled this in JoinSession; the
   // single-screen consolidation dropped it. Restored: on mount, a /s/<code>
@@ -422,7 +396,10 @@ export function SingleScreenApp() {
           <ShareTextLogo size={30} className="w-7 sm:w-[30px] h-auto" />
           <span className="font-semibold tracking-tight text-[19px] sm:text-[21px] text-apple-ink dark:text-white">ShareText</span>
         </a>
-        <div className="flex items-center gap-px">
+        {/* One rhythm for every header control — desktop AND mobile. Each
+            item is a 40px-tall slot on a 6px gap grid; icons are uniform
+            18px. No per-item -my hacks: the grid does the aligning. */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <CommandBarChip onClick={() => setCmdOpen(true)} />
           <LanguageMenu />
           {/* Docs — an OPEN book icon; the name appears as a tooltip on hover. */}
@@ -430,7 +407,7 @@ export function SingleScreenApp() {
             href="/docs"
             aria-label={t('nav.docs')}
             title={t('nav.docs')}
-            className="flex items-center justify-center min-w-[40px] min-h-[40px] rounded-full text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-white/[0.07] transition-colors"
+            className="flex items-center justify-center w-10 h-10 rounded-full text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-white/[0.07] transition-colors"
           >
             {/* Docs — Gravity UI's open book with writing on the page. */}
             <BookOpen width="18" height="18" aria-hidden />
@@ -480,11 +457,9 @@ export function SingleScreenApp() {
                 {nearbyStatus
                   ? <span className="text-[16px] font-medium text-apple-ink-muted dark:text-white/70 leading-none">{nearbyStatus}</span>
                   : <>
-                <span className="text-[19px] font-extrabold text-apple-ink dark:text-white tnum leading-none">{Math.max(roomsCreated ?? 0, 113).toLocaleString()}</span>
-                <span className="text-[16px] font-medium text-apple-ink-muted dark:text-white leading-none">{t('home.roomsMade')}</span>
+                    <span className="text-[19px] font-extrabold text-apple-ink dark:text-white tnum leading-none">{Math.max(roomsCreated ?? 0, 113).toLocaleString()}</span>
+                    <span className="text-[16px] font-medium text-apple-ink-muted dark:text-white leading-none">{t('home.roomsMade')}</span>
                   </>}
-                <span className="text-[19px] font-extrabold text-apple-ink dark:text-white tnum leading-none">{Math.max(roomsCreated ?? 0, 113).toLocaleString()}</span>
-                <span className="text-[16px] font-medium text-apple-ink-muted dark:text-white leading-none">{t('home.roomsMade')}</span>
               </motion.div>
               <div className="order-3 mt-6 flex gap-6 justify-center sm:justify-start">
                 <div className="flex flex-col items-center gap-1.5">
@@ -901,6 +876,7 @@ export function SingleScreenApp() {
           <span className="text-[13px] font-semibold text-apple-ink dark:text-white">
             {panelMode === 'connected' ? t('room.transfer') : t('room.title')}
           </span>
+          {panelMode === 'connected' && <StayBadge />}
           {panelMode === 'connected' && (
             <>
               <span className="w-px h-3 bg-apple-divider dark:bg-white/10" />
@@ -969,24 +945,31 @@ export function SingleScreenApp() {
                   <ConnectHandshake phase="connecting" localIcon={isMobileDevice ? 'phone' : 'monitor'} />
                 </div>
               ) : panelMode === 'idle' ? (
-                /* Desktop idle: everything centered — the steps and the
-                   product scene share one centerline, like the rest of the
-                   app's empty states. */
-                <div className="w-full max-w-[640px] flex flex-col items-center justify-center h-full">
-                  {/* The three steps — numbered, quiet. The block keeps its
-                      centered position in the pane; the text itself is
-                      left-aligned so the rows read like a list, not a poem. */}
-                  <div className="w-full max-w-[400px] space-y-3 text-left mb-8">
-                    {[t('room.step.1'), t('room.step.2'), t('room.step.3')].map((step, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <span className="shrink-0 w-6 h-6 rounded-full bg-ember/[0.1] dark:bg-ember/[0.16] text-ember dark:text-[#fb9243] text-[12px] font-bold flex items-center justify-center">{i + 1}</span>
-                        <span className="text-[14px] font-medium text-apple-ink/80 dark:text-white/60">{step}</span>
-                      </div>
-                    ))}
+                /* Desktop idle: the three steps sit at the pane's EXACT
+                   vertical center (absolute centering, immune to whatever
+                   height the scene below adds); the product scene hangs
+                   beneath the centerline as a quiet coda and steps aside on
+                   short viewports rather than ever shoving the list up. */
+                <div className="relative w-full max-w-[640px] mx-auto h-full">
+                  {/* The three steps — numbered, quiet, dead-center. The
+                      text itself is left-aligned so the rows read like a
+                      list, not a poem. */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-full max-w-[420px] space-y-3.5 text-left pointer-events-auto">
+                      {[t('room.step.1'), t('room.step.2'), t('room.step.3')].map((step, i) => (
+                        <div key={i} className="flex items-center gap-3">
+                          <span className="shrink-0 w-7 h-7 rounded-full bg-ember/[0.1] dark:bg-ember/[0.16] text-ember dark:text-[#fb9243] text-[12.5px] font-bold flex items-center justify-center">{i + 1}</span>
+                          <span className="text-[14.5px] font-medium text-apple-ink/85 dark:text-white/65 leading-snug">{step}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  {/* The product itself, shown as it looks when connected */}
-                  <div className="w-full max-w-[640px] flex justify-center">
-                    <HeroTransferScene />
+                  {/* The product itself, below the centered list. Hidden on
+                      short panes so the steps NEVER move off center. */}
+                  <div className="absolute left-0 right-0 top-[calc(50%+92px)] hidden min-[820px]:flex justify-center">
+                    <div className="w-full max-w-[520px]">
+                      <HeroTransferScene />
+                    </div>
                   </div>
                 </div>
               ) : (

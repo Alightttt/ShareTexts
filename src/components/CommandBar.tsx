@@ -394,7 +394,7 @@ export function CommandBarChip({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       aria-label={t('command.openAria')}
       title={t('command.openAria')}
-      className="hidden lg:flex items-center gap-1.5 h-8 px-2.5 rounded-full border border-black/[0.08] dark:border-white/10 bg-white/70 dark:bg-white/[0.04] text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:border-black/[0.16] dark:hover:border-white/20 hover:bg-white transition-colors"
+      className="hidden lg:flex items-center gap-1.5 h-10 px-3 rounded-full border border-black/[0.08] dark:border-white/10 bg-white/70 dark:bg-white/[0.04] text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:border-black/[0.16] dark:hover:border-white/20 hover:bg-black/[0.04] dark:hover:bg-white/[0.07] transition-colors"
     >
       <Search className="w-3.5 h-3.5" />
       <kbd className="text-[11px] font-semibold font-sans">⌘K</kbd>

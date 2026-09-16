@@ -18,7 +18,13 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: isProd ? ["'self'"] : ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      // The hash whitelists ONLY the index.html pre-paint theme script
+      // (sha256 of its exact body) — it must run before first paint or dark
+      // users get a white flash on every reload. Hash-pinning keeps the CSP
+      // strict; 'unsafe-inline' would defeat the whole policy.
+      scriptSrc: isProd
+        ? ["'self'", "'sha256-WnOGbazC10O+AKn1bjO+3nE034tegoTXq+cdeQ0IsYI='"]
+        : ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
       // Received images/videos render from blob: object URLs.

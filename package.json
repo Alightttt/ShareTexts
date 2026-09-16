@@ -16,7 +16,9 @@
     "worker:test": "node scripts/verify-worker.mjs",
     "test:nearby": "npm run build && node scripts/verify-nearby.mjs",
     "test:fidelity": "node scripts/text-fidelity.mjs",
-    "worker:test-live": "node scripts/verify-worker-live.mjs"
+    "worker:test-live": "node scripts/verify-worker-live.mjs",
+    "test:theme": "node scripts/verify-theme.mjs",
+    "test:mobile": "node scripts/verify-mobile-ui.mjs"
   },
   "dependencies": {
     "@gravity-ui/icons": "^2.22.0",

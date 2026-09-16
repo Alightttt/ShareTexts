@@ -84,21 +84,42 @@ export function ConnectHandshake({ phase, localIcon = 'phone', partnerName }: Co
             <div aria-hidden="true" className="absolute inset-x-1 top-1/2 -translate-y-1/2 border-t border-dashed border-apple-divider dark:border-white/15" />
           )}
 
-          {/* Traveling dot — the only loop, and the simplest honest one: a
-              dot glides level left → right, then back, along the straight
-              dotted line. No bounce, no tilt, no scale. */}
+          {/* Traveling packet — the heartbeat of the scene. A soft comet:
+              the ember dot with a fading tail trail (two lagged echoes),
+              gliding LEVEL left → right and back. Pure x-transform + opacity
+              (compositor-only), staggered echoes give it life without tilt,
+              bounce, or scale. */}
           {connecting && (
-            <motion.span
-              aria-hidden="true"
-              className="absolute top-1/2 w-1.5 h-1.5 rounded-full"
-              style={{ background: accent, left: '50%', marginTop: -3 }}
-              initial={{ x: -gap / 2 + 4, opacity: 0 }}
-              animate={{
-                x: [-gap / 2 + 4, gap / 2 - 4, gap / 2 - 4, -gap / 2 + 4],
-                opacity: [0, 1, 1, 0],
-                transition: { duration: 1.6, times: [0, 0.42, 0.58, 1], repeat: Infinity, ease: 'easeInOut' },
-              }}
-            />
+            <>
+              {[0, 0.5, 1].map((lag) => (
+                <motion.span
+                  key={lag}
+                  aria-hidden="true"
+                  className="absolute top-1/2 rounded-full"
+                  style={{
+                    left: '50%',
+                    background: accent,
+                    width: lag === 0 ? 7 : 5,
+                    height: lag === 0 ? 7 : 5,
+                    marginTop: lag === 0 ? -3.5 : -2.5,
+                    opacity: lag === 0 ? 1 : 0.4 - lag * 0.15,
+                    filter: lag === 0 ? 'drop-shadow(0 0 6px rgba(240,100,19,0.55))' : 'none',
+                  }}
+                  initial={{ x: -gap / 2 + 4 }}
+                  animate={{
+                    x: [-gap / 2 + 4, gap / 2 - 4, gap / 2 - 4, -gap / 2 + 4],
+                    opacity: [0, 1, 1, 0],
+                    transition: {
+                      duration: 1.7,
+                      times: [0, 0.42, 0.58, 1],
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: lag * 0.09,
+                    },
+                  }}
+                />
+              ))}
+            </>
           )}
           <AnimatePresence>
             {connected && (
@@ -130,9 +151,19 @@ export function ConnectHandshake({ phase, localIcon = 'phone', partnerName }: Co
           </AnimatePresence>
         </div>
 
-        {/* Partner tile */}
+        {/* Partner tile — its accent ring pulses gently while linking
+            (a soft breath, alpha-only, never a scale change). */}
         <motion.div className="relative z-10 flex flex-col items-center gap-2">
-          <DeviceTile kindIcon={isPhone ? 'monitor' : 'phone'} accent={connected ? 'rgba(52,199,89,0.45)' : accent} lifted={connecting} />
+          <motion.div
+            animate={connecting ? { boxShadow: [
+              `0 10px 28px -14px ${accent}66`,
+              `0 10px 34px -12px ${accent}99`,
+              `0 10px 28px -14px ${accent}66`,
+            ] } : undefined}
+            transition={connecting ? { duration: 1.7, repeat: Infinity, ease: 'easeInOut' } : undefined}
+          >
+            <DeviceTile kindIcon={isPhone ? 'monitor' : 'phone'} accent={connected ? 'rgba(52,199,89,0.45)' : accent} lifted={connecting} />
+          </motion.div>
           <motion.span
             key={partnerName || 'pair'}
             initial={{ opacity: 0, y: 3 }}

@@ -369,9 +369,9 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
   if (!a) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 8, scale: 0.97 }}
+        initial={{ opacity: 0, y: 10, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: 'spring', bounce: 0.15, duration: 0.3 }}
+        transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
         className={cn(
           "flex w-full items-center gap-2",
           // Row-reverse for own messages puts the selection ring OUTSIDE the
@@ -503,9 +503,9 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
   const lost = a.status === 'complete' && !a.url;
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8, scale: 0.97 }}
+      initial={{ opacity: 0, y: 10, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: 'spring', bounce: 0.15, duration: 0.3 }}
+      transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
       className={cn(
         "flex w-full items-center gap-2",
         isMe ? "flex-row-reverse justify-start" : "justify-start",

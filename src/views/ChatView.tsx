@@ -506,15 +506,42 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     setSelectionCopied(true);
     setTimeout(() => { setSelectionCopied(false); exitSelectMode(); }, 600);
   };
-  // Desktop embedded: land focus in the composer when the room opens (the
-  // right pane mounts fresh on connect). Mobile standalone deliberately does
-  // NOT autofocus — popping the keyboard over the takeover animation is jarring.
+  // Desktop embedded: land focus in the composer the moment the room is
+  // CONNECTED (not just mounted) — the right pane mounts while peers are
+  // still pairing, and grabbing focus then steals keystrokes from nothing.
+  //
+  // Mobile standalone: focus too (the user asked for keyboard-on-connect).
+  // Browsers only RAISE the keyboard from a live user gesture; the connect
+  // moment is usually past one. We still put the caret in the box: on iOS
+  // the first additional tap then opens the keyboard with zero extra
+  // friction, and the composer reads as "ready to type" on every platform.
+  // We never blur afterwards — stealing focus back would undo the benefit.
+  const mountedAtRef = useRef(Date.now());
+  const partnerWasConnectedRef = useRef(false);
   useEffect(() => {
-    if (panelMode === 'embedded') {
-      const t = setTimeout(() => textareaRef.current?.focus({ preventScroll: true }), 350);
-      return () => clearTimeout(t);
-    }
-  }, [panelMode]);
+    const ready = session.partnerConnected;
+    if (!ready || partnerWasConnectedRef.current) return;
+    if (panelMode !== 'embedded' && panelMode !== 'standalone') return;
+    partnerWasConnectedRef.current = true;
+    // The mount sequence around a fresh connect unmounts/remounts panels
+    // (takeover animation, Suspense swap) and ANY of those moves can cancel
+    // a single focus() call — so retry gently until the caret actually
+    // lands (max ~2.4s), then stop. First attempt inside the gesture window
+    // may even raise the mobile keyboard.
+    const fresh = Date.now() - mountedAtRef.current < 1200;
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const attempt = () => {
+      const el = textareaRef.current;
+      if (el && document.activeElement !== el) {
+        el.focus({ preventScroll: true });
+      }
+      if (document.activeElement === el || ++tries > 12) return;
+      timer = setTimeout(attempt, 200);
+    };
+    timer = setTimeout(attempt, fresh ? 380 : 320);
+    return () => clearTimeout(timer);
+  }, [panelMode, session.partnerConnected]);
 
   // Transfer flight: while a file is genuinely in motion (sender hashing it
   // first, then bytes moving), a compact tile travels across the room between
@@ -620,8 +647,10 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             </span>
           </span>
         </button>
-        <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
-          <StayBadge />
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+          {/* Stay badge — tap it to open the details sheet where the toggle
+              lives, so mobile can manage Stay Connected from the room bar. */}
+          <StayBadge onOpenDetails={() => setShowConnectionDetails(true)} />
           <ThemeToggle />
           {/* Two-press inline confirm replaces the old modal: arm fills the
               pill with a danger countdown, second press disconnects. */}
@@ -997,7 +1026,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
               onContextMenu={(e) => e.preventDefault()}
               aria-label={t('attach.add')}
               aria-expanded={showAttachmentMenu}
-              className="min-w-[46px] min-h-[46px] rounded-full flex items-center justify-center shrink-0 bg-white dark:bg-[#232327] border border-apple-divider/70 dark:border-white/[0.08] shadow-[0_1px_2px_rgba(0,0,0,0.05)] text-apple-ink dark:text-white hover:bg-apple-parchment dark:hover:bg-[#2b2b30] transition-colors active:scale-90 select-none [touch-action:manipulation] [-webkit-touch-callout:none]"
+              className="min-w-[44px] min-h-[44px] w-[44px] h-[44px] rounded-full flex items-center justify-center shrink-0 bg-white dark:bg-[#232327] border border-apple-divider/70 dark:border-white/[0.08] shadow-[0_1px_2px_rgba(0,0,0,0.05)] text-apple-ink dark:text-white hover:bg-apple-parchment dark:hover:bg-[#2b2b30] transition-colors active:scale-90 select-none [touch-action:manipulation] [-webkit-touch-callout:none]"
             >
               <Plus className={cn("w-5 h-5 transition-transform duration-200", showAttachmentMenu && "rotate-45")} />
             </button>
@@ -1055,7 +1084,11 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 </motion.div>
               )}
             </AnimatePresence>
-            <div className="flex items-end gap-1.5 px-2.5 pb-[7px] relative">
+            {/* One centerline: the pill row is items-center and the textarea's
+                padding is symmetric, so +, input, and send all share an exact
+                optical center at every height (1 line or grown) — and the
+                single-line pill is a tight 44px, not a padded 51px. */}
+            <div className="flex items-center gap-1.5 px-2.5 relative">
               <textarea
                 ref={textareaRef}
                 data-testid="composer"
@@ -1083,7 +1116,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 onClick={handleSend}
                 disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
                 aria-label={t('composer.send')}
-                className="w-[38px] h-[38px] mb-[3px] rounded-full flex items-center justify-center shrink-0 transition-all duration-200 active:scale-90 text-white bg-ember hover:bg-[#d9560e] disabled:bg-apple-hairline dark:disabled:bg-white/15 disabled:shadow-none shadow-[0_1px_3px_rgba(240,100,19,0.35)]"
+                className="w-[38px] h-[38px] rounded-full flex items-center justify-center shrink-0 transition-all duration-200 active:scale-90 text-white bg-ember hover:bg-[#d9560e] disabled:bg-apple-hairline dark:disabled:bg-white/15 disabled:shadow-none shadow-[0_1px_3px_rgba(240,100,19,0.35)]"
               >
                 {/* Arrow ↔ check morph: the arrow lifts away, a check springs
                     in — a real shape transition, not a crossfade. */}
@@ -1118,21 +1151,23 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
 
             </div>
             </motion.div>
+          {/* Anchored to this row (absolute, above the +) — mounts instantly
+              with isOpen, immune to the open/close race. */}
+          <AttachmentPanel
+            isOpen={showAttachmentMenu}
+            onClose={() => setShowAttachmentMenu(false)}
+            onSelectType={(type) => {
+              // Trigger the matching hidden input in ChatView
+              if (type === 'image') imageInputRef.current?.click();
+              else if (type === 'video') videoInputRef.current?.click();
+              else if (type === 'audio') audioInputRef.current?.click();
+              else fileInputRef.current?.click();
+            }}
+            buttonRef={plusButtonRef}
+          />
           </div>
         </form>
       </div>
-      <AttachmentPanel
-        isOpen={showAttachmentMenu}
-        onClose={() => setShowAttachmentMenu(false)}
-        onSelectType={(type) => {
-          // Trigger the matching hidden input in ChatView
-          if (type === 'image') imageInputRef.current?.click();
-          else if (type === 'video') videoInputRef.current?.click();
-          else if (type === 'audio') audioInputRef.current?.click();
-          else fileInputRef.current?.click();
-        }}
-        buttonRef={plusButtonRef}
-      />
       {/* Apple-style bottom-sheet confirmation before really ending the session. */}
       <ConfirmSheet
         open={confirmDisconnect}

@@ -73,11 +73,11 @@ export function StayConnectedToggle({ className }: { className?: string }) {
  * StayBadge — quiet header chip shown while the room's Stay Connected promise
  * is live. Purely informational; the toggle in the details sheet manages it.
  */
-export function StayBadge({ className }: { className?: string }) {
+export function StayBadge({ className, onOpenDetails }: { className?: string; onOpenDetails?: () => void }) {
   const { session } = useSession();
   const { t } = useI18n();
   if (!session.stayConnected) return null;
-  return (
+  const chip = (
     <span
       role="status"
       aria-label={t('stay.badge')}
@@ -90,5 +90,24 @@ export function StayBadge({ className }: { className?: string }) {
     >
       <InfinityIcon className="w-3.5 h-3.5" strokeWidth={2.4} aria-hidden />
     </span>
+  );
+  // Wrapped in a real button when the header can open the details sheet:
+  // keyboard/touch users get a 44px target and an obvious path to the toggle.
+  if (!onOpenDetails) return chip;
+  return (
+    <button
+      type="button"
+      onClick={onOpenDetails}
+      aria-label={t('stay.badge')}
+      title={t('stay.badge')}
+      data-testid="stay-badge"
+      className="shrink-0 w-11 h-11 -m-2 flex items-center justify-center rounded-full active:scale-90 transition-transform"
+    >
+      <span
+        className="w-7 h-7 rounded-full flex items-center justify-center bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[#f06413] dark:text-[#fb9243]"
+      >
+        <InfinityIcon className="w-3.5 h-3.5" strokeWidth={2.4} aria-hidden />
+      </span>
+    </button>
   );
 }

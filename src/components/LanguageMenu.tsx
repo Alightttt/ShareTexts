@@ -72,9 +72,9 @@ export function LanguageMenu({ className, align = 'right' }: { className?: strin
         aria-expanded={open}
         aria-label={t('lang.menu')}
         title={t('lang.menu')}
-        className="flex items-center justify-center min-w-[30px] min-h-[40px] -my-[10px] rounded-full text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-white/[0.07] transition-colors"
+        className="flex items-center justify-center w-10 h-10 rounded-full text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-white/[0.07] transition-colors"
       >
-        <Languages className="w-[17px] h-[17px]" />
+        <Languages className="w-[18px] h-[18px]" />
       </button>
       <AnimatePresence>
         {open && (

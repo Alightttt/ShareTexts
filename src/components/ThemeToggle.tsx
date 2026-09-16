@@ -57,20 +57,14 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
   const startXRef = useRef(0);
   const startPosRef = useRef(0);
 
+  // The flip itself is INSTANT — iOS-style. Perceived smoothness comes from
+  // the thumb's spring (below), not from cross-fading the whole tree.
+  // The old View Transition snapshot + the all-elements CSS transition
+  // fallback forced a repaint of every node with 200ms+ transitions — that
+  // was the reported "laggy" feel on mobile. A class flip is one style
+  // recalculation; the compositor takes it from there.
   const applyTheme = () => {
-    const doc = document as Document & {
-      startViewTransition?: (cb: () => void) => unknown;
-    };
-    if (typeof doc.startViewTransition === 'function' &&
-        !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      doc.startViewTransition(() => toggle());
-      return;
-    }
-    document.documentElement.classList.add('theme-transitioning');
     toggle();
-    setTimeout(() => {
-      document.documentElement.classList.remove('theme-transitioning');
-    }, 260);
   };
 
   // State → thumb position. Skipped while dragging (the pointer owns x).
