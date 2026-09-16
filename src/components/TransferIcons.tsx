@@ -25,47 +25,11 @@ export function ReceiveCircleIcon({ className = '', size = 20 }: { className?: s
 }
 
 /**
- * DisconnectGlyph — "leave through the door": a door frame whose leaf has
- * been swung open, with an arrow walking out through the doorway. Redrawn
- * on a 24-grid with a true open leaf (hinge on the frame's left edge, the
- * panel swinging toward the viewer) so the metaphor reads instantly at
- * 14–19px in both themes.
+ * DisconnectGlyph — "leave through the door": Gravity UI's
+ * ArrowRightFromSquare (square with an arrow exiting it). Re-exported so
+ * call sites keep one import path; sized 16–20px at usage sites.
  */
+import { ArrowRightFromSquare as _glyph } from '@gravity-ui/icons';
 export function DisconnectGlyph({ className = '', size = 16 }: { className?: string; size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      {/* Door frame — right portion of the wall, opening on its left edge */}
-      <path
-        d="M13 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"
-        stroke="currentColor"
-        strokeWidth="1.9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* The leaf, swung open toward the viewer: hinge on the frame's left
-          edge (x=13), the free edge swung out to x=9.5 — the opening the
-          arrow walks through. */}
-      <path
-        d="M13 3.5 9.5 5.2v13.6L13 20.5"
-        stroke="currentColor"
-        strokeWidth="1.9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* Arrow out through the doorway, to the left */}
-      <path
-        d="M2.5 12h8"
-        stroke="currentColor"
-        strokeWidth="1.9"
-        strokeLinecap="round"
-      />
-      <path
-        d="M6.5 7.5 2.5 12l4 4.5"
-        stroke="currentColor"
-        strokeWidth="1.9"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  return <_glyph width={size} height={size} className={className} aria-hidden />;
 }

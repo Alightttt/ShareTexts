@@ -12,6 +12,7 @@ import { DraggableImage } from '../components/DraggableImage';
 import { AnimatedIcon } from '../components/AnimatedIcon';
 import { DisconnectGlyph } from '../components/TransferIcons';
 import { ConfirmSheet } from '../components/ConfirmSheet';
+import { StayConnectedToggle, StayBadge } from '../components/StayConnectedToggle';
 import { cn, formatBytes, sanitizeDeviceName } from '../lib/utils';
 import { Attachment } from '../types';
 import { MessageCard } from '../components/MessageCard';
@@ -620,6 +621,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           </span>
         </button>
         <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+          <StayBadge />
           <ThemeToggle />
           {/* Two-press inline confirm replaces the old modal: arm fills the
               pill with a danger countdown, second press disconnects. */}
@@ -629,7 +631,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             onClick={() => setConfirmDisconnect(true)}
             className="flex items-center gap-1.5 rounded-full font-semibold min-h-[40px] px-3 text-[12.5px] text-apple-ink-muted hover:text-status-danger hover:bg-status-danger/10 active:scale-[0.96] transition-colors"
           >
-            <DisconnectGlyph size={14} />
+            <DisconnectGlyph size={16} />
             <span className="hidden sm:inline">{t('common.disconnect')}</span>
           </button>
         </div>
@@ -729,6 +731,9 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                   </button>
                 </div>
               )}
+              {/* Stay Connected: flip it here, both devices' badges follow
+                  (server echoes room-wide). Exempts the room from expiry. */}
+              <StayConnectedToggle className="mt-3" />
               {/* The pairing code lives here, not on screen: it\u2019s only
                   needed if the other device drops and has to rejoin, so it\u2019s
                   one tap away instead of always visible. */}

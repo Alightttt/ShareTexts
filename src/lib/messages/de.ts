@@ -239,6 +239,14 @@ const de: Dict = {
   'select.copied': 'Kopiert',
   'select.aria': 'Nachricht auswählen',
   'select.clear': 'Auswahl aufheben',
+  // ── stay connected ────────────────────────────────────────────────
+  'stay.title': 'Verbunden bleiben',
+  'stay.hint': 'Hält diesen Raum offen, bis du ihn selbst trennst.',
+  'stay.badge': 'Dieser Raum bleibt verbunden',
+  'stay.rejoinTitle': 'Zurück in deinen Raum',
+  'stay.rejoinHint': 'Dein dauerhaft verbundener Raum wartet – samt Verlauf.',
+  'stay.rejoining': 'Verbinde erneut…',
+
 };
 
 export default de;

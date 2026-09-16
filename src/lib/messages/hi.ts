@@ -239,6 +239,14 @@ const hi: Dict = {
   'select.copied': 'कॉपी हो गया',
   'select.aria': 'संदेश चुनें',
   'select.clear': 'चयन हटाएँ',
+  // ── stay connected ────────────────────────────────────────────────
+  'stay.title': 'जुड़े रहें',
+  'stay.hint': 'यह कमरा तब तक चालू रहेगी जब तक आप खुद इसे बंद न करें।',
+  'stay.badge': 'यह कमरा जुड़ी रहेगी',
+  'stay.rejoinTitle': 'अपने कमरे में वापस जाएँ',
+  'stay.rejoinHint': 'आपका जुड़ा हुआ कमरा इतिहास सहित इंतज़ार कर रहा है।',
+  'stay.rejoining': 'दोबारा जुड़ रहे हैं…',
+
 };
 
 export default hi;

@@ -67,4 +67,12 @@ export interface SessionState {
    *  iPhone 2") because both peers still had the same default name at first
    *  connect. The UI can surface a one-time, dismissible notice about it. */
   nameAutoAdjusted?: boolean;
+  /** Stay Connected: both devices agreed to keep the room alive until one
+   *  explicitly disconnects. Server exempts the room from expiry; both sides
+   *  show the badge, and the landing page offers one-tap re-entry. */
+  stayConnected: boolean;
+  /** Credentials for the last Stay Connected room this device was in, kept
+   *  after a normal disconnect so the landing page can offer re-entry with
+   *  history. Cleared when the user explicitly closes the room. */
+  lastStayRoom?: { roomId: string; secret: string } | null;
 }

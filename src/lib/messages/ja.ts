@@ -239,6 +239,14 @@ const ja: Dict = {
   'select.copied': 'コピーしました',
   'select.aria': 'メッセージを選択',
   'select.clear': '選択を解除',
+  // ── stay connected ────────────────────────────────────────────────
+  'stay.title': '接続を維持',
+  'stay.hint': '自分で切断するまで、このルームは生きたままです。',
+  'stay.badge': 'このルームは接続を維持します',
+  'stay.rejoinTitle': 'ルームに戻る',
+  'stay.rejoinHint': '履歴ごと、維持中のルームが待っています。',
+  'stay.rejoining': '再接続中…',
+
 };
 
 export default ja;

@@ -239,6 +239,14 @@ const zh: Dict = {
   'select.copied': '已复制',
   'select.aria': '选择消息',
   'select.clear': '清除选择',
+  // ── stay connected ────────────────────────────────────────────────
+  'stay.title': '保持连接',
+  'stay.hint': '在自己主动断开之前，此房间将一直保持可用。',
+  'stay.badge': '此房间将保持连接',
+  'stay.rejoinTitle': '回到你的房间',
+  'stay.rejoinHint': '你的常连房间正在等待，历史记录都在。',
+  'stay.rejoining': '正在重新连接…',
+
 };
 
 export default zh;

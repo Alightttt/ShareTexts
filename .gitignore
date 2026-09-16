@@ -27,3 +27,9 @@ worker/.wrangler/
 
 # lifetime rooms counter (runtime state)
 .rooms-total.json
+
+# stay-connected durability registry (runtime state)
+.stay-rooms.json
+
+# local test artifacts
+test-results/

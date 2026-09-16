@@ -239,6 +239,14 @@ const pt: Dict = {
   'select.copied': 'Copiado',
   'select.aria': 'Selecionar mensagem',
   'select.clear': 'Limpar seleção',
+  // ── stay connected ────────────────────────────────────────────────
+  'stay.title': 'Manter ligado',
+  'stay.hint': 'Mantém esta sala ativa até que você a desligue.',
+  'stay.badge': 'Esta sala ficará ligada',
+  'stay.rejoinTitle': 'Voltar à sua sala',
+  'stay.rejoinHint': 'A sua sala ligada está à espera, com o seu histórico.',
+  'stay.rejoining': 'A reconectar…',
+
 };
 
 export default pt;

@@ -34,12 +34,14 @@ import { HeroTransferScene } from '../components/HeroTransferScene';
 import { useLiveStats } from '../lib/useLiveStats';
 import { hapticTap } from '../lib/haptics';
 import { ConfirmSheet } from '../components/ConfirmSheet';
+import { StayConnectedToggle, StayBadge } from '../components/StayConnectedToggle';
 import { useI18n } from '../lib/i18n';
 import { LanguageMenu } from '../components/LanguageMenu';
 import { cn, shortCodeOf, sanitizeDeviceName, formatBytes } from '../lib/utils';
 import {
   LogOut, QrCode, Link2, Copy, Check,
-  Smartphone, Monitor, X, Wifi, ArrowRightLeft, ArrowLeft, Info, Pencil, WifiOff, ServerOff
+  Smartphone, Monitor, X, Wifi, ArrowRightLeft, ArrowLeft, Info, Pencil, WifiOff, ServerOff,
+  Infinity as InfinityIcon
 } from 'lucide-react';
 import { generateTOTP } from '../lib/totp';
 import { useFocusTrap } from '../lib/useFocusTrap';
@@ -136,7 +138,7 @@ function DevicePair({ state }: { state: 'idle' | 'connecting' | 'connected' }) {
 /* ------------------------------------------------------------------ */
 export function SingleScreenApp() {
   const { t } = useI18n();
-  const { session, createSession, abandonSession, joinWithCode, joinWithShortCode, setDeviceName } = useSession();
+  const { session, createSession, abandonSession, joinWithCode, joinWithShortCode, setDeviceName, rejoinStayRoom } = useSession();
   const isDesktopLayout = useIsDesktopLayout();
   // Live activity tracker — real aggregate numbers from the signaling
   // service: devices seated right now + rooms ever created.
@@ -152,6 +154,10 @@ export function SingleScreenApp() {
   const [isJoining, setIsJoining] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  // Stay Connected re-entry: remembers failure so the button can honestly
+  // say the room is gone (after a close or expiry) instead of blinking.
+  const [stayGone, setStayGone] = useState(false);
+  const [isRejoining, setIsRejoining] = useState(false);
   // Device-name editing in the connected pair visual (tap your name to
   // rename — the other device sees the change immediately).
   const [editingName, setEditingName] = useState(false);
@@ -173,6 +179,9 @@ export function SingleScreenApp() {
   // Prewarm the signaling socket the moment the landing mounts: by the time
   // a user taps Send, the WebSocket is already open — the code appears
   // instantly instead of waiting for a handshake.
+  // A fresh Stay Connected promise (or a new credential) clears the
+  // "room gone" state so the landing button comes back.
+  useEffect(() => { if (session.lastStayRoom) setStayGone(false); }, [session.lastStayRoom]);
   useEffect(() => { prewarmSignaling(); }, []);
   useEffect(() => {
     const m = window.location.pathname.match(/^\/s\/([0-9a-f]{8})$/i);
@@ -322,6 +331,17 @@ export function SingleScreenApp() {
 
   const handleReceive = useCallback(() => { hapticTap(); setPanelMode('receiving'); setCreateError(null); setJoinError(null); }, []);
 
+  // One-tap re-entry into the last Stay Connected room. False = the room
+  // is really gone (close/expiry) — say so instead of blinking the button.
+  const handleStayRejoin = useCallback(async () => {
+    if (isRejoining) return;
+    hapticTap();
+    setIsRejoining(true);
+    const ok = await rejoinStayRoom();
+    setIsRejoining(false);
+    if (!ok) setStayGone(true);
+  }, [isRejoining, rejoinStayRoom]);
+
   const handleCodeComplete = useCallback(async (code: string) => {
     if (isJoining) return;
     setIsJoining(true);
@@ -467,6 +487,46 @@ export function SingleScreenApp() {
                   <span className="text-[11.5px] lg:text-[13px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.receiveHint')}</span>
                 </div>
               </div>
+              {/* Stay Connected re-entry: the room this device promised to
+                  keep alive is one tap away — history included. Only shown
+                  when idle AND not currently seated elsewhere. */}
+              <AnimatePresence>
+                {(() => {
+                  const stay = session.lastStayRoom;
+                  if (!stay || stayGone) return null;
+                  return (
+                    <motion.div
+                      key="stay-rejoin"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 4 }}
+                      transition={{ type: 'spring', bounce: 0, duration: 0.32 }}
+                      className="order-4 mt-3 w-full"
+                    >
+                      <button
+                        type="button"
+                        data-testid="stay-rejoin"
+                        onClick={handleStayRejoin}
+                        disabled={isRejoining}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-[16px] bg-[#f06413]/[0.06] dark:bg-[#fb9243]/[0.08] border border-[#f06413]/20 dark:border-[#fb9243]/25 hover:border-[#f06413]/40 dark:hover:border-[#fb9243]/45 transition-colors text-left disabled:opacity-60"
+                      >
+                        <span className="shrink-0 w-8 h-8 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/15 flex items-center justify-center text-[#f06413] dark:text-[#fb9243]" aria-hidden>
+                          <InfinityIcon className="w-4 h-4" strokeWidth={2.2} />
+                        </span>
+                        <span className="flex-1 flex flex-col min-w-0 leading-tight">
+                          <span className="text-[13.5px] font-semibold text-apple-ink dark:text-white">
+                            {isRejoining ? t('stay.rejoining') : t('stay.rejoinTitle')}
+                          </span>
+                          <span className="text-[11.5px] font-medium text-apple-ink-muted dark:text-white/45 truncate">
+                            {t('stay.rejoinHint')}
+                          </span>
+                        </span>
+                        {!isRejoining && <ArrowRightLeft className="w-4 h-4 shrink-0 text-[#f06413]/70 dark:text-[#fb9243]/70" aria-hidden />}
+                      </button>
+                    </motion.div>
+                  );
+                })()}
+              </AnimatePresence>
               {/* The product, as it actually looks — laptop + phone running
                   the real connected UI. Scales itself; breaks out of the
                   hero column to use the full half-pane width. Desktop shows
@@ -741,10 +801,14 @@ export function SingleScreenApp() {
                   onClick={() => setConfirmDisconnect(true)}
                   className="flex items-center gap-1.5 rounded-full font-semibold min-h-[40px] px-3 text-[12.5px] text-status-danger/80 hover:text-status-danger hover:bg-status-danger/10 active:scale-[0.96] transition-colors"
                 >
-                  <DisconnectGlyph size={14} />
+                  <DisconnectGlyph size={16} />
                   {t('common.disconnect')}
                 </button>
               </div>
+
+              {/* Stay Connected: same control as the details sheet — flipping
+                  it here follows both devices via the server echo. */}
+              <StayConnectedToggle className="mt-3" />
 
               {/* The right pane (desktop) or the room itself (mobile) is
                   self-explanatory — the old bullet list here repeated what
@@ -848,7 +912,7 @@ export function SingleScreenApp() {
           disabled={panelMode !== 'connected'}
           aria-label={t('common.disconnectAria')}
         >
-          <DisconnectGlyph size={17} />
+          <DisconnectGlyph size={18} />
         </button>
       </div>
 

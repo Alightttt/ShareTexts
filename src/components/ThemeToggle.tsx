@@ -20,25 +20,25 @@ import { useTheme } from '../lib/theme';
  *                                    track; release settles by midpoint
  *   keyboard (Enter/Space)         → toggle; role=switch + aria-checked
  *
- * The visible pill stays 82×36; the clickable/keyboard target is an
- * invisible padded wrapper (~92×46) so the hit area stays comfortable
+ * The visible pill stays 64×30; the clickable/keyboard target is an
+ * invisible padded wrapper so the hit area stays comfortable
  * without ever changing the visual size.
  */
 
 /* ── Geometry ───────────────────────────────────────────────────────────
- * Reference-measured spec, scaled to a medium header footprint: 82×36
- * track, 50×32 thumb, 2px inset, 28px travel. Same wide-pill silhouette
+ * Compact header footprint: 64×30 track, 40×26 thumb, 2px inset, 20px
+ * travel. Same wide-pill silhouette
  * at every breakpoint — all sizes FIXED: no vw, no clamp(), no responsive
  * prefixes, no aspect-ratio.
  */
-const TRACK_W = 82;
-const TRACK_H = 36;
-const INSET = 2;                      // (36 − 32) / 2
-const THUMB_W = 50;
-const THUMB_H = 32;
-const X_ON = TRACK_W - THUMB_W - 2 * INSET; // 28 — thumb's travel distance
-const RADIUS_TRACK = 18;
-const RADIUS_THUMB = 16;
+const TRACK_W = 64;
+const TRACK_H = 30;
+const INSET = 2;                      // (30 − 26) / 2
+const THUMB_W = 40;
+const THUMB_H = 26;
+const X_ON = TRACK_W - THUMB_W - 2 * INSET; // 20 — thumb's travel distance
+const RADIUS_TRACK = 15;
+const RADIUS_THUMB = 13;
 /* iOS settle: quick ease-out without overshoot. */
 const SPRING = { type: 'spring', stiffness: 550, damping: 38 } as const;
 

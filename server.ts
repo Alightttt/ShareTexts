@@ -337,9 +337,58 @@ interface Room {
   codeAnchor: number;
   lastActive: number;
   activePeers: Set<string>;
+  /** Stay Connected: both devices asked to keep the room alive until one
+   *  explicitly closes it. Exempts the room from every TTL sweep — it only
+   *  dies when a seated device emits close_room. */
+  stayConnected?: boolean;
 }
 
 const rooms = new Map<string, Room>();
+
+// --- Stay Connected durability ---------------------------------------------
+// A Stay Connected promise must survive a server restart/redeploy. The
+// registry stores { roomId: sha256(secret) } — NEVER the secret itself. On
+// resume, a device proves ownership by presenting the full secret, which is
+// hashed and compared; the id alone reveals nothing usable.
+const STAY_FILE = path.join(process.cwd(), '.stay-rooms.json');
+const STAY_REGISTRY_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // promises die after 30 idle days
+const stayRooms = new Map<string, string>(); // roomId -> sha256(secret)
+
+function secretHash(secret: string): string {
+  return crypto.createHash('sha256').update(secret).digest('hex');
+}
+
+function loadStayRooms(): void {
+  try {
+    const raw = JSON.parse(readFileSync(STAY_FILE, 'utf8')) as { savedAt?: number; rooms?: Record<string, string> };
+    if (!raw || typeof raw !== 'object' || !raw.rooms) return;
+    // Prune the whole registry if it went untouched past the max age — a
+    // month-old promise is noise, and this keeps the file from growing forever.
+    if (typeof raw.savedAt === 'number' && Date.now() - raw.savedAt > STAY_REGISTRY_MAX_AGE) return;
+    for (const [id, hash] of Object.entries(raw.rooms)) {
+      if (typeof id === 'string' && id.length <= 64 && typeof hash === 'string' && /^[0-9a-f]{64}$/.test(hash)) {
+        stayRooms.set(id, hash);
+      }
+    }
+  } catch { /* no file yet or unreadable — start empty */ }
+}
+
+function persistStayRooms(): void {
+  try {
+    writeFileSync(STAY_FILE, JSON.stringify({ savedAt: Date.now(), rooms: Object.fromEntries(stayRooms) }));
+  } catch { /* best-effort durability; the in-memory set still works */ }
+}
+
+function rememberStayRoom(roomId: string, secret: string): void {
+  stayRooms.set(roomId, secretHash(secret));
+  persistStayRooms();
+}
+
+function forgetStayRoom(roomId: string): void {
+  if (stayRooms.delete(roomId)) persistStayRooms();
+}
+
+loadStayRooms();
 
 // Track which rooms a just-disconnected socket belonged to so that when it
 // reconnects via connectionStateRecovery we can notify the other peer.
@@ -381,6 +430,10 @@ function releaseStaleSeats(socketId: string, keepRoomId?: string) {
 setInterval(() => {
   const now = Date.now();
   for (const [id, room] of rooms.entries()) {
+    // Stay Connected rooms are exempt from idle/empty expiry — they live
+    // until a device explicitly disconnects. (TTLs guard against abandoned
+    // rooms piling up; an explicit user promise overrides that guard.)
+    if (room.stayConnected) continue;
     if (now - room.lastActive > ROOM_TTL) {
       rooms.delete(id);
       io.to(id).emit('room_closed', { reason: 'idle_timeout' });
@@ -457,7 +510,7 @@ io.on('connection', (socket) => {
     count('rooms.created');
     // codeAnchor anchors the pairing-code window (90s from room creation,
     // re-anchored on refresh_code when the creator lands on the connect screen).
-    cb({ success: true, roomId, secret, createdAt: rooms.get(roomId)!.codeAnchor });
+    cb({ success: true, roomId, secret, createdAt: rooms.get(roomId)!.codeAnchor, stayConnected: false });
   });
 
   safeOn('join_with_code', ({ code }, cb) => {
@@ -545,7 +598,7 @@ io.on('connection', (socket) => {
 
     socket.to(roomId).emit('peer_joined', { peerId: socket.id });
     count('joins.succeeded');
-    cb({ success: true, roomId, secret: room.secret, createdAt: room.codeAnchor });
+    cb({ success: true, roomId, secret: room.secret, createdAt: room.codeAnchor, stayConnected: !!room.stayConnected });
   });
 
   // Resolve a stable /s/<code> share link to the room it points at. The
@@ -559,18 +612,39 @@ io.on('connection', (socket) => {
     for (const room of rooms.values()) {
       if (room.id.replace(/-/g, '').slice(0, 8) === key) {
         count('links.resolved');
-        return cb({ success: true, roomId: room.id, secret: room.secret, createdAt: room.codeAnchor });
+        return cb({ success: true, roomId: room.id, secret: room.secret, createdAt: room.codeAnchor, stayConnected: !!room.stayConnected });
       }
     }
     cb({ success: false, error: 'Invalid link' });
   });
 
-  // Rejoin after a page refresh. Requires the session secret, which only a
-  // device that previously joined the room can hold.
+  // Rejoin after a page refresh — or after a RESTART, for Stay Connected
+  // rooms. Requires the session secret, which only a device that previously
+  // joined the room can hold.
   safeOn('resume_room', ({ roomId, secret }, cb) => {
-    const room = rooms.get(roomId);
+    let room = rooms.get(roomId);
     if (!room || room.secret !== secret) {
-      return cb({ success: false, error: 'Session expired' });
+      // Restart resurrection: if this room carries a live Stay Connected
+      // promise and the caller presents the right secret, rebuild it with a
+      // fresh code window. The room was memory-only before; the registry
+      // (roomId → secret hash) is what made it durable.
+      if (stayRooms.get(roomId) === secretHash(secret)) {
+        room = {
+          id: roomId,
+          secret,
+          creatorId: socket.id,
+          createdAt: Date.now(),
+          codeAnchor: Date.now(),
+          lastActive: Date.now(),
+          activePeers: new Set<string>(),
+          stayConnected: true,
+        };
+        rooms.set(roomId, room);
+        log('stay resurrect', roomId.slice(0, 8), 'peer', socket.id.slice(0, 8));
+        count('stay.resurrected');
+      } else {
+        return cb({ success: false, error: 'Session expired' });
+      }
     }
 
     // Drop stale peers that are no longer connected so the returning device
@@ -598,7 +672,7 @@ io.on('connection', (socket) => {
 
     // Tell the other (live) peer to re-establish the connection with us.
     socket.to(roomId).emit('peer_joined', { peerId: socket.id });
-    cb({ success: true, roomId, secret: room.secret, createdAt: room.codeAnchor });
+    cb({ success: true, roomId, secret: room.secret, createdAt: room.codeAnchor, stayConnected: !!room.stayConnected });
   });
 
   // The creator reached the connect screen — re-anchor the code window so the
@@ -667,9 +741,42 @@ io.on('connection', (socket) => {
     const room = rooms.get(roomId);
     if (room && room.activePeers.has(socket.id)) {
       rooms.delete(roomId);
+      // An explicit close ends even a Stay Connected promise — drop it from
+      // the durability registry so nothing revives a room the user ended.
+      forgetStayRoom(roomId);
       io.to(roomId).emit('room_closed', { reason: 'manual_close' });
       count('rooms.closed:manual_close');
     }
+  });
+
+  // --- Stay Connected -------------------------------------------------------
+  // Either seated device can flip the switch (both sides render a toggle in
+  // the room UI); the server is the source of truth and echoes the state to
+  // the WHOLE room so both badges always agree.
+  safeOn('stay_connected_enable', ({ roomId }, cb) => {
+    const room = rooms.get(roomId);
+    if (!room || !room.activePeers.has(socket.id)) {
+      return cb?.({ success: false, error: 'Not a member' });
+    }
+    room.stayConnected = true;
+    // Survive-restart durability: store the room id + a hash of its secret
+    // (never the secret) so a redeploy can still honor the promise.
+    rememberStayRoom(roomId, room.secret);
+    io.to(roomId).emit('stay_connected_state', { enabled: true });
+    count('stay.enabled');
+    cb?.({ success: true, enabled: true });
+  });
+
+  safeOn('stay_connected_disable', ({ roomId }, cb) => {
+    const room = rooms.get(roomId);
+    if (!room || !room.activePeers.has(socket.id)) {
+      return cb?.({ success: false, error: 'Not a member' });
+    }
+    room.stayConnected = false;
+    forgetStayRoom(roomId);
+    io.to(roomId).emit('stay_connected_state', { enabled: false });
+    count('stay.disabled');
+    cb?.({ success: true, enabled: false });
   });
 
   socket.on('disconnect', () => {

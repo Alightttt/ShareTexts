@@ -239,6 +239,14 @@ const ar: Dict = {
   'select.copied': 'تم النسخ',
   'select.aria': 'تحديد الرسالة',
   'select.clear': 'مسح التحديد',
+  // ── stay connected ────────────────────────────────────────────────
+  'stay.title': 'البقاء متصلًا',
+  'stay.hint': 'تبقى هذه الغرفة حية حتى تقوم أنت بقطعها.',
+  'stay.badge': 'ستبقى هذه الغرفة متصلة',
+  'stay.rejoinTitle': 'العودة إلى غرفتك',
+  'stay.rejoinHint': 'غرفتك دائمة الاتصال بانتظارك، مع سجلّك.',
+  'stay.rejoining': 'جارٍ إعادة الاتصال…',
+
 };
 
 export default ar;

@@ -266,6 +266,14 @@ const en = {
   'select.copied': 'Copied',
   'select.aria': 'Select message',
   'select.clear': 'Clear selection',
+  // ── stay connected ────────────────────────────────────────────────
+  'stay.title': 'Stay Connected',
+  'stay.hint': 'Keeps this room alive until you disconnect it yourself.',
+  'stay.badge': 'This room will stay connected',
+  'stay.rejoinTitle': 'Rejoin your room',
+  'stay.rejoinHint': 'Your Stay Connected room is waiting — with your history.',
+  'stay.rejoining': 'Rejoining…',
+
 };
 
 export default en;

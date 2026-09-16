@@ -59,6 +59,12 @@ interface SessionContextValue {
   closeSession: () => void;
   leaveView: () => void;
   abandonSession: () => void;
+  /** Flip this room's Stay Connected promise (server echoes the state to
+   *  both devices). No-op when not seated in a room. */
+  setStayConnected: (enabled: boolean) => void;
+  /** Re-enter the last Stay Connected room from the landing page. Resolves
+   *  false when no promise is remembered or the room is truly gone. */
+  rejoinStayRoom: () => Promise<boolean>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -81,6 +87,8 @@ interface StoredSession {
   deviceName?: string;
   partnerName?: string | null;
   messages?: ChatMessage[];
+  /** Room's Stay Connected state, persisted so a refresh restores the badge. */
+  stayConnected?: boolean;
 }
 
 // Rooms are persistent: credentials + recent messages live in localStorage so
@@ -95,6 +103,36 @@ function loadStoredSession(): StoredSession | null {
     }
   } catch { /* ignore */ }
   return null;
+}
+
+// Stay Connected rooms survive normal disconnects: the credentials live in a
+// separate key so a casual "session ended" clear never destroys the promise.
+// A sanitized message snapshot rides along so re-entry restores the chat —
+// resetSession deliberately clears the MAIN stored session, so this key is
+// the only surviving copy of the room's history.
+const LAST_STAY_KEY = 'sharetext.lastStayRoom.v1';
+interface LastStayRoom { roomId: string; secret: string; messages?: ChatMessage[] }
+function loadLastStayRoom(): LastStayRoom | null {
+  try {
+    const raw = localStorage.getItem(LAST_STAY_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p && typeof p.roomId === 'string' && typeof p.secret === 'string') return p;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+function saveLastStayRoom(v: LastStayRoom | null) {
+  try {
+    if (v) localStorage.setItem(LAST_STAY_KEY, JSON.stringify(v));
+    else localStorage.removeItem(LAST_STAY_KEY);
+  } catch { /* ignore */ }
+}
+/** Refresh ONLY the credential half of the last-stay record, preserving any
+ *  message snapshot already saved for that room. */
+function saveLastStayCredentials(roomId: string, secret: string) {
+  const prev = loadLastStayRoom();
+  saveLastStayRoom({ roomId, secret, messages: prev?.roomId === roomId ? prev.messages : undefined });
 }
 
 function saveStoredSession(s: StoredSession | null) {
@@ -241,7 +279,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       connectionType: stored?.roomId ? 'waiting' : 'disconnected',
       messages: sanitizeStoredMessages(stored?.messages),
       deviceName: stored?.deviceName || guessDeviceName(),
-      partnerName: stored?.partnerName ?? null
+      partnerName: stored?.partnerName ?? null,
+      stayConnected: stored?.stayConnected ?? false,
+      lastStayRoom: loadLastStayRoom()
     };
   });
 
@@ -333,8 +373,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         createdAt: session.createdAt,
         deviceName: session.deviceName,
         partnerName: session.partnerName,
+        stayConnected: session.stayConnected,
         messages: sanitizeStoredMessages(session.messages.slice(-100))
       };
+      // While the Stay Connected promise is live, mirror the latest history
+      // into the last-stay record: resetSession will clear the main stored
+      // session on disconnect, and this snapshot is what re-entry restores.
+      if (session.stayConnected) {
+        saveLastStayCredentials(session.roomId, session.secret);
+        const stay = loadLastStayRoom();
+        if (stay) saveLastStayRoom({ ...stay, messages: payload.messages });
+      }
       try {
         const serialized = JSON.stringify(payload);
         // Guard against overflowing localStorage with huge messages.
@@ -345,7 +394,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       } catch { /* ignore */ }
     }, 300);
     return () => clearTimeout(timer);
-  }, [session.roomId, session.secret, session.isCreator, session.deviceName, session.partnerName, session.messages]);
+  }, [session.roomId, session.secret, session.isCreator, session.deviceName, session.partnerName, session.messages, session.stayConnected]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -420,6 +469,20 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       } else {
         resetSession(reason || 'closed');
       }
+    });
+
+    // Stay Connected: the server echoes the room-wide state so both badges
+    // always agree, no matter which device flipped the switch.
+    socket.on('stay_connected_state', ({ enabled }: { enabled?: boolean }) => {
+      diag('stay.state', !!enabled);
+      setSession(s => {
+        if (enabled && s.roomId && s.secret) {
+          // Remember the room the moment Stay Connected is on, so the
+          // landing page can offer re-entry even after a later disconnect.
+          saveLastStayCredentials(s.roomId, s.secret);
+        }
+        return { ...s, stayConnected: !!enabled };
+      });
     });
 
     // Agent push API — a script/AI agent pushed text or a file into this
@@ -949,7 +1012,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           isCreator: stored.isCreator,
           partnerConnected: false,
           partnerConnecting: false,
-          connectionType: 'connecting'
+          connectionType: 'connecting',
+          // Server is the source of truth for the Stay Connected badge.
+          stayConnected: !!(res as { stayConnected?: boolean }).stayConnected
         }));
         if (peerManagerRef.current) peerManagerRef.current.destroy();
         void createPeerManager(stored.roomId, stored.secret, false).then(pm => {
@@ -1020,7 +1085,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
               messages: [],
               closedReason: null,
               deviceName: session.deviceName,
-              partnerName: null
+              partnerName: null,
+              stayConnected: false,
+              lastStayRoom: session.lastStayRoom
             });
             resolve();
           } else {
@@ -1192,7 +1259,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       messages: keptMessages,
       closedReason: null,
       deviceName: session.deviceName,
-      partnerName: null
+      partnerName: null,
+      stayConnected: false,
+      lastStayRoom: session.lastStayRoom
     });
     if (peerManagerRef.current) peerManagerRef.current.destroy();
     void createPeerManager(roomId, secret, false).then(pm => {
@@ -1491,6 +1560,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     if (session.roomId) {
       getSocket().emit('close_room', { roomId: session.roomId });
     }
+    // An explicit close ends even a Stay Connected room for both devices.
+    // The re-entry credential is dropped too — the user chose to end it.
+    if (session.stayConnected) saveLastStayRoom(null);
     resetSession('manual_close');
   };
 
@@ -1532,7 +1604,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         try { URL.revokeObjectURL(m.attachment.url); } catch { /* noop */ }
       }
     }
-    // 5. Clear localStorage FIRST — this prevents auto-resume on next load
+    // 5. Clear localStorage FIRST — this prevents auto-resume on next load.
+    // lastStayRoom is deliberately KEPT: a Stay Connected promise outlives a
+    // casual disconnect so the landing page can offer re-entry. It is only
+    // cleared by closeSession (explicit close) or the re-entry itself.
     saveStoredSession(null);
     // 6. Clear the URL bar (remove /s/<code> or ?join= params)
     try {
@@ -1552,12 +1627,84 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       messages: [],
       closedReason: reason,
       deviceName: s.deviceName,
-      partnerName: null
+      partnerName: null,
+      stayConnected: false,
+      lastStayRoom: s.lastStayRoom
     }));
   };
 
+  /**
+   * Re-enter the last Stay Connected room from the landing page button.
+   * Resumes with the stored secret (server validates), keeps this device's
+   * local history, and re-establishes WebRTC exactly like requestReconnect.
+   */
+  const rejoinStayRoom = async (): Promise<boolean> => {
+    const stay = session.lastStayRoom || loadLastStayRoom();
+    if (!stay) return false;
+    try {
+      await ensureSocketConnected();
+    } catch {
+      return false;
+    }
+    const res = await new Promise<{ success: boolean; error?: string; createdAt?: number; stayConnected?: boolean }>((resolve) => {
+      const socket = getSocket();
+      const timer = setTimeout(() => resolve({ success: false, error: 'timeout' }), 12000);
+      socket.emit('resume_room', { roomId: stay.roomId, secret: stay.secret }, (r: { success: boolean; error?: string; createdAt?: number; stayConnected?: boolean }) => {
+        clearTimeout(timer);
+        resolve(r);
+      });
+    });
+    diag('stay.rejoin', !!res.success, res.success ? 'ok' : (res.error || 'fail'));
+    if (!res.success) {
+      // The room truly died (other device closed it) — stop offering re-entry.
+      saveLastStayRoom(null);
+      setSession(s => ({ ...s, lastStayRoom: null }));
+      return false;
+    }
+    // History snapshot: the last-stay record keeps its own sanitized copy of
+    // the room's messages (mirrored live by the persist effect), because the
+    // main stored session was cleared when the device disconnected.
+    const history = sanitizeStoredMessages(loadLastStayRoom()?.messages || []);
+    saveStoredSession({
+      roomId: stay.roomId,
+      secret: stay.secret,
+      isCreator: false,
+      createdAt: res.createdAt,
+      stayConnected: true,
+      messages: history
+    });
+    if (peerManagerRef.current) peerManagerRef.current.destroy();
+    void createPeerManager(stay.roomId, stay.secret, false).then(pm => {
+      peerManagerRef.current = pm;
+      setupPeerManager(pm);
+    });
+    setSession(s => ({
+      ...s,
+      roomId: stay.roomId,
+      secret: stay.secret,
+      createdAt: res.createdAt,
+      partnerConnected: false,
+      partnerConnecting: false,
+      connectionType: 'connecting',
+      closedReason: null,
+      messages: history,
+      stayConnected: true
+    }));
+    return true;
+  };
+
+  /** Toggle the room-wide Stay Connected promise. The server validates
+   *  membership, flips its source-of-truth flag, and echoes the new state to
+   *  BOTH devices — so the client only optimistically paints, then trusts
+   *  the echo (stay_connected_state) as the real badge. */
+  const setStayConnected = (enabled: boolean) => {
+    if (!session.roomId) return;
+    setSession(s => ({ ...s, stayConnected: enabled }));
+    getSocket().emit(enabled ? 'stay_connected_enable' : 'stay_connected_disable', { roomId: session.roomId });
+  };
+
   return (
-    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, joinWithShortCode, sendMessage, updateMessageAttachment, retryTransfer, retryText, cancelTransfer, setDeviceName, requestReconnect, refreshCode, closeSession, leaveView, abandonSession }}>
+    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, joinWithShortCode, sendMessage, updateMessageAttachment, retryTransfer, retryText, cancelTransfer, setDeviceName, requestReconnect, refreshCode, closeSession, leaveView, abandonSession, setStayConnected, rejoinStayRoom }}>
       {children}
     </SessionContext.Provider>
   );
