@@ -6,6 +6,7 @@ import { generateKey } from './crypto';
 import { humanizeError, ConnectError, describeConnectFailure } from './errors';
 import { diag, roomCreateDiagStart, roomCreateDiagEnd } from './diag';
 import { beginTransferRecord, finishTransferRecord } from './transferMetrics';
+import { saveSendable, getSendable, deleteSendable, saveTransferState, deleteTransferState } from './transferStore';
 import { sanitizeFilename } from './utils';
 import { normalizePastedText } from './textFidelity';
 
@@ -818,6 +819,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       const last = progressRef.current.get(transferId) ?? -1;
       if (pct - last < 0.01 && pct < 1) return;
       progressRef.current.set(transferId, pct);
+      // Durable resume floor (receiver side): every ~1% we persist the
+      // contiguous progress, so a crash/refresh can answer a sender's
+      // resume_query honestly even across a browser restart.
+      void saveTransferState({ transferId, status: 'receiving', ackedChunks: progress, totalChunks: total });
       setSession(s => ({
         ...s,
         messages: s.messages.map(m => {
@@ -871,6 +876,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // Metrics: bytes on disk, duration done. Outcome upgrades to
       // 'checksum-mismatch' later if verification fails.
       finishTransferRecord(transferId, 'received', blob.size, 'ok', { name: srcMsg?.attachment?.name, kind: 'file' });
+      void deleteTransferState(transferId);
       // The whole file arrived — only now confirm receipt (metadata alone
       // would be a lie if the transfer later failed).
       const msg = messagesRef.current.find(m => m.attachment?.id === transferId);
@@ -950,6 +956,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // matching bubble cancelled on this side too.
     pm.onCancel = (transferId) => {
       finishTransferRecord(transferId, 'received', 0, 'cancelled', { kind: 'file' });
+      void deleteTransferState(transferId);
       setSession(s => ({
         ...s,
         messages: s.messages.map(m => {
@@ -1001,9 +1008,22 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     for (const m of messagesRef.current) {
       const a = m.attachment;
       if (!a) continue;
-      if (m.sender === 'me' && (a.status === 'interrupted' || a.status === 'resuming' || (a.status === 'sending' && hasSendProgress(a.id)))) {
-        const file = pendingFilesRef.current.get(m.id);
-        if (!file) continue; // no bytes in memory (e.g. after our own reload) — nothing safe to re-send
+      // A 'sending' attachment WITHOUT active loop progress after a reload
+      // is exactly the crashed-mid-send case: sendProgress (memory) died with
+      // the page. The IDB sendable makes it resumable again.
+      const crashedMidSend = a.status === 'sending' && !hasSendProgress(a.id) && !peerManagerRef.current?.isSendLoopActive(a.id);
+      if (m.sender === 'me' && (a.status === 'interrupted' || a.status === 'resuming' || (a.status === 'sending' && hasSendProgress(a.id)) || crashedMidSend)) {
+        let file = pendingFilesRef.current.get(m.id);
+        if (!file) {
+          // Memory lost (refresh/sleep) — the IndexedDB sendable is exactly
+          // for this case: restore the bytes and RESUME instead of failing.
+          file = (await getSendable(a.id)) ?? undefined;
+          if (file) {
+            pendingFilesRef.current.set(m.id, file);
+            diag('transfer.sendable_restored', true, `${a.name} (${a.size}b)`);
+          }
+        }
+        if (!file) continue; // no bytes anywhere — nothing safe to re-send
         updateMessageAttachment(m.id, { status: 'resuming', progress: a.progress });
         const partnerMsg: ChatMessage = {
           ...m,
@@ -1013,6 +1033,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         try {
           await pm.resumeTransfer(JSON.stringify(partnerMsg), file, a.id);
           updateMessageAttachment(m.id, { status: 'complete', progress: 1 });
+          void deleteSendable(a.id);
+          void deleteTransferState(a.id);
         } catch (e) {
           if (!(e instanceof TransferCancelledError)) {
             updateMessageAttachment(m.id, { status: 'failed' });
@@ -1343,6 +1365,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         const oldest = pendingFilesRef.current.keys().next().value;
         if (oldest !== undefined) pendingFilesRef.current.delete(oldest);
       }
+      // Durable resume: persist the bytes in IndexedDB so a refresh (or a
+      // closed tab) can still RESUME instead of failing. Cleaned up when the
+      // transfer completes or is cancelled below.
+      void saveSendable(attachment.id, file);
+      void saveTransferState({ transferId: attachment.id, status: 'sending', ackedChunks: 0, totalChunks: chunkCountForSize(file.size) });
     }
 
     setSession(s => ({
@@ -1394,6 +1421,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       try {
         await peerManagerRef.current.sendFile(file, attachment.id);
         updateMessageAttachment(msg.id, { status: 'complete', progress: 1 });
+        // Transfer done — the durable copies are no longer needed.
+        void deleteSendable(attachment.id);
+        void deleteTransferState(attachment.id);
+        pendingFilesRef.current.delete(msg.id);
       } catch (e) {
         // A user cancel stops the loop cleanly — don't overwrite 'cancelled'.
         if (!(e instanceof TransferCancelledError)) {
@@ -1401,6 +1432,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           finishTransferRecord(attachment.id, 'sent', 0, 'failed', { name: file.name, kind: 'file' });
         } else {
           finishTransferRecord(attachment.id, 'sent', 0, 'cancelled', { name: file.name, kind: 'file' });
+          // Cancelled is final — drop the durable copies too.
+          void deleteSendable(attachment.id);
+          void deleteTransferState(attachment.id);
+          pendingFilesRef.current.delete(msg.id);
         }
       }
       return;

@@ -2,6 +2,7 @@ import { Room, UUID_RE } from './room';
 import { Registry } from './registry';
 import { Metrics } from './metrics';
 import { Stats } from './stats';
+import { Lobby } from './lobby';
 import { json, dayKey, type Env } from './types';
 
 // Durable Object classes must be exported from the entrypoint.
@@ -9,6 +10,7 @@ export { Room };
 export { Registry };
 export { Metrics };
 export { Stats };
+export { Lobby };
 
 /**
  * ShareText signaling — Cloudflare Workers entry.

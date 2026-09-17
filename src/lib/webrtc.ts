@@ -1123,6 +1123,12 @@ export class PeerManager {
     return this.pauseSends.has(transferId);
   }
 
+  /** True while THIS manager has a live send loop for the transfer (no loop
+   *  after a reload — used to distinguish crashed-mid-send from active). */
+  public isSendLoopActive(transferId: string): boolean {
+    return this.transferControllers.has(transferId);
+  }
+
   /** Protocol HASH_VERIFY: tell the peer the final SHA-256 of a transfer.
    *  Tiny, control-channel-first (falls back to the legacy envelope). */
   public async sendFileHash(transferId: string, sha256: string) {

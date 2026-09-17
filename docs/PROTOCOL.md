@@ -95,6 +95,15 @@ buffer bounded and the UI responsive.
 - Receiver hashes the assembled bytes; match ⇒ `verified` shield on the card;
   mismatch ⇒ honest `failed` card with Retry. Files are never silently kept.
 
+## Resumable across refreshes (IndexedDB)
+
+The sender's original File is persisted in IndexedDB (`sharetext-transfers`
+db, `sendables` store) when the send starts, and the receiver's contiguous
+progress mirrors into a `states` store. After a refresh or crash, the send
+resumes from the restored bytes — the UI continues at the same percentage,
+never restarts from zero. Records are swept (24h for sendables, 7d for
+states) and deleted the moment a transfer completes or is cancelled.
+
 ## Resume state machine (receiver)
 
 Chunks may arrive out of order and duplicates are ignored:
