@@ -492,10 +492,12 @@ export function SingleScreenApp() {
                         data-testid="stay-rejoin"
                         onClick={handleStayRejoin}
                         disabled={isRejoining}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-[16px] bg-[#f06413]/[0.06] dark:bg-[#fb9243]/[0.08] border border-[#f06413]/20 dark:border-[#fb9243]/25 hover:border-[#f06413]/40 dark:hover:border-[#fb9243]/45 transition-colors text-left disabled:opacity-60"
+                        className="group w-full flex items-center gap-3 px-4 py-3 rounded-[16px] bg-[#f06413]/[0.06] dark:bg-[#fb9243]/[0.08] border border-[#f06413]/20 dark:border-[#fb9243]/25 hover:bg-[#f06413]/[0.1] dark:hover:bg-[#fb9243]/[0.12] hover:border-[#f06413]/40 dark:hover:border-[#fb9243]/45 active:scale-[0.985] transition-all duration-200 text-left disabled:opacity-60"
                       >
-                        <span className="shrink-0 w-8 h-8 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/15 flex items-center justify-center text-[#f06413] dark:text-[#fb9243]" aria-hidden>
-                          <InfinityIcon className="w-4 h-4" strokeWidth={2.2} />
+                        <span className="relative shrink-0 w-8 h-8 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/15 flex items-center justify-center text-[#f06413] dark:text-[#fb9243]" aria-hidden>
+                          {/* Live pulse: this room is still breathing upstream. */}
+                          <span className="absolute inset-0 rounded-full bg-[#f06413]/20 dark:bg-[#fb9243]/20 st-halo-ring motion-reduce:animate-none" />
+                          <InfinityIcon className="relative w-4 h-4" strokeWidth={2.2} />
                         </span>
                         <span className="flex-1 flex flex-col min-w-0 leading-tight">
                           <span className="text-[13.5px] font-semibold text-apple-ink dark:text-white">
@@ -505,17 +507,22 @@ export function SingleScreenApp() {
                             {t('stay.rejoinHint')}
                           </span>
                         </span>
-                        {!isRejoining && <ArrowRightLeft className="w-4 h-4 shrink-0 text-[#f06413]/70 dark:text-[#fb9243]/70" aria-hidden />}
+                        <ArrowRightLeft className="w-4 h-4 shrink-0 text-[#f06413]/60 dark:text-[#fb9243]/60 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
                       </button>
                     </motion.div>
                   );
                 })()}
               </AnimatePresence>
               {/* Nearby device discovery — an OPTIONAL extra path to the same
-                  connection. Sits directly under Send/Receive; the existing
-                  methods stay primary. Renders the exact hint line always,
-                  device rows only when eligible devices are present. */}
-              <div className="order-3 mt-4 w-full flex flex-col items-center lg:items-start">
+                  connection. The hint line sits at the BOTTOM of the activity
+                  tracker (one quiet instruction under the live count); device
+                  rows appear under it only when eligible devices exist. The
+                  existing code/QR/link methods stay primary. */}
+              <p className="order-5 mt-3.5 flex items-center justify-center sm:justify-start gap-1.5 text-[13px] font-medium text-apple-ink-muted dark:text-white/45 w-fit mx-auto lg:mx-0">
+                <Monitor className="w-3.5 h-3.5" aria-hidden />
+                {t('nearby.hint')}
+              </p>
+              <div className="order-6 w-full flex flex-col items-center lg:items-start">
                 <div className="w-full max-w-md lg:max-w-none">
                   <NearbyDevices onStatus={setNearbyStatus} />
                 </div>
@@ -830,6 +837,7 @@ export function SingleScreenApp() {
         <div className="flex items-center justify-between gap-x-5 gap-y-2 flex-wrap">
           <nav className="flex items-center gap-5 sm:gap-7 text-[13px] font-semibold text-apple-ink/75 dark:text-white/60">
             <a href="/docs" className="hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.docs')}</a>
+            <a href="/about" className="hover:text-apple-ink dark:hover:text-white transition-colors">About</a>
             <a href="/privacy" className="hover:text-apple-ink dark:hover:text-white transition-colors">Privacy</a>
             <a href="/terms" className="hover:text-apple-ink dark:hover:text-white transition-colors">Terms</a>
           </nav>
@@ -945,31 +953,26 @@ export function SingleScreenApp() {
                   <ConnectHandshake phase="connecting" localIcon={isMobileDevice ? 'phone' : 'monitor'} />
                 </div>
               ) : panelMode === 'idle' ? (
-                /* Desktop idle: the three steps sit at the pane's EXACT
-                   vertical center (absolute centering, immune to whatever
-                   height the scene below adds); the product scene hangs
-                   beneath the centerline as a quiet coda and steps aside on
-                   short viewports rather than ever shoving the list up. */
-                <div className="relative w-full max-w-[640px] mx-auto h-full">
-                  {/* The three steps — numbered, quiet, dead-center. The
-                      text itself is left-aligned so the rows read like a
-                      list, not a poem. */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-full max-w-[420px] space-y-3.5 text-left pointer-events-auto">
-                      {[t('room.step.1'), t('room.step.2'), t('room.step.3')].map((step, i) => (
-                        <div key={i} className="flex items-center gap-3">
-                          <span className="shrink-0 w-7 h-7 rounded-full bg-ember/[0.1] dark:bg-ember/[0.16] text-ember dark:text-[#fb9243] text-[12.5px] font-bold flex items-center justify-center">{i + 1}</span>
-                          <span className="text-[14.5px] font-medium text-apple-ink/85 dark:text-white/65 leading-snug">{step}</span>
-                        </div>
-                      ))}
-                    </div>
+                /* Desktop idle: the three steps AND the product scene form
+                   ONE centered group — center the combined block, never the
+                   steps alone, so nothing ever clips at the fold. On short
+                   viewports the scene steps aside and the steps keep center. */
+                <div className="w-full max-w-[640px] mx-auto flex flex-col items-center justify-center gap-7 py-6">
+                  {/* The three steps — numbered, quiet. Left-aligned text so
+                      the rows read like a list, not a poem. */}
+                  <div className="w-full max-w-[420px] space-y-3.5">
+                    {[t('room.step.1'), t('room.step.2'), t('room.step.3')].map((step, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <span className="shrink-0 w-7 h-7 rounded-full bg-ember/[0.1] dark:bg-ember/[0.16] text-ember dark:text-[#fb9243] text-[12.5px] font-bold flex items-center justify-center">{i + 1}</span>
+                        <span className="text-[14.5px] font-medium text-apple-ink/85 dark:text-white/65 leading-snug">{step}</span>
+                      </div>
+                    ))}
                   </div>
-                  {/* The product itself, below the centered list. Hidden on
-                      short panes so the steps NEVER move off center. */}
-                  <div className="absolute left-0 right-0 top-[calc(50%+92px)] hidden min-[820px]:flex justify-center">
-                    <div className="w-full max-w-[520px]">
-                      <HeroTransferScene />
-                    </div>
+                  {/* The product itself, beneath the steps in the same
+                      centered group. Hidden on short viewports so the group
+                      never overflows. */}
+                  <div className="w-full max-w-[520px] hidden [@media(min-height:700px)]:block">
+                    <HeroTransferScene />
                   </div>
                 </div>
               ) : (

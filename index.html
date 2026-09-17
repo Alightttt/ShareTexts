@@ -41,6 +41,7 @@
     <meta name="twitter:image:alt" content="ShareTexts — AirDrop for any Device. The app running on a laptop and iPhone, connected." />
 
     <link rel="canonical" href="https://sharetexts.online/" />
+    <link rel="alternate" hreflang="x-default" href="https://sharetexts.online/" />
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
@@ -56,6 +57,18 @@
     {
       "@context": "https://schema.org",
       "@graph": [
+        {
+          "@type": "HowTo",
+          "@id": "https://sharetexts.online/#howto",
+          "name": "How to move text and files between two devices with ShareText",
+          "description": "Share text, photos, and files between any two devices — phone to laptop, iPhone to Windows — straight from the browser. No app, no account.",
+          "totalTime": "PT1M",
+          "step": [
+            { "@type": "HowToStep", "position": 1, "name": "Open ShareText on both devices", "text": "Open sharetexts.online in a browser on both devices." },
+            { "@type": "HowToStep", "position": 2, "name": "Tap Send on one, Receive on the other", "text": "One device creates a room with a six-digit code; the other joins it." },
+            { "@type": "HowToStep", "position": 3, "name": "Connect both and you're good to go", "text": "Type, paste, or attach anything — it transfers directly between the devices, encrypted." }
+          ]
+        },
         {
           "@type": "Organization",
           "@id": "https://sharetexts.online/#organization",

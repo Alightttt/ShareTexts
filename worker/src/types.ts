@@ -4,6 +4,8 @@ export interface Env {
   REGISTRY: DurableObjectNamespace;
   METRICS: DurableObjectNamespace;
   STATS: DurableObjectNamespace;
+  /** Landing-page presence pool (nearby-device discovery). */
+  LOBBY: DurableObjectNamespace;
   /** Comma-separated extra frontend origins allowed to connect. */
   ALLOWED_ORIGINS?: string;
   /** If set, GET /metrics requires `Authorization: Bearer <token>`. */

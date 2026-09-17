@@ -1,0 +1,28 @@
+# ShareText
+
+> ShareText is a free web app for moving text, links, photos, videos, and files between any two devices — phone to laptop, iPhone to Windows, Android to Mac — directly in the browser. No app, no account, nothing stored.
+
+Transfers run peer-to-peer over WebRTC: data moves encrypted between the two browsers and the server never sees file contents. Pairing works four ways: nearby device discovery, a six-digit live code, a QR code, or a shareable link. Rooms are temporary and close when you're done.
+
+## How to use
+
+1. Open https://sharetexts.online on both devices.
+2. Tap Send on one, Receive on the other.
+3. Connect them with a code, QR, link, or nearby-device discovery — then send anything.
+
+## Pages
+
+- [About ShareText](https://sharetexts.online/about): what ShareText is, what it transfers, supported devices.
+- [Docs](https://sharetexts.online/docs): full documentation — pairing, transfers, privacy, developer API.
+- [How It Works](https://sharetexts.online/guides/how-it-works.html): the signaling + WebRTC architecture explained.
+- [Privacy](https://sharetexts.online/privacy): the privacy model — no accounts, no stored content.
+- [Security](https://sharetexts.online/guides/security.html): encryption and transport details.
+
+## Facts
+
+- Free, no sign-up; runs in any modern browser with WebRTC (Chrome, Safari, Firefox, Edge).
+- Works across platforms: iPhone ↔ Windows, Android ↔ Mac, any combination.
+- Transfer types: text, links, photos, videos, audio, documents, any file.
+- End-to-end encrypted via WebRTC (DTLS); the signaling server relays connection metadata only.
+- Nearby discovery shows a device only while ShareText is open on it; it is never a global user list.
+- Operated at https://sharetexts.online.

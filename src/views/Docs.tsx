@@ -685,7 +685,8 @@ export function Docs() {
             <ShareTextLogo size={21} />
             <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>
           </a>
-          <div className="flex items-center gap-4 ml-auto">
+          <div className="flex items-center gap-3 sm:gap-4 ml-auto">
+            <a href="/about" className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60 hover:text-apple-ink dark:hover:text-white transition-colors">About</a>
             <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60">Docs</span>
             <ThemeToggle />
           </div>

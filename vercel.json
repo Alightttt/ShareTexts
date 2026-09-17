@@ -25,6 +25,10 @@
       "destination": "/api-not-found.json"
     },
     {
+      "source": "/about",
+      "destination": "/guides/about.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

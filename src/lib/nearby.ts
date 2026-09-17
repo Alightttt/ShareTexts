@@ -89,6 +89,11 @@ export class NearbyPresence {
   private socket: SignalingSocket | null = null;
   private name = '';
   private selfToken: string | null = null;
+  /** List broadcast that arrived before our announce ack (server broadcasts
+   *  the newcomer immediately — before the ack can set selfToken). Held here
+   *  and re-filtered the moment the token lands, so our own row can never
+   *  render. */
+  private pendingList: NearbyDevice[] | null = null;
   private devices: NearbyDevice[] = [];
   private timer: ReturnType<typeof setInterval> | null = null;
   private listeners = new Set<ChangeListener>();
@@ -180,6 +185,7 @@ export class NearbyPresence {
     socket.off('connect', this.onUp);
     this.socket = null;
     this.announcedOnce = false;
+    this.pendingList = null;
   }
 
   private handleIncoming = (payload: unknown): void => {
@@ -206,7 +212,14 @@ export class NearbyPresence {
     const devices = parsePresenceList(payload);
     // Prune our own token out of the visible list — a device never pairs with
     // itself, and the hint line stays honest while we're in the pool.
-    this.devices = this.selfToken ? devices.filter(d => d.id !== this.selfToken) : devices;
+    if (!this.selfToken) {
+      // Pre-ack broadcast: stash instead of showing (we can't yet tell which
+      // row is us). announce() re-runs this the instant the token arrives.
+      this.pendingList = devices;
+      return;
+    }
+    this.pendingList = null;
+    this.devices = devices.filter(d => d.id !== this.selfToken);
     this.emit();
   };
 
@@ -214,6 +227,7 @@ export class NearbyPresence {
     // The server withdraws us on disconnect; local list goes stale-fast.
     this.clearTimer();
     this.selfToken = null;
+    this.pendingList = null;
     this.devices = [];
     this.emit();
   };
@@ -239,14 +253,6 @@ export class NearbyPresence {
       try {
         socket.emit('presence_announce', { deviceId: getOrCreateDeviceId(), name: this.name }, (res: { success?: boolean; ok?: boolean; token?: string; error?: string; code?: string }) => {
           clearTimeout(timer);
-          // The Cloudflare transport answers unknown events with an ackErr
-          // ({ ok:false, code:'INVALID_MESSAGE' }) — mark the feature
-          // unsupported once and stop announcing entirely.
-          if (res && res.ok === false && res.code === 'INVALID_MESSAGE') {
-            this.markUnsupported();
-            resolve();
-            return;
-          }
           if (res?.success && res.token) {
             if (!this.announcedOnce) {
               this.announcedOnce = true;
@@ -254,6 +260,12 @@ export class NearbyPresence {
               devLog('presence announced');
             }
             this.selfToken = res.token;
+            // A list broadcast may have raced ahead of this ack — filter it now.
+            if (this.pendingList) {
+              const pending = this.pendingList;
+              this.pendingList = null;
+              this.onList(pending);
+            }
             this.scheduleKeepalive();
           } else if (!res?.success) {
             // e.g. "In a room" — drop out of the pool quietly.
@@ -269,7 +281,8 @@ export class NearbyPresence {
     });
   }
 
-  /** Transport doesn't speak presence (unknown event → error ack / timeout). */
+  /** Kept for API compatibility; presence now retries on every keepalive
+   *  instead of latching off after one failure. */
   markUnsupported(): void {
     this.unsupported = true;
     this.clearTimer();

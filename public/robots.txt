@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Allow: /docs
+Allow: /about
 Allow: /guides/
 Allow: /privacy
 Allow: /terms

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Monitor, Smartphone, ArrowRight } from 'lucide-react';
-import { getSocket, signalingTransportMode } from '../lib/socket';
+import { getSocket } from '../lib/socket';
 import { nearbyPresence, type NearbyDevice } from '../lib/nearby';
 import { useI18n } from '../lib/i18n';
 import { useSession } from '../lib/SessionContext';
@@ -49,10 +49,8 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
   // Attach only while the landing page is truly idle (roomless). Any state
   // that seats us in a room (create/join/nearby flow itself) withdraws us.
   useEffect(() => {
-    if (signalingTransportMode() === 'cloudflare') {
-      nearbyPresence.markUnsupported();
-      return; // graceful degradation: hint line only, no device list
-    }
+    // Both transports speak presence now — the socket.io server has the
+    // in-process pool and the Cloudflare worker has the Lobby DO.
     const socket = getSocket();
     if (idle) {
       nearbyPresence.attach(socket, session.deviceName);
@@ -227,12 +225,6 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
           </motion.p>
         )}
       </AnimatePresence>
-
-      {/* The exact hero line, always present under the Send/Receive buttons. */}
-      <p className="mt-3 flex items-center justify-center sm:justify-start gap-1.5 text-[13px] font-medium text-apple-ink-muted dark:text-white/45">
-        <Monitor className="w-3.5 h-3.5" aria-hidden />
-        {t('nearby.hint')}
-      </p>
 
       {/* Incoming invitation — Apple-style sheet, reused from the app. */}
       <ConfirmSheet

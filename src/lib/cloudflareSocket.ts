@@ -130,6 +130,13 @@ export class CloudflareSocket implements SignalingSocket {
       void this.sendRelay(payload);
     } else if (event === 'close_room') {
       void this.sendClose();
+    } else if (event === 'presence_announce' || event === 'presence_withdraw' ||
+               event === 'presence_update' || event === 'presence_invite' ||
+               event === 'presence_invite_result') {
+      // Lobby (nearby discovery) events ride their own dedicated WebSocket —
+      // this transport keeps the room socket and the lobby socket separate,
+      // exactly like the socket.io server keeps the 'presence' room separate.
+      void this.lobbyRequest(event, payload, cb);
     }
     return this;
   }
@@ -432,6 +439,98 @@ export class CloudflareSocket implements SignalingSocket {
       document.removeEventListener('visibilitychange', this._onVisibility);
       this._onVisibility = null;
     }
+    this.closeLobby();
     this.closeWs();
+  }
+
+  // ---- lobby (nearby discovery) -------------------------------------------
+
+  private lobbyWs: WebSocket | null = null;
+  private lobbyOpening: Promise<WebSocket> | null = null;
+
+  /**
+   * One request/response over the lobby WebSocket. Opens the lobby lazily and
+   * keeps it open for the pool lifetime (withdraw closes it). Ack routing
+   * reuses the room transport's pending map — ids are unique per request.
+   */
+  private async lobbyRequest(event: string, payload: unknown, cb?: (r: any) => void) {
+    try {
+      const ws = await this.openLobby();
+      const id = `${Date.now().toString(36)}-${this.reqSeq++}`;
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        cb?.({ success: false, code: 'UNREACHABLE', error: "Couldn't reach ShareText." });
+      }, WS_OPEN_TIMEOUT + 4000);
+      this.pending.set(id, (res) => {
+        clearTimeout(timer);
+        cb?.(res);
+      });
+      ws.send(JSON.stringify({ v: PROTOCOL_VERSION, id, event, payload }));
+    } catch {
+      cb?.({ success: false, code: 'UNREACHABLE', error: "Couldn't reach ShareText." });
+    }
+  }
+
+  private async openLobby(): Promise<WebSocket> {
+    if (this.lobbyWs && this.lobbyWs.readyState === WebSocket.OPEN) return this.lobbyWs;
+    if (this.lobbyOpening) return this.lobbyOpening;
+    this.lobbyOpening = new Promise<WebSocket>((resolve, reject) => {
+      let settled = false;
+      const ws = new WebSocket(`${this.wsBase.replace(/\/ws$/, '')}/lobby`);
+      let timer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+        timer = null;
+        try { ws.close(); } catch { /* noop */ }
+        if (!settled) { settled = true; reject(new Error('lobby open timeout')); }
+      }, WS_OPEN_TIMEOUT);
+      ws.onopen = () => {
+        if (timer) { clearTimeout(timer); timer = null; }
+        this.lobbyWs = ws;
+        settled = true;
+        resolve(ws);
+      };
+      ws.onmessage = (ev) => {
+        if (typeof ev.data === 'string') this.handleLobbyMessage(ev.data);
+      };
+      ws.onclose = () => {
+        if (timer) { clearTimeout(timer); timer = null; }
+        if (this.lobbyWs === ws) this.lobbyWs = null;
+        if (!settled) { settled = true; reject(new Error('lobby closed')); }
+        // Presence listeners treat a socket drop as "device list gone" and a
+        // subsequent 'connect' as "announce again" — mirror that only when no
+        // room socket is live (in a room, presence is already stopped).
+        if (!(this.ws && this.ws.readyState === WebSocket.OPEN)) {
+          this.emitLocal('disconnect', 'lobby close');
+        }
+      };
+      ws.onerror = () => { /* close handler rejects */ };
+    });
+    try {
+      const ws = await this.lobbyOpening;
+      return ws;
+    } finally {
+      this.lobbyOpening = null;
+    }
+  }
+
+  private handleLobbyMessage(data: string) {
+    let msg: any;
+    try { msg = JSON.parse(data); } catch { return; }
+    if (msg?.type === 'ack') {
+      const resolver = this.pending.get(msg.id);
+      if (resolver) {
+        this.pending.delete(msg.id);
+        resolver(msg.ok ? { success: true, ...msg } : { success: false, code: msg.code, error: msg.message || 'Something went wrong' });
+      }
+    } else if (msg?.type === 'event') {
+      this.emitLocal(msg.event, msg.payload);
+    }
+  }
+
+  private closeLobby() {
+    if (this.lobbyWs) {
+      const old = this.lobbyWs;
+      this.lobbyWs = null;
+      try { old.close(1000, 'gone'); } catch { /* noop */ }
+    }
   }
 }

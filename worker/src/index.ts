@@ -110,6 +110,17 @@ export default {
       return env.ROOMS.get(id).fetch(request);
     }
 
+    if (path === '/lobby') {
+      // Nearby-device presence pool — a second, tiny WebSocket for devices
+      // that are merely open on the landing page. Same origin checks and
+      // rate limiting as the room socket.
+      if (!(await rateLimited(env, 'ws', clientIp(request)))) {
+        return json({ error: 'Too many attempts. Wait a moment and try again.' }, 429, cors);
+      }
+      const id = env.LOBBY.idFromName('lobby');
+      return env.LOBBY.get(id).fetch(request);
+    }
+
     if (path === '/lookup' && request.method === 'POST') {
       return lookup(request, env, cors);
     }

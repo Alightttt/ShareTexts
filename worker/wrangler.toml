@@ -8,7 +8,8 @@ bindings = [
   { name = "ROOMS", class_name = "Room" },
   { name = "REGISTRY", class_name = "Registry" },
   { name = "METRICS", class_name = "Metrics" },
-  { name = "STATS", class_name = "Stats" }
+  { name = "STATS", class_name = "Stats" },
+  { name = "LOBBY", class_name = "Lobby" }
 ]
 
 [[migrations]]
@@ -22,6 +23,10 @@ new_sqlite_classes = ["Metrics"]
 [[migrations]]
 tag = "v3-stats"
 new_sqlite_classes = ["Stats"]
+
+[[migrations]]
+tag = "v4-lobby"
+new_sqlite_classes = ["Lobby"]
 
 # Extra frontend origins can be added via the ALLOWED_ORIGINS var/secret.
 # Defaults (dev origins + sharetexts.online) are built in.

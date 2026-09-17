@@ -7,7 +7,7 @@ import { cn, shortCodeOf } from '../lib/utils';
 import { hapticTap } from '../lib/haptics';
 import {
   Send, Download, QrCode, Link2, Copy, RefreshCw, LogOut,
-  Sun, Moon, Languages, FileText, ChevronLeft, Check, Search
+  Sun, Moon, Languages, FileText, ChevronLeft, Check, Search, Info
 } from 'lucide-react';
 
 /**
@@ -210,6 +210,11 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
         id: 'docs', label: t('nav.docs'), group: t('command.group.settings'),
         icon: <FileText className="w-4 h-4" />, keywords: 'help about how it works',
         run: () => { window.location.assign('/docs'); },
+      },
+      {
+        id: 'about', label: 'About', group: t('command.group.settings'),
+        icon: <Info className="w-4 h-4" />, keywords: 'what is sharetext story',
+        run: () => { window.location.assign('/about'); },
       },
     );
     return list;

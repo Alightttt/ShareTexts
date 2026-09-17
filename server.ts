@@ -1060,6 +1060,10 @@ async function start() {
     // 404 — this prevents search engines from indexing nonexistent pages
     // as HTTP 200.
     app.get('*', (req, res) => {
+      // The About page is a static SEO guide served at its canonical URL.
+      if (req.path === '/about') {
+        return res.sendFile(path.join(distPath, 'guides', 'about.html'));
+      }
       // Known SPA routes that should get the app shell
       if (req.path === '/' || req.path === '/docs' || req.path === '/privacy' || req.path === '/terms' || /^\/s\/[0-9a-f]{8}$/i.test(req.path)) {
         return res.sendFile(path.join(distPath, 'index.html'));
