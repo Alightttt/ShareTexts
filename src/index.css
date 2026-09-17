@@ -383,6 +383,14 @@ html.dark .st-skeleton-sweep::after {
   scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
   scroll-behavior: smooth;
 }
+/* Long threads: skip render/paint work for rows far off-screen (the message
+   list can hold big file previews and long text; this is cheap virtualization
+   without changing DOM structure). contain-intrinsic-size keeps the scrollbar
+   honest. */
+.room-scroll > * > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 72px;
+}
 .dark .room-scroll {
   scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
 }

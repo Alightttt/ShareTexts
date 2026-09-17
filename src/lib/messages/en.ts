@@ -276,6 +276,8 @@ const en = {
 
   // ── nearby device discovery ───────────────────────────────────────
   'nearby.hint': 'Open ShareTexts in another device',
+  'nearby.autoTitle': 'Auto-connect',
+  'nearby.autoHint': 'Connect automatically when a nearby device taps you',
   'nearby.sectionTitle': 'Nearby devices',
   'nearby.nearby': 'Nearby',
   'nearby.waiting': 'Waiting to connect…',

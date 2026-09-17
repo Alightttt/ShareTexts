@@ -249,6 +249,8 @@ const hi: Dict = {
 
   // ── nearby device discovery ───────────────────────────────────────
   'nearby.hint': 'दूसरे डिवाइस पर ShareTexts खोलें',
+  "nearby.autoTitle": "ऑटो-कनेक्ट",
+  "nearby.autoHint": "पास के डिवाइस के टैप करने पर अपने आप जुड़ जाए",
   'nearby.sectionTitle': 'नज़दीकी डिवाइस',
   'nearby.nearby': 'नज़दीक',
   'nearby.waiting': 'कनेक्शन की प्रतीक्षा…',

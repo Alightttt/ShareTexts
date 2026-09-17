@@ -35,7 +35,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   // lands later still speaks the CURRENT language.
   const tRef = useRef(t);
   tRef.current = t;
-  const { session, sendMessage, closeSession, cancelTransfer, requestReconnect, setDeviceName } = useSession();
+  const { session, sendMessage, closeSession, cancelTransfer, requestReconnect, setDeviceName, registerRoomViewer, claimSeen } = useSession();
   // A phone on phones, a screen on desktops — the "who am I talking to" chips
   // in the standalone header must match the device the user is actually on.
   const isMobileDevice = (() => {
@@ -254,6 +254,16 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [session.messages, disconnected]);
+  // Honest seen receipts: THIS component is the room viewer. Register on
+  // mount; claim seen whenever the message list changes while mounted — the
+  // context side double-checks visibility, so a backgrounded tab never lies.
+  useEffect(() => {
+    registerRoomViewer(true);
+    return () => registerRoomViewer(false);
+  }, [registerRoomViewer]);
+  useEffect(() => {
+    claimSeen();
+  }, [claimSeen, session.messages.length]);
   // Screen-reader live region: connection state + inbound transfers are
   // announced in plain words ("Connected", "Photo received", "Couldn't send
   // the file.") without any visual change.
@@ -595,7 +605,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           names, live status, and one tap to details (rename, encryption,
           rejoin code). The parent keeps `relative` so the details popover
           anchors just under the bar. */}
-      <div className="relative flex items-center justify-between gap-2 px-3 sm:px-5 py-2.5 shrink-0 border-b border-apple-divider/50 dark:border-white/[0.08] bg-[#f4f2ec]/85 dark:bg-[#0f0f11]/85 backdrop-blur-2xl backdrop-saturate-[1.8] z-30">
+      <div className="relative flex items-center justify-between gap-2 px-3 sm:px-5 py-2.5 shrink-0 border-b border-apple-divider/50 dark:border-white/[0.08] bg-[#f4f2ec]/95 dark:bg-[#0f0f11]/95 backdrop-blur-md z-30">
         <button
           type="button"
           data-testid="connection-details"
@@ -618,8 +628,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             <span className="flex items-center gap-1 text-[10.5px] font-medium text-apple-ink-muted dark:text-white/45">
               <span className={cn(
                 "w-1.5 h-1.5 rounded-full",
-                disconnected ? "bg-status-warning" : "bg-status-success",
-                !disconnected && "animate-pulse"
+                disconnected ? "bg-status-warning" : "bg-status-success"
               )} />
               {disconnected ? t('chat.offline') : t('chat.online')}
             </span>
@@ -640,7 +649,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 </>
               ) : (
                 <>
-                  <span className="sm:hidden w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" />
+                  <span className="sm:hidden w-1.5 h-1.5 rounded-full bg-status-success" />
                   {t('common.connected')}
                 </>
               )}
@@ -672,7 +681,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -4, scale: 0.98 }}
               transition={{ type: "spring", bounce: 0, duration: 0.28 }}
-              className="absolute top-[calc(100%+10px)] right-2 sm:right-4 left-2 sm:left-auto sm:w-[360px] p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[18px] shadow-2xl z-40 overflow-hidden"
+              className="absolute top-[calc(100%+10px)] right-2 sm:right-4 left-2 sm:left-auto sm:w-[360px] p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[18px] shadow-2xl z-40 overflow-y-auto overscroll-contain max-h-[calc(100dvh-120px)]"
               role="dialog"
               aria-modal="true"
               aria-label={t('details.aria')}
@@ -1030,7 +1039,10 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             >
               <Plus className={cn("w-5 h-5 transition-transform duration-200", showAttachmentMenu && "rotate-45")} />
             </button>
-            <motion.div layout className="relative flex-1 min-w-0 rounded-[26px] bg-white dark:bg-[#232327] overflow-visible shadow-[0_1px_2px_rgba(0,0,0,0.05),0_10px_28px_-14px_rgba(0,0,0,0.16)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-14px_rgba(0,0,0,0.55)] border border-black/[0.04] dark:border-white/[0.06] focus-within:ring-2 focus-within:ring-ember/25 transition-shadow">
+            {/* No `layout` here: the pill resizes on every keystroke (auto-grow
+                textarea), and FLIP measurement per keystroke was real jank on
+                phones. Attachment previews keep their own small layout anims. */}
+            <motion.div className="relative flex-1 min-w-0 rounded-[26px] bg-white dark:bg-[#232327] overflow-visible shadow-[0_1px_2px_rgba(0,0,0,0.05),0_10px_28px_-14px_rgba(0,0,0,0.16)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-14px_rgba(0,0,0,0.55)] border border-black/[0.04] dark:border-white/[0.06] focus-within:ring-2 focus-within:ring-ember/25 transition-shadow">
             {/* Multi-attachment preview strip — up to 20 files, each with a
                 circular remove button that's always visible and tappable. */}
             <AnimatePresence>
@@ -1087,8 +1099,10 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             {/* One centerline: the pill row is items-center and the textarea's
                 padding is symmetric, so +, input, and send all share an exact
                 optical center at every height (1 line or grown) — and the
-                single-line pill is a tight 44px, not a padded 51px. */}
-            <div className="flex items-center gap-1.5 px-2.5 relative">
+                single-line pill is a tight 44px, not a padded 51px. The send
+                button hugs the pill's right edge (5px optical margin, same as
+                iMessage) instead of floating mid-pill. */}
+            <div className="flex items-center gap-1.5 pl-2.5 pr-[5px] relative">
               <textarea
                 ref={textareaRef}
                 data-testid="composer"
@@ -1108,7 +1122,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 placeholder={t('composer.placeholder')}
                 aria-label={t('composer.aria')}
                 title={t('composer.title')}
-                className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[9px] pl-2 pr-1 text-apple-ink dark:text-white placeholder:text-[#a89a80] dark:placeholder:text-white/25 focus:outline-none text-[16px] leading-[26px]"
+                className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[9px] pl-2 pr-0.5 text-apple-ink dark:text-white placeholder:text-[#a89a80] dark:placeholder:text-white/25 focus:outline-none text-[16px] leading-[26px]"
               />
               <button
                 type="button"

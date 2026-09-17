@@ -249,6 +249,8 @@ const zh: Dict = {
 
   // ── nearby device discovery ───────────────────────────────────────
   'nearby.hint': '在另一台设备上打开 ShareTexts',
+  "nearby.autoTitle": "自动连接",
+  "nearby.autoHint": "附近的设备点你时自动连接",
   'nearby.sectionTitle': '附近的设备',
   'nearby.nearby': '附近',
   'nearby.waiting': '等待连接…',

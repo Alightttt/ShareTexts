@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Monitor, Smartphone, ArrowRight } from 'lucide-react';
+import { Monitor, Smartphone, ArrowRight, Zap } from 'lucide-react';
 import { getSocket } from '../lib/socket';
 import { nearbyPresence, type NearbyDevice } from '../lib/nearby';
 import { useI18n } from '../lib/i18n';
@@ -23,6 +23,22 @@ import { cn } from '../lib/utils';
  * the hint line alone.
  */
 
+/**
+ * Auto-connect — PairDrop-style one-tap pairing. A device with autoConnect on
+ * accepts incoming invitations from nearby devices without the sheet, so two
+ * people who both opted in can tap each other and land in the room. OFF by
+ * default, remembered per device, and two-loop-safe: while an invite we sent
+ * is still in flight we never also auto-accept, and each invitation carries a
+ * nonce so an echo can't bounce back and forth forever.
+ */
+const AUTO_KEY = 'sharetext.autoConnect.v1';
+export function isAutoConnectEnabled(): boolean {
+  try { return localStorage.getItem(AUTO_KEY) === '1'; } catch { return false; }
+}
+function setAutoConnectEnabled(v: boolean) {
+  try { localStorage.setItem(AUTO_KEY, v ? '1' : '0'); } catch { /* private mode */ }
+}
+
 type Phase =
   | { kind: 'idle' }                                     // nothing in flight
   | { kind: 'inviting'; device: NearbyDevice }           // invite sent, awaiting answer
@@ -44,6 +60,10 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
   const [devices, setDevices] = useState<NearbyDevice[]>([]);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [invitation, setInvitation] = useState<{ from: string; name: string } | null>(null);
+  const [autoOn, setAutoOn] = useState<boolean>(() => isAutoConnectEnabled());
+  // True while OUR invite is awaiting an answer — suppresses auto-accept on
+  // the inviter side so a mutual tap can't race into two rooms.
+  const invitingRef = useRef(false);
 
   /* --- presence lifecycle --------------------------------------------- */
   // Attach only while the landing page is truly idle (roomless). Any state
@@ -82,13 +102,23 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
   useEffect(() => nearbyPresence.onInvitation(inv => {
     // Ignore while busy with another connection flow.
     setInvitation(prev => (prev ? prev : inv));
-  }), []);
+    // AUTO-CONNECT: both devices opted in, we're idle, and we're not already
+    // waiting on our own outgoing invite → accept without the sheet.
+    if (autoOn && !invitation && !invitingRef.current) {
+      // answerInvite reads `invitation` state; fire on the next tick with the
+      // payload in hand so the sheet never flashes on screen.
+      const timer = setTimeout(() => { void answerInviteRef.current(true, inv); }, 0);
+      return () => clearTimeout(timer);
+    }
+  }), [autoOn, invitation]);
 
   /* --- outgoing invite --------------------------------------------------- */
   const handleInvite = useCallback(async (device: NearbyDevice) => {
     hapticTap();
     setPhase({ kind: 'inviting', device });
+    invitingRef.current = true;
     const delivered = await nearbyPresence.invite(device.id);
+    invitingRef.current = false;
     if (!delivered) {
       setPhase({ kind: 'error', text: t('nearby.gone') });
       return;
@@ -98,8 +128,8 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
   }, [t]);
 
   /* --- the invitee side: accept creates the room ------------------------- */
-  const answerInvite = useCallback(async (accepted: boolean) => {
-    const inv = invitation;
+  const answerInvite = useCallback(async (accepted: boolean, override?: { from: string; name: string }) => {
+    const inv = override ?? invitation;
     setInvitation(null);
     if (!inv) return;
     if (!accepted) {
@@ -118,6 +148,8 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
       setPhase({ kind: 'error', text: t('err.connectFailed') });
     }
   }, [invitation, createSession, t]);
+  const answerInviteRef = useRef(answerInvite);
+  answerInviteRef.current = answerInvite;
 
   /* --- the inviter side: accept carries fresh room credentials ------------ */
   useEffect(() => nearbyPresence.onInviteResult(result => {
@@ -203,6 +235,48 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Auto-connect — one quiet row: what it does, plus the switch. */}
+      <div
+        data-testid="auto-connect-row"
+        className="mt-2.5 flex items-center gap-2.5 px-3.5 py-2.5 rounded-[14px] bg-apple-parchment/60 dark:bg-white/[0.03] border border-apple-divider/40 dark:border-white/[0.06]"
+      >
+        <span
+          className={cn(
+            'shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-colors',
+            autoOn
+              ? 'bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[#f06413] dark:text-[#fb9243]'
+              : 'bg-apple-divider/40 dark:bg-white/[0.06] text-apple-ink-muted dark:text-white/40'
+          )}
+          aria-hidden
+        >
+          <Zap className="w-3.5 h-3.5" strokeWidth={2.2} />
+        </span>
+        <span className="flex-1 flex flex-col min-w-0 leading-tight">
+          <span className="text-[12.5px] font-semibold text-apple-ink dark:text-white">{t('nearby.autoTitle')}</span>
+          <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45">{t('nearby.autoHint')}</span>
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={autoOn}
+          data-testid="auto-connect-toggle"
+          aria-label={t('nearby.autoTitle')}
+          onClick={() => { hapticTap(); setAutoOn(v => { setAutoConnectEnabled(!v); return !v; }); }}
+          className={cn(
+            'relative shrink-0 w-[44px] h-[28px] rounded-full transition-colors duration-200 outline-none',
+            'focus-visible:ring-2 focus-visible:ring-[#f06413]/40',
+            autoOn ? 'bg-[#f06413] dark:bg-[#fb9243]' : 'bg-apple-divider dark:bg-white/20'
+          )}
+        >
+          <motion.span
+            initial={false}
+            animate={{ x: autoOn ? 18 : 0 }}
+            transition={{ type: 'spring', stiffness: 550, damping: 38 }}
+            className="absolute top-[2px] left-[2px] w-6 h-6 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.25)]"
+          />
+        </button>
+      </div>
 
       {/* Inline status / error (inviting, gone, declined) */}
       <AnimatePresence>

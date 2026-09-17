@@ -33,3 +33,6 @@ worker/.wrangler/
 
 # local test artifacts
 test-results/
+
+# transient verification screenshots
+scripts/tmp-*.png

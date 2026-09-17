@@ -18,7 +18,9 @@
     "test:fidelity": "node scripts/text-fidelity.mjs",
     "worker:test-live": "node scripts/verify-worker-live.mjs",
     "test:theme": "node scripts/verify-theme.mjs",
-    "test:mobile": "node scripts/verify-mobile-ui.mjs"
+    "test:mobile": "node scripts/verify-mobile-ui.mjs",
+    "test:seen": "node scripts/verify-seen.mjs",
+    "test:autoconnect": "node scripts/verify-autoconnect.mjs"
   },
   "dependencies": {
     "@gravity-ui/icons": "^2.22.0",

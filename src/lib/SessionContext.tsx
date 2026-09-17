@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { SessionState, ChatMessage, ConnectionType } from '../types';
 import { getSocket, devLog, signalingConfigIssue, probeSignalingHealth, resolveShortCode, refreshCode as refreshCodeRPC } from './socket';
 import { PeerManager, TransferCancelledError, hasSendProgress, clearAllTransferState, clearTransferState, getPartialInfo, chunkCountForSize } from './webrtc';
@@ -64,6 +64,13 @@ interface SessionContextValue {
   /** Flip this room's Stay Connected promise (server echoes the state to
    *  both devices). No-op when not seated in a room. */
   setStayConnected: (enabled: boolean) => void;
+  /** Room viewer registration: ChatView calls this on mount/unmount and
+   *  whenever the tab's visibility flips. Seen receipts are ONLY claimed
+   *  while a viewer is registered and the page is visible. */
+  registerRoomViewer: (mounted: boolean) => void;
+  /** Mark every currently-rendered partner text message as seen — call only
+   *  from the room viewer while mounted + visible. */
+  claimSeen: () => void;
   /** Re-enter the last Stay Connected room from the landing page. Resolves
    *  false when no promise is remembered or the room is truly gone. */
   rejoinStayRoom: () => Promise<boolean>;
@@ -349,6 +356,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   // twice — duplicate bubbles and duplicate React keys. A Set updated in the
   // handler itself is immune to batching.
   const receivedIdsRef = useRef<Set<string>>(new Set());
+  // Seen receipts already sent for this session — the senders of `seen` must
+  // be idempotent (a message can render again after a reconnect blip).
+  const seenSentRef = useRef<Set<string>>(new Set());
+  // True while a ChatView (the actual room screen) is mounted AND visible —
+  // the ONLY condition under which this device claims "seen".
+  const chatMountedRef = useRef(false);
   // In-flight agent-push file chunks, keyed by push message id. The server
   // delivers files as ~45KB base64 chunks (to fit WS frame caps on both
   // transports); this buffer reassembles them before the bubble appears.
@@ -653,20 +666,31 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       void resumeInterruptedTransfers();
       // Honest late receipts: after a reload/rejoin, the OTHER device may
       // still be open with messages it sent us that never got confirmed. We
-      // genuinely hold them (restored from localStorage), so confirm now —
-      // the sender flips those bubbles to Delivered truthfully, and a sender
-      // that reopens later gets the same when THIS side re-confirms.
+      // genuinely hold them (restored from localStorage), so confirm
+      // DELIVERED now — but never SEEN here: nobody has looked at them yet.
+      // Seen is claimed only by the room-viewer (below) when the message is
+      // actually rendered on a visible screen.
       for (const m of messagesRef.current) {
         if (m.sender === 'partner' && (m.attachment?.status === 'complete' || !m.attachment)) {
           pm.sendReceipt(m.id);
-          // The room is open on this device right now, so every restored
-          // message is genuinely ON SCREEN — confirm seen too.
-          pm.sendSeen(m.id);
         }
         // Restored files we received but no longer hold bytes for: ask the
         // peer to re-send them now that the channel is open.
         if (m.sender === 'partner' && m.attachment?.status === 'restoring') {
           try { void pm.send(JSON.stringify({ kind: 'resend_request', id: m.id })); } catch { /* channel closed */ }
+        }
+      }
+      // Catch-up SEEN for messages from a previous visit that are already
+      // scrolled up in an OPEN, VISIBLE room: the reader has had them on
+      // screen — they were here before this session began. Unseen messages
+      // that arrive LIVE are confirmed by the viewer effect instead.
+      if (typeof document === 'undefined' || document.visibilityState !== 'visible') return;
+      const chatMounted = chatMountedRef.current;
+      if (!chatMounted) return;
+      for (const m of messagesRef.current) {
+        if (m.sender === 'partner' && !m.seen && !m.attachment && seenSentRef.current.has(m.id) === false) {
+          seenSentRef.current.add(m.id);
+          pm.sendSeen(m.id);
         }
       }
     };
@@ -756,27 +780,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             // Text arrived — confirm receipt immediately so the sender can
             // show a true "Delivered" (not a guessed one).
             pm.sendReceipt(parsed.id);
-            // The room is open on this device (that's how the message got
-            // here), so once the bubble has rendered it's genuinely seen.
-            // The short delay keeps the receipt honest: we only claim seen
-            // after the message is actually on screen, not the instant it
-            // lands in state. Also only claim seen if the page is actually
-            // visible — don't fake it when the browser is minimized.
-            const sendSeenIfVisible = () => {
-              if (document.visibilityState === 'visible') {
-                pm.sendSeen(parsed.id);
-              } else {
-                // Page not visible — wait for it to become visible, then send seen
-                const onVis = () => {
-                  if (document.visibilityState === 'visible') {
-                    document.removeEventListener('visibilitychange', onVis);
-                    pm.sendSeen(parsed.id);
-                  }
-                };
-                document.addEventListener('visibilitychange', onVis);
-              }
-            };
-            setTimeout(sendSeenIfVisible, 450);
+            // SEEN is NOT claimed here: a message that just landed in state
+            // may be below the fold, on another screen, or the tab may be in
+            // the background. The room viewer (claimSeen / the ChatView
+            // visibility effect) marks it seen only when it is actually
+            // rendered on a visible screen.
           }
           return;
         }
@@ -1713,8 +1721,47 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     getSocket().emit(enabled ? 'stay_connected_enable' : 'stay_connected_disable', { roomId: session.roomId });
   };
 
+  /** The room screen mounted/unmounted (or is about to). Honest seen
+   *  receipts flow only from an active, visible viewer. */
+  const registerRoomViewer = useCallback((mounted: boolean) => {
+    chatMountedRef.current = mounted;
+    if (!mounted) return;
+    claimSeenRef.current();
+  }, []);
+
+  /** Mark every partner text message currently in state as seen. Called by
+   *  the viewer on mount, on message arrival, and on tab re-focus — never
+   *  on raw socket delivery. */
+  const claimSeenImpl = useCallback(() => {
+    if (!chatMountedRef.current) return;
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+    const pm = peerManagerRef.current;
+    if (!pm) return;
+    let sent = false;
+    for (const m of messagesRef.current) {
+      if (m.sender === 'partner' && !m.seen && !m.attachment && !seenSentRef.current.has(m.id)) {
+        seenSentRef.current.add(m.id);
+        pm.sendSeen(m.id);
+        sent = true;
+      }
+    }
+    if (sent) diag('seen.claimed', true);
+  }, []);
+  const claimSeenRef = useRef(claimSeenImpl);
+  claimSeenRef.current = claimSeenImpl;
+  const claimSeen = claimSeenImpl;
+
+  // While a viewer is registered, re-claim seen when the tab becomes visible
+  // again (backgrounded tabs must not silently mark messages read).
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onVis = () => { if (document.visibilityState === 'visible') claimSeenRef.current(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
+
   return (
-    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, joinWithShortCode, sendMessage, updateMessageAttachment, retryTransfer, retryText, cancelTransfer, setDeviceName, requestReconnect, refreshCode, closeSession, leaveView, abandonSession, setStayConnected, rejoinStayRoom }}>
+    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, joinWithShortCode, sendMessage, updateMessageAttachment, retryTransfer, retryText, cancelTransfer, setDeviceName, requestReconnect, refreshCode, closeSession, leaveView, abandonSession, setStayConnected, registerRoomViewer, claimSeen, rejoinStayRoom }}>
       {children}
     </SessionContext.Provider>
   );

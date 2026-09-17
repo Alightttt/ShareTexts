@@ -47,26 +47,56 @@
   --radius-lg: 20px;
 }
 
+/* Dark palette — the html.dark class is set by guides/theme.js before paint
+   (saved preference, else system). One source of truth, no media-query split. */
+html.dark {
+  --brand: #4d9dff;
+  --brand-hover: #72b3ff;
+  --brand-light: rgba(77,157,255,.08);
+  --brand-border: rgba(77,157,255,.2);
+
+  --bg: #080c16;
+  --bg-secondary: #0c1220;
+  --bg-elevated: #141c2e;
+  --surface: #141c2e;
+  --surface-raised: #1a2438;
+
+  --text: #f0f2f5;
+  --text-secondary: #8a93a6;
+  --text-muted: #555d6e;
+
+  --border: rgba(240,242,245,.08);
+  --border-subtle: rgba(240,242,245,.04);
+
+  --success: #55d18c;
+  --success-bg: rgba(85,209,140,.08);
+  --warning: #ffb340;
+  --warning-bg: rgba(255,179,64,.08);
+  --error: #ff7373;
+  --error-bg: rgba(255,115,115,.08);
+}
+
+/* No-JS fallback: follow the system preference until theme.js can decide. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  html:not(.light):not(.dark) {
     --brand: #4d9dff;
     --brand-hover: #72b3ff;
     --brand-light: rgba(77,157,255,.08);
     --brand-border: rgba(77,157,255,.2);
-    
+
     --bg: #080c16;
     --bg-secondary: #0c1220;
     --bg-elevated: #141c2e;
     --surface: #141c2e;
     --surface-raised: #1a2438;
-    
+
     --text: #f0f2f5;
     --text-secondary: #8a93a6;
     --text-muted: #555d6e;
-    
+
     --border: rgba(240,242,245,.08);
     --border-subtle: rgba(240,242,245,.04);
-    
+
     --success: #55d18c;
     --success-bg: rgba(85,209,140,.08);
     --warning: #ffb340;
@@ -96,6 +126,7 @@ body {
   border-bottom: 1px solid var(--border);
   padding: 0 24px;
 }
+html.dark .header { background: rgba(8,12,22,.88); }
 @media (prefers-color-scheme: dark) {
   .header { background: rgba(8,12,22,.88); }
 }
@@ -114,15 +145,20 @@ body {
   text-decoration: none;
   color: var(--text);
 }
-.header-brand svg { width: 18px; height: 18px; color: var(--brand); }
+.header-brand svg { width: 20px; height: 20px; color: var(--brand); flex-shrink: 0; }
 .header-brand span { font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
 .header-back {
-  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 0;
+  margin-right: auto;
   font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
   text-decoration: none;
   transition: color .15s;
+  min-height: 32px;
 }
 .header-back:hover { color: var(--text); }
 

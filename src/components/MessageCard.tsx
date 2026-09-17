@@ -192,9 +192,9 @@ function DeliveryTick({ delivered, seen, onBlue }: { delivered?: boolean; seen?:
     return (
       <span className="flex items-center gap-1 text-apple-blue">
         <motion.span
-          initial={{ scale: 0.4, opacity: 0, rotate: -12 }}
-          animate={{ scale: 1, opacity: 1, rotate: 0 }}
-          transition={{ type: 'spring', bounce: 0.55, duration: 0.45 }}
+          initial={{ scale: 0.6, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', bounce: 0.35, duration: 0.32 }}
           className="flex"
         >
           <CheckCheck className="w-3.5 h-3.5" />
@@ -209,9 +209,9 @@ function DeliveryTick({ delivered, seen, onBlue }: { delivered?: boolean; seen?:
         {/* The check pops in when the peer's receipt arrives — a tiny
             confirmation that lands, not just a static icon. */}
         <motion.span
-          initial={{ scale: 0.4, opacity: 0, rotate: -12 }}
-          animate={{ scale: 1, opacity: 1, rotate: 0 }}
-          transition={{ type: 'spring', bounce: 0.55, duration: 0.45 }}
+          initial={{ scale: 0.6, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', bounce: 0.35, duration: 0.32 }}
           className="flex"
         >
           <CheckCheck className="w-3.5 h-3.5" />
@@ -369,8 +369,8 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
   if (!a) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 10, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
         className={cn(
           "flex w-full items-center gap-2",
@@ -503,8 +503,8 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
   const lost = a.status === 'complete' && !a.url;
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
       className={cn(
         "flex w-full items-center gap-2",

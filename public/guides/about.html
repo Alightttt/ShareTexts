@@ -22,121 +22,90 @@
   <meta name="twitter:image" content="https://sharetexts.online/og/airdrop-any-device.png?v=17" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <script src="/guides/theme.js"></script>
+  <meta name="theme-color" content="#f7f4ee" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#131315" media="(prefers-color-scheme: dark)" />
   <link rel="stylesheet" href="/guides/_template.css" />
 </head>
 <body>
   <header class="header"><div class="header-inner">
-    <a href="/" class="header-brand">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+    <a href="/" class="header-back" aria-label="Back to ShareText">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+      <span style="display:inline">Back</span>
+    </a>
+    <a href="/" class="header-brand" aria-label="ShareText home">
+      <!-- Official ShareText mark: two device screens joined by a beam,
+           ember gradient — same artwork as the app favicon. -->
+      <svg viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="ember-a" x1="24" y1="20" x2="216" y2="236" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#feab30"/>
+            <stop offset="0.55" stop-color="#f97b3d"/>
+            <stop offset="1" stop-color="#f06413"/>
+          </linearGradient>
+        </defs>
+        <rect x="40" y="36" width="84" height="84" rx="24" fill="url(#ember-a)"/>
+        <rect x="132" y="136" width="84" height="84" rx="24" fill="url(#ember-a)"/>
+        <path d="M110 106 L146 142" stroke="url(#ember-a)" stroke-width="28" stroke-linecap="round"/>
+      </svg>
       <span>ShareText</span>
     </a>
-    <a href="/" class="header-back">Home →</a>
   </div></header>
 
   <main class="container"><article>
     <p class="overline">About</p>
     <h1>What is ShareText?</h1>
-    <p class="subtitle">A free browser tool for moving text, photos, videos, and files between any two devices. No app. No account. Temporary by design.</p>
+    <p class="subtitle">ShareText lets you move text, photos, and files from one device to another — right in your browser. No app to install, no account to make.</p>
 
-    <div class="callout"><p><strong>The short version:</strong> Open <a href="/" style="color:var(--brand);text-decoration:none;font-weight:500">sharetexts.online</a> on both devices. Connect with a pairing code. Send anything. When you're done, the connection closes.</p></div>
+    <div class="callout"><p><strong>In one line:</strong> Open <a href="/" style="color:var(--brand);text-decoration:none;font-weight:500">sharetexts.online</a> on both devices, connect them, send anything. Close the tab when you're done — nothing is kept.</p></div>
 
-    <h2>What ShareText Does</h2>
+    <h2>Why people use it</h2>
     <div class="card">
-      <p style="margin:0 0 10px"><strong>Transfers between devices</strong> — text, links, photos, videos, audio, documents, and any file type your browser can select.</p>
+      <p style="margin:0 0 10px"><strong>It just works</strong> — iPhone to Windows, Android to Mac, any mix. If both devices have a browser, you're set.</p>
     </div>
     <div class="card">
-      <p style="margin:0 0 10px"><strong>Works across platforms</strong> — iPhone to Windows, Android to Mac, any combination. No ecosystem lock-in.</p>
+      <p style="margin:0 0 10px"><strong>It's private</strong> — your files go directly between the two devices, encrypted. The server never sees them.</p>
     </div>
     <div class="card">
-      <p style="margin:0 0 10px"><strong>Encrypted end-to-end</strong> — data moves between devices using WebRTC encryption. The server never sees your files or messages.</p>
-    </div>
-    <div class="card">
-      <p style="margin:0"><strong>Temporary by design</strong> — rooms close automatically. No accounts, no history, no permanent storage.</p>
+      <p style="margin:0"><strong>It leaves nothing behind</strong> — no accounts, no history on our servers. When the room closes, it's gone.</p>
     </div>
 
-    <h2>How It Works</h2>
+    <h2>How to use it</h2>
     <ol class="steps">
       <li>
         <div>
-          <h3>Open on both devices</h3>
-          <p>Visit <a href="/" style="color:var(--brand);text-decoration:none">sharetexts.online</a> in any browser — Chrome, Safari, Firefox, Edge.</p>
+          <h3>Open it on both devices</h3>
+          <p>Go to <a href="/" style="color:var(--brand);text-decoration:none">sharetexts.online</a> in any browser.</p>
         </div>
       </li>
       <li>
         <div>
-          <h3>Connect with a code</h3>
-          <p>One device shows a 6-digit pairing code. The other enters it. Or scan the QR code — or just tap the other device when it appears under Nearby.</p>
+          <h3>Connect the devices</h3>
+          <p>Tap Send on one and Receive on the other, then use the 6-digit code, the QR code, the link — or just tap the other device when it shows up under Nearby.</p>
         </div>
       </li>
       <li>
         <div>
           <h3>Send anything</h3>
-          <p>Type text, paste a link, or attach a file. It transfers directly between devices.</p>
+          <p>Type, paste, or attach. It appears on the other device instantly.</p>
         </div>
       </li>
       <li>
         <div>
           <h3>Done</h3>
-          <p>The other device receives it. Close the tab when finished. Nothing is stored.</p>
+          <p>Disconnect, close the tab, and everything disappears. Nothing is stored.</p>
         </div>
       </li>
     </ol>
 
-    <h2>What You Can Transfer</h2>
-    <table>
-      <tr><th>Type</th><th>Examples</th><th>Status</th></tr>
-      <tr><td>Text</td><td>Notes, code, URLs, error messages</td><td><span class="badge badge-success">Supported</span></td></tr>
-      <tr><td>Photos</td><td>PNG, JPG, WEBP, HEIC</td><td><span class="badge badge-success">Supported</span></td></tr>
-      <tr><td>Videos</td><td>MP4, MOV, WebM</td><td><span class="badge badge-success">Supported</span></td></tr>
-      <tr><td>Audio</td><td>MP3, WAV, AAC</td><td><span class="badge badge-success">Supported</span></td></tr>
-      <tr><td>Documents</td><td>PDF, DOCX, TXT, CSV</td><td><span class="badge badge-success">Supported</span></td></tr>
-      <tr><td>Any file</td><td>ZIP, RAR, or any file your browser can select</td><td><span class="badge badge-success">Supported</span></td></tr>
-    </table>
+    <h2>What you can send</h2>
+    <p>Text, links, photos, videos, audio, documents — any file your browser can pick. If it fits on your device, you can send it.</p>
 
-    <h2>Supported Devices</h2>
-    <p>Any two devices with a modern browser and an internet connection:</p>
-    <table>
-      <tr><th>Platform</th><th>Browsers</th><th>Status</th></tr>
-      <tr><td>iPhone / iPad</td><td>Safari 15+, Chrome</td><td><span class="badge badge-success">Tested</span></td></tr>
-      <tr><td>Android</td><td>Chrome, Firefox, Samsung Internet</td><td><span class="badge badge-success">Tested</span></td></tr>
-      <tr><td>Windows</td><td>Chrome, Edge, Firefox</td><td><span class="badge badge-success">Tested</span></td></tr>
-      <tr><td>macOS</td><td>Safari, Chrome, Firefox</td><td><span class="badge badge-success">Tested</span></td></tr>
-      <tr><td>Linux</td><td>Chrome, Firefox</td><td><span class="badge badge-success">Tested</span></td></tr>
-    </table>
+    <h2>Which devices work</h2>
+    <p>Any two of these: iPhone, iPad, Android phone or tablet, Windows PC, Mac, Linux computer. You need a modern browser (Chrome, Safari, Firefox, Edge) and internet on both devices.</p>
 
-    <h2>Privacy Model</h2>
-    <div class="card">
-      <p style="margin:0 0 6px"><strong>Encryption</strong> — DTLS via WebRTC. All data between devices is encrypted.</p>
-    </div>
-    <div class="card">
-      <p style="margin:0 0 6px"><strong>Storage</strong> — No files, messages, or accounts stored on any server.</p>
-    </div>
-    <div class="card">
-      <p style="margin:0"><strong>Identity</strong> — No sign-up, no login, no personal information required.</p>
-    </div>
-
-    <h2>Technical Architecture</h2>
-    <p>Three layers make ShareText work:</p>
-    <ol class="steps">
-      <li>
-        <div>
-          <h3>Frontend</h3>
-          <p>React single-page application served as static files. Handles the UI, pairing, and WebRTC connection.</p>
-        </div>
-      </li>
-      <li>
-        <div>
-          <h3>Signaling server</h3>
-          <p>Coordinates the initial handshake between devices. Does not see file contents.</p>
-        </div>
-      </li>
-      <li>
-        <div>
-          <h3>Peer connection</h3>
-          <p>WebRTC DataChannel between browsers. Files move directly. Encrypted end-to-end.</p>
-        </div>
-      </li>
-    </ol>
+    <h2>Is it safe?</h2>
+    <p>Yes. Everything is encrypted end-to-end while it travels between your devices. We never see your messages or files, and nothing is saved on our servers. There's no sign-up, so there's nothing to leak.</p>
 
     <div style="text-align:center; margin: 48px 0 0"><a href="/" class="cta">Try ShareText Free →</a></div>
 
@@ -146,9 +115,7 @@
         <a href="/guides/how-it-works.html">How It Works</a>
         <a href="/guides/privacy.html">Privacy</a>
         <a href="/guides/security.html">Security</a>
-        <a href="/guides/supported-devices.html">Supported Devices</a>
-        <a href="/guides/how-to-transfer-files-between-devices.html">Transfer Guide</a>
-        <a href="/docs">API Documentation</a>
+        <a href="/docs">Docs</a>
       </div>
     </section>
   </article></main>

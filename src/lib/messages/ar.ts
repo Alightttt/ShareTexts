@@ -249,6 +249,8 @@ const ar: Dict = {
 
   // ── nearby device discovery ───────────────────────────────────────
   'nearby.hint': 'افتح ShareTexts على جهاز آخر',
+  "nearby.autoTitle": "اتصال تلقائي",
+  "nearby.autoHint": "يتصل تلقائيًا عند لمس جهاز قريب لك",
   'nearby.sectionTitle': 'الأجهزة القريبة',
   'nearby.nearby': 'قريب',
   'nearby.waiting': 'في انتظار الاتصال…',
