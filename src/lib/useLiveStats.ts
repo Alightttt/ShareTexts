@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { signalingHttpBase } from './socket';
 
 /**
@@ -12,34 +12,75 @@ import { signalingHttpBase } from './socket';
  *
  * The tracker on the landing page renders only when `devices` is non-null
  * (i.e. the service has answered at least once) so it never shows a fake 0.
+ *
+ * bumpRoomsCreated(): the optimistic local increment. It fires the moment a
+ * room is created on THIS device — before the next poll would see it — so
+ * the counter visibly moves with the user's own action. The next /stats
+ * response re-syncs to the server's lifetime total (higher or equal: every
+ * other device's rooms arrive too). A fresh page load starts optimistic at 0
+ * and is overwritten by the first successful fetch.
  */
-export function useLiveStats(pollMs = 10_000): { devices: number | null; roomsCreated: number | null } {
+export function useLiveStats(pollMs = 10_000): { devices: number | null; roomsCreated: number | null; bumpRoomsCreated: () => void } {
   const [devices, setDevices] = useState<number | null>(null);
   const [roomsCreated, setRoomsCreated] = useState<number | null>(null);
+  // Server-truth and the local optimistic bump travel separately: display =
+  // max(server, local) so a slow fetch never drags the number backwards.
+  const [localBump, setLocalBump] = useState(0);
+  const serverRef = useRef<number | null>(null);
+
+  const load = useCallback(async () => {
+    const base = signalingHttpBase();
+    if (!base) return;
+    // A hung connection (dead Wi-Fi, radio handoff) must not leave the poll
+    // dangling — every fetch is bounded, so the loop always moves on and the
+    // UI keeps the last known good numbers.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+    try {
+      const res = await fetch(base + '/stats', { cache: 'no-store', credentials: 'omit', signal: controller.signal });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (typeof data?.users === 'number') setDevices(data.users);
+      if (typeof data?.roomsCreated === 'number') {
+        serverRef.current = data.roomsCreated;
+        setRoomsCreated(data.roomsCreated);
+      }
+    } catch { /* offline — keep last known values quietly */ }
+    finally { clearTimeout(timer); }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     const base = signalingHttpBase();
     if (!base) return;
-    const load = async () => {
-      try {
-        const res = await fetch(base + '/stats', { cache: 'no-store', credentials: 'omit' });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (cancelled) return;
-        if (typeof data?.users === 'number') setDevices(data.users);
-        if (typeof data?.roomsCreated === 'number') setRoomsCreated(data.roomsCreated);
-      } catch { /* offline — keep last known values quietly */ }
-    };
-    void load();
-    const timer = setInterval(load, pollMs);
+    const tick = async () => { if (!cancelled) await load(); };
+    void tick();
+    const timer = setInterval(tick, pollMs);
     // Returning to the tab (e.g. after finishing a room) refreshes at once,
     // so the tracker shows the room just created without waiting a full
     // polling interval.
-    const onVisible = () => { if (document.visibilityState === 'visible') void load(); };
+    const onVisible = () => { if (document.visibilityState === 'visible') void tick(); };
     document.addEventListener('visibilitychange', onVisible);
     return () => { cancelled = true; clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
-  }, [pollMs]);
+  }, [pollMs, load]);
 
-  return { devices, roomsCreated };
+  const bumpRoomsCreated = useCallback(() => {
+    setLocalBump(b => b + 1);
+    // Nudge the server poll right away too — if it answers fast, the very
+    // next render already carries the authoritative total.
+    void load();
+  }, [load]);
+
+  // Display = the best truth we have. Server total when known; otherwise the
+  // 113 floor (rooms made before lifetime tracking existed — same floor the
+  // servers apply) PLUS this device's own optimistic bumps, so the counter
+  // moves instantly even while the signaling backend is an older deploy that
+  // doesn't report roomsCreated yet. When both exist, the server number wins
+  // as soon as it's ≥ floor+bumps (it already includes our rooms).
+  const FLOOR = 113;
+  const displayRooms = roomsCreated == null
+    ? FLOOR + localBump
+    : Math.max(roomsCreated, FLOOR + localBump);
+
+  return { devices, roomsCreated: displayRooms, bumpRoomsCreated };
 }

@@ -181,6 +181,25 @@
           #loading-shell.fade-out { opacity: 0; }
           .st-logo-pulse { animation: st-pulse 2s ease-in-out infinite; }
           @keyframes st-pulse { 0%,100%{opacity:0.6;transform:scale(1)} 50%{opacity:1;transform:scale(1.03)} }
+          @keyframes st-shine { from { background-position: 130% 0; } to { background-position: -130% 0; } }
+          @keyframes st-spin { to { transform: rotate(360deg); } }
+          html.dark #loading-shell .st-boot-ring { border-color: rgba(251,146,67,0.2); border-top-color: #fb9243; }
+          #loading-shell .st-boot-mark { color: #f06413; }
+          html.dark #loading-shell .st-boot-mark { color: #fb9243; }
+          #loading-shell .st-boot-mark::after {
+            content: ''; position: absolute; inset: -6%;
+            background: linear-gradient(115deg,transparent 30%,rgba(255,255,255,0.7) 48%,rgba(255,255,255,0.7) 52%,transparent 70%);
+            background-size: 240% 100%;
+            -webkit-mask: url('/favicon.svg') center/contain no-repeat; mask: url('/favicon.svg') center/contain no-repeat;
+            animation: st-shine 1.9s cubic-bezier(0.4,0,0.2,1) infinite;
+          }
+          html.dark #loading-shell .st-boot-mark::after {
+            background-image: linear-gradient(115deg,transparent 30%,rgba(255,255,255,0.4) 48%,rgba(255,255,255,0.4) 52%,transparent 70%);
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .st-logo-pulse, [style*="st-shine"] { animation: none; }
+            .st-boot-ring { animation-duration: 1.6s; }
+          }
           /* Class-driven, not media-driven: the theme script above already
              set html.dark for a manual choice, so the shell matches the
              saved theme instantly — no light flash in dark mode. */
@@ -193,12 +212,13 @@
           html.dark #loading-shell p { color: #a5a19a; }
           html.dark #loading-shell .st-brand { color: #f2f0eb; }
         </style>
-        <div style="text-align:center">
-          <svg class="st-logo-pulse" width="40" height="40" viewBox="0 0 256 256" fill="none" style="margin-bottom:14px">
-            <rect x="40" y="36" width="84" height="84" rx="24" fill="currentColor"/><rect x="132" y="136" width="84" height="84" rx="24" fill="currentColor"/><path d="M110 106 L146 142" stroke="currentColor" stroke-width="28" stroke-linecap="round"/>
-          </svg>
-          <p class="st-brand" style="font-size:15px;font-weight:600;margin:0 0 4px;letter-spacing:-0.02em">ShareText</p>
-          <p style="font-size:13px;margin:0;color:#6e6e73">Loading...</p>
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px">
+          <div style="position:relative" class="st-logo-pulse st-boot-mark">
+            <svg width="52" height="52" viewBox="0 0 256 256" fill="none" aria-hidden="true">
+              <rect x="40" y="36" width="84" height="84" rx="24" fill="currentColor"/><rect x="132" y="136" width="84" height="84" rx="24" fill="currentColor"/><path d="M110 106 L146 142" stroke="currentColor" stroke-width="28" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span aria-hidden="true" class="st-boot-ring" style="width:22px;height:22px;border-radius:9999px;border:2.5px solid rgba(240,100,19,0.18);border-top-color:#f06413;animation:st-spin 0.85s linear infinite"></span>
         </div>
       </div>
     </div>

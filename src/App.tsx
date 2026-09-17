@@ -65,57 +65,21 @@ function DisconnectToast({ reason, onDone }: { reason: string, onDone: () => voi
 }
 
 /**
- * AppSkeleton — a premium, calm loading frame that mirrors the real page's
- * geometry exactly, so the swap to loaded content is nearly invisible.
- * A single soft shimmer sweeps down the page (one gradient, CSS-only, GPU
- * cheap) instead of each block pulsing on its own timer.
+ * AppSkeleton — the boot/loading screen. Calm and simple: the brand mark
+ * shimmers in the exact center, a quiet spinner turns beneath it. No fake
+ * page geometry — nothing to mis-align against the real layout on swap.
  */
-function AppSkeleton({ docs = false }: { docs?: boolean }) {
-  // Stable brand frame while the route hydrates: header + skeleton lines,
-  // so a slow load never reads as a broken or blank page.
+function AppSkeleton() {
   return (
-    <div className="min-h-screen bg-apple-canvas dark:bg-[#131315] flex flex-col">
-      <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4 border-b border-apple-divider/60 dark:border-white/[0.06]">
-        <div className="flex items-center gap-2.5">
-          <ShareTextLogo size={20} />
-          <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="w-9 h-4 rounded-full bg-apple-divider/80 dark:bg-white/10" />
-          {/* Skeleton mirrors the real theme toggle's 92×46 hit pill */}
-          <span className="w-[82px] h-[36px] rounded-full bg-apple-divider/80 dark:bg-white/10" />
-        </div>
-      </header>
-      <div className="relative flex-1 w-full max-w-xl mx-auto px-6 lg:px-10 py-14 sm:py-20 overflow-hidden st-skeleton-sweep">
-        {docs ? (
-          <>
-            <div className="h-7 w-1/3 rounded-lg bg-apple-divider/60 dark:bg-white/[0.08]" />
-            <div className="mt-6 space-y-3">
-              <div className="h-4 w-full rounded bg-apple-divider/40 dark:bg-white/[0.05]" />
-              <div className="h-4 w-5/6 rounded bg-apple-divider/40 dark:bg-white/[0.05]" />
-              <div className="h-4 w-2/3 rounded bg-apple-divider/40 dark:bg-white/[0.05]" />
-              <div className="mt-8 h-64 w-full rounded-[20px] bg-apple-parchment dark:bg-white/[0.04]" />
-            </div>
-          </>
-        ) : (
-          /* Home skeleton mirrors the real hero's geometry — headline,
-             subtitle, the two pill CTAs, and the device image at their true
-             sizes and rhythm. */
-          <>
-            <div className="h-[42px] w-[76%] rounded-[10px] bg-apple-divider/60 dark:bg-white/[0.08]" />
-            <div className="mt-3 h-[42px] w-[52%] rounded-[10px] bg-apple-divider/60 dark:bg-white/[0.08]" />
-            <div className="mt-5 space-y-2">
-              <div className="h-4 w-full max-w-[380px] rounded bg-apple-divider/40 dark:bg-white/[0.05]" />
-              <div className="h-4 w-[68%] max-w-[260px] rounded bg-apple-divider/40 dark:bg-white/[0.05]" />
-            </div>
-            <div className="mt-8 flex gap-6">
-              <div className="h-12 w-32 rounded-full bg-ember/25 dark:bg-ember/20" />
-              <div className="h-12 w-32 rounded-full border border-apple-divider dark:border-white/10" />
-            </div>
-          </>
-        )}
+    <div className="min-h-screen bg-apple-canvas dark:bg-[#131315] flex flex-col items-center justify-center gap-7">
+      <div className="st-boot-logo" aria-hidden>
+        <ShareTextLogo size={52} mono />
       </div>
-      <div className="sr-only" role="status">Loading ShareText…</div>
+      <span
+        className="st-boot-spinner"
+        role="status"
+        aria-label="Loading ShareText"
+      />
     </div>
   );
 }
@@ -191,15 +155,15 @@ function AppContent() {
   }, [session.closedReason, leaveView]);
 
   if (typeof window !== 'undefined' && window.location.pathname === '/docs') {
-    return <Suspense fallback={<AppSkeleton docs />}><Docs /></Suspense>;
+    return <Suspense fallback={<AppSkeleton />}><Docs /></Suspense>;
   }
 
   if (typeof window !== 'undefined' && window.location.pathname === '/privacy') {
-    return <Suspense fallback={<AppSkeleton docs />}><Legal page="privacy" /></Suspense>;
+    return <Suspense fallback={<AppSkeleton />}><Legal page="privacy" /></Suspense>;
   }
 
   if (typeof window !== 'undefined' && window.location.pathname === '/terms') {
-    return <Suspense fallback={<AppSkeleton docs />}><Legal page="terms" /></Suspense>;
+    return <Suspense fallback={<AppSkeleton />}><Legal page="terms" /></Suspense>;
   }
 
   if (typeof window !== 'undefined' && window.location.pathname !== '/' && !window.location.pathname.startsWith('/s/')) {

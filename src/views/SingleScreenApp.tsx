@@ -101,7 +101,7 @@ export function SingleScreenApp() {
   const isDesktopLayout = useIsDesktopLayout();
   // Live activity tracker — real aggregate numbers from the signaling
   // service: devices seated right now + rooms ever created.
-  const { roomsCreated } = useLiveStats();
+  const { roomsCreated, bumpRoomsCreated } = useLiveStats();
   const [panelMode, setPanelMode] = useState<PanelMode>('idle');
   const [isCreating, setIsCreating] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
@@ -119,6 +119,11 @@ export function SingleScreenApp() {
   const [isRejoining, setIsRejoining] = useState(false);
   // Nearby discovery status, lifted into the existing activity tracker line.
   const [nearbyStatus, setNearbyStatus] = useState<string | null>(null);
+  // If NearbyDevices unmounts (room created, route change) while a transient
+  // status is showing, the counter line must come back — the child's own
+  // effect can't run after it's gone, so the parent clears on unmount.
+  const nearbyStatusRef = useRef(setNearbyStatus);
+  useEffect(() => () => nearbyStatusRef.current(null), []);
   // Device-name editing in the connected pair visual (tap your name to
   // rename — the other device sees the change immediately).
   const [editingName, setEditingName] = useState(false);
@@ -296,7 +301,12 @@ export function SingleScreenApp() {
     const thisAttempt = ++createAbortRef.current;
     try {
       await createSession();
-      if (thisAttempt === createAbortRef.current) setRetryCount(0);
+      if (thisAttempt === createAbortRef.current) {
+        setRetryCount(0);
+        // The tracker moves the instant THIS room exists — the next /stats
+        // poll confirms with the server's lifetime total.
+        bumpRoomsCreated();
+      }
     } catch (e: unknown) {
       if (thisAttempt !== createAbortRef.current) return;
       setCreateError(friendlyConnectError(e));
