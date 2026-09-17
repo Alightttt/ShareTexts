@@ -6,6 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+!.env.production
 
 # AI agent skill tooling (installed per-dev via `npx skills add`)
 .agents/
