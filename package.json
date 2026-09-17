@@ -20,7 +20,8 @@
     "test:theme": "node scripts/verify-theme.mjs",
     "test:mobile": "node scripts/verify-mobile-ui.mjs",
     "test:seen": "node scripts/verify-seen.mjs",
-    "test:autoconnect": "node scripts/verify-autoconnect.mjs"
+    "test:autoconnect": "node scripts/verify-autoconnect.mjs",
+    "test:protocol": "node scripts/verify-protocol.mjs"
   },
   "dependencies": {
     "@gravity-ui/icons": "^2.22.0",

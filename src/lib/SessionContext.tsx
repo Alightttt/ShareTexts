@@ -5,6 +5,7 @@ import { PeerManager, TransferCancelledError, hasSendProgress, clearAllTransferS
 import { generateKey } from './crypto';
 import { humanizeError, ConnectError, describeConnectFailure } from './errors';
 import { diag, roomCreateDiagStart, roomCreateDiagEnd } from './diag';
+import { beginTransferRecord, finishTransferRecord } from './transferMetrics';
 import { sanitizeFilename } from './utils';
 import { normalizePastedText } from './textFidelity';
 
@@ -55,6 +56,10 @@ interface SessionContextValue {
   retryTransfer: (messageId: string) => Promise<void>;
   retryText: (messageId: string) => Promise<void>;
   cancelTransfer: (messageId: string) => void;
+  /** Pause one of OUR in-flight uploads (receiver is told; resume lifts it). */
+  pauseTransfer: (messageId: string) => void;
+  /** Resume a paused upload. */
+  resumeTransferById: (messageId: string) => void;
   setDeviceName: (name: string) => void;
   requestReconnect: () => Promise<void>;
   refreshCode: () => Promise<void>;
@@ -776,6 +781,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             // (chunkCountForSize) — a mismatch here would leave the receiver
             // waiting for chunks that never come or rejecting real ones.
             pm.expectBinaryTransfer(parsed.attachment.id, chunkCountForSize(parsed.attachment.size));
+            // Metrics: a file transfer is now officially in flight on THIS
+            // device. Duration/throughput are computed when it finishes.
+            beginTransferRecord({
+              transferId: parsed.attachment.id,
+              kind: 'file',
+              direction: 'received',
+              name: parsed.attachment.name,
+              bytes: parsed.attachment.size,
+            });
           } else {
             // Text arrived — confirm receipt immediately so the sender can
             // show a true "Delivered" (not a guessed one).
@@ -854,6 +868,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // Mark that this user has completed at least one transfer, so the
       // install prompt can appear after meaningful use.
       try { localStorage.setItem('sharetext.hasTransfer', '1'); } catch { /* ignore */ }
+      // Metrics: bytes on disk, duration done. Outcome upgrades to
+      // 'checksum-mismatch' later if verification fails.
+      finishTransferRecord(transferId, 'received', blob.size, 'ok', { name: srcMsg?.attachment?.name, kind: 'file' });
       // The whole file arrived — only now confirm receipt (metadata alone
       // would be a lie if the transfer later failed).
       const msg = messagesRef.current.find(m => m.attachment?.id === transferId);
@@ -890,6 +907,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           .then((got) => {
             const ok = got === checksum;
             diag('transfer.checksum', ok, ok ? 'verified' : `mismatch expected ${checksum.slice(0, 12)}… got ${got.slice(0, 12)}…`);
+            if (!ok) finishTransferRecord(transferId, 'received', 0, 'checksum-mismatch', { name: srcMsg?.attachment?.name, kind: 'file', verified: false });
             updateMessageAttachment(msgId, ok
               ? { verified: true }
               : { status: 'failed', note: 'checksum-mismatch', progress: 1, verified: false });
@@ -905,11 +923,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           if (now?.checksum) {
             void sha256Hex(finalBlob)
               .then((got) => {
-                const ok = got === now.checksum;
-                diag('transfer.checksum', ok, ok ? 'verified (late)' : `mismatch expected ${now.checksum.slice(0, 12)}… got ${got.slice(0, 12)}…`);
-                updateMessageAttachment(msgId, ok
-                  ? { verified: true }
-                  : { status: 'failed', note: 'checksum-mismatch', progress: 1, verified: false });
+              const ok = got === now.checksum;
+              diag('transfer.checksum', ok, ok ? 'verified (late)' : `mismatch expected ${now.checksum.slice(0, 12)}… got ${got.slice(0, 12)}…`);
+              if (!ok) finishTransferRecord(transferId, 'received', 0, 'checksum-mismatch', { name: srcMsg?.attachment?.name, kind: 'file', verified: false });
+              updateMessageAttachment(msgId, ok
+                ? { verified: true }
+                : { status: 'failed', note: 'checksum-mismatch', progress: 1, verified: false });
               })
               .catch(() => { /* hashing failed — leave complete, unverified */ });
           } else {
@@ -930,6 +949,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // The peer cancelled a transfer (or cancelled ours mid-send). Mark the
     // matching bubble cancelled on this side too.
     pm.onCancel = (transferId) => {
+      finishTransferRecord(transferId, 'received', 0, 'cancelled', { kind: 'file' });
       setSession(s => ({
         ...s,
         messages: s.messages.map(m => {
@@ -939,6 +959,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           return m;
         })
       }));
+    };
+
+    // Protocol HASH_VERIFY arriving on its own (control channel): stash it on
+    // the attachment like the metadata-borne checksum, and if the file already
+    // finished unverified, verify immediately with the bytes we hold.
+    pm.onFileHash = (transferId, sha256) => {
+      const srcMsg = messagesRef.current.find(m => m.attachment?.id === transferId);
+      if (srcMsg) {
+        updateMessageAttachment(srcMsg.id, { checksum: sha256 });
+      }
     };
 
     pm.onDisconnect = () => {
@@ -1332,6 +1362,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         checksum = c;
         diag('transfer.hash_ok', true, c.slice(0, 12));
         updateMessageAttachment(msg.id, { checksum: c });
+        // Protocol: the final HASH_VERIFY step. A tiny control packet (rides
+        // the dedicated control channel when open) tells the receiver the
+        // SHA-256 directly — verification no longer depends on the chunked
+        // metadata update also landing.
+        void peerManagerRef.current?.sendFileHash(attachment.id, c);
         // Re-send the metadata with the checksum so the peer can verify the
         // bytes that land on its side. The receiver dedupes by message id and
         // merges the checksum into the existing bubble.
@@ -1363,6 +1398,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         // A user cancel stops the loop cleanly — don't overwrite 'cancelled'.
         if (!(e instanceof TransferCancelledError)) {
           updateMessageAttachment(msg.id, { status: 'failed' });
+          finishTransferRecord(attachment.id, 'sent', 0, 'failed', { name: file.name, kind: 'file' });
+        } else {
+          finishTransferRecord(attachment.id, 'sent', 0, 'cancelled', { name: file.name, kind: 'file' });
         }
       }
       return;
@@ -1496,8 +1534,29 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     if (!pm || !msg?.attachment) return;
     const st = msg.attachment.status;
     if (st !== 'sending' && st !== 'receiving' && st !== 'interrupted' && st !== 'resuming') return;
+    finishTransferRecord(msg.attachment.id, 'sent', 0, 'cancelled', { name: msg.attachment.name, kind: 'file' });
     updateMessageAttachment(messageId, { status: 'cancelled' });
     pm.cancelTransfer(msg.attachment.id);
+  };
+
+  /** Pause one of our in-flight uploads at the next chunk boundary. */
+  const pauseTransfer = (messageId: string) => {
+    const pm = peerManagerRef.current;
+    const msg = session.messages.find(m => m.id === messageId);
+    if (!pm || !msg?.attachment) return;
+    if (msg.attachment.status !== 'sending') return;
+    updateMessageAttachment(messageId, { status: 'paused' });
+    pm.pauseTransfer(msg.attachment.id);
+  };
+
+  /** Resume a paused upload — the same send loop continues. */
+  const resumeTransferById = (messageId: string) => {
+    const pm = peerManagerRef.current;
+    const msg = session.messages.find(m => m.id === messageId);
+    if (!pm || !msg?.attachment) return;
+    if (msg.attachment.status !== 'paused') return;
+    updateMessageAttachment(messageId, { status: 'sending' });
+    pm.resumeTransferById(msg.attachment.id);
   };
 
   const updateMessageAttachment = (messageId: string, updates: Partial<ChatMessage['attachment']>) => {
@@ -1761,7 +1820,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, joinWithShortCode, sendMessage, updateMessageAttachment, retryTransfer, retryText, cancelTransfer, setDeviceName, requestReconnect, refreshCode, closeSession, leaveView, abandonSession, setStayConnected, registerRoomViewer, claimSeen, rejoinStayRoom }}>
+    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, joinWithShortCode, sendMessage, updateMessageAttachment, retryTransfer, retryText, cancelTransfer, pauseTransfer, resumeTransferById, setDeviceName, requestReconnect, refreshCode, closeSession, leaveView, abandonSession, setStayConnected, registerRoomViewer, claimSeen, rejoinStayRoom }}>
       {children}
     </SessionContext.Provider>
   );

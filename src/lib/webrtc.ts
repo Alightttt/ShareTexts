@@ -2,6 +2,7 @@ import { getSocket } from './socket';
 import { encryptText, decryptText, generateKey, encryptBinaryChunk, decryptBinaryChunk } from './crypto';
 import { uuidToBytes, bytesToUuid } from './binaryUtils';
 import { diag } from './diag';
+import { beginTransferRecord, finishTransferRecord, recordTransferProgress, setCurrentTransport } from './transferMetrics';
 import type { ChunkEnvelope } from './protocol';
 
 type SignalData = { type: 'offer' | 'answer'; sdp: string } | { type: 'candidate'; candidate: RTCIceCandidateInit };
@@ -272,7 +273,17 @@ export class TransferCancelledError extends Error {
 
 export class PeerManager {
   private pc: RTCPeerConnection | null = null;
+  /** Bulk channel: chat text + file chunks (the heavy pipe). */
   private dc: RTCDataChannel | null = null;
+  /** Control channel: tiny encrypted control packets (cancel, ack, receipts,
+   *  seen, pause/resume, hash-verify). Kept SEPARATE from the bulk channel so
+   *  a 2 GB video flooding the send buffer can never delay a Cancel press or
+   *  a Seen receipt — SCTP gives each channel its own queue. */
+  private cc: RTCDataChannel | null = null;
+  /** True once the control channel is open on BOTH sides; until then control
+   *  packets ride the legacy path (inside the chat channel) for compatibility
+   *  with a peer still running the previous build. */
+  private ccOpen = false;
   private roomId: string;
   private peerId: string | null = null;
   private secret: string;
@@ -300,11 +311,19 @@ export class PeerManager {
   public onDisconnect: (() => void) | null = null;
   public onHello: ((name: string) => void) | null = null;
   public onOpen: (() => void) | null = null;
+  /** Transfer ids the PEER asked us to pause (resume lifts them). */
+  private pauseSends = new Set<string>();
   /** A chat message we sent was confirmed received by the peer (true ack). */
   public onReceipt: ((messageId: string) => void) | null = null;
   /** A chat message we sent was SEEN by the peer — their room is open with
    *  it on screen (true read receipt, distinct from mere arrival). */
   public onSeen: ((messageId: string) => void) | null = null;
+  /** The peer sent the final SHA-256 of a finished file transfer — verify.
+   *  (Also fires for the legacy path via the metadata route.) */
+  public onFileHash: ((transferId: string, sha256: string) => void) | null = null;
+  /** Live transfer pacing state for the UI/metrics: bytes/sec, pipeline
+   *  depth, buffer occupancy. Written by the send loop, read by telemetry. */
+  public lastPace: { transferId: string; bytesPerSec: number; depth: number; buffered: number } | null = null;
 
   private isRelayFallback = false;
   private iceCandidatesQueue: RTCIceCandidateInit[] = [];
@@ -348,6 +367,7 @@ export class PeerManager {
     this.createPeerConnection();
     this.dc = this.pc!.createDataChannel('chat', { negotiated: false });
     this.setupDataChannel(this.dc);
+    this.openControlChannel();
 
     this.sendOffer();
 
@@ -372,6 +392,7 @@ export class PeerManager {
       this.createPeerConnection();
       this.dc = this.pc!.createDataChannel('chat', { negotiated: false });
       this.setupDataChannel(this.dc);
+      this.openControlChannel();
       this.sendOffer();
     }, OFFER_RETRY_DELAY);
   }
@@ -443,6 +464,12 @@ export class PeerManager {
     };
 
     this.pc.ondatachannel = (event) => {
+      if (event.channel.label === 'control') {
+        // The answering side receives the control channel here.
+        this.cc = event.channel;
+        this.setupControlChannel(this.cc);
+        return;
+      }
       this.dc = event.channel;
       this.setupDataChannel(this.dc);
     };
@@ -497,6 +524,111 @@ export class PeerManager {
       diag('webrtc.channel_closed', true);
       if (this.onDisconnect) this.onDisconnect();
     };
+  }
+
+  /**
+   * The dedicated control channel. Only the initiating side opens it (one
+   * offer/answer negotiation covers both directions once it's open). Ordered
+   * + reliable like the chat channel, but its send buffer is its OWN — a
+   * cancel/receipt/seen never waits behind megabytes of file chunks.
+   */
+  private openControlChannel() {
+    try {
+      this.cc = this.pc!.createDataChannel('control', { negotiated: false, ordered: true });
+      this.setupControlChannel(this.cc);
+    } catch { /* control is an optimization — the legacy path still works */ }
+  }
+
+  private setupControlChannel(channel: RTCDataChannel) {
+    channel.binaryType = 'arraybuffer';
+    channel.bufferedAmountLowThreshold = 64 * 1024;
+    channel.onopen = () => {
+      this.ccOpen = true;
+      diag('webrtc.control_open', true);
+    };
+    channel.onmessage = (event) => {
+      if (typeof event.data !== 'string') return;
+      void this.handleControlMessage(event.data);
+    };
+    channel.onclose = () => {
+      this.ccOpen = false;
+    };
+  }
+
+  /**
+   * Control packets on the dedicated channel are SMALL JSON strings (they
+   * carry ids and numbers, never payloads), encrypted with the same E2E key
+   * as everything else. Format: 'C' prefix + encrypted JSON — distinguishable
+   * at a glance from bulk-channel traffic in packet captures.
+   */
+  private async handleControlMessage(serialized: string) {
+    if (!serialized.startsWith('C')) return;
+    try {
+      const key = await this.waitForCrypto();
+      const inner = JSON.parse(await decryptText(serialized.slice(1), key));
+      this.routeControl(inner);
+    } catch { /* malformed control packets are dropped silently */ }
+  }
+
+  /** One routing table for control semantics, used by BOTH the dedicated
+   *  channel and the legacy in-chat path — so old and new peers interop. */
+  private routeControl(inner: { type?: string; [k: string]: unknown }) {
+    if (!inner || typeof inner.type !== 'string') return;
+    switch (inner.type) {
+      case 'cancel':
+        if (typeof inner.transferId === 'string') {
+          diag('transfer.cancelled', true, inner.transferId.slice(0, 8));
+          partialReceives.delete(inner.transferId);
+          sendProgress.delete(inner.transferId);
+          this.transferControllers.get(inner.transferId)?.abort();
+          if (this.onCancel) this.onCancel(inner.transferId);
+        }
+        return;
+      case 'ack':
+        if (typeof inner.transferId === 'string' && typeof inner.received === 'number') {
+          const p = sendProgress.get(inner.transferId);
+          if (p) p.acked = Math.max(p.acked, inner.received);
+          const waiter = ackWaiters.get(inner.transferId);
+          if (waiter) { ackWaiters.delete(inner.transferId); waiter(inner.received); }
+        }
+        return;
+      case 'pause':
+        if (typeof inner.transferId === 'string') this.pauseSends.add(inner.transferId);
+        return;
+      case 'resume':
+        if (typeof inner.transferId === 'string') this.pauseSends.delete(inner.transferId);
+        return;
+      case 'resume_query': {
+        // The peer is re-sending a transfer after a reconnect and wants to
+        // know where to start. Answer with our contiguous prefix — the first
+        // missing index is the safe resume point (RAM and OPFS paths alike).
+        if (typeof inner.transferId !== 'string') return;
+        const partial = partialReceives.get(inner.transferId);
+        const prefix = partial
+          ? partial.opfs
+            ? firstMissingBitmap(partial.opfs.bitmap)
+            : partial.chunks ? firstMissing(partial.chunks) : 0
+          : 0;
+        void this.sendControl({ type: 'ack', transferId: inner.transferId, received: prefix });
+        return;
+      }
+      case 'file_hash':
+        if (typeof inner.transferId === 'string' && typeof inner.sha256 === 'string') {
+          if (this.onFileHash) this.onFileHash(inner.transferId, inner.sha256);
+        }
+        return;
+      case 'receipt':
+        if (typeof inner.messageId === 'string' && this.onReceipt) this.onReceipt(inner.messageId);
+        return;
+      case 'seen':
+        if (typeof inner.messageId === 'string' && this.onSeen) this.onSeen(inner.messageId);
+        return;
+      case 'hello':
+        if (this.onHello && typeof inner.name === 'string') this.onHello(inner.name);
+        return;
+      default:
+        return;
+    }
   }
 
   private setupSocketListeners() {
@@ -680,58 +812,11 @@ export class PeerManager {
               try {
                 const decrypted = await decryptText(fullEncryptedText, this.cryptoKey);
                 const inner = JSON.parse(decrypted);
-                if (inner && inner.type === 'hello') {
-                  if (this.onHello && typeof inner.name === 'string') this.onHello(inner.name);
-                  return;
-                }
-                if (inner && inner.type === 'cancel' && typeof inner.transferId === 'string') {
-                  // The peer stopped a transfer. Drop our partial receive, stop
-                  // our own send loop if it's mid-flight, and tell the UI.
-                  diag('transfer.cancelled', true, inner.transferId.slice(0, 8));
-                  partialReceives.delete(inner.transferId);
-                  sendProgress.delete(inner.transferId);
-                  this.transferControllers.get(inner.transferId)?.abort();
-                  if (this.onCancel) this.onCancel(inner.transferId);
-                  return;
-                }
-                if (inner && inner.type === 'ack' && typeof inner.transferId === 'string' && typeof inner.received === 'number') {
-                  // The peer confirmed receiving up to `received` chunks — the
-                  // resume floor. Also wakes a waiting resumeTransfer.
-                  const p = sendProgress.get(inner.transferId);
-                  if (p) p.acked = Math.max(p.acked, inner.received);
-                  const waiter = ackWaiters.get(inner.transferId);
-                  if (waiter) {
-                    ackWaiters.delete(inner.transferId);
-                    waiter(inner.received);
-                  }
-                  return;
-                }
-                if (inner && inner.type === 'resume_query' && typeof inner.transferId === 'string') {
-                  // The peer is re-sending a transfer after a reconnect and
-                  // wants to know where to start. Answer with our contiguous
-                  // prefix — the first missing index is the safe resume point
-                  // (works for both the RAM and OPFS disk-backed paths).
-                  const partial = partialReceives.get(inner.transferId);
-                  const prefix = partial
-                    ? partial.opfs
-                      ? firstMissingBitmap(partial.opfs.bitmap)
-                      : partial.chunks ? firstMissing(partial.chunks) : 0
-                    : 0;
-                  void this.sendControl({
-                    type: 'ack',
-                    transferId: inner.transferId,
-                    received: prefix
-                  });
-                  return;
-                }
-                if (inner && inner.type === 'receipt' && typeof inner.messageId === 'string') {
-                  // A peer confirmed it received one of our chat messages.
-                  if (this.onReceipt) this.onReceipt(inner.messageId);
-                  return;
-                }
-                if (inner && inner.type === 'seen' && typeof inner.messageId === 'string') {
-                  // A peer confirmed one of our messages is on their screen.
-                  if (this.onSeen) this.onSeen(inner.messageId);
+                // Legacy control packets route through the SAME table as the
+                // dedicated channel — one semantics, two transports.
+                if (inner && typeof inner.type === 'string' &&
+                    ['hello', 'cancel', 'ack', 'pause', 'resume', 'file_hash', 'receipt', 'seen'].includes(inner.type)) {
+                  this.routeControl(inner);
                   return;
                 }
                 if (this.onMessage) this.onMessage(decrypted);
@@ -886,9 +971,11 @@ export class PeerManager {
         const localCandidate = stats.get(activeCandidatePair.localCandidateId);
         if (localCandidate && localCandidate.candidateType === 'host') {
           diag('webrtc.link', true, 'host (same network)');
+          setCurrentTransport('local');
           if (this.onConnectionTypeChange) this.onConnectionTypeChange('local');
         } else {
           diag('webrtc.link', true, 'non-host candidate');
+          setCurrentTransport('direct');
           if (this.onConnectionTypeChange) this.onConnectionTypeChange('direct');
         }
       } else {
@@ -991,6 +1078,13 @@ export class PeerManager {
     try {
       const key = await this.waitForCrypto();
       const encrypted = await encryptText(JSON.stringify(payload), key);
+      // Preferred path: the dedicated control channel — never queues behind
+      // bulk chunks, so a Cancel during a 2 GB send is instant.
+      if (this.ccOpen && this.cc && this.cc.readyState === 'open') {
+        try { this.cc.send('C' + encrypted); return; } catch { /* fall through */ }
+      }
+      // Legacy/interop path: wrap in a one-chunk envelope on the bulk
+      // channel (or relay) — peers on the previous build understand this.
       const packet: TransferPayload = {
         version: 1,
         type: 'chunk',
@@ -1006,6 +1100,33 @@ export class PeerManager {
         getSocket().emit('relay_message', { roomId: this.roomId, data: serialized });
       }
     } catch { /* cancel is best-effort */ }
+  }
+
+  /**
+   * Pause one of OUR outgoing transfers at the next chunk boundary. The peer
+   * is told (so it can show 'Paused' honestly); the send loop checks the flag
+   * every chunk and idles without exiting — resume continues the same loop,
+   * cancel still works while paused.
+   */
+  public pauseTransfer(transferId: string) {
+    this.pauseSends.add(transferId);
+    void this.sendControl({ type: 'pause', transferId });
+  }
+
+  public resumeTransferById(transferId: string) {
+    this.pauseSends.delete(transferId);
+    void this.sendControl({ type: 'resume', transferId });
+  }
+
+  /** Whether one of our sends is currently paused. */
+  public isSendPaused(transferId: string): boolean {
+    return this.pauseSends.has(transferId);
+  }
+
+  /** Protocol HASH_VERIFY: tell the peer the final SHA-256 of a transfer.
+   *  Tiny, control-channel-first (falls back to the legacy envelope). */
+  public async sendFileHash(transferId: string, sha256: string) {
+    await this.sendControl({ type: 'file_hash', transferId, sha256 });
   }
 
   /**
@@ -1049,6 +1170,7 @@ export class PeerManager {
     prog.updatedAt = Date.now();
     sendProgress.set(transferId, prog);
     diag('transfer.start', true, `${file.name} (${file.size}b, chunks=${numChunks}) from ${start}/${numChunks}`);
+    beginTransferRecord({ transferId, kind: 'file', direction: 'sent', name: file.name, bytes: file.size });
     // If the channel's flow control wedges (bufferedAmount stuck), fall back
     // to the relay for the rest of this transfer instead of hanging forever.
     let wedged = false;
@@ -1096,6 +1218,13 @@ export class PeerManager {
 
       while (sendIdx < numChunks) {
         if (signal.aborted) throw new TransferCancelledError();
+        // Peer- or user-requested pause: idle WITHOUT exiting the loop, so
+        // resume continues seamlessly and cancel still works while paused.
+        if (this.pauseSends.has(transferId)) {
+          this.lastPace = { transferId, bytesPerSec: 0, depth: pipelineDepth, buffered: this.dc?.bufferedAmount ?? 0 };
+          await new Promise<void>(r => setTimeout(r, 150));
+          continue;
+        }
 
         const entry = await inflight.shift() ?? null;
         // With the fixed grid a null entry means the loop overshot the file —
@@ -1132,6 +1261,7 @@ export class PeerManager {
         }
         if (!sentViaDc) {
           this.isRelayFallback = true;
+          setCurrentTransport('relay');
           if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
           getSocket().emit('relay_message', { roomId: this.roomId, data: entry.packet.buffer });
         }
@@ -1154,6 +1284,9 @@ export class PeerManager {
           const throughput = bytesSentSinceCheck / elapsed; // bytes/sec
           lastBandwidthCheck = now;
           bytesSentSinceCheck = 0;
+          // Live telemetry for the UI (speed readout) + the metrics record.
+          this.lastPace = { transferId, bytesPerSec: Math.round(throughput), depth: pipelineDepth, buffered: this.dc?.bufferedAmount ?? 0 };
+          recordTransferProgress(transferId, throughput, pipelineDepth);
           this.bandwidthSamples.push(throughput);
           if (this.bandwidthSamples.length > 5) this.bandwidthSamples.shift();
           const avgThroughput = this.bandwidthSamples.reduce((a, b) => a + b, 0) / this.bandwidthSamples.length;
@@ -1165,9 +1298,12 @@ export class PeerManager {
         }
       }
       diag('transfer.complete', true, file.name);
+      finishTransferRecord(transferId, 'sent', file.size);
     } finally {
       fileSendSlots.release();
       this.transferControllers.delete(transferId);
+      this.pauseSends.delete(transferId);
+      this.lastPace = null;
       if (!signal.aborted) sendProgress.delete(transferId);
     }
   }

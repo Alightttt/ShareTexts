@@ -7,8 +7,10 @@ import { cn, shortCodeOf } from '../lib/utils';
 import { hapticTap } from '../lib/haptics';
 import {
   Send, Download, QrCode, Link2, Copy, RefreshCw, LogOut,
-  Sun, Moon, Languages, FileText, ChevronLeft, Check, Search, Info
+  Sun, Moon, Languages, FileText, ChevronLeft, Check, Search, Info, Gauge
 } from 'lucide-react';
+import { metricsSnapshot, clearTransferMetrics, type TransferRecord } from '../lib/transferMetrics';
+import { formatBytes } from '../lib/utils';
 
 /**
  * CommandBar — the app's whole surface, one ⌘K away.
@@ -55,6 +57,7 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
   const { session, createSession, requestReconnect, abandonSession } = useSession();
   const { resolved, setChoice } = useTheme();
   const [internalOpen, setInternalOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
   const open = openProp ?? internalOpen;
   const setOpen = useCallback((v: boolean | ((prev: boolean) => boolean)) => {
     const next = typeof v === 'function' ? (v as (p: boolean) => boolean)(openProp ?? internalOpen) : v;
@@ -216,6 +219,12 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
         icon: <Info className="w-4 h-4" />, keywords: 'what is sharetext story',
         run: () => { window.location.assign('/about'); },
       },
+      {
+        id: 'stats', label: t('command.transferStats'), group: t('command.group.settings'),
+        icon: <Gauge className="w-4 h-4" />, keywords: 'speed throughput metrics diagnostics proof transfers',
+        opensSub: true,
+        run: () => setStatsOpen(true),
+      },
     );
     return list;
   }, [inRoom, connected, t, lang, resolved, createSession, requestReconnect, abandonSession, setChoice, session.roomId, session.messages]);
@@ -230,7 +239,7 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
   useEffect(() => { setIndex(i => Math.min(i, Math.max(0, filtered.length - 1))); }, [filtered.length]);
 
   const runCmd = (cmd: Cmd) => {
-    if (cmd.opensSub) { setSubOpen(true); return; }
+    if (cmd.opensSub) { if (cmd.id === 'stats') setStatsOpen(true); else setSubOpen(true); return; }
     hapticTap();
     // Close FIRST (synchronously), then run — the action targets state that
     // assumes the palette is gone, and focus restoration happens before the
@@ -241,8 +250,8 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (subOpen) {
-      if (e.key === 'Escape' || e.key === 'ArrowLeft') { e.preventDefault(); setSubOpen(false); }
+    if (subOpen || statsOpen) {
+      if (e.key === 'Escape' || e.key === 'ArrowLeft') { e.preventDefault(); setSubOpen(false); setStatsOpen(false); }
       return; // submenu owns the keys while open
     }
     if (e.key === 'ArrowDown') { e.preventDefault(); setIndex(i => (i + 1) % Math.max(1, filtered.length)); }
@@ -288,7 +297,10 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
             className="w-full max-w-[560px] rounded-[20px] bg-white/95 dark:bg-[#1c1c21]/95 border border-black/[0.06] dark:border-white/[0.08] shadow-[0_24px_70px_-12px_rgba(0,0,0,0.35)] overflow-hidden backdrop-blur-2xl"
             onPointerDown={(e) => e.stopPropagation()}
           >
-            {subOpen ? (
+            {statsOpen ? (
+              /* Transfer stats submenu — lifetime totals + the recent ring. */
+              <TransferStatsPanel onBack={() => setStatsOpen(false)} />
+            ) : subOpen ? (
               /* Language submenu — flat list, back with Esc/← or the header button */
               <div>
                 <div className="flex items-center gap-2 px-4 border-b border-black/[0.05] dark:border-white/[0.06]">
@@ -387,6 +399,79 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+/**
+ * TransferStatsPanel — the measurable face of the transfer protocol: lifetime
+ * totals plus the last 40 transfers with their real throughput, transport,
+ * and outcome. All local; wipe with one tap.
+ */
+function TransferStatsPanel({ onBack }: { onBack: () => void }) {
+  const { t } = useI18n();
+  const [, force] = useState(0);
+  const snap = metricsSnapshot();
+  const { totals, recent } = snap;
+  const speed = (b?: number) => (b && b > 0 ? `${formatBytes(b)}/s` : '—');
+  return (
+    <div>
+      <div className="flex items-center justify-between px-4 border-b border-black/[0.05] dark:border-white/[0.06]">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center gap-1 -ml-2 px-2 py-3.5 text-[13px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" /> {t('command.title')}
+        </button>
+        <button
+          type="button"
+          onClick={() => { clearTransferMetrics(); force(n => n + 1); }}
+          className="px-2.5 py-1.5 rounded-full text-[11.5px] font-medium text-apple-ink-muted dark:text-white/45 hover:text-status-danger hover:bg-status-danger/10 transition-colors"
+        >
+          {t('command.clearStats')}
+        </button>
+      </div>
+      <div className="max-h-[52vh] overflow-y-auto p-4">
+        {/* Lifetime totals */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="rounded-[14px] bg-black/[0.03] dark:bg-white/[0.05] px-3 py-2.5">
+            <div className="text-[17px] font-bold text-apple-ink dark:text-white tnum leading-tight">{totals.transfers.toLocaleString()}</div>
+            <div className="text-[11px] text-apple-ink-muted dark:text-white/45">{t('stats.transfers')}</div>
+          </div>
+          <div className="rounded-[14px] bg-black/[0.03] dark:bg-white/[0.05] px-3 py-2.5">
+            <div className="text-[17px] font-bold text-apple-ink dark:text-white tnum leading-tight">{formatBytes(totals.bytes, 1)}</div>
+            <div className="text-[11px] text-apple-ink-muted dark:text-white/45">{t('stats.dataMoved')}</div>
+          </div>
+          <div className="rounded-[14px] bg-black/[0.03] dark:bg-white/[0.05] px-3 py-2.5">
+            <div className="text-[17px] font-bold text-apple-ink dark:text-white tnum leading-tight">{speed(totals.bestBytesPerSec)}</div>
+            <div className="text-[11px] text-apple-ink-muted dark:text-white/45">{t('stats.bestSpeed')}</div>
+          </div>
+        </div>
+        {recent.length === 0 ? (
+          <p className="text-[13px] text-apple-ink-muted dark:text-white/40 text-center py-6">{t('stats.empty')}</p>
+        ) : (
+          <ul className="flex flex-col gap-1.5" aria-label={t('command.transferStats')}>
+            {[...recent].reverse().slice(0, 12).map((r: TransferRecord) => (
+              <li key={r.transferId + r.startedAt} className="flex items-center gap-2.5 px-3 py-2 rounded-[10px] bg-black/[0.02] dark:bg-white/[0.04]">
+                <span className={cn(
+                  'w-1.5 h-1.5 rounded-full shrink-0',
+                  r.outcome === 'ok' ? 'bg-status-success' : r.outcome === 'cancelled' ? 'bg-apple-ink-muted/50' : 'bg-status-danger'
+                )} aria-hidden />
+                <span className="text-[12px] font-medium text-apple-ink dark:text-white/85 shrink-0 w-9">
+                  {r.direction === 'sent' ? '↑' : '↓'}
+                </span>
+                <span className="flex-1 min-w-0 truncate text-[12.5px] text-apple-ink dark:text-white/80" title={r.name}>
+                  {r.name || (r.kind === 'text' ? 'Text' : 'File')}
+                </span>
+                <span className="text-[11.5px] text-apple-ink-muted dark:text-white/45 tnum shrink-0">{formatBytes(r.bytes, 0)}</span>
+                <span className="text-[11.5px] text-apple-ink-muted dark:text-white/45 tnum shrink-0 w-[72px] text-right">{speed(r.avgBytesPerSec)}</span>
+                {r.transport && <span className="text-[10px] uppercase tracking-wide text-apple-ink-muted/60 dark:text-white/30 shrink-0">{r.transport}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }
 

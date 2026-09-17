@@ -10,7 +10,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { useSession } from '../lib/SessionContext';
 import {
-  X, Copy, Check, CheckCheck, Download, Image as ImageIcon, Play,
+  X, Copy, Check, CheckCheck, Download, Image as ImageIcon, Play, Pause,
   RefreshCw, AlertCircle, ChevronDown, ChevronUp, Share2, ShieldCheck,
   Terminal, ZoomIn
 } from 'lucide-react';
@@ -160,6 +160,7 @@ function transferStatusText(a: Attachment, isMe: boolean, t: I18nApi['t']): stri
     case 'preparing': return t('status.preparing');
     case 'restoring': return t('status.restoring', { pct: a.progress ? ` ${Math.round(a.progress * 100)}%` : '' });
     case 'cancelled': return t('status.cancelled');
+    case 'paused': return t('status.paused');
     case 'interrupted': return t('status.interrupted');
     case 'resuming': return t('status.resuming', { progress: byteProgress(a) });
     case 'sending': return t('status.sending', { progress: byteProgress(a) });
@@ -249,7 +250,7 @@ export interface MessageCardProps {
 
 export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = true, isGroupEnd = true, selectMode = false, selected = false, onToggleSelect, onLongPressStart }) => {
   const { t } = useI18n();
-  const { retryTransfer, retryText, cancelTransfer } = useSession();
+  const { retryTransfer, retryText, cancelTransfer, pauseTransfer, resumeTransferById } = useSession();
   const isMe = msg.sender === 'me';
   const a = msg.attachment;
   const [copied, setCopied] = useState(false);
@@ -675,7 +676,13 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                   <ActionButton icon={saved ? <Check /> : <Download />} label={saved ? t('action.saved') : t('action.save')} active={saved} onClick={() => handleDownload(a.url!, a.name)} primary onBlue={isMe} testId="transfer-download" />
                 </>
               )}
-              {(a.status === 'preparing' || a.status === 'sending' || a.status === 'receiving' || a.status === 'interrupted' || a.status === 'resuming') && (
+              {(a.status === 'sending') && (
+                <ActionButton icon={<Pause />} label={t('action.pause')} onClick={() => pauseTransfer(msg.id)} onBlue={isMe} testId="pause-transfer" />
+              )}
+              {(a.status === 'paused') && (
+                <ActionButton icon={<Play />} label={t('action.resume')} onClick={() => resumeTransferById(msg.id)} onBlue={isMe} testId="resume-transfer" />
+              )}
+              {(a.status === 'preparing' || a.status === 'sending' || a.status === 'receiving' || a.status === 'paused' || a.status === 'interrupted' || a.status === 'resuming') && (
                 <ActionButton icon={<X />} label={t('action.cancel')} onClick={() => { void cancelTransfer(msg.id); }} onBlue={isMe} testId="cancel-transfer" />
               )}
               {(a.status === 'failed' || (a.status === 'cancelled' && isMe) || (a.status === 'interrupted' && isMe)) && (
@@ -684,7 +691,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
             </div>
           </div>
           {/* Progress bar */}
-          {a.status !== 'complete' && a.status !== 'draft' && a.status !== 'failed' && a.status !== 'cancelled' && (
+          {a.status !== 'complete' && a.status !== 'draft' && a.status !== 'failed' && a.status !== 'cancelled' && a.status !== 'paused' && (
             <div className="w-full h-1 overflow-hidden bg-apple-divider dark:bg-apple-tile-3">
               <div className="h-full origin-left transition-transform duration-300 ease-out bg-apple-blue" style={{ transform: `scaleX(${a.progress || 0})` }} />
             </div>
