@@ -460,6 +460,13 @@ function DiagnosticsPanel({ onBack }: { onBack: () => void }) {
             {row('Peer', session.partnerName || '—')}
           </div>
         </section>
+        <section aria-label="DataChannel">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-apple-ink-muted/70 dark:text-white/35 mb-1.5">DataChannel</h4>
+          <div className="flex flex-col gap-1">
+            {row('State', s.dcState ?? '—')}
+            {row('Buffered', s.bufferedBytes !== null ? formatBytes(s.bufferedBytes, 1) : '—')}
+          </div>
+        </section>
         <section aria-label="Transfer">
           <h4 className="text-[11px] font-semibold uppercase tracking-wide text-apple-ink-muted/70 dark:text-white/35 mb-1.5">Transfer</h4>
           <div className="flex flex-col gap-1">

@@ -272,6 +272,7 @@ const allowedOrigins = new Set<string>([
   'http://127.0.0.1:3000',
   'http://127.0.0.1:3311',
   'https://sharetexts.online',
+  'https://www.sharetexts.online',
   ...(process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
 ]);
 const PORT = process.env.PORT || 3000;

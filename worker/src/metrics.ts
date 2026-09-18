@@ -7,6 +7,13 @@ const KEEP_BUCKETS = 48;          // 48 hours of history
  *  roll off after 48h; the landing page's "rooms made" tracker must never
  *  shrink, so the count lives on its own storage key instead. */
 const LIFETIME_ROOMS_KEY = 'lifetime:rooms.created';
+/** Rooms created before the lifetime counter existed. The counter is seeded
+ *  to at least this on every increment, so a fresh DO storage (redeploy,
+ *  eviction, metrics DO migration) can never drag the public "rooms made"
+ *  number backwards — it would otherwise drop from 113+ to a low value and
+ *  the landing page would look frozen at the floor. Mirrors the floor the
+ *  Node server applies (server.ts) and the client clamps to. */
+const LIFETIME_ROOMS_FLOOR = 113;
 
 /**
  * Metrics — anonymous aggregate counters for operating the service.
@@ -54,7 +61,10 @@ export class Metrics extends DurableObject<Env> {
     // buckets (currently: total rooms ever created). Guarded to the known
     // name so nothing unbounded can grow here.
     if (name === 'rooms.created') {
-      const lifetime = (await this.ctx.storage.get<number>(LIFETIME_ROOMS_KEY)) ?? 0;
+      const lifetime = Math.max(
+        (await this.ctx.storage.get<number>(LIFETIME_ROOMS_KEY)) ?? 0,
+        LIFETIME_ROOMS_FLOOR,
+      );
       await this.ctx.storage.put(LIFETIME_ROOMS_KEY, lifetime + 1);
     }
 
@@ -81,8 +91,13 @@ export class Metrics extends DurableObject<Env> {
       }
     }
     // Lifetime counters ride alongside the rolling-window totals; /stats
-    // reads roomsCreated from here so the number only ever grows.
-    const lifetimeRooms = (await this.ctx.storage.get<number>(LIFETIME_ROOMS_KEY)) ?? 0;
+    // reads roomsCreated from here so the number only ever grows. The floor
+    // is applied on read too — a storage reset between increments must not
+    // show a shrunken total even once.
+    const lifetimeRooms = Math.max(
+      (await this.ctx.storage.get<number>(LIFETIME_ROOMS_KEY)) ?? 0,
+      LIFETIME_ROOMS_FLOOR,
+    );
     if (lifetimeRooms > (totals['rooms.created'] ?? 0)) totals['rooms.created'] = lifetimeRooms;
     return json({
       service: 'sharetext-signaling-cf',

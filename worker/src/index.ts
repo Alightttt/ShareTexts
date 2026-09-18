@@ -32,6 +32,7 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'http://127.0.0.1:3010',
   'http://127.0.0.1:3311',
   'https://sharetexts.online',
+  'https://www.sharetexts.online',
 ];
 
 function allowedOrigins(env: Env): Set<string> {

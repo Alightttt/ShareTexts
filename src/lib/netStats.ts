@@ -23,6 +23,10 @@ export interface NetStatsSnapshot {
   bytesReceived: number;
   /** Candidate types of the winning pair, e.g. { local: 'host', remote: 'prflx' } */
   candidateTypes: { local?: string; remote?: string } | null;
+  /** Chat DataChannel readyState ('open' | 'connecting' | 'closed' | null). */
+  dcState: string | null;
+  /** Outbound bytes queued inside the browser's send buffer right now. */
+  bufferedBytes: number | null;
   sampledAt: number;
 }
 
@@ -33,12 +37,17 @@ const EMPTY: NetStatsSnapshot = {
   bytesSent: 0,
   bytesReceived: 0,
   candidateTypes: null,
+  dcState: null,
+  bufferedBytes: null,
   sampledAt: 0,
 };
 
 let last: NetStatsSnapshot = EMPTY;
 let timer: ReturnType<typeof setInterval> | null = null;
 let pcRef: WeakRef<RTCPeerConnection> | null = null;
+/** The chat DataChannel — read directly (not via getStats) because
+ *  readyState and bufferedAmount only exist on the live object. */
+let dcRef: WeakRef<RTCDataChannel> | null = null;
 
 function classifyPair(localType: string | undefined, remoteType: string | undefined): IceRoute {
   const lt = localType || '';
@@ -100,6 +109,7 @@ async function sample(): Promise<void> {
       candidateTypes = { local: lc?.candidateType, remote: rc?.candidateType };
       route = classifyPair(lc?.candidateType, rc?.candidateType);
     }
+    const dc = dcRef?.deref() ?? null;
     last = {
       available: true,
       route,
@@ -107,6 +117,8 @@ async function sample(): Promise<void> {
       bytesSent,
       bytesReceived,
       candidateTypes,
+      dcState: dc ? dc.readyState : null,
+      bufferedBytes: dc ? dc.bufferedAmount : null,
       sampledAt: Date.now(),
     };
   } catch {
@@ -123,9 +135,16 @@ export function startNetStats(pc: RTCPeerConnection): void {
   timer = setInterval(() => { void sample(); }, 1000);
 }
 
+/** Attach (or re-attach) the chat DataChannel so the sampler can read its
+ *  readyState and bufferedAmount. Safe to call repeatedly on renegotiation. */
+export function setDataChannel(dc: RTCDataChannel | null): void {
+  dcRef = dc ? new WeakRef(dc) : null;
+}
+
 export function stopNetStats(): void {
   if (timer) { clearInterval(timer); timer = null; }
   pcRef = null;
+  dcRef = null;
   last = { ...EMPTY, sampledAt: Date.now() };
 }
 

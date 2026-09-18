@@ -4,6 +4,7 @@ import { uuidToBytes, bytesToUuid } from './binaryUtils';
 import { diag } from './diag';
 import { beginTransferRecord, finishTransferRecord, recordTransferProgress, setCurrentTransport } from './transferMetrics';
 import type { ChunkEnvelope } from './protocol';
+import { setDataChannel } from './netStats';
 
 type SignalData = { type: 'offer' | 'answer'; sdp: string } | { type: 'candidate'; candidate: RTCIceCandidateInit };
 
@@ -531,6 +532,9 @@ export class PeerManager {
     // Hint to the browser: fire the bufferedamountlow event when the send
     // buffer drops to 1 MB, so we can resume sending without polling.
     channel.bufferedAmountLowThreshold = 1024 * 1024;
+    // Diagnostics: keep the Network Lab's live DC state/buffered readouts
+    // pointed at the current channel (re-created on renegotiation).
+    setDataChannel(channel);
     channel.onopen = () => {
       this.isRelayFallback = false;
       diag('webrtc.channel_open', true);
