@@ -308,8 +308,20 @@ export class PeerManager {
   public onFileComplete: ((transferId: string, blob: Blob) => void) | null = null;
   public onCancel: ((transferId: string) => void) | null = null;
   public onConnectionTypeChange: ((type: 'local' | 'direct' | 'relay') => void) | null = null;
+  /** Fired once the ICE route is first classified (local/direct/relay) —
+   *  the hook for starting the richer getStats() diagnostics sampler. */
+  public onTransportReady: (() => void) | null = null;
+  /** Read-only access to the underlying RTCPeerConnection for diagnostics. */
+  public getPeerConnection(): RTCPeerConnection | null { return this.pc; }
   public onDisconnect: (() => void) | null = null;
+  /** Fired when the drop is CONFIRMED — the server told us the peer really
+   *  left (grace elapsed / clean leave) and no calm window should apply. */
+  public onDisconnectImmediate: (() => void) | null = null;
   public onHello: ((name: string) => void) | null = null;
+  /** The peer's hello handshake (name + protocol capabilities) arrived.
+   *  featureMask: which of OUR features the peer also supports — the
+   *  intersection both sides must respect (capability negotiation). */
+  public onPeerCapabilities: ((info: { name: string; protocolVersion: number; features: string[]; featureMask: string[] }) => void) | null = null;
   public onOpen: (() => void) | null = null;
   /** Transfer ids the PEER asked us to pause (resume lifts them). */
   private pauseSends = new Set<string>();
@@ -327,6 +339,10 @@ export class PeerManager {
 
   private isRelayFallback = false;
   private iceCandidatesQueue: RTCIceCandidateInit[] = [];
+  /** Machine-readable cause of the last connection failure, for the error
+   *  taxonomy (src/lib/errors.ts). Read by the session layer when the UI
+   *  needs to explain WHAT failed; null while the link is healthy. */
+  public lastFailureCode: 'ICE_FAILED' | 'DATA_CHANNEL_FAILED' | 'WEBRTC_FAILED' | null = null;
 
   private incomingTextTransfers: Map<string, { chunks: string[]; received: number; total: number }> = new Map();
   /** Abort handles for in-flight file sends, keyed by transfer id. */
@@ -458,7 +474,12 @@ export class PeerManager {
         this.startDisconnectStallWatch();
       } else if (st === 'failed' || st === 'closed') {
         this.stopDisconnectStallWatch();
-        if (st === 'failed') diag('webrtc.ice_failed', false);
+        if (st === 'failed') {
+          diag('webrtc.ice_failed', false);
+          // Taxonomy: the P2P link itself failed (server was fine). The UI
+          // maps this code to copy that offers the code/QR/link fallback.
+          this.lastFailureCode = 'ICE_FAILED';
+        }
         if (this.onDisconnect && st !== 'closed') this.onDisconnect();
       }
     };
@@ -522,6 +543,9 @@ export class PeerManager {
     };
     channel.onclose = () => {
       diag('webrtc.channel_closed', true);
+      // If the PC didn't already record an ICE failure, a closed channel
+      // before any open means the SCTP association died — classify it.
+      if (!this.lastFailureCode && !this.isRelayFallback) this.lastFailureCode = 'DATA_CHANNEL_FAILED';
       if (this.onDisconnect) this.onDisconnect();
     };
   }
@@ -624,7 +648,23 @@ export class PeerManager {
         if (typeof inner.messageId === 'string' && this.onSeen) this.onSeen(inner.messageId);
         return;
       case 'hello':
-        if (this.onHello && typeof inner.name === 'string') this.onHello(inner.name);
+        if (typeof inner.name === 'string' && this.onHello) this.onHello(inner.name);
+        if (this.onPeerCapabilities) {
+          // Capability negotiation: intersect our features with the peer's so
+          // both sides agree on the usable protocol surface. A legacy peer
+          // (no protocolVersion field) reports v1 with an empty feature set —
+          // every optional feature degrades to the legacy path.
+          const peerFeatures = Array.isArray(inner.features)
+            ? inner.features.filter((f: unknown): f is string => typeof f === 'string')
+            : [];
+          const mask = PeerManager.FEATURES.filter(f => peerFeatures.includes(f));
+          this.onPeerCapabilities({
+            name: typeof inner.name === 'string' ? inner.name : '',
+            protocolVersion: typeof inner.protocolVersion === 'number' ? inner.protocolVersion : 1,
+            features: peerFeatures,
+            featureMask: mask,
+          });
+        }
         return;
       default:
         return;
@@ -973,10 +1013,12 @@ export class PeerManager {
           diag('webrtc.link', true, 'host (same network)');
           setCurrentTransport('local');
           if (this.onConnectionTypeChange) this.onConnectionTypeChange('local');
+          if (this.onTransportReady) { this.onTransportReady(); this.onTransportReady = null; }
         } else {
           diag('webrtc.link', true, 'non-host candidate');
           setCurrentTransport('direct');
           if (this.onConnectionTypeChange) this.onConnectionTypeChange('direct');
+          if (this.onTransportReady) { this.onTransportReady(); this.onTransportReady = null; }
         }
       } else {
         // No succeeded pair yet (mid-negotiation / glare). Keep the current
@@ -989,9 +1031,19 @@ export class PeerManager {
   }
 
   /**
-   * Announce this device's name (reads localStorage at send time). Public so
-   * the session layer can re-announce after an auto-disambiguation rename or
-   * a user edit — the peer updates its "who am I talking to" label.
+   * Capability set exchanged in the hello handshake. Bump TRANSFER_PROTOCOL
+   * when a peer-visible behavior changes; features list what THIS build can
+   * do, so a newer client talking to an older one degrades cleanly instead
+   * of guessing (the receiver simply never uses features the peer lacks).
+   */
+  public static readonly TRANSFER_PROTOCOL = 2;
+  private static readonly FEATURES = ['resume', 'hash', 'pause', 'control-channel'] as const;
+
+  /**
+   * Announce this device's name + capabilities (reads localStorage at send
+   * time). Public so the session layer can re-announce after an
+   * auto-disambiguation rename or a user edit — the peer updates its "who am
+   * I talking to" label and learns which protocol features we share.
    */
   public async sendHello() {
     try {
@@ -1000,7 +1052,12 @@ export class PeerManager {
         : undefined;
       const key = await this.waitForCrypto();
       if (!this.peerId) return;
-      const hello = JSON.stringify({ type: 'hello', name: name || 'Guest Device' });
+      const hello = JSON.stringify({
+        type: 'hello',
+        name: name || 'Guest Device',
+        protocolVersion: PeerManager.TRANSFER_PROTOCOL,
+        features: PeerManager.FEATURES,
+      });
       const encrypted = await encryptText(hello, key);
       const transferId = crypto.randomUUID();
       const packet: TransferPayload = {
@@ -1269,6 +1326,7 @@ export class PeerManager {
           this.isRelayFallback = true;
           setCurrentTransport('relay');
           if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
+          if (this.onTransportReady) { this.onTransportReady(); this.onTransportReady = null; }
           getSocket().emit('relay_message', { roomId: this.roomId, data: entry.packet.buffer });
         }
 

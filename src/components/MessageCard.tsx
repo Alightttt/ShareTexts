@@ -9,6 +9,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { useSession } from '../lib/SessionContext';
+import { formatSpeed, formatEta } from '../lib/speedEngine';
 import {
   X, Copy, Check, CheckCheck, Download, Image as ImageIcon, Play, Pause,
   RefreshCw, AlertCircle, ChevronDown, ChevronUp, Share2, ShieldCheck,
@@ -690,11 +691,14 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
               )}
             </div>
           </div>
-          {/* Progress bar */}
+          {/* Progress bar + live rolling-window speed readout */}
           {a.status !== 'complete' && a.status !== 'draft' && a.status !== 'failed' && a.status !== 'cancelled' && a.status !== 'paused' && (
-            <div className="w-full h-1 overflow-hidden bg-apple-divider dark:bg-apple-tile-3">
-              <div className="h-full origin-left transition-transform duration-300 ease-out bg-apple-blue" style={{ transform: `scaleX(${a.progress || 0})` }} />
-            </div>
+            <>
+              <div className="w-full h-1 overflow-hidden bg-apple-divider dark:bg-apple-tile-3">
+                <div className="h-full origin-left transition-transform duration-300 ease-out bg-apple-blue" style={{ transform: `scaleX(${a.progress || 0})` }} />
+              </div>
+              <LiveSpeed transferId={a.id} progressPct={a.progress || 0} />
+            </>
           )}
         </div>
         {viewerOpen && complete && (
@@ -713,6 +717,28 @@ function ProgressState({ attachment: a, isMe }: { attachment: Attachment; isMe: 
     <span className={cn("font-medium", STATUS_TONE[a.status] || 'text-apple-ink-muted')}>
       {transferStatusText(a, isMe, t)}
     </span>
+  );
+}
+
+/** Live speed readout under the progress bar — rolling-window throughput
+ *  plus ETA, rendered only while bytes are actually moving. */
+function LiveSpeed({ transferId, progressPct }: { transferId: string; progressPct: number }) {
+  const { transferSpeedFor } = useSession();
+  const [, force] = useState(0);
+  useEffect(() => {
+    const iv = setInterval(() => force(n => n + 1), 500);
+    return () => clearInterval(iv);
+  }, []);
+  const speed = transferSpeedFor(transferId);
+  if (!speed || speed.bytesPerSec <= 0) return null;
+  const txt = formatSpeed(speed.bytesPerSec);
+  const eta = formatEta(speed.etaSec);
+  return (
+    <div className="flex items-center gap-2 pt-1.5 text-[11px] text-apple-ink-muted dark:text-white/40 tnum" aria-live="polite">
+      <span className="font-semibold text-apple-blue">{txt}</span>
+      {eta && <span>· {eta}</span>}
+      <span className="hidden sm:inline">· {Math.round(progressPct * 100)}%</span>
+    </div>
   );
 }
 

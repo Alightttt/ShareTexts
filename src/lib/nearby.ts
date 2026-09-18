@@ -102,6 +102,11 @@ export class NearbyPresence {
   private unsupported = false; // transport rejected presence events (Cloudflare)
   private announcedOnce = false;
 
+  /** True while this device is in the presence pool (landing, announcing). */
+  isActive(): boolean {
+    return this.socket !== null && !this.unsupported;
+  }
+
   /** Register on the shared signaling socket. Only the LANDING state should
    *  call this — a seated device withdraws instead (see `stop`). */
   attach(socket: SignalingSocket, name: string): void {

@@ -80,8 +80,8 @@ globalThis.Response = class extends RealResponse {
 
 // ---- driver ---------------------------------------------------------------
 let seq = 0;
-async function connect(room, roomId) {
-  const cid = uuid();
+async function connect(room, roomId, forceCid) {
+  const cid = forceCid ?? uuid();
   await room.fetch(new Request(`http://x/ws?room=${roomId}&cid=${cid}`, { headers: { Upgrade: 'websocket' } }));
   const client = lastPair.client;
   const server = lastPair.server;
@@ -149,11 +149,16 @@ async function runRoomProtocol() {
   const sig = await sigPromise;
   check('signal forwarded to creator', sig?.from === joinerCid && sig?.signal?.type === 'offer');
 
-  // relay text → TRANSFERRING
+  // relay text → TRANSFERRING. Payload must look like ciphertext (the OWASP
+  // message-validation gate rejects non-base64 broadcast attempts).
   const relayPromise = joiner.waitFor((m) => m.type === 'event' && m.event === 'relay_message');
-  await creator.send('relay_message', { data: '{"enc":"ciphertext"}' });
+  await creator.send('relay_message', { data: 'enc:AAAA' });
   const relayed = await relayPromise;
-  check('relay_message (text) forwarded', relayed?.data === '{"enc":"ciphertext"}');
+  check('relay_message (text) forwarded', relayed?.data === 'enc:AAAA');
+  // Non-ciphertext payloads (e.g. a plaintext JSON broadcast) are rejected.
+  await creator.send('relay_message', { data: '{"hello":"world"}' });
+  const rejected = await joiner.waitFor((m) => m.type === 'event' && m.event === 'relay_message' && m.payload?.data === '{"hello":"world"}', 300);
+  check('malformed relay payload rejected', !rejected);
   assertState(ctx, 'TRANSFERRING');
 
   // relay binary
@@ -170,6 +175,13 @@ async function runRoomProtocol() {
   await room.webSocketMessage(creator.server, chunk.buffer);
   const rb = await binPromise;
   check('relay_message (binary) forwarded intact', rb instanceof ArrayBuffer && new Uint8Array(rb)[21] === 98);
+
+  // abuse control: text frames over the per-connection rate limit are dropped
+  const before = joiner.inbox.length;
+  for (let i = 0; i < 80; i++) await room.webSocketMessage(creator.server, JSON.stringify({ v: 1, id: `f${i}`, event: 'relay_message', payload: { data: 'enc:AAAA' } }));
+  await sleep(120);
+  const forwardedAfterFlood = joiner.inbox.length - before;
+  check('frame flood throttled (≤60 forwarded of 80)', forwardedAfterFlood <= 61, `forwarded ${forwardedAfterFlood}`);
 
   // third device → ROOM_FULL
   const third = await connect(room, roomId);
@@ -188,21 +200,37 @@ async function runRoomProtocol() {
   check('brute-force limit → RATE_LIMITED', limited.success === false && limited.code === 'RATE_LIMITED', limited.error);
   wrongCode.close();
 
-  // disconnect joiner → peer_disconnected; state → WAITING (1 peer)
-  const discPromise = creator.waitFor((m) => m.type === 'event' && m.event === 'peer_disconnected');
+  // disconnect joiner → 60s disconnect grace: the seat is HELD (no scary
+  // "disconnected" banner for a tab refresh or a network blip)
+  const discPromise = creator.waitFor((m) => m.type === 'event' && m.event === 'peer_disconnected', 400);
   joiner.client.close(1000, 'test');
   await room.webSocketClose(joiner.server);
-  const pd = await discPromise;
-  check('creator sees peer_disconnected', pd?.peerId === joinerCid);
-  assertState(ctx, 'WAITING');
+  const early = await discPromise;
+  check('no immediate peer_disconnected during grace', !early);
+  assertState(ctx, 'TRANSFERRING');
 
-  // resume → CONNECTED again
-  const rejoiner = await connect(room, roomId);
+  // resume with the same cid within the grace window → seat reclaimed
+  // silently (peer_recovered, not peer_joined)
+  const preSt = ctx.storage.map.get('room');
+  console.log('  [dbg] pre-resume: peerA', preSt.peerA?.slice(0,8), 'peerB', preSt.peerB?.slice(0,8), 'grace keys', preSt.grace ? Object.keys(preSt.grace).length : 0, 'joinerCid', joinerCid?.slice(0,8));
+  const rejoiner = await connect(room, roomId, joinerCid);
   const resumed = await rejoiner.send('resume_room', { roomId, secret });
   check('resume_room ack', resumed.success === true);
-  const rejoined = await creator.waitFor((m) => m.type === 'event' && m.event === 'peer_joined' && m.payload?.peerId !== joinerCid);
-  check('creator sees peer_joined after resume', !!rejoined?.peerId);
+  const recovered = await creator.waitFor((m) => m.type === 'event' && m.event === 'peer_recovered');
+  check('creator sees peer_recovered (silent reconnect)', recovered?.peerId === joinerCid);
   assertState(ctx, 'CONNECTED');
+  check('seat reclaimed by the same cid', ctx.storage.map.get('room')?.peerB === joinerCid);
+  // waitFor re-scans the whole inbox — the initial peer_joined is still in
+  // it, so look only at messages received AFTER the peer_recovered event.
+  const recoveredIdx = creator.inbox.findIndex((m) => m.type === 'event' && m.event === 'peer_recovered');
+  const noJoinNoise = creator.inbox.slice(recoveredIdx + 1).find((m) => m.type === 'event' && m.event === 'peer_joined');
+  check('recovery does not emit a redundant peer_joined', !noJoinNoise);
+
+  // A different device cannot steal the grace-held seat
+  const intruder = await connect(room, roomId);
+  const intruderRes = await intruder.send('resume_room', { roomId, secret });
+  check('stranger cannot steal the seat within grace', intruderRes.success === false && intruderRes.code === 'ROOM_FULL', intruderRes.error);
+  intruder.close();
 
   // manual close → room_closed to both; storage cleared
   const closeA = creator.waitFor((m) => m.type === 'event' && m.event === 'room_closed');
@@ -284,16 +312,30 @@ async function runDisconnectedState() {
   await joiner.send('join_with_code', { code: codeFor(created.secret, created.createdAt) });
   assertState(ctx, 'CONNECTED');
 
+  // Grace: a closed seat is HELD for 60s (tab refresh / network blip must not
+  // look like a disconnect), so the state stays CONNECTED after each close.
   a.client.close(1000, 'test');
   await room.webSocketClose(a.server);
-  assertState(ctx, 'WAITING');
+  assertState(ctx, 'CONNECTED');
+  check('creator seat grace-held', (ctx.storage.map.get('room')?.grace?.[a.cid] ?? 0) > Date.now());
   joiner.client.close(1000, 'test');
   await room.webSocketClose(joiner.server);
-  assertState(ctx, 'DISCONNECTED');
+  assertState(ctx, 'CONNECTED');
 
-  // Empty room expires via alarm (no peers to notify).
+  // Expire both grace deadlines → alarm confirms the evictions.
+  const st = ctx.storage.map.get('room');
+  ctx.storage.map.set('room', { ...st, grace: Object.fromEntries(Object.entries(st.grace ?? {}).map(([k, v]) => [k, Date.now() - 10])) });
   const fresh = new Room(ctx, makeEnv());
   await fresh.alarm();
+  assertState(ctx, 'DISCONNECTED');
+  check('evicted seats cleared', ctx.storage.map.get('room')?.peerA === null && ctx.storage.map.get('room')?.peerB === null);
+
+  // Empty room expires via alarm (no peers to notify) once past its TTL.
+  // A fresh instance reads the back-dated state from storage — the cached
+  // `fresh` object still holds the pre-eviction room in memory.
+  ctx.storage.map.set('room', { ...ctx.storage.map.get('room'), lastActive: Date.now() - ROOM_TTL - 1000 });
+  const fresh2 = new Room(ctx, makeEnv());
+  await fresh2.alarm();
   check('empty room storage cleared by alarm', ctx.storage.map.size === 0);
 }
 

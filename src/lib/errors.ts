@@ -19,6 +19,21 @@ const ERROR_COPY: Record<string, string> = {
   UNREACHABLE: "Couldn't reach ShareText.",
   SIGNALING_TIMEOUT: "ShareText's server responded slowly. Try again in a moment.",
   SIGNALING_UNREACHABLE: "ShareText's connection server is unreachable. Check your internet.",
+
+  // Device-to-device (WebRTC) failure taxonomy. These surface when the
+  // SERVER handshake worked but the direct browser-to-browser link failed —
+  // the copy always offers the code/QR/link fallback, which routes around
+  // strict NATs that defeated the direct path.
+  ICE_FAILED: "Couldn't establish a direct connection between the devices. Try a different network, or use a code or link instead.",
+  WEBRTC_FAILED: 'The devices could not complete their connection setup. Try again, or connect with a code.',
+  DATA_CHANNEL_FAILED: 'The connection dropped before it was ready. Try again.',
+  PEER_UNAVAILABLE: 'The other device is not reachable right now. Ask it to rejoin, or try a code.',
+  DISCOVERY_TIMEOUT: 'No nearby devices responded. Make sure both devices are open on ShareTexts.',
+  TRANSFER_TIMEOUT: 'The transfer stopped making progress. Try sending again.',
+  HASH_MISMATCH: "The file arrived damaged and was discarded. Try sending it again.",
+  QUOTA_EXCEEDED: "This device is out of storage space. Free up space and try again.",
+  TRANSFER_CANCELLED: 'Transfer cancelled.',
+  PROTOCOL_MISMATCH: 'The other device is running a different ShareText version. Refresh both devices.',
 };
 
 export function humanizeError(code: string | undefined, fallback: string): string {
@@ -44,7 +59,9 @@ export function humanizeError(code: string | undefined, fallback: string): strin
  */
 export type ConnectFailureCode =
   | 'OFFLINE' | 'UNREACHABLE' | 'TIMEOUT' | 'CONFIG'
-  | 'RATE_LIMITED' | 'REJECTED' | 'UNKNOWN';
+  | 'RATE_LIMITED' | 'REJECTED' | 'UNKNOWN'
+  // Direct device-to-device failures (server fine, P2P link failed).
+  | 'ICE_FAILED' | 'WEBRTC_FAILED' | 'DATA_CHANNEL_FAILED' | 'PEER_UNAVAILABLE';
 
 export class ConnectError extends Error {
   readonly code: ConnectFailureCode;

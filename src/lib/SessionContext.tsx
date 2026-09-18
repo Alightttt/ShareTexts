@@ -5,6 +5,10 @@ import { PeerManager, TransferCancelledError, hasSendProgress, clearAllTransferS
 import { generateKey } from './crypto';
 import { humanizeError, ConnectError, describeConnectFailure } from './errors';
 import { diag, roomCreateDiagStart, roomCreateDiagEnd } from './diag';
+import { connMachine, mapToConnState } from './connectionState';
+import { speedTrackerFor, dropSpeedTracker } from './speedEngine';
+import { startNetStats, stopNetStats } from './netStats';
+import { nearbyPresence } from './nearby';
 import { beginTransferRecord, finishTransferRecord } from './transferMetrics';
 import { saveSendable, getSendable, deleteSendable, saveTransferState, deleteTransferState } from './transferStore';
 import { sanitizeFilename } from './utils';
@@ -62,6 +66,9 @@ interface SessionContextValue {
   /** Resume a paused upload. */
   resumeTransferById: (messageId: string) => void;
   setDeviceName: (name: string) => void;
+  /** Live rolling-window speed + ETA for an in-flight transfer id, or null
+   *  when nothing is moving yet. Read by MessageCard for the live readout. */
+  transferSpeedFor: (transferId: string) => { bytesPerSec: number; etaSec: number | null } | null;
   requestReconnect: () => Promise<void>;
   refreshCode: () => Promise<void>;
   closeSession: () => void;
@@ -316,6 +323,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const peerManagerRef = useRef<PeerManager | null>(null);
+  /** Why the last connection dropped (error taxonomy, src/lib/errors.ts).
+   *  Read by diagnostics; cleared when a channel opens again. */
+  const lastFailureCodeRef = useRef<string | null>(null);
+  /** Capability negotiation result from the peer's hello (protocol version
+   *  + shared feature mask). Transfer code consults it to degrade cleanly. */
+  const peerCapsRef = useRef<{ name: string; protocolVersion: number; features: string[]; featureMask: string[] } | null>(null);
+  /** Client-side disconnect grace timer — keeps the UI calm for the same 60s
+   *  the server holds the peer's seat. Cleared by recovery or a confirmed leave. */
+  const disconnectCalmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Pre-computed crypto key: derived once per session secret, shared across
   // PeerManager instances (saves ~100ms PBKDF2 on reconnect/refresh).
   const cryptoKeyRef = useRef<Map<string, CryptoKey>>(new Map());
@@ -342,6 +358,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   };
   // Last-published progress per transfer, for throttling onFileProgress.
   const progressRef = useRef<Map<string, number>>(new Map());
+  /** Rolling speed readings per transfer, consumed by MessageCard rows. */
+  const lastSpeedReadings = useRef<Map<string, { bytesPerSec: number; etaSec: number | null }>>(new Map());
+  /** Fixed chunk grid of the wire protocol (mirrors webrtc.ts CHUNK_SIZE). */
+  const CHUNK_BYTES = 128 * 1024;
   // True while the user deliberately leaves the pairing screen: the room
   // close we emit comes back as room_closed, which must NOT show the
   // "Session ended" screen — it was an intentional exit to the landing page.
@@ -424,6 +444,28 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     return () => clearTimeout(timer);
   }, [session.roomId, session.secret, session.isCreator, session.deviceName, session.partnerName, session.messages, session.stayConnected]);
 
+  // ---- Connection state machine mirror: feed the coarse lifecycle truth
+  // from the fine-grained session state at every render. Explicit hops
+  // (PAIRING on create/join, SIGNALING on peer_joined, CONNECTED on channel
+  // open, RECONNECTING on drop) happen at their event sites; this effect
+  // covers the remaining derivations (DISCOVERING ↔ IDLE, TRANSFERRING
+  // while any attachment is in flight) so the machine is always truthful.
+  useEffect(() => {
+    const transferActive = session.messages.some(m => {
+      const st = m.attachment?.status;
+      return st === 'sending' || st === 'receiving' || st === 'resuming';
+    });
+    const next = mapToConnState({
+      hasRoom: !!session.roomId,
+      partnerConnecting: session.partnerConnecting,
+      partnerConnected: session.partnerConnected,
+      connectionType: session.connectionType,
+      presenceActive: nearbyPresence.isActive(),
+      transferActive,
+    });
+    connMachine.to(next);
+  }, [session.roomId, session.partnerConnecting, session.partnerConnected, session.connectionType, session.messages]);
+
   useEffect(() => {
     const socket = getSocket();
 
@@ -433,6 +475,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // channel actually opens (onOpen) or the relay fallback confirms a
       // working path, so the UI never shows a green badge on a dead link.
       diag('peer.peer_joined', true, (peerId || '').slice(0, 8));
+      connMachine.to('SIGNALING');
       setSession(s => ({
         ...s,
         partnerConnecting: true,
@@ -473,21 +516,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
 
     socket.on('peer_disconnected', () => {
-      setSession(s => {
-        // The server confirmed the other device left — an in-flight transfer
-        // can never finish, so flip it to interrupted now (the resume path
-        // flips it back to receiving if the peer returns). Don't wait for the
-        // data-channel stall watchdog.
-        const messages = s.messages.map(m => {
-          const st = m.attachment?.status;
-          if (m.attachment && (st === 'sending' || st === 'receiving')) {
-            diag('transfer.interrupted', true, m.attachment.name);
-            return { ...m, attachment: { ...m.attachment, status: 'interrupted' } };
-          }
-          return m;
-        });
-        return { ...s, partnerConnected: false, partnerConnecting: false, connectionType: 'disconnected', messages };
-      });
+      // The server CONFIRMED the peer really left (its 60s seat grace
+      // elapsed or it left cleanly). Skip the client-side calm window and
+      // show the true disconnected state immediately.
+      diag('peer.confirmed_gone', true);
+      peerManagerRef.current?.onDisconnectImmediate?.();
     });
 
     socket.on('room_closed', ({ reason }) => {
@@ -652,6 +685,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     pm.onConnectionTypeChange = (type) => {
       setSession(s => ({ ...s, connectionType: type }));
     };
+    // Live WebRTC statistics feed (route/RTT/bytes) — lazy, ~1 Hz.
+    pm.onTransportReady = () => { startNetStats(pm.getPeerConnection()); };
 
     // Negotiation really started (offer sent/received — ICE is running), so
     // the UI can truthfully move from "Connecting…" to "Establishing secure
@@ -666,7 +701,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     pm.onOpen = () => {
       // The data channel opened — treat that as the peer being present,
       // including after a rejoin/recovery when no explicit event arrives.
+      lastFailureCodeRef.current = null; // healthy again — clear the taxonomy code
+      // Peer recovered inside the disconnect-grace window — cancel the calm
+      // timer so it can never fire a false "disconnected" after recovery.
+      if (disconnectCalmTimerRef.current) { clearTimeout(disconnectCalmTimerRef.current); disconnectCalmTimerRef.current = null; }
       setSession(s => ({ ...s, partnerConnected: true, partnerConnecting: false }));
+      connMachine.to('CONNECTED');
       // If a transfer was interrupted by the drop, resume it from the
       // position the peer actually received — never from zero.
       void resumeInterruptedTransfers();
@@ -724,6 +764,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       diag('name.auto_disambiguate', true, `${mine} → ${suggested}`);
       setDeviceName(suggested);
       setSession(s => ({ ...s, nameAutoAdjusted: true }));
+    };
+
+    // Capability negotiation (protocol v2 hello): store the intersection of
+    // our features and the peer's. A legacy peer reports v1/[] — every
+    // optional feature simply degrades to the legacy path. Kept in a ref so
+    // transfer code can consult it without re-rendering the whole tree.
+    pm.onPeerCapabilities = (info) => {
+      peerCapsRef.current = info;
+      diag('peer.capabilities', true, `v${info.protocolVersion} shared=[${info.featureMask.join(',')}]`);
+      if (info.protocolVersion > 2) {
+        // Peer is NEWER than us — it decides compatibility, but surface it.
+        diag('peer.version_newer', true, `peer v${info.protocolVersion} > ours v2`);
+      }
     };
 
     pm.onMessage = (dataStr) => {
@@ -819,6 +872,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       const last = progressRef.current.get(transferId) ?? -1;
       if (pct - last < 0.01 && pct < 1) return;
       progressRef.current.set(transferId, pct);
+      // Speed engine: rolling-window throughput + ETA. The peer reports
+      // progress in CHUNKS (chunk grid is fixed), so bytes = chunks × chunk size.
+      const totalBytes = total * CHUNK_BYTES;
+      const reading = speedTrackerFor(transferId, totalBytes).update(progress * CHUNK_BYTES);
+      lastSpeedReadings.current.set(transferId, reading);
       // Durable resume floor (receiver side): every ~1% we persist the
       // contiguous progress, so a crash/refresh can answer a sender's
       // resume_query honestly even across a browser restart.
@@ -877,6 +935,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // 'checksum-mismatch' later if verification fails.
       finishTransferRecord(transferId, 'received', blob.size, 'ok', { name: srcMsg?.attachment?.name, kind: 'file' });
       void deleteTransferState(transferId);
+      dropSpeedTracker(transferId);
+      lastSpeedReadings.current.delete(transferId);
       // The whole file arrived — only now confirm receipt (metadata alone
       // would be a lie if the transfer later failed).
       const msg = messagesRef.current.find(m => m.attachment?.id === transferId);
@@ -978,12 +1038,71 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+    // Client-side disconnect grace — MUST match the server's 60s hold. When
+    // the peer's tab closes, its DTLS association dies instantly and the data
+    // channel closes here, but the server is still holding the peer's seat:
+    // a refresh or a network blip brings it back within the window. Showing
+    // "disconnected" the instant the channel closes turns a refresh into a
+    // scare. Mark the link 'reconnecting' (calm, no banner) and only flip to
+    // the real 'disconnected' state if the server confirms the leave
+    // (peer_disconnected) or the grace elapses without recovery.
+    const DISCONNECT_CALM_MS = 60_000;
     pm.onDisconnect = () => {
+      // Relay-transport drops ARE the connection — no WebRTC channel to
+      // lose, so treat them as immediately disconnected.
+      if (session.connectionType === 'relay') {
+        pm.onDisconnectImmediate?.();
+        return;
+      }
+      connMachine.to('RECONNECTING');
+      stopNetStats();
+      // Error taxonomy: record WHY the link dropped so the UI (⌘K panel,
+      // reconnect banner) can say what actually happened instead of a
+      // generic "disconnected". Cleared on the next successful open.
+      lastFailureCodeRef.current = pm.lastFailureCode;
+      setSession(s => ({
+        ...s,
+        connectionType: 'connecting',
+        messages: s.messages.map(m => {
+          const st = m.attachment?.status;
+          if (m.attachment && (st === 'sending' || st === 'receiving')) {
+            // Mid-flight transfer: keep it 'sending'/'receiving' during the
+            // calm window — interrupted is reserved for a CONFIRMED leave,
+            // and resuming from the acked prefix is always safe anyway.
+            return m;
+          }
+          return m;
+        })
+      }));
+      if (disconnectCalmTimerRef.current) clearTimeout(disconnectCalmTimerRef.current);
+      disconnectCalmTimerRef.current = setTimeout(() => {
+        // The peer never came back within the grace window — now it's real.
+        diag('peer.grace_expired', true);
+        setSession(s => ({
+          ...s,
+          connectionType: 'disconnected',
+          messages: s.messages.map(m => {
+            const st = m.attachment?.status;
+            if (m.attachment && (st === 'sending' || st === 'receiving')) {
+              diag('transfer.interrupted', true, m.attachment.name);
+              return { ...m, attachment: { ...m.attachment, status: 'interrupted' } };
+            }
+            return m;
+          })
+        }));
+      }, DISCONNECT_CALM_MS);
+    };
+
+    // The server CONFIRMED the other device really left (grace elapsed or a
+    // clean leave) — skip the calm window and show the true state now.
+    pm.onDisconnectImmediate = () => {
+      if (disconnectCalmTimerRef.current) { clearTimeout(disconnectCalmTimerRef.current); disconnectCalmTimerRef.current = null; }
+      connMachine.to('RECONNECTING');
+      stopNetStats();
+      lastFailureCodeRef.current = pm.lastFailureCode;
       setSession(s => ({
         ...s,
         connectionType: 'disconnected',
-        // A transfer that was mid-flight when the channel dropped is
-        // interrupted — not failed. It resumes when the peer returns.
         messages: s.messages.map(m => {
           const st = m.attachment?.status;
           if (m.attachment && (st === 'sending' || st === 'receiving')) {
@@ -1144,6 +1263,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           diag('room.create', !!res.success, res.success ? res.roomId : (res.error || 'unknown'));
           if (res.success && res.roomId && res.secret) {
             saveStoredSession({ roomId: res.roomId, secret: res.secret, isCreator: true, createdAt: res.createdAt });
+            connMachine.to('PAIRING');
             setSession({
               roomId: res.roomId,
               secret: res.secret,
@@ -1317,6 +1437,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const isRejoin = session.roomId === roomId && session.messages.length > 0;
     const keptMessages = isRejoin ? session.messages : [];
     saveStoredSession({ roomId, secret, isCreator: false, createdAt, messages: keptMessages.length ? keptMessages : sanitizeStoredMessages(loadStoredSession()?.messages) });
+    connMachine.to('PAIRING');
     setSession({
       roomId,
       secret,
@@ -1623,6 +1744,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     void peerManagerRef.current?.sendHello().catch(() => { /* best-effort */ });
   };
 
+  /** Live rolling-window speed for an in-flight transfer (MessageCard). */
+  const transferSpeedFor = useCallback((transferId: string) => {
+    return lastSpeedReadings.current.get(transferId) ?? null;
+  }, []);
+
   // Ask the server to put us back in the room and make the other peer
   // re-offer a fresh WebRTC connection. Keeps messages and room state.
   const requestReconnect = async () => {
@@ -1855,7 +1981,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, joinWithShortCode, sendMessage, updateMessageAttachment, retryTransfer, retryText, cancelTransfer, pauseTransfer, resumeTransferById, setDeviceName, requestReconnect, refreshCode, closeSession, leaveView, abandonSession, setStayConnected, registerRoomViewer, claimSeen, rejoinStayRoom }}>
+    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, joinWithShortCode, sendMessage, updateMessageAttachment, retryTransfer, retryText, cancelTransfer, pauseTransfer, resumeTransferById, setDeviceName, transferSpeedFor, requestReconnect, refreshCode, closeSession, leaveView, abandonSession, setStayConnected, registerRoomViewer, claimSeen, rejoinStayRoom }}>
       {children}
     </SessionContext.Provider>
   );

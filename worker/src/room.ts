@@ -39,6 +39,10 @@ export const PROTOCOL_VERSION = 1;
 
 const CODE_FAIL_MAX = 10;
 const CODE_FAIL_WINDOW = 60 * 1000;
+/** Disconnect grace (must match server.ts): a device that briefly closes its
+ *  tab or blips off the network holds its seat for this long before the other
+ *  peer is told it is really gone. Makes a refresh invisible to the far side. */
+const DISCONNECT_GRACE_MS = 60_000;
 
 /** Explicit room lifecycle. No scattered booleans. */
 export type RoomPhase =
@@ -63,12 +67,23 @@ interface RoomState {
   expiresAt: number;
   peerA: string | null; // connection ids (cid)
   peerB: string | null;
+  /** cid → grace deadline (ms). Seats whose socket closed recently; cleared on
+   *  return or when the alarm finalizes the eviction. */
+  grace?: Record<string, number>;
   codeFails: number;
   codeFailReset: number;
 }
 
 interface ConnMeta {
   roomId: string | null;
+}
+
+/** In-memory per-connection frame-rate buckets (never persisted — a DO wake
+ *  resets them, which bounds the state and matches the abuse horizon). */
+interface FrameBucket {
+  windowStart: number;
+  textCount: number;
+  binCount: number;
 }
 
 interface WireMsg {
@@ -80,6 +95,47 @@ interface WireMsg {
 
 function log(...parts: unknown[]) {
   console.log('[ShareText-cf]', ...parts);
+}
+
+/**
+ * Per-connection frame-rate buckets (in-memory; see allowFrame).
+ *   text: 60 control/relay frames per 10s — far above any legitimate client's
+ *         cadence (signaling bursts are ~10 frames), far below flood rates.
+ *   bin:  1200 chunks per 10s — a 128 KB chunk at that rate is ~15 MB/s,
+ *         comfortably above the fastest realistic relay fallback throughput.
+ */
+const FRAME_RATE_TEXT = { limit: 60, windowMs: 10_000 };
+const FRAME_RATE_BIN = { limit: 1200, windowMs: 10_000 };
+
+/**
+ * Validate and forward-shape a text relay payload BEFORE it reaches business
+ * logic (the OWASP message-validation gate). The relay channel only ever
+ * carries AES-GCM ciphertext produced by the client: opaque base64. Anything
+ * else is rejected rather than fanned out — the signaling path must never
+ * become a free JSON-broadcast service for malformed or hostile frames.
+ */
+function validateRelayData(data: unknown): string | null {
+  if (typeof data !== 'string') return null;
+  if (data.length === 0 || data.length > RELAY_TEXT_MAX) return null;
+  // Client envelopes: "enc:<base64>" (current) or raw base64 (legacy text
+  // relay). Both are [A-Za-z0-9+/=] only. A JSON-looking string ({", "[") or
+  // anything with control characters is NOT a valid ciphertext.
+  const body = data.startsWith('enc:') ? data.slice(4) : data;
+  if (!/^[A-Za-z0-9+/=]+$/.test(body)) return null;
+  return data;
+}
+
+/**
+ * Validate an SDP signal payload. Offers/answers/ICE candidates are small
+ * JSON objects with a known `type` — anything else (huge blobs, nested
+ * attack payloads, scripts) is dropped before forwarding.
+ */
+function validateSignal(signal: unknown): unknown | null {
+  if (!signal || typeof signal !== 'object') return null;
+  const t = (signal as { type?: unknown }).type;
+  if (typeof t !== 'string') return null;
+  if (!['offer', 'answer', 'candidate', 'endOfCandidates'].includes(t)) return null;
+  return signal;
 }
 
 /**
@@ -128,6 +184,33 @@ export class Room extends DurableObject<Env> {
   private conns: Map<string, ConnMeta> | null = null;
   /** The room id from the connection URL — the DO is keyed by it. */
   private urlRoomId: string | null = null;
+  /** Per-connection abuse buckets — in-memory only (see FrameBucket). */
+  private frameBuckets = new Map<string, FrameBucket>();
+
+  /** Sliding-window-per-fixed-bucket frame gate. Returns false when the
+   *  connection exceeded its text or binary frame allowance for the current
+   *  window — the frame is silently dropped (the sender sees a stalled
+   *  transfer/connection, the same observable behavior as network loss). */
+  private allowFrame(cid: string, isText: boolean): boolean {
+    const now = Date.now();
+    let b = this.frameBuckets.get(cid);
+    if (!b || now - b.windowStart >= FRAME_RATE_TEXT.windowMs) {
+      b = { windowStart: now, textCount: 0, binCount: 0 };
+      this.frameBuckets.set(cid, b);
+      // Bound the map: drop buckets for connections that vanished.
+      if (this.frameBuckets.size > 64) {
+        for (const [k, vb] of this.frameBuckets) {
+          if (now - vb.windowStart >= FRAME_RATE_TEXT.windowMs) this.frameBuckets.delete(k);
+        }
+      }
+    }
+    if (isText) {
+      b.textCount++;
+      return b.textCount <= FRAME_RATE_TEXT.limit;
+    }
+    b.binCount++;
+    return b.binCount <= FRAME_RATE_BIN.limit;
+  }
 
   // ---- connection lifecycle ----------------------------------------------
 
@@ -165,11 +248,14 @@ export class Room extends DurableObject<Env> {
     return this.room;
   }
 
-  /** Map a live WebSocket back to its connection id via its acceptance tag. */
+  /** Map a WebSocket back to its connection id via its acceptance tag.
+   *  Resolution is exact by object reference (the socket was tagged with its
+   *  cid at accept time), so it must NOT require an OPEN readyState — during
+   *  webSocketClose the runtime hands us an already-closing socket. */
   private async cidOf(ws: WebSocket): Promise<string | null> {
     const conns = await this.ensureConns();
     for (const cid of conns.keys()) {
-      if (this.ctx.getWebSockets(cid).includes(ws)) return cid;
+      if (this.ctx.getWebSockets(cid).some((s) => s === ws)) return cid;
     }
     return null;
   }
@@ -187,9 +273,18 @@ export class Room extends DurableObject<Env> {
     if (!r) return [];
     const live: string[] = [];
     for (const cid of [r.peerA, r.peerB]) {
-      if (cid && this.ctx.getWebSockets(cid)[0]?.readyState === 1) live.push(cid);
+      if (cid && this.openSocket(cid)) live.push(cid);
     }
     return live;
+  }
+
+  /** First OPEN socket carrying this cid (a cid may map to several sockets
+   *  across reconnects — stale ones must never be used to send). */
+  private openSocket(cid: string): WebSocket | null {
+    for (const ws of this.ctx.getWebSockets(cid)) {
+      if (ws.readyState === 1) return ws;
+    }
+    return null;
   }
 
   private async memberOf(cid: string): Promise<boolean> {
@@ -206,32 +301,48 @@ export class Room extends DurableObject<Env> {
   }
 
   private async sendTo(cid: string, msg: unknown) {
-    const ws = this.ctx.getWebSockets(cid)[0];
-    if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg));
+    const ws = this.openSocket(cid);
+    if (ws) ws.send(JSON.stringify(msg));
   }
 
   private async notifyOthers(selfCid: string, event: string, payload: unknown) {
     const conns = await this.ensureConns();
     for (const cid of conns.keys()) {
       if (cid === selfCid) continue;
-      const ws = this.ctx.getWebSockets(cid)[0];
-      if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'event', event, payload }));
+      const ws = this.openSocket(cid);
+      if (ws) ws.send(JSON.stringify({ type: 'event', event, payload }));
     }
   }
 
-  /** Seat a connection into a free (or dead) slot; 'full' when both are live. */
+  /** Seat a connection into a free slot; 'full' when both are held. A seat
+   *  held by disconnect grace still counts as occupied — the departing device
+   *  is entitled to reclaim it within the window (mirrors server.ts). */
   private async assignSlot(cid: string): Promise<'A' | 'B' | 'full'> {
     const r = this.room;
     if (!r) return 'full';
     const live = await this.livePeers();
     if (r.peerA === cid || r.peerB === cid) return r.peerA === cid ? 'A' : 'B';
-    if (live.length >= 2) return 'full';
-    if (!r.peerA || !live.includes(r.peerA)) {
+    const held = (c: string | null) => !!c && (live.includes(c) || (r.grace?.[c] ?? 0) > Date.now());
+    if (held(r.peerA) && held(r.peerB)) return 'full';
+    if (!held(r.peerA)) {
+      if (r.grace && r.peerA) delete r.grace[r.peerA];
       r.peerA = cid;
       return 'A';
     }
+    if (r.grace && r.peerB) delete r.grace[r.peerB];
     r.peerB = cid;
     return 'B';
+  }
+
+  /** Drop grace entries for cids that no longer hold a seat. */
+  private async pruneGrace() {
+    const r = this.room;
+    if (!r?.grace) return;
+    for (const c of Object.keys(r.grace)) {
+      if (r.peerA !== c && r.peerB !== c) delete r.grace[c];
+    }
+    if (Object.keys(r.grace).length === 0) delete r.grace;
+    await this.ctx.storage.put('room', r);
   }
 
   /** Derive the lifecycle state from live peer count (2/1/0). */
@@ -243,10 +354,49 @@ export class Room extends DurableObject<Env> {
     await this.ctx.storage.put('room', r);
   }
 
+  /**
+   * Finalize disconnect grace: evict seats whose grace window elapsed without
+   * a return, notify the survivors, and re-arm the alarm for the next deadline
+   * (or the idle TTL, whichever is sooner). Runs from the alarm handler.
+   */
+  private async finalizeGrace() {
+    const r = this.room;
+    if (!r || !r.grace) return;
+    const now = Date.now();
+    let changed = false;
+    for (const [cid, deadline] of Object.entries(r.grace)) {
+      if (now < deadline) continue;
+      delete r.grace[cid];
+      changed = true;
+      // The socket may have quietly returned without a resume (hibernation
+      // reuse with the same cid); keep the seat if it's live again.
+      if (this.openSocket(cid)) continue;
+      if (r.peerA === cid) r.peerA = null;
+      if (r.peerB === cid) r.peerB = null;
+      await this.notifyOthers(cid, 'peer_disconnected', {
+        peerId: cid,
+        remaining: (await this.livePeers()).length,
+      });
+      await reportPresence(this.env, r.roomId, (await this.livePeers()).length);
+      log('grace expired, peer evicted', cid.slice(0, 8));
+    }
+    if (!changed) return;
+    if (Object.keys(r.grace).length === 0) delete r.grace;
+    await this.ctx.storage.put('room', r);
+    await this.recomputeState();
+  }
+
+  /** Last touch() write time — the idle TTL is 5h, so refreshing lastActive
+   *  at most every 30s keeps expiry semantics (a relay-busy room is active)
+   *  while turning O(frames) storage writes into O(minutes). */
+  private lastTouchWrite = 0;
+
   private async touch() {
     const r = this.room;
     if (!r) return;
     const now = Date.now();
+    if (now - this.lastTouchWrite < 30_000) return; // write coalesced
+    this.lastTouchWrite = now;
     r.lastActive = now;
     r.expiresAt = now + ROOM_TTL;
     await this.ctx.storage.put('room', r);
@@ -297,6 +447,16 @@ export class Room extends DurableObject<Env> {
     if (!cid) return;
     await this.loadRoom();
 
+    // Abuse control (per-connection, in-memory — resets when the DO sleeps,
+    // which is exactly the right horizon for a WebSocket peer): a connected
+    // client may not flood frames. Two buckets: text/control frames are
+    // individually tiny but can arrive at absurd rates; binary relay frames
+    // are bulk but a legit transfer can burst hard, so its cap is generous.
+    if (!this.allowFrame(cid, typeof message === 'string')) {
+      await count(this.env, 'abuse.frames_dropped');
+      return;
+    }
+
     // Binary frames are relay data from a member (already encrypted client-side).
     if (typeof message !== 'string') {
       if (message.byteLength > RELAY_BIN_MAX) return;
@@ -306,8 +466,8 @@ export class Room extends DurableObject<Env> {
       await count(this.env, 'relay.binary_messages');
       const other = this.otherOf(cid);
       if (other) {
-        const ws2 = this.ctx.getWebSockets(other)[0];
-        if (ws2 && ws2.readyState === 1) ws2.send(message);
+        const ws2 = this.openSocket(other);
+        if (ws2) ws2.send(message);
       }
       return;
     }
@@ -362,49 +522,57 @@ export class Room extends DurableObject<Env> {
     // Only a seated peer (creator/joiner) counts as a disconnect — a socket
     // that never joined (e.g. a failed code probe) must not disturb the room.
     const wasMember = r.peerA === cid || r.peerB === cid;
-    if (r.peerA === cid) r.peerA = null;
-    if (r.peerB === cid) r.peerB = null;
-    r.lastActive = Date.now();
-    await this.ctx.storage.put('room', r);
-    await this.dropConn(cid);
-
-    await this.recomputeState();
     if (wasMember) {
-      await this.notifyOthers(cid, 'peer_disconnected', {
-        peerId: cid,
-        remaining: (await this.livePeers()).length,
-      });
-    }
-    if (wasMember) {
-      await reportPresence(this.env, r.roomId, (await this.livePeers()).length);
-    }
-
-    const live = await this.livePeers();
-    if (live.length === 0) {
+      // Grace: keep the seat and tell nobody yet. The other device keeps its
+      // room without a scary "disconnected" banner for a tab refresh or a
+      // brief network blip. If the device comes back (resume_room or a new
+      // socket with the same cid) the grace is cancelled; otherwise the alarm
+      // confirms the eviction after DISCONNECT_GRACE_MS.
+      r.grace = r.grace ?? {};
+      r.grace[cid] = Date.now() + DISCONNECT_GRACE_MS;
+      r.lastActive = Date.now();
+      await this.ctx.storage.put('room', r);
+      await this.dropConn(cid);
+      // Re-arm the room alarm to also cover the earliest grace deadline.
+      const earliest = Math.min(...Object.values(r.grace));
       const alarm = await this.ctx.storage.getAlarm();
-      const emptyAt = Date.now() + ROOM_EMPTY_TTL;
-      if (!alarm || alarm > emptyAt) await this.ctx.storage.setAlarm(emptyAt);
+      if (!alarm || alarm > earliest) await this.ctx.storage.setAlarm(earliest);
+      return;
     }
-    log('peer disconnected', cid.slice(0, 8), 'remaining', live.length, 'state', r.state);
+    await this.dropConn(cid);
+    log('non-member socket closed', cid.slice(0, 8));
   }
 
   async alarm() {
     const r = await this.loadRoom();
     if (!r) {
       await this.ctx.storage.deleteAll();
+      this.room = null;
       return;
     }
     const now = Date.now();
+    await this.finalizeGrace();
     const live = await this.livePeers();
     const idleExpired = now - r.lastActive > ROOM_TTL;
-    if (live.length === 0 || idleExpired) {
+    if (live.length === 0 && !idleExpired && r.peerA === null && r.peerB === null) {
+      // Last seat just finalized → DISCONNECTED tombstone keeps the 5h rejoin
+      // window (join_with_code / resume_room can still revive the room).
+      const tombstoneUntil = now + ROOM_TTL;
+      const alarm = await this.ctx.storage.getAlarm();
+      if (!alarm || alarm > tombstoneUntil) await this.ctx.storage.setAlarm(tombstoneUntil);
+    } else if (live.length === 0 || idleExpired) {
       if (live.length > 0) await this.destroyRoom('idle_timeout');
       else await this.ctx.storage.deleteAll();
       this.room = null;
       log('room expired', r.roomId.slice(0, 8));
     } else {
-      // Activity happened since the alarm was armed — extend.
-      await this.ctx.storage.setAlarm(now + ROOM_TTL);
+      // Activity happened since the alarm was armed — extend; also cover the
+      // next grace deadline if one is pending.
+      const next = [now + ROOM_TTL, ...Object.values(r.grace ?? {})]
+        .filter((t) => t > now)
+        .reduce((a, b) => Math.min(a, b), Infinity);
+      if (Number.isFinite(next)) await this.ctx.storage.setAlarm(next);
+      else await this.ctx.storage.setAlarm(now + ROOM_TTL);
     }
   }
 
@@ -504,20 +672,41 @@ export class Room extends DurableObject<Env> {
       return this.ackErr(cid, id, 'SESSION_EXPIRED', 'This room has expired.');
     }
     if (r.peerA === cid || r.peerB === cid) {
-      // The peer's transport came back but it still holds its seat (same
-      // connection id). Tell the other device to re-offer WebRTC so the
-      // channel — and any interrupted transfer — can resume. Without this
-      // the recovering peer waits for an offer that never comes.
+      // The peer's transport came back and it still holds its seat — the
+      // worker-path equivalent of socket.io session recovery (the client
+      // reuses its cid across reconnects and tab refreshes). Tell the other
+      // device to re-offer WebRTC so the channel — and any interrupted
+      // transfer — can resume quietly, without a disconnect/reconnect blip.
+      if (r.grace) {
+        delete r.grace[cid];
+        if (Object.keys(r.grace).length === 0) delete r.grace;
+        await this.ctx.storage.put('room', r);
+      }
+      await this.recomputeState();
       await this.notifyOthers(cid, 'peer_recovered', { peerId: cid });
       return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.codeAnchor });
     }
-    // Drop stale seats whose sockets are gone so the returning device can sit.
+    // Drop stale seats whose sockets are gone so the returning device can
+    // sit. A dropped seat is a real eviction: notify the survivors (the
+    // returning device itself is excluded — its own old seat must not make
+    // it flash "disconnected" on rejoin).
     const live = await this.livePeers();
-    if (r.peerA && !live.includes(r.peerA)) r.peerA = null;
-    if (r.peerB && !live.includes(r.peerB)) r.peerB = null;
+    for (const stale of [r.peerA, r.peerB]) {
+      if (stale && !live.includes(stale)) {
+        if (r.grace) delete r.grace[stale];
+        if (r.peerA === stale) r.peerA = null;
+        if (r.peerB === stale) r.peerB = null;
+        await this.notifyOthers(cid, 'peer_disconnected', {
+          peerId: stale,
+          remaining: (await this.livePeers()).length,
+        });
+        await reportPresence(this.env, r.roomId, (await this.livePeers()).length);
+      }
+    }
     await this.ctx.storage.put('room', r);
     const slot = await this.assignSlot(cid);
     if (slot === 'full') return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText room is already full.');
+    await this.pruneGrace();
     await this.completeJoin(cid, id);
   }
 
@@ -559,9 +748,8 @@ export class Room extends DurableObject<Env> {
 
   private async handleSignal(cid: string, _id: string | undefined, payload?: { to?: unknown; signal?: unknown }) {
     if (!(await this.memberOf(cid))) return;
-    const signal = payload?.signal;
-    if (!signal || typeof signal !== 'object') return;
-    if (JSON.stringify(signal).length > SIGNAL_MAX) return;
+    const signal = validateSignal(payload?.signal);
+    if (!signal) return;
     await this.touch();
     const to = payload?.to;
     const msg = { type: 'event' as const, event: 'signal', payload: { from: cid, signal } };
@@ -574,8 +762,8 @@ export class Room extends DurableObject<Env> {
 
   private async handleRelayText(cid: string, _id: string | undefined, payload?: { data?: unknown }) {
     if (!(await this.memberOf(cid))) return;
-    const data = payload?.data;
-    if (typeof data !== 'string' || data.length > RELAY_TEXT_MAX) return;
+    const data = validateRelayData(payload?.data);
+    if (data === null) return;
     await this.touch();
     await this.markTransferring();
     await count(this.env, 'relay.text_messages');

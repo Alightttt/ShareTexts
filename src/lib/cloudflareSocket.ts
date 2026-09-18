@@ -40,6 +40,11 @@ export class CloudflareSocket implements SignalingSocket {
   private httpBase: string; // https://host (for POST /lookup)
   private wsBase: string;   // wss://host/ws (for the room socket)
   private cid: string;
+  /** Per-room connection identity: reused across reconnects and page reloads
+   *  so the worker recognizes the returning device and hands back its seat
+   *  (the worker-path equivalent of socket.io session recovery). One entry
+   *  per room, trimmed to the last 4 rooms. */
+  private roomCids: Record<string, string>;
 
   private ws: WebSocket | null = null;
   private currentRoom: string | null = null;
@@ -53,6 +58,7 @@ export class CloudflareSocket implements SignalingSocket {
     this.wsBase = normalized.replace(/^http/, 'ws') + '/ws';
     this.httpBase = normalized.replace(/^ws/, 'http');
     this.cid = uuid();
+    this.roomCids = this.loadRoomCids();
     devLog('Cloudflare signaling transport ready at', this.httpBase);
     // Command-ready from the start: this transport has no long-lived
     // connection — the room WebSocket opens lazily on the first command
@@ -85,6 +91,24 @@ export class CloudflareSocket implements SignalingSocket {
   }
 
   private _onVisibility: (() => void) | null = null;
+
+  private loadRoomCids(): Record<string, string> {
+    try {
+      const raw = localStorage.getItem('sharetext.roomCids');
+      return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private saveRoomCids() {
+    try {
+      // Keep only the 4 most recent rooms so storage can't grow unbounded.
+      const entries = Object.entries(this.roomCids).slice(-4);
+      this.roomCids = Object.fromEntries(entries);
+      localStorage.setItem('sharetext.roomCids', JSON.stringify(this.roomCids));
+    } catch { /* private mode / quota — identity falls back to per-socket */ }
+  }
 
   // ---- SignalingSocket surface -------------------------------------------
 
@@ -155,7 +179,12 @@ export class CloudflareSocket implements SignalingSocket {
     this.currentRoom = roomId;
 
     return new Promise<WebSocket>((resolve, reject) => {
-      const cid = uuid();
+      // Reuse this device's stable cid for the room when we have one so the
+      // worker treats a returning socket as the SAME peer (grace reclaim
+      // + peer_recovered instead of evict-and-rejoin).
+      const cid = this.roomCids[roomId] ?? this.cid;
+      this.roomCids[roomId] = cid;
+      this.saveRoomCids();
       const ws = new WebSocket(`${this.wsBase}?room=${roomId}&cid=${cid}`);
       // Binary frames are encrypted relay chunks — deliver them as ArrayBuffer,
       // not the default Blob, so the transfer layer can decrypt them. (Browsers

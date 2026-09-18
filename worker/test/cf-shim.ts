@@ -22,6 +22,14 @@ export class FakeWebSocket {
     this.readyState = 0;
     this.closedCode = code;
     this.closedReason = reason;
+    // Closing one end of the pair tears down the connection — both ends are
+    // dead, exactly like a real WebSocket (the runtime then drops the socket
+    // from getWebSockets and eventually calls webSocketClose).
+    if (this.peer && this.peer.readyState !== 0) {
+      this.peer.readyState = 0;
+      this.peer.closedCode = code;
+      this.peer.closedReason = reason;
+    }
     if (this.peer?.onclose) this.peer.onclose({ code, reason });
   }
 }

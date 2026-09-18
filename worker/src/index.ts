@@ -26,8 +26,10 @@ export { Lobby };
 
 const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:3000',
+  'http://localhost:3010',
   'http://localhost:3311',
   'http://127.0.0.1:3000',
+  'http://127.0.0.1:3010',
   'http://127.0.0.1:3311',
   'https://sharetexts.online',
 ];

@@ -7,10 +7,12 @@ import { cn, shortCodeOf } from '../lib/utils';
 import { hapticTap } from '../lib/haptics';
 import {
   Send, Download, QrCode, Link2, Copy, RefreshCw, LogOut,
-  Sun, Moon, Languages, FileText, ChevronLeft, Check, Search, Info, Gauge
+  Sun, Moon, Languages, FileText, ChevronLeft, Check, Search, Info, Gauge, Activity
 } from 'lucide-react';
 import { metricsSnapshot, clearTransferMetrics, type TransferRecord } from '../lib/transferMetrics';
 import { formatBytes } from '../lib/utils';
+import { connMachine } from '../lib/connectionState';
+import { getNetStats, describeRoute } from '../lib/netStats';
 
 /**
  * CommandBar — the app's whole surface, one ⌘K away.
@@ -58,6 +60,7 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
   const { resolved, setChoice } = useTheme();
   const [internalOpen, setInternalOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [diagOpen, setDiagOpen] = useState(false);
   const open = openProp ?? internalOpen;
   const setOpen = useCallback((v: boolean | ((prev: boolean) => boolean)) => {
     const next = typeof v === 'function' ? (v as (p: boolean) => boolean)(openProp ?? internalOpen) : v;
@@ -225,6 +228,12 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
         opensSub: true,
         run: () => setStatsOpen(true),
       },
+      {
+        id: 'diagnostics', label: 'Connection diagnostics', group: t('command.group.settings'),
+        icon: <Activity className="w-4 h-4" />, keywords: 'route rtt ice relay direct webrtc diagnostics debug state machine',
+        opensSub: true,
+        run: () => setDiagOpen(true),
+      },
     );
     return list;
   }, [inRoom, connected, t, lang, resolved, createSession, requestReconnect, abandonSession, setChoice, session.roomId, session.messages]);
@@ -239,7 +248,7 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
   useEffect(() => { setIndex(i => Math.min(i, Math.max(0, filtered.length - 1))); }, [filtered.length]);
 
   const runCmd = (cmd: Cmd) => {
-    if (cmd.opensSub) { if (cmd.id === 'stats') setStatsOpen(true); else setSubOpen(true); return; }
+    if (cmd.opensSub) { if (cmd.id === 'stats') setStatsOpen(true); else if (cmd.id === 'diagnostics') setDiagOpen(true); else setSubOpen(true); return; }
     hapticTap();
     // Close FIRST (synchronously), then run — the action targets state that
     // assumes the palette is gone, and focus restoration happens before the
@@ -250,8 +259,8 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (subOpen || statsOpen) {
-      if (e.key === 'Escape' || e.key === 'ArrowLeft') { e.preventDefault(); setSubOpen(false); setStatsOpen(false); }
+    if (subOpen || statsOpen || diagOpen) {
+      if (e.key === 'Escape' || e.key === 'ArrowLeft') { e.preventDefault(); setSubOpen(false); setStatsOpen(false); setDiagOpen(false); }
       return; // submenu owns the keys while open
     }
     if (e.key === 'ArrowDown') { e.preventDefault(); setIndex(i => (i + 1) % Math.max(1, filtered.length)); }
@@ -300,6 +309,9 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
             {statsOpen ? (
               /* Transfer stats submenu — lifetime totals + the recent ring. */
               <TransferStatsPanel onBack={() => setStatsOpen(false)} />
+            ) : diagOpen ? (
+              /* Connection diagnostics — live route/RTT/state-machine truth. */
+              <DiagnosticsPanel onBack={() => setDiagOpen(false)} />
             ) : subOpen ? (
               /* Language submenu — flat list, back with Esc/← or the header button */
               <div>
@@ -399,6 +411,81 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+/**
+ * DiagnosticsPanel — real measurements, not guesses: the live connection
+ * state machine position (plus the last hops it took), the ICE route
+ * (direct P2P / NAT-traversed / TURN relay), RTT and cumulative bytes
+ * straight from getStats(). Samples at 1 Hz while open; zero cost closed.
+ */
+function DiagnosticsPanel({ onBack }: { onBack: () => void }) {
+  const { t } = useI18n();
+  const { session } = useSession();
+  const [, force] = useState(0);
+  useEffect(() => {
+    const iv = setInterval(() => force(n => n + 1), 1000);
+    return () => clearInterval(iv);
+  }, []);
+  const s = getNetStats();
+  const state = connMachine.current();
+  const inState = connMachine.msInState();
+  const history = connMachine.transitions();
+  const row = (k: string, v: React.ReactNode) => (
+    <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-[10px] bg-black/[0.02] dark:bg-white/[0.04]">
+      <span className="text-[12px] text-apple-ink-muted dark:text-white/45">{k}</span>
+      <span className="text-[12.5px] font-medium text-apple-ink dark:text-white/85 text-right tnum">{v}</span>
+    </div>
+  );
+  return (
+    <div>
+      <div className="flex items-center justify-between px-4 border-b border-black/[0.05] dark:border-white/[0.06]">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center gap-1 -ml-2 px-2 py-3.5 text-[13px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" /> {t('command.title')}
+        </button>
+      </div>
+      <div className="max-h-[52vh] overflow-y-auto p-4 flex flex-col gap-4">
+        <section aria-label="Connection">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-apple-ink-muted/70 dark:text-white/35 mb-1.5">Connection</h4>
+          <div className="flex flex-col gap-1">
+            {row('State', <span className="font-semibold text-apple-blue">{state}</span>)}
+            {row('In state', `${(inState / 1000).toFixed(1)} s`)}
+            {row('Route', s.available ? describeRoute(s.route) : '—')}
+            {row('RTT', s.rttMs !== null ? `${s.rttMs} ms` : '—')}
+            {row('Peer', session.partnerName || '—')}
+          </div>
+        </section>
+        <section aria-label="Transfer">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-apple-ink-muted/70 dark:text-white/35 mb-1.5">Transfer</h4>
+          <div className="flex flex-col gap-1">
+            {row('Bytes sent', formatBytes(s.bytesSent, 1))}
+            {row('Bytes received', formatBytes(s.bytesReceived, 1))}
+          </div>
+        </section>
+        <section aria-label="State history">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-apple-ink-muted/70 dark:text-white/35 mb-1.5">Recent transitions</h4>
+          {history.length === 0 ? (
+            <p className="text-[12px] text-apple-ink-muted dark:text-white/35 px-3 py-2">No transitions yet — idle.</p>
+          ) : (
+            <div className="flex flex-col gap-0.5">
+              {[...history].reverse().slice(0, 8).map((h, i) => (
+                <div key={h.at + '-' + i} className="flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-black/[0.02] dark:bg-white/[0.03] text-[11.5px]">
+                  <span className="text-apple-ink-muted dark:text-white/50 font-medium">{h.from}</span>
+                  <span aria-hidden>→</span>
+                  <span className="font-semibold text-apple-ink dark:text-white/85">{h.to}</span>
+                  <span className="ml-auto text-apple-ink-muted/60 dark:text-white/30 tnum">{new Date(h.at).toLocaleTimeString()}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
   );
 }
 
