@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Monitor, Smartphone, ArrowRight, Zap, Eye, EyeOff, RefreshCw, Search, Check, X, Wifi } from 'lucide-react';
+import { Monitor, Smartphone, ArrowRight, Zap, Eye, EyeOff, RefreshCw, Search, Check, X, Wifi, QrCode, Link2 } from 'lucide-react';
 import { getSocket } from '../lib/socket';
 import { nearbyPresence, isPresenceHidden, setPresenceHidden, type NearbyDevice } from '../lib/nearby';
 import { getRecentDevices, recordRecentDevice, isTrustedToken, forgetRecentDevice, resolveLiveToken, lastSeenParts } from '../lib/pairing';
@@ -84,6 +84,11 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
   // The fallback ("Can't see your device?") appears only after the search
   // grace — presence answers within a couple of seconds on a normal LAN.
   const [searchExpired, setSearchExpired] = useState(false);
+  // Which device a failed invite refers to — the failure card is about a
+  // NAME ("Couldn't connect to iPhone"), never a bare "failed".
+  const [failedDevice, setFailedDevice] = useState<NearbyDevice | null>(null);
+  // The expandable "Why isn't my device showing?" helper.
+  const [whyOpen, setWhyOpen] = useState(false);
   // True while OUR invite is awaiting an answer — suppresses auto-accept on
   // the inviter side so a mutual tap can't race into two rooms.
   const invitingRef = useRef(false);
@@ -167,11 +172,14 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
   const handleInvite = useCallback(async (device: NearbyDevice) => {
     hapticTap();
     setPhase({ kind: 'inviting', device });
+    setFailedDevice(null);
     invitingRef.current = true;
     const delivered = await nearbyPresence.invite(device.id);
     invitingRef.current = false;
     if (!delivered) {
-      setPhase({ kind: 'error', text: t('nearby.gone') });
+      // Named failure + the two honest ways out (retry / QR).
+      setFailedDevice(device);
+      setPhase({ kind: 'error', text: t('nearby.failTitle', { name: device.name }) });
       return;
     }
     // Delivery ≠ acceptance. If the other device declines/expires, the
@@ -232,7 +240,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
   /* --- auto-clear transient states ---------------------------------------- */
   useEffect(() => {
     if (phase.kind === 'error') {
-      const timer = setTimeout(() => setPhase({ kind: 'idle' }), 5000);
+      const timer = setTimeout(() => { setPhase({ kind: 'idle' }); setFailedDevice(null); }, 12000);
       return () => clearTimeout(timer);
     }
   }, [phase.kind]);
@@ -426,10 +434,27 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
               >
                 <RefreshCw className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /> {t('nearby.fallbackCode')}
               </button>
+              <button
+                type="button"
+                onClick={() => { hapticTap(); (window as Window & { __stOpenSendQr?: () => void }).__stOpenSendQr?.(); }}
+                data-testid="fallback-qr"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] text-[12.5px] font-semibold text-apple-ink dark:text-white active:scale-[0.97] transition-all"
+              >
+                <QrCode className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /> {t('nearby.showQr')}
+              </button>
+              <button
+                type="button"
+                onClick={() => { hapticTap(); (window as Window & { __stOpenSendLink?: () => void }).__stOpenSendLink?.(); }}
+                data-testid="fallback-link"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] text-[12.5px] font-semibold text-apple-ink dark:text-white active:scale-[0.97] transition-all"
+              >
+                <Link2 className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /> {t('nearby.shareLink')}
+              </button>
               <span className="flex items-center text-[11px] font-medium text-apple-ink-muted/60 dark:text-white/30 px-1">
                 {t('nearby.useAnotherWay')}
               </span>
             </div>
+            <p className="mt-2 text-[11px] font-medium text-apple-ink-muted/60 dark:text-white/30">{t('nearby.keepOpenHint')}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -526,27 +551,90 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
         </button>
       </div>
 
-      {/* Inline status / error (inviting, gone, declined) */}
+      {/* FAILURE — a name, the one fix that matters, and the two honest
+          ways out. Never a bare "Connection failed." */}
       <AnimatePresence>
-        {(phase.kind === 'inviting' || phase.kind === 'error') && (
-          <motion.p
-            key={phase.kind === 'error' ? `error:${phase.text}` : 'inviting'}
-            initial={{ opacity: 0, y: 4 }}
+        {phase.kind === 'error' && (
+          <motion.div
+            key={`error:${phase.text}`}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            role={phase.kind === 'error' ? 'alert' : 'status'}
-            className={cn(
-              'mt-3 text-[12.5px] font-medium',
-              phase.kind === 'error' ? 'text-status-danger' : 'text-apple-ink-muted dark:text-white/50'
-            )}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+            role="alert"
+            data-testid="nearby-failure-card"
+            className="mt-2.5 w-full px-3.5 py-3 rounded-[14px] bg-status-danger/[0.06] dark:bg-status-danger/[0.08] border border-status-danger/25"
           >
-            {phase.kind === 'inviting'
-              ? t('nearby.connectingTo', { name: phase.device.name })
-              : phase.text}
-          </motion.p>
+            <p className="text-[12.5px] font-semibold text-status-danger">{phase.text}</p>
+            {failedDevice && (
+              <>
+                <p className="mt-1 text-[11.5px] font-medium text-apple-ink-muted dark:text-white/50 leading-snug">
+                  {t('nearby.failBody')}
+                </p>
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    data-testid="nearby-fail-retry"
+                    onClick={() => { hapticTap(); void handleInvite(failedDevice); }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[12px] font-semibold active:scale-[0.97] transition-all min-h-[36px]"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> {t('nearby.failRetry')}
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="nearby-fail-qr"
+                    onClick={() => { hapticTap(); (window as Window & { __stOpenSendQr?: () => void }).__stOpenSendQr?.(); }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 text-[12px] font-semibold text-apple-ink dark:text-white active:scale-[0.97] transition-all min-h-[36px]"
+                  >
+                    <QrCode className="w-3.5 h-3.5" /> {t('nearby.failUseQr')}
+                  </button>
+                </div>
+              </>
+            )}
+          </motion.div>
         )}
       </AnimatePresence>
+
+      {/* WHY ISN'T MY DEVICE SHOWING? — the expandable truth about local
+          networks. Collapsed it costs one line; expanded it answers the
+          question support tickets are made of. */}
+      {waiting && (
+        <div className="mt-2">
+          <button
+            type="button"
+            data-testid="nearby-why-toggle"
+            aria-expanded={whyOpen}
+            onClick={() => { hapticTap(); setWhyOpen(o => !o); }}
+            className="flex items-center gap-1.5 px-1 py-1 text-[12px] font-semibold text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors"
+          >
+            {t('nearby.whyTitle')}
+            <motion.span animate={{ rotate: whyOpen ? 180 : 0 }} transition={{ duration: 0.2 }} className="inline-flex" aria-hidden>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </motion.span>
+          </button>
+          <AnimatePresence>
+            {whyOpen && (
+              <motion.ol
+                key="why-open"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="mt-1.5 px-3.5 py-3 rounded-[14px] bg-apple-parchment/60 dark:bg-white/[0.03] border border-apple-divider/40 dark:border-white/[0.06]">
+                  {(['why1', 'why2', 'why3', 'why4', 'why5'] as const).map((k, i) => (
+                    <li key={k} className="flex items-start gap-2.5 py-1 text-[12px] font-medium text-apple-ink-muted dark:text-white/50 leading-snug">
+                      <span className="shrink-0 w-4 h-4 mt-px rounded-full bg-apple-divider/50 dark:bg-white/[0.08] flex items-center justify-center text-[9.5px] font-bold text-apple-ink-muted dark:text-white/50 tnum" aria-hidden>{i + 1}</span>
+                      {t(`nearby.${k}`)}
+                    </li>
+                  ))}
+                </div>
+              </motion.ol>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
 
       {/* Incoming invitation — Apple-style sheet, reused from the app. */}
       <ConfirmSheet

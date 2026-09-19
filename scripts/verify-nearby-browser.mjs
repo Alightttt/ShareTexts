@@ -3,7 +3,9 @@
  * Driven entirely through the live UI — no protocol shims.
  *
  *   1. Two contexts open the landing page → both announce.
- *   2. Each sees the other's device row; hero hint line present.
+ *   2. Each sees the other's device row; searching row present (the old
+ *      standalone hero hint line was removed in the de-clutter — the
+ *      searching row now carries that instruction).
  *   3. A invites B → B sees the accept sheet → accepts.
  *   4. Inviter auto-joins via joinWithLink; invitee holds the room.
  *   5. Both land in the normal connected room; text transfers BOTH ways.
@@ -28,11 +30,11 @@ try {
     p.on('console', m => { if (m.type() === 'error') pageErrors.push(`[${tag}:console] ${m.text().slice(0, 160)}`); });
   }
 
-  /* ---- 0. hint line with no peers ---- */
+  /* ---- 0. searching row with no peers (the single instruction) ---- */
   await A.goto(URL, { waitUntil: 'domcontentloaded' });
   await A.waitForTimeout(1500);
-  const hintText = await A.getByText('Open ShareTexts in another device').count();
-  out('hero hint line visible with no peers', hintText >= 1);
+  const hintText = await A.getByText('Looking for nearby devices…').count();
+  out('searching row visible with no peers', hintText >= 1);
   const rows0 = await A.locator('button', { hasText: 'Nearby' }).count();
   out('no device rows when alone', rows0 === 0, `rows=${rows0}`);
 

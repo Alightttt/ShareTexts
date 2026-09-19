@@ -626,15 +626,11 @@ export function SingleScreenApp() {
                   );
                 })()}
               </AnimatePresence>
-              {/* Nearby device discovery — an OPTIONAL extra path to the same
-                  connection. The hint line sits at the BOTTOM of the activity
-                  tracker (one quiet instruction under the live count); device
-                  rows appear under it only when eligible devices exist. The
-                  existing code/QR/link methods stay primary. */}
-              <p className="order-5 mt-3.5 flex items-center justify-center sm:justify-start gap-1.5 text-[13px] font-medium text-apple-ink-muted dark:text-white/45 w-fit mx-auto lg:mx-0">
-                <Monitor className="w-3.5 h-3.5" aria-hidden />
-                {t('nearby.hint')}
-              </p>
+              {/* Nearby device discovery — an OPTIONAL extra path. The old
+                  standalone hint line is gone: the nearby block's own
+                  searching row says "Looking for nearby devices…" in the
+                  same words, right where the action is. One instruction on
+                  screen, never two. */}
               <div className="order-6 w-full flex flex-col items-center lg:items-start">
                 <div className="w-full max-w-md lg:max-w-none">
                   <NearbyDevices onStatus={setNearbyStatus} />
