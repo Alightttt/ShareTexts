@@ -154,6 +154,10 @@ export class CloudflareSocket implements SignalingSocket {
       void this.sendRelay(payload);
     } else if (event === 'close_room') {
       void this.sendClose();
+    } else if (event === 'stay_connected_enable' || event === 'stay_connected_disable') {
+      // Stay Connected rides the room socket; the worker echoes the room-wide
+      // state back as a stay_connected_state event (both peers get it).
+      void this.sendStayConnected(event === 'stay_connected_enable');
     } else if (event === 'presence_announce' || event === 'presence_withdraw' ||
                event === 'presence_update' || event === 'presence_invite' ||
                event === 'presence_invite_result') {
@@ -457,6 +461,19 @@ export class CloudflareSocket implements SignalingSocket {
       this.lastSecret = null;
     } catch {
       /* nothing to close */
+    }
+  }
+
+  /** Stay Connected: send the flip on the room socket; the worker echoes
+   *  stay_connected_state to BOTH peers, which is the real state (same
+   *  contract as the socket.io server). */
+  private async sendStayConnected(enabled: boolean) {
+    if (!this.currentRoom) return;
+    try {
+      const ws = await this.openRoom(this.currentRoom);
+      this.sendJson(ws, enabled ? 'stay_connected_enable' : 'stay_connected_disable', undefined);
+    } catch {
+      /* best-effort: the toggle optimistically flipped; echo corrects */
     }
   }
 

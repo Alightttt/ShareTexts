@@ -249,6 +249,9 @@ class TransferSlots {
   private active = 0;
   private queue: Array<() => void> = [];
   constructor(private readonly max: number) {}
+  depth(): number { return this.queue.length; }
+  /** Slots in use — 3 in flight means the NEXT file must wait. */
+  activeCount(): number { return this.active; }
   acquire(): Promise<void> {
     if (this.active < this.max) {
       this.active++;
@@ -263,6 +266,16 @@ class TransferSlots {
   }
 }
 const fileSendSlots = new TransferSlots(3);
+
+/** Synchronous queue-full probe for sendMessage: are all 3 slots taken
+ *  (3 in flight) right now? When a batch of files is sent in a loop, every
+ *  sendMessage runs before any sendFile reaches acquire(), so the LIVE
+ *  depth is 0 for the whole batch — the batch size itself decides who
+ *  waits: files 4, 5, … must start as 'waiting'. SessionContext passes
+ *  the batch position; this function adds the live in-flight count. */
+export function sendQueueDepth(): number {
+  return fileSendSlots.activeCount();
+}
 
 /** Thrown by a send loop that was cancelled (distinct from a network failure). */
 export class TransferCancelledError extends Error {
@@ -334,6 +347,13 @@ export class PeerManager {
   /** The peer sent the final SHA-256 of a finished file transfer — verify.
    *  (Also fires for the legacy path via the metadata route.) */
   public onFileHash: ((transferId: string, sha256: string) => void) | null = null;
+  /** A queued send reached the head of the transfer queue and starts now.
+   *  SessionContext flips the bubble from 'waiting' to 'preparing'/'sending'.
+   *  Fires for LOCAL sends at slot-acquire; the PEER is notified separately
+   *  via the queued_start control packet (they must not share the callback). */
+  public onQueuedSendStart: ((transferId: string) => void) | null = null;
+  /** Fires locally when THIS device's queue frees a slot for the transfer. */
+  public onLocalQueueStart: ((transferId: string) => void) | null = null;
   /** Live transfer pacing state for the UI/metrics: bytes/sec, pipeline
    *  depth, buffer occupancy. Written by the send loop, read by telemetry. */
   public lastPace: { transferId: string; bytesPerSec: number; depth: number; buffered: number } | null = null;
@@ -645,6 +665,14 @@ export class PeerManager {
           if (this.onFileHash) this.onFileHash(inner.transferId, inner.sha256);
         }
         return;
+      case 'queued_start':
+        // The peer's queue freed a slot for this transfer — flip our
+        // 'waiting' bubble to 'receiving'. Rides the control channel, so
+        // it's never delayed by bulk traffic (that's the point of the queue).
+        if (typeof inner.transferId === 'string' && this.onQueuedSendStart) {
+          this.onQueuedSendStart(inner.transferId);
+        }
+        return;
       case 'receipt':
         if (typeof inner.messageId === 'string' && this.onReceipt) this.onReceipt(inner.messageId);
         return;
@@ -859,7 +887,7 @@ export class PeerManager {
                 // Legacy control packets route through the SAME table as the
                 // dedicated channel — one semantics, two transports.
                 if (inner && typeof inner.type === 'string' &&
-                    ['hello', 'cancel', 'ack', 'pause', 'resume', 'file_hash', 'receipt', 'seen'].includes(inner.type)) {
+                    ['hello', 'cancel', 'ack', 'pause', 'resume', 'file_hash', 'receipt', 'seen', 'queued_start'].includes(inner.type)) {
                   this.routeControl(inner);
                   return;
                 }
@@ -1058,7 +1086,7 @@ export class PeerManager {
       if (!this.peerId) return;
       const hello = JSON.stringify({
         type: 'hello',
-        name: name || 'Guest Device',
+        name: name || 'Device',
         protocolVersion: PeerManager.TRANSFER_PROTOCOL,
         features: PeerManager.FEATURES,
       });
@@ -1245,6 +1273,11 @@ export class PeerManager {
     // Wait for a send slot before opening the pipeline — see TransferSlots.
     // A cancel that lands while queued is caught right after acquisition.
     await fileSendSlots.acquire();
+    // Local UI: flip the bubble out of 'Waiting…' now that the slot is ours.
+    if (this.onLocalQueueStart) this.onLocalQueueStart(transferId);
+    // Tell the peer this transfer left the queue and is starting, so their
+    // bubble flips from 'Waiting…' to a live percentage at the same moment.
+    void this.sendControl({ type: 'queued_start', transferId });
     try {
       if (signal.aborted) throw new TransferCancelledError();
 

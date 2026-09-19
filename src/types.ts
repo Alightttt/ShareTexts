@@ -8,7 +8,7 @@ export interface Attachment {
   mimeType: string;
   encoding?: string; // 'utf-8' | 'binary' — protocol metadata (optional today)
   url?: string; // object URL for preview/download
-  status?: 'draft' | 'preparing' | 'sending' | 'receiving' | 'interrupted' | 'resuming' | 'paused' | 'complete' | 'failed' | 'cancelled' | 'restoring';
+  status?: 'draft' | 'waiting' | 'preparing' | 'sending' | 'receiving' | 'interrupted' | 'resuming' | 'paused' | 'complete' | 'failed' | 'cancelled' | 'restoring';
   progress?: number;
   /** SHA-256 hex of the original bytes, computed by the sender before the
    *  transfer. The receiver hashes what arrived and compares — a mismatch is

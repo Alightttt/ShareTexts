@@ -341,6 +341,44 @@ async function runDisconnectedState() {
   check('empty room storage cleared by alarm', ctx.storage.map.size === 0);
 }
 
+// Stay Connected: room-wide promise flips, BOTH peers get the echo, the
+// state persists, and a non-member cannot flip someone else's room.
+async function runStayConnected() {
+  const roomId = uuid();
+  const ctx = new FakeCtx();
+  const room = new Room(ctx, makeEnv());
+  const creator = await connect(room, roomId);
+  await creator.send('create_room');
+  const secret = ctx.storage.map.get('room').secret;
+  const joiner = await connect(room, roomId);
+  const codeRes = await creator.send('refresh_code', { roomId, secret });
+  const code = codeFor(secret, ctx.storage.map.get('room').codeAnchor);
+  const joined = await joiner.send('join_with_code', { code });
+  check('stay: joiner seated', joined.success === true);
+
+  const echoC = creator.waitFor((m) => m.type === 'event' && m.event === 'stay_connected_state');
+  const echoJ = joiner.waitFor((m) => m.type === 'event' && m.event === 'stay_connected_state');
+  const ack = await joiner.send('stay_connected_enable');
+  const [ec, ej] = [await echoC, await echoJ];
+  check('stay: enable acked', ack.success === true && ack.enabled === true, JSON.stringify(ack));
+  check('stay: creator echoed enabled', ec?.enabled === true);
+  check('stay: joiner echoed enabled', ej?.enabled === true);
+  check('stay: persisted on room state', ctx.storage.map.get('room')?.stayConnected === true);
+
+  const offC = creator.waitFor((m) => m.type === 'event' && m.event === 'stay_connected_state' && m.payload?.enabled === false);
+  await joiner.send('stay_connected_disable');
+  check('stay: disable echoed', (await offC)?.enabled === false);
+  check('stay: disabled persisted', ctx.storage.map.get('room')?.stayConnected === false);
+
+  // A socket that never joined cannot flip the room's promise.
+  const stranger = await connect(room, roomId);
+  const denied = await stranger.send('stay_connected_enable');
+  check('stay: non-member rejected', denied.success === false, denied.error);
+  stranger.close();
+  creator.close();
+  joiner.close();
+}
+
 async function runPush() {
   const roomId = uuid();
   const ctx = new FakeCtx();
@@ -491,6 +529,7 @@ async function runMetrics() {
 
 await runRoomProtocol();
 await runRefreshCode();
+await runStayConnected();
 await runPush();
 await runLiveIdleExpiry();
 await runDisconnectedState();

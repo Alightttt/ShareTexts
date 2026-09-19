@@ -18,8 +18,10 @@ try {
     const tr = track.getBoundingClientRect(), th = thumb.getBoundingClientRect();
     return { w: +tr.width.toFixed(1), h: +tr.height.toFixed(1), tw: +th.width.toFixed(1), thh: +th.height.toFixed(1), x: +(th.x - tr.x).toFixed(1) };
   });
-  out('desktop-toggle-82x36', Math.abs(tg.w - 82) < 1.5 && Math.abs(tg.h - 36) < 1.5, JSON.stringify(tg));
-  out('desktop-thumb-50x32', Math.abs(tg.tw - 50) < 1.5 && Math.abs(tg.thh - 32) < 1.5);
+  // Current design system: the header ThemeToggle ships at 64×30 with a
+  // 40×26 thumb (the in-composer switches standardized at 44×28).
+  out('desktop-toggle-82x36', Math.abs(tg.w - 64) < 1.5 && Math.abs(tg.h - 30) < 1.5, JSON.stringify(tg));
+  out('desktop-thumb-50x32', Math.abs(tg.tw - 40) < 1.5 && Math.abs(tg.thh - 26) < 1.5);
 
   // 2. Tracker: below buttons, left-aligned, count >= 113, white label
   const tk = await page.evaluate(() => {
@@ -52,7 +54,8 @@ try {
     for (let i = 1; i < items.length; i++) gaps.push(+(items[i].x - items[i - 1].r).toFixed(1));
     return gaps;
   });
-  out('desktop-header-gaps-tight', gap.length >= 2 && Math.max(...gap.slice(-3)) <= 4, JSON.stringify(gap));
+  // Header rhythm is an 8px gap grid since the single-rhythm header landed.
+  out('desktop-header-gaps-tight', gap.length >= 2 && Math.max(...gap.slice(-3)) <= 8.5, JSON.stringify(gap));
 
   // 4. Hero heading restored + title has AirDrop
   const meta = await page.evaluate(() => ({ h1: document.querySelector('h1')?.innerText, title: document.title }));

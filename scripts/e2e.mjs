@@ -159,6 +159,35 @@ async function main() {
     console.log('STEP 9 WARN: third device result:', cBody.slice(0, 300).replace(/\n/g, ' | '));
   }
 
+  // --- STEP 10: multi-file transfer queue ---------------------------------
+  // Send 3 files in one message. The queue (TransferSlots, 3 wide) starts all
+  // three; the UI must render one row per file with per-file status, and all
+  // must land complete on B. Small files complete too fast to observe
+  // 'Waiting…', so assert the OUTCOME (per-file rows, all complete).
+  console.log('STEP 10: multi-file queue — sending 3 files in one message…');
+  const fs10 = await import('node:fs');
+  const tmp10 = fs10.mkdtempSync('st-queue-');
+  const paths10 = [];
+  for (const [name, body] of [['queue-one.txt', 'first file body '.repeat(200)],
+                              ['queue-two.txt', 'second file body '.repeat(200)],
+                              ['queue-three.txt', 'third file body '.repeat(200)]]) {
+    const p = `${tmp10}/${name}`;
+    fs10.writeFileSync(p, body);
+    paths10.push(p);
+  }
+  await A.locator('input[multiple]:not([accept])').setInputFiles(paths10);
+  await sleep(600);
+  await A.getByRole('button', { name: /send/i }).first().click();
+  await sleep(2500);
+  const bQueue = await B2.evaluate(() => document.body.innerText);
+  const namesOk = ['queue-one.txt', 'queue-two.txt', 'queue-three.txt'].every(n => bQueue.includes(n));
+  const noneWaiting = !bQueue.includes('Waiting…');
+  if (namesOk && noneWaiting) {
+    console.log('STEP 10 OK: all 3 queued files completed on B, per-file rows rendered');
+  } else {
+    console.log('STEP 10 FAIL: files=', namesOk, 'waitingLeft=', !noneWaiting, '| B:', bQueue.slice(-400).replace(/\n/g, ' | '));
+  }
+
   console.log('\n--- PAGE ERRORS ---');
   console.log(logs.length ? logs.slice(0, 20).join('\n') : '(none)');
 

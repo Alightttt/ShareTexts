@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Monitor, Smartphone, ArrowRight, Zap } from 'lucide-react';
+import { Monitor, Smartphone, ArrowRight, Zap, Eye, EyeOff } from 'lucide-react';
 import { getSocket } from '../lib/socket';
-import { nearbyPresence, type NearbyDevice } from '../lib/nearby';
+import { nearbyPresence, isPresenceHidden, setPresenceHidden, type NearbyDevice } from '../lib/nearby';
 import { useI18n } from '../lib/i18n';
 import { useSession } from '../lib/SessionContext';
 import { ConfirmSheet } from './ConfirmSheet';
@@ -61,6 +61,9 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [invitation, setInvitation] = useState<{ from: string; name: string } | null>(null);
   const [autoOn, setAutoOn] = useState<boolean>(() => isAutoConnectEnabled());
+  // Nearby visibility: who can find THIS device. Default is the simple,
+  // privacy-friendly default — visible only while ShareTexts is open.
+  const [presenceHidden, setPresenceHiddenState] = useState<boolean>(() => isPresenceHidden());
   // True while OUR invite is awaiting an answer — suppresses auto-accept on
   // the inviter side so a mutual tap can't race into two rooms.
   const invitingRef = useRef(false);
@@ -235,6 +238,56 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Nearby visibility — the user's own discoverability switch. Default
+          ON: visible only while ShareTexts is open (closing the tab withdraws
+          the announce and the server's TTL expires the entry). OFF: Hidden —
+          this device never announces, so it can't be found, though it can
+          still see and invite others. */}
+      <div
+        data-testid="nearby-visibility-row"
+        className="mt-2.5 flex items-center gap-2.5 px-3.5 py-2.5 rounded-[14px] bg-apple-parchment/60 dark:bg-white/[0.03] border border-apple-divider/40 dark:border-white/[0.06]"
+      >
+        <span
+          className={cn(
+            'shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-colors',
+            presenceHidden
+              ? 'bg-apple-divider/40 dark:bg-white/[0.06] text-apple-ink-muted dark:text-white/40'
+              : 'bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[#f06413] dark:text-[#fb9243]'
+          )}
+          aria-hidden
+        >
+          {presenceHidden ? <EyeOff className="w-3.5 h-3.5" strokeWidth={2.2} /> : <Eye className="w-3.5 h-3.5" strokeWidth={2.2} />}
+        </span>
+        <span className="flex-1 flex flex-col min-w-0 leading-tight">
+          <span className="text-[12.5px] font-semibold text-apple-ink dark:text-white">
+            {presenceHidden ? t('nearby.hiddenTitle') : t('nearby.visibleWhileOpen')}
+          </span>
+          <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45">
+            {presenceHidden ? t('nearby.hiddenHint') : t('nearby.visibleWhileOpenHint')}
+          </span>
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={!presenceHidden}
+          data-testid="nearby-visibility-toggle"
+          aria-label={t('nearby.visibleTitle')}
+          onClick={() => { hapticTap(); setPresenceHiddenState(h => { setPresenceHidden(!h); return !h; }); }}
+          className={cn(
+            'relative shrink-0 w-[44px] h-[28px] rounded-full transition-colors duration-200 outline-none',
+            'focus-visible:ring-2 focus-visible:ring-[#f06413]/40',
+            !presenceHidden ? 'bg-[#f06413] dark:bg-[#fb9243]' : 'bg-apple-divider dark:bg-white/20'
+          )}
+        >
+          <motion.span
+            initial={false}
+            animate={{ x: !presenceHidden ? 18 : 0 }}
+            transition={{ type: 'spring', stiffness: 550, damping: 38 }}
+            className="absolute top-[2px] left-[2px] w-6 h-6 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.25)]"
+          />
+        </button>
+      </div>
 
       {/* Auto-connect — one quiet row: what it does, plus the switch. */}
       <div

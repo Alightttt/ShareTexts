@@ -19,7 +19,7 @@ const en = {
   // ── brand / nav / landing ──────────────────────────────────────────
   'nav.docs': 'Docs',
   'home.title': 'Move anything\nbetween your devices.',
-  'home.subtitle': "Windows to IPhone, Mobile to PC, you can share Texts/Files/Images across any devices. thats why we call it AirDrop for any Device",
+  'home.subtitle': "No app. No account. No cable.\nJust open ShareTexts on both devices.",
   'home.send': 'Send',
   'home.sendHint': 'Create a room',
   'home.receive': 'Receive',
@@ -162,7 +162,7 @@ const en = {
   'chat.peerOffline.title': 'Other device is offline',
   'chat.peerOffline.body': 'It will reconnect when the other device comes back.',
   'chat.ready': 'Ready when you are',
-  'chat.empty.body': 'Type, paste, or drop anything. It goes straight to the other device.',
+  'chat.empty.body': 'Type, paste, or drop anything — text, links, photos, files. It goes straight to the other device.',
   'chat.copyAll': 'Copy All',
   'chat.copiedAll': 'Copied {count} items',
   'chat.newMessage': 'New message',
@@ -185,7 +185,7 @@ const en = {
   'attach.audioHint': 'Choose a recording',
   'attach.files': 'Files',
   'attach.filesHint': 'Choose any file',
-  'composer.placeholder': 'Paste or drop anything…',
+  'composer.placeholder': 'Drop anything — text, link, photo, file…',
   'composer.aria': 'Message',
   'composer.title': 'Enter to send · Shift+Enter for a new line',
   'composer.enter': 'Enter',
@@ -222,6 +222,7 @@ const en = {
   'status.restoring': 'Restoring file… {pct}',
   'status.cancelled': 'Cancelled',
   'status.paused': 'Paused',
+  'status.waiting': 'Waiting…',
   'status.interrupted': 'The other device disconnected. Reconnect to continue',
   'status.resuming': 'Resuming… {progress}',
   'status.sending': 'Sending… {progress}',
@@ -299,6 +300,11 @@ const en = {
   'nearby.accept': 'Accept',
   'nearby.decline': 'Decline',
   'nearby.connectAria': 'Connect to {name}',
+  'nearby.visibleTitle': 'Nearby visibility',
+  'nearby.visibleWhileOpen': 'Visible while ShareTexts is open',
+  'nearby.visibleWhileOpenHint': 'Other devices nearby can see this one',
+  'nearby.hiddenTitle': 'Hidden',
+  'nearby.hiddenHint': 'You won\'t appear on other devices',
 
 };
 

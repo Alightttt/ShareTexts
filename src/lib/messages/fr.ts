@@ -18,7 +18,7 @@ const fr: Dict = {
   'app.ended.shareDone': 'Lien copié',
   'nav.docs': 'Documentation',
   'home.title': 'Déplacez n’importe quoi\nentre vos appareils.',
-  'home.subtitle': 'Du téléphone vers l’ordinateur, ou l’inverse. Aucune appli à installer, aucun compte à créer. Photos et fichiers arrivent en qualité originale — rien n’est compressé. Fermez l’onglet, tout disparaît.',
+  'home.subtitle': 'Aucune appli. Aucun compte. Aucun câble.\nOuvrez simplement ShareTexts sur les deux appareils.',
   'home.send': 'Envoyer',
   'home.sendHint': 'Créer un salon',
   'home.receive': 'Recevoir',
@@ -149,7 +149,7 @@ const fr: Dict = {
   'chat.peerOffline.title': 'L’autre appareil est hors ligne',
   'chat.peerOffline.body': 'Il se reconnectera quand l’autre appareil reviendra.',
   'chat.ready': 'Prêt quand vous l’êtes',
-  'chat.empty.body': 'Tapez, collez ou déposez n’importe quoi. Ça va directement sur l’autre appareil.',
+  'chat.empty.body': 'Tapez, collez ou déposez n’importe quoi — texte, liens, photos, fichiers. Ça va directement sur l’autre appareil.',
   'chat.copyAll': 'Tout copier',
   'chat.copiedAll': '{count} éléments copiés',
   'chat.newMessage': 'Nouveau message',
@@ -170,7 +170,7 @@ const fr: Dict = {
   'attach.audioHint': 'Choisissez un enregistrement',
   'attach.files': 'Fichiers',
   'attach.filesHint': 'Choisissez un fichier',
-  'composer.placeholder': 'Collez ou déposez n’importe quoi…',
+  'composer.placeholder': 'Déposez n’importe quoi — texte, lien, photo, fichier…',
   'composer.aria': 'Message',
   'composer.title': 'Entrée pour envoyer · Maj+Entrée pour une nouvelle ligne',
   'composer.enter': 'Entrée',
@@ -205,6 +205,8 @@ const fr: Dict = {
   'status.restoring': 'Restauration du fichier… {pct}',
   'status.cancelled': 'Annulé',
   'status.paused': 'En pause',
+
+  'status.waiting': 'En attente…',
   'status.interrupted': 'L’autre appareil s’est déconnecté. Reconnectez-vous pour continuer',
   'status.resuming': 'Reprise… {progress}',
   'status.sending': 'Envoi… {progress}',
@@ -272,6 +274,11 @@ const fr: Dict = {
   'nearby.accept': 'Accepter',
   'nearby.decline': 'Refuser',
   'nearby.connectAria': 'Se connecter à {name}',
+  'nearby.visibleTitle': 'Visibilité à proximité',
+  'nearby.visibleWhileOpen': 'Visible tant que ShareTexts est ouvert',
+  'nearby.visibleWhileOpenHint': 'Les autres appareils à proximité peuvent voir celui-ci',
+  'nearby.hiddenTitle': 'Masqué',
+  'nearby.hiddenHint': 'Vous n’apparaîtrez sur aucun autre appareil',
 
 };
 

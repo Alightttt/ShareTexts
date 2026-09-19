@@ -37,3 +37,7 @@ test-results/
 
 # transient verification screenshots
 scripts/tmp-*.png
+
+# scratch temp test dirs from queue probes
+st-*/
+.tmpq/

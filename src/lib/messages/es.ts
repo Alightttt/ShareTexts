@@ -18,7 +18,7 @@ const es: Dict = {
   'app.ended.shareDone': 'Enlace copiado',
   'nav.docs': 'Documentación',
   'home.title': 'Mueve lo que quieras\nentre tus dispositivos.',
-  'home.subtitle': 'Del teléfono al portátil, o del portátil al teléfono. Sin app que instalar, sin cuenta. Fotos y archivos llegan con calidad original: nada se comprime. Al cerrar la pestaña, desaparece.',
+  'home.subtitle': 'Sin app. Sin cuenta. Sin cables.\nAbre ShareTexts en ambos dispositivos y listo.',
   'home.send': 'Enviar',
   'home.sendHint': 'Crear una sala',
   'home.receive': 'Recibir',
@@ -149,7 +149,7 @@ const es: Dict = {
   'chat.peerOffline.title': 'El otro dispositivo está sin conexión',
   'chat.peerOffline.body': 'Se reconectará cuando el otro dispositivo vuelva.',
   'chat.ready': 'Listo cuando lo estés',
-  'chat.empty.body': 'Escribe, pega o suelta lo que quieras. Va directo al otro dispositivo.',
+  'chat.empty.body': 'Escribe, pega o suelta lo que quieras: texto, enlaces, fotos, archivos. Va directo al otro dispositivo.',
   'chat.copyAll': 'Copiar todo',
   'chat.copiedAll': 'Copiados {count} elementos',
   'chat.newMessage': 'Mensaje nuevo',
@@ -170,7 +170,7 @@ const es: Dict = {
   'attach.audioHint': 'Elige una grabación',
   'attach.files': 'Archivos',
   'attach.filesHint': 'Elige cualquier archivo',
-  'composer.placeholder': 'Pega o suelta lo que quieras…',
+  'composer.placeholder': 'Suelta lo que quieras: texto, enlace, foto, archivo…',
   'composer.aria': 'Mensaje',
   'composer.title': 'Enter para enviar · Shift+Enter para una línea nueva',
   'composer.enter': 'Enter',
@@ -205,6 +205,8 @@ const es: Dict = {
   'status.restoring': 'Restaurando archivo… {pct}',
   'status.cancelled': 'Cancelado',
   'status.paused': 'En pausa',
+
+  'status.waiting': 'En espera…',
   'status.interrupted': 'El otro dispositivo se desconectó. Reconéctate para continuar',
   'status.resuming': 'Reanudando… {progress}',
   'status.sending': 'Enviando… {progress}',
@@ -272,6 +274,11 @@ const es: Dict = {
   'nearby.accept': 'Aceptar',
   'nearby.decline': 'Rechazar',
   'nearby.connectAria': 'Conectar con {name}',
+  'nearby.visibleTitle': 'Visibilidad cercana',
+  'nearby.visibleWhileOpen': 'Visible mientras ShareTexts esté abierto',
+  'nearby.visibleWhileOpenHint': 'Otros dispositivos cercanos pueden ver este',
+  'nearby.hiddenTitle': 'Oculto',
+  'nearby.hiddenHint': 'No aparecerás en otros dispositivos',
 
 };
 

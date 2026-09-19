@@ -13,11 +13,11 @@ import { formatSpeed, formatEta } from '../lib/speedEngine';
 import {
   X, Copy, Check, CheckCheck, Download, Image as ImageIcon, Play, Pause,
   RefreshCw, AlertCircle, ChevronDown, ChevronUp, Share2, ShieldCheck,
-  Terminal, ZoomIn
+  Terminal, ZoomIn, Link2
 } from 'lucide-react';
 import { FileTypeIcon } from './FileTypeIcon';
 import { DraggableImage } from './DraggableImage';
-import { cn, formatBytes, sanitizeFilename } from '../lib/utils';
+import { cn, formatBytes, sanitizeFilename, sanitizeUrl } from '../lib/utils';
 import { useI18n } from '../lib/i18n';
 import type { I18nApi } from '../lib/i18n';
 import { ChatMessage, Attachment } from '../types';
@@ -53,6 +53,19 @@ async function toPngClipboardBlob(blob: Blob): Promise<Blob | null> {
 }
 
 const timeOf = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+/** Universal composer — LINK detection: a message (or caption) that is
+ *  EXACTLY one URL — nothing else — renders as a tappable link card instead
+ *  of naked text ("paste URL → LINK"). Text containing a link plus other
+ *  words stays a normal text bubble. No global flag: .test() must stay
+ *  stateless. www. hosts get an https:// prefix so they open, not 404. */
+const PURE_URL_RE = /^(https?:\/\/\S+|www\.\S+)$/i;
+function pureLinkUrl(text: string): string | null {
+  const raw = text.trim();
+  if (!PURE_URL_RE.test(raw)) return null;
+  const candidate = /^www\./i.test(raw) ? `https://${raw}` : raw;
+  return sanitizeUrl(candidate);
+}
 
 /**
  * Selection ring for selection mode (bencho selection list): an absolutely
@@ -159,6 +172,7 @@ function transferStatusText(a: Attachment, isMe: boolean, t: I18nApi['t']): stri
           ? t('status.failed.checksum')
           : t('status.failed.generic');
     case 'preparing': return t('status.preparing');
+    case 'waiting': return t('status.waiting');
     case 'restoring': return t('status.restoring', { pct: a.progress ? ` ${Math.round(a.progress * 100)}%` : '' });
     case 'cancelled': return t('status.cancelled');
     case 'paused': return t('status.paused');
@@ -176,6 +190,7 @@ const STATUS_TONE: Record<string, string> = {
   cancelled: 'text-apple-ink-muted',
   interrupted: 'text-apple-ink-muted',
   preparing: 'text-apple-ink-muted animate-pulse',
+  waiting: 'text-apple-ink-muted animate-pulse',
   restoring: 'text-apple-ink-muted animate-pulse',
   resuming: 'text-apple-blue',
   sending: 'text-apple-ink-muted animate-pulse',
@@ -277,6 +292,8 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
   const isRtl = useMemo(() => hasStrongRtl(msg.text), [msg.text]);
   const isLargeText = msg.text.length > LARGE_TEXT_THRESHOLD;
   const preview = isLargeText && !expanded ? sliceAtGraphemeBoundary(msg.text, LARGE_TEXT_PREVIEW) : msg.text;
+  // Paste a URL → LINK: a bare link gets a tappable card, not a text bubble.
+  const linkUrl = useMemo(() => pureLinkUrl(msg.text), [msg.text]);
   const handleCopy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -401,6 +418,9 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
           isMe && !isGroupEnd && "rounded-br-[14px]",
           !isMe && !isGroupEnd && "rounded-bl-[14px]",
         )}>
+          {linkUrl ? (
+            <LinkCard url={linkUrl} onBlue={isMe} />
+          ) : (
           <div
             dir={isRtl ? 'rtl' : undefined}
             style={{ unicodeBidi: 'plaintext' }}
@@ -432,6 +452,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
               </button>
             )}
           </div>
+          )}
           {/* Footer: status line + copy, optically flush with the bubble's
               right content edge. The copy button keeps its 40px hit box but
               its negative margin equals half the box minus the icon, so the
@@ -544,7 +565,10 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
               style={{ unicodeBidi: 'plaintext' }}
               className="px-4 py-3 text-[15.5px] whitespace-pre-wrap leading-relaxed break-words text-apple-ink dark:text-white"
             >
-              {msg.text}
+              {/* A caption that is exactly one URL renders as the same link
+                  card ("paste URL → LINK") — on a text-less attachment that
+                  means the whole bubble IS the link card. */}
+              {linkUrl ? <LinkCard url={linkUrl} onBlue={isMe} /> : msg.text}
             </div>
           )}
           {/* Image — tap to view full quality */}
@@ -683,7 +707,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
               {(a.status === 'paused') && (
                 <ActionButton icon={<Play />} label={t('action.resume')} onClick={() => resumeTransferById(msg.id)} onBlue={isMe} testId="resume-transfer" />
               )}
-              {(a.status === 'preparing' || a.status === 'sending' || a.status === 'receiving' || a.status === 'paused' || a.status === 'interrupted' || a.status === 'resuming') && (
+              {(a.status === 'preparing' || a.status === 'waiting' || a.status === 'sending' || a.status === 'receiving' || a.status === 'paused' || a.status === 'interrupted' || a.status === 'resuming') && (
                 <ActionButton icon={<X />} label={t('action.cancel')} onClick={() => { void cancelTransfer(msg.id); }} onBlue={isMe} testId="cancel-transfer" />
               )}
               {(a.status === 'failed' || (a.status === 'cancelled' && isMe) || (a.status === 'interrupted' && isMe)) && (
@@ -692,7 +716,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
             </div>
           </div>
           {/* Progress bar + live rolling-window speed readout */}
-          {a.status !== 'complete' && a.status !== 'draft' && a.status !== 'failed' && a.status !== 'cancelled' && a.status !== 'paused' && (
+          {a.status !== 'complete' && a.status !== 'draft' && a.status !== 'failed' && a.status !== 'cancelled' && a.status !== 'paused' && a.status !== 'waiting' && (
             <>
               <div className="w-full h-1 overflow-hidden bg-apple-divider dark:bg-apple-tile-3">
                 <div className="h-full origin-left transition-transform duration-300 ease-out bg-apple-blue" style={{ transform: `scaleX(${a.progress || 0})` }} />
@@ -874,5 +898,37 @@ function ImageViewer({ src, name, onClose }: { src: string; name: string; onClos
         </span>
       </div>
     </motion.div>
+  );
+}
+
+/** Universal composer — LINK card: a pasted URL stops being a wall of text
+ *  and becomes a tappable chip ("paste URL → LINK"). The chip shows the
+ *  host (the identity you recognize) with the full URL as one line below.
+ *  The href came from sanitizeUrl — http(s) only, no javascript:/data:. */
+function LinkCard({ url, onBlue }: { url: string; onBlue: boolean }) {
+  let host = url;
+  try { host = new URL(url).host; } catch { /* unreachable — sanitizeUrl validated */ }
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      dir="ltr"
+      onClick={(e) => e.stopPropagation()} // never toggle selection underneath
+      className={cn(
+        'group/link mt-0.5 flex items-center gap-2.5 w-full min-w-0 rounded-[12px] px-3 py-2.5 border transition-colors',
+        onBlue
+          ? 'border-black/[0.08] bg-white/60 hover:bg-white/85 dark:border-white/10 dark:bg-white/[0.07] dark:hover:bg-white/[0.12]'
+          : 'border-apple-divider/60 bg-apple-parchment/70 hover:bg-apple-parchment dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.08]'
+      )}
+    >
+      <span className="shrink-0 w-8 h-8 rounded-[10px] bg-apple-blue/10 text-apple-blue flex items-center justify-center" aria-hidden>
+        <Link2 className="w-4 h-4" />
+      </span>
+      <span className="flex-1 min-w-0 flex flex-col leading-tight">
+        <span className="text-[13.5px] font-semibold text-apple-blue truncate">{host}</span>
+        <span className="text-[11.5px] font-medium text-apple-ink-muted dark:text-white/45 truncate">{url}</span>
+      </span>
+    </a>
   );
 }

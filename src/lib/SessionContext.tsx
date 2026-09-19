@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { SessionState, ChatMessage, ConnectionType } from '../types';
 import { getSocket, devLog, signalingConfigIssue, probeSignalingHealth, resolveShortCode, refreshCode as refreshCodeRPC } from './socket';
-import { PeerManager, TransferCancelledError, hasSendProgress, clearAllTransferState, clearTransferState, getPartialInfo, chunkCountForSize } from './webrtc';
+import { PeerManager, TransferCancelledError, hasSendProgress, clearAllTransferState, clearTransferState, getPartialInfo, chunkCountForSize, sendQueueDepth } from './webrtc';
 import { generateKey } from './crypto';
 import { humanizeError, ConnectError, describeConnectFailure } from './errors';
 import { diag, roomCreateDiagStart, roomCreateDiagEnd } from './diag';
@@ -190,16 +190,23 @@ function sanitizeStoredMessages(msgs: ChatMessage[] | undefined): ChatMessage[] 
  *  tell "still an unedited default" apart from a deliberate (even identical)
  *  rename — auto-disambiguation must never touch a user's choice. */
 export function platformDefaultName(): string {
-  if (typeof navigator === 'undefined') return 'Guest Device';
+  if (typeof navigator === 'undefined') return 'Device';
   const ua = navigator.userAgent;
-  if (/iPhone/i.test(ua)) return 'Guest iPhone';
-  if (/iPad/i.test(ua)) return 'Guest iPad';
-  if (/Android/i.test(ua)) return 'Guest Android';
-  if (/Windows/i.test(ua)) return 'Guest Windows PC';
-  if (/Macintosh|Mac OS X/i.test(ua)) return 'Guest MacBook';
-  if (/Linux/i.test(ua)) return 'Guest Linux';
-  return 'Guest Device';
+  if (/iPhone/i.test(ua)) return 'iPhone';
+  if (/iPad/i.test(ua)) return 'iPad';
+  if (/Android/i.test(ua)) return 'Android Phone';
+  if (/Windows/i.test(ua)) return 'Windows PC';
+  if (/Macintosh|Mac OS X/i.test(ua)) return 'MacBook';
+  if (/Linux/i.test(ua)) return 'Linux PC';
+  return 'Device';
 }
+
+/** Names the FIRST-EVER defaults used before the product dropped the
+ *  "Guest" prefix. A device that stored one of these keeps an outdated
+ *  label forever unless it is migrated — every device that still shows
+ *  one gets the modern, recognizable default instead. A user's custom
+ *  name never matches these patterns, so renames are respected. */
+const LEGACY_DEFAULT_NAMES = /^(Guest Device|Guest iPhone|Guest iPad|Guest Android|Guest Windows PC|Guest MacBook|Guest Linux|Unnamed device)$/;
 
 export function guessDeviceName(): string {
   const stored = localStorage.getItem(DEVICE_NAME_KEY);
@@ -313,11 +320,22 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   // guess, the partner sees "Guest Device" while this device shows
   // "Guest Windows PC", and two devices on the same platform are
   // indistinguishable. Writing the guess once keeps them identical until
-  // the user edits the name.
+  // the user edits the name. Legacy "Guest …" defaults migrate to the
+  // modern platform name here too.
   useEffect(() => {
     try {
       if (!localStorage.getItem(DEVICE_NAME_KEY)) {
         localStorage.setItem(DEVICE_NAME_KEY, guessDeviceName());
+      } else {
+        // Migration: a device that still carries one of the first-ever
+        // defaults ("Guest iPhone"…) gets the modern, recognizable one.
+        // Custom names never match, so deliberate renames are respected.
+        const current = localStorage.getItem(DEVICE_NAME_KEY);
+        if (current && LEGACY_DEFAULT_NAMES.test(current)) {
+          const modern = guessDeviceName();
+          localStorage.setItem(DEVICE_NAME_KEY, modern);
+          setSession(s => ({ ...s, deviceName: modern }));
+        }
       }
     } catch { /* private mode */ }
   }, []);
@@ -453,7 +471,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const transferActive = session.messages.some(m => {
       const st = m.attachment?.status;
-      return st === 'sending' || st === 'receiving' || st === 'resuming';
+      return st === 'sending' || st === 'receiving' || st === 'resuming' || st === 'waiting';
     });
     const next = mapToConnState({
       hasRoom: !!session.roomId,
@@ -656,7 +674,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const active = messagesRef.current.some(m => {
       const st = m.attachment?.status;
-      return st === 'sending' || st === 'receiving' || st === 'resuming';
+      return st === 'sending' || st === 'receiving' || st === 'resuming' || st === 'waiting';
     });
     if (!active) return;
     let lock: { release: () => Promise<void> } | null = null;
@@ -889,6 +907,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
               ...m,
               attachment: {
                 ...m.attachment,
+                // Queued self-heal: queued_start (control channel) can race
+                // ahead of the metadata (data channel), leaving a 'waiting'
+                // bubble that never flips. The first chunk is proof the
+                // transfer is live — promote it here.
+                ...(m.attachment.status === 'waiting' ? { status: 'receiving' as const } : {}),
                 // Progress never changes the state label: the sender stays
                 // 'sending', the receiver 'receiving', and a cancelled/failed
                 // transfer must not be resurrected by late progress events.
@@ -1038,6 +1061,30 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+    // Transfer queue: the peer's queue freed a slot for this transfer —
+    // flip our bubble from 'Waiting…' to a live percentage.
+    pm.onQueuedSendStart = (transferId) => {
+      setSession(s => ({
+        ...s,
+        messages: s.messages.map(m => m.attachment?.id === transferId && m.attachment.status === 'waiting'
+          ? { ...m, attachment: { ...m.attachment, status: 'receiving' } }
+          : m),
+      }));
+    };
+
+    // Transfer queue, sender side: THIS device's queue freed a slot — flip
+    // our 'Waiting…' bubble to 'sending' (the send loop owns it from here:
+    // hash ran in parallel at send time, chunks are already flowing). Sender
+    // bubbles hold their label until completion — same as a non-queued send.
+    pm.onLocalQueueStart = (transferId) => {
+      setSession(s => ({
+        ...s,
+        messages: s.messages.map(m => m.attachment?.id === transferId && m.attachment.status === 'waiting'
+          ? { ...m, attachment: { ...m.attachment, status: 'sending' } }
+          : m),
+      }));
+    };
+
     // Client-side disconnect grace — MUST match the server's 60s hold. When
     // the peer's tab closes, its DTLS association dies instantly and the data
     // channel closes here, but the server is still holding the peer's seat:
@@ -1131,7 +1178,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // is exactly the crashed-mid-send case: sendProgress (memory) died with
       // the page. The IDB sendable makes it resumable again.
       const crashedMidSend = a.status === 'sending' && !hasSendProgress(a.id) && !peerManagerRef.current?.isSendLoopActive(a.id);
-      if (m.sender === 'me' && (a.status === 'interrupted' || a.status === 'resuming' || (a.status === 'sending' && hasSendProgress(a.id)) || crashedMidSend)) {
+      // A 'waiting' transfer with NO live send loop lost its page (refresh/
+      // crash) while queued — restore it from the IndexedDB sendable and
+      // re-queue. An ALIVE queued transfer has a controller registered in
+      // its PeerManager, so isSendLoopActive keeps a mere reconnect from
+      // resuming (and double-sending) it.
+      const queuedButDead = a.status === 'waiting' && !peerManagerRef.current?.isSendLoopActive(a.id);
+      if (m.sender === 'me' && (a.status === 'interrupted' || a.status === 'resuming' || (a.status === 'sending' && hasSendProgress(a.id)) || crashedMidSend || queuedButDead)) {
         let file = pendingFilesRef.current.get(m.id);
         if (!file) {
           // Memory lost (refresh/sleep) — the IndexedDB sendable is exactly
@@ -1460,7 +1513,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const sendMessage = async (rawText: string, attachment?: import('../types').Attachment, file?: File) => {
+  const sendMessage = async (rawText: string, attachment?: import('../types').Attachment, file?: File, batchIndex = 0) => {
     if (!peerManagerRef.current) return;
     // Text fidelity: normalize ONCE on the sender so both devices hold the
     // exact same JS string. Valid text (emoji, RTL, tabs, CRLF, all unicode)
@@ -1473,10 +1526,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       sender: 'me',
       text,
       timestamp: Date.now(),
-      // Files start in 'preparing' — the sender hashes the bytes first so the
-      // receiver can verify integrity. The card shows Preparing… while that
-      // runs (perceived speed: the bubble appears the instant you hit send).
-      attachment: attachment ? { ...attachment, status: file ? 'preparing' : 'complete' } : undefined
+      // Multi-file queue: files beyond the 3 concurrent slots start as
+      // 'Waiting…' until their slot frees (onLocalQueueStart flips locally,
+      // the queued_start control packet flips the peer's bubble). Batch
+      // position decides because the whole batch's sendMessage calls run
+      // before any transfer acquires a slot — the live depth is 0 for all.
+      attachment: attachment ? { ...attachment, status: file ? (batchIndex + sendQueueDepth() >= 3 ? 'waiting' : 'preparing') : 'complete' } : undefined
     };
 
     if (file) {
@@ -1528,9 +1583,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         return undefined;
       });
 
-      updateMessageAttachment(msg.id, { status: 'sending' });
+      // Queued files KEEP 'Waiting…' — their send loop is parked in the slot
+      // queue, and onLocalQueueStart flips the bubble the moment a slot
+      // frees. Only files that own a slot right now move to 'sending'.
+      if (msg.attachment?.status !== 'waiting') {
+        updateMessageAttachment(msg.id, { status: 'sending' });
+      }
 
-      const partnerMsg = { ...msg, sender: 'partner', attachment: { ...msg.attachment!, status: 'sending' } };
+      // The peer's bubble must mirror ours: a queued file arrives as
+      // 'waiting' (so their card renders Waiting… too), and the queued_start
+      // control packet flips it to 'receiving' when the transfer actually
+      // leaves the queue.
+      const partnerMsg = { ...msg, sender: 'partner', attachment: { ...msg.attachment!, status: msg.attachment!.status === 'waiting' ? 'waiting' : 'sending' } };
       const payload = JSON.stringify(partnerMsg);
       try {
         await peerManagerRef.current.send(payload);
@@ -1689,7 +1753,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const msg = session.messages.find(m => m.id === messageId);
     if (!pm || !msg?.attachment) return;
     const st = msg.attachment.status;
-    if (st !== 'sending' && st !== 'receiving' && st !== 'interrupted' && st !== 'resuming') return;
+    if (st !== 'sending' && st !== 'receiving' && st !== 'interrupted' && st !== 'resuming' && st !== 'waiting') return;
     finishTransferRecord(msg.attachment.id, 'sent', 0, 'cancelled', { name: msg.attachment.name, kind: 'file' });
     updateMessageAttachment(messageId, { status: 'cancelled' });
     pm.cancelTransfer(msg.attachment.id);

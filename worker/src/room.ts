@@ -72,6 +72,10 @@ interface RoomState {
   grace?: Record<string, number>;
   codeFails: number;
   codeFailReset: number;
+  /** Stay Connected (server.ts parity): when either device opts in, the idle
+   *  TTL no longer expires the room and the echo below keeps both badges
+   *  honest. The promise is the USER's, so it survives their disconnect. */
+  stayConnected?: boolean;
 }
 
 interface ConnMeta {
@@ -505,6 +509,10 @@ export class Room extends DurableObject<Env> {
         return this.handleRelayText(cid, msg.id, msg.payload);
       case 'close_room':
         return this.handleClose(cid);
+      case 'stay_connected_enable':
+        return this.handleStayConnected(cid, msg.id, true);
+      case 'stay_connected_disable':
+        return this.handleStayConnected(cid, msg.id, false);
       default:
         return this.ackErr(cid, msg.id, 'INVALID_MESSAGE', 'Unknown message type.');
     }
@@ -553,7 +561,11 @@ export class Room extends DurableObject<Env> {
     const now = Date.now();
     await this.finalizeGrace();
     const live = await this.livePeers();
-    const idleExpired = now - r.lastActive > ROOM_TTL;
+    // Stay Connected exempts the room from the IDLE timeout: the user
+    // explicitly promised the device stays reachable, so silence must not
+    // kill the room while a peer holds a seat. A room whose seats stay
+    // empty for a full TTL still ends via the tombstone branch below.
+    const idleExpired = !r.stayConnected && now - r.lastActive > ROOM_TTL;
     if (live.length === 0 && !idleExpired && r.peerA === null && r.peerB === null) {
       // Last seat just finalized → DISCONNECTED tombstone keeps the 5h rejoin
       // window (join_with_code / resume_room can still revive the room).
@@ -684,7 +696,7 @@ export class Room extends DurableObject<Env> {
       }
       await this.recomputeState();
       await this.notifyOthers(cid, 'peer_recovered', { peerId: cid });
-      return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.codeAnchor });
+      return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.codeAnchor, stayConnected: !!r.stayConnected });
     }
     // Drop stale seats whose sockets are gone so the returning device can
     // sit. A dropped seat is a real eviction: notify the survivors (the
@@ -721,7 +733,7 @@ export class Room extends DurableObject<Env> {
     log('peer joined', r.roomId.slice(0, 8), cid.slice(0, 8), 'state', r.state);
     await count(this.env, 'joins.succeeded');
     await reportPresence(this.env, r.roomId, (await this.livePeers()).length);
-    this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.codeAnchor });
+    this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.codeAnchor, stayConnected: !!r.stayConnected });
   }
 
   /**
@@ -782,6 +794,31 @@ export class Room extends DurableObject<Env> {
     if (!(await this.memberOf(cid))) return;
     log('room closed manually', this.room?.roomId.slice(0, 8));
     await this.destroyRoom('manual_close');
+  }
+
+  /**
+   * Stay Connected (server.ts parity): flip the room-wide promise, echo it to
+   * BOTH seated peers, and persist. While the promise is on, the room is
+   * exempt from the idle TTL — the user explicitly asked for it, so silence
+   * must not kill their room (the 5h hard life and manual close still end it).
+   */
+  private async handleStayConnected(cid: string, id: string | undefined, enabled: boolean) {
+    const r = await this.loadRoom();
+    if (!r) return this.ackErr(cid, id, 'ROOM_NOT_FOUND', 'Room not found.');
+    if (!(await this.memberOf(cid))) return this.ackErr(cid, id, 'NOT_A_MEMBER', 'Not a member of this room.');
+    r.stayConnected = enabled;
+    r.lastActive = Date.now();
+    await this.ctx.storage.put('room', r);
+    const event = { type: 'event' as const, event: 'stay_connected_state', payload: { enabled } };
+    for (const peer of [r.peerA, r.peerB]) {
+      if (!peer) continue;
+      const ws = this.openSocket(peer);
+      if (ws && ws.readyState === 1) {
+        try { ws.send(JSON.stringify(event)); } catch { /* best effort */ }
+      }
+    }
+    await count(this.env, enabled ? 'stay.enabled' : 'stay.disabled');
+    this.ackOk(cid, id, { success: true, enabled });
   }
 
   /**

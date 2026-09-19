@@ -29,6 +29,21 @@ import { diag } from './diag';
  *  persistence, rotating tokens on the wire, cleared with site data). */
 const DEVICE_ID_KEY = 'sharetext.deviceId.v1';
 
+/** Nearby visibility — the user's own discoverability switch (default ON:
+ *  "Visible while ShareTexts is open", which is privacy-friendly by design —
+ *  close the tab and the announce loop dies with it, so the server's TTL
+ *  silently expires the entry). Hidden means this device never announces:
+ *  it can still SEE others and invite them, it just can't be found. */
+const PRESENCE_HIDDEN_KEY = 'sharetext.presenceHidden.v1';
+
+export function isPresenceHidden(): boolean {
+  try { return localStorage.getItem(PRESENCE_HIDDEN_KEY) === '1'; } catch { return false; }
+}
+
+export function setPresenceHidden(v: boolean): void {
+  try { localStorage.setItem(PRESENCE_HIDDEN_KEY, v ? '1' : '0'); } catch { /* private mode */ }
+}
+
 export function getOrCreateDeviceId(): string {
   try {
     const existing = localStorage.getItem(DEVICE_ID_KEY);
@@ -253,6 +268,14 @@ export class NearbyPresence {
   private async announce(): Promise<void> {
     const socket = this.socket;
     if (!socket) return;
+    // The user asked to be Hidden: never announce. If a keepalive fires
+    // after the flag flipped, withdraw so the server's TTL drops us fast.
+    if (isPresenceHidden()) {
+      this.selfToken = null;
+      this.clearTimer();
+      try { socket.emit('presence_withdraw'); } catch { /* best effort */ }
+      return;
+    }
     await new Promise<void>((resolve) => {
       const timer = setTimeout(resolve, ACK_TIMEOUT_MS);
       try {

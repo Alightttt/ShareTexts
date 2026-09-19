@@ -178,8 +178,13 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
+    // Size from the VALUE, never the placeholder: a long placeholder that
+    // wraps on a narrow phone must not inflate the pill (scrollHeight
+    // counts wrapped placeholder lines too). Empty composer = one line.
     el.style.height = 'auto';
-    const next = Math.min(el.scrollHeight, Math.round(window.innerHeight * 0.3));
+    const next = inputText
+      ? Math.min(el.scrollHeight, Math.round(window.innerHeight * 0.3))
+      : 44;
     el.style.height = Math.max(44, next) + 'px';
   }, [inputText]);
   // Keyboard-safe height: when the on-screen keyboard opens, the visual
@@ -442,14 +447,23 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     });
   };
   // Drag & drop: classify the first dropped file and stage it like the menu.
+  // Text drags count too: dragging a selected snippet, a link, or a whole
+  // browser tab is "drop anything" — the composer takes it like a paste.
+  const dragHasText = (e: React.DragEvent) => {
+    const types = e.dataTransfer?.types;
+    if (!types) return false;
+    return types.includes('text/plain') || types.includes('text/uri-list');
+  };
   const handleDragEnter = (e: React.DragEvent) => {
-    if (!e.dataTransfer?.types.includes('Files')) return;
+    if (!e.dataTransfer?.types.includes('Files') && !dragHasText(e)) return;
     e.preventDefault();
     dragDepth.current++;
     setDragOver(true);
   };
   const handleDragOver = (e: React.DragEvent) => {
-    if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
+    // preventDefault on the dragover is what ALLOWS the drop — without it
+    // the browser navigates to the dropped content instead.
+    if (e.dataTransfer?.types.includes('Files') || dragHasText(e)) e.preventDefault();
   };
   const handleDragLeave = () => {
     dragDepth.current = Math.max(0, dragDepth.current - 1);
@@ -459,17 +473,37 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     e.preventDefault();
     dragDepth.current = 0;
     setDragOver(false);
-    const files = e.dataTransfer?.files;
-    if (!files || files.length === 0) return;
-    const first = files[0];
-    const type = first.type.startsWith('image/')
-      ? 'image'
-      : first.type.startsWith('video/')
-        ? 'video'
-        : first.type.startsWith('audio/')
-          ? 'audio'
-          : 'file';
-    addFiles(files, type);
+    const dt = e.dataTransfer;
+    const files = dt?.files;
+    if (files && files.length > 0) {
+      const first = files[0];
+      const type = first.type.startsWith('image/')
+        ? 'image'
+        : first.type.startsWith('video/')
+          ? 'video'
+          : first.type.startsWith('audio/')
+            ? 'audio'
+            : 'file';
+      addFiles(files, type);
+      return;
+    }
+    // No files — dropped TEXT or a dragged link: land it in the composer so
+    // the user can edit before sending. A dragged link/tab arrives as
+    // text/uri-list (possibly with #-comment lines); text covers everything
+    // else. A bare URL pasted this way still gets the LINK card on send.
+    if (!dt) return;
+    const uri = dt.getData('text/uri-list').split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'))[0] || '';
+    const text = dt.getData('text/plain').trim();
+    const dropped = uri || text;
+    if (!dropped) return;
+    haptic(8);
+    const sep = inputText && !/\s$/.test(inputText) ? '\n' : '';
+    const next = inputText + sep + dropped;
+    setInputText(next);
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      try { textareaRef.current?.setSelectionRange(next.length, next.length); } catch { /* detached */ }
+    });
   };
   // Send morph: after a send, the button's arrow becomes a checkmark for a
   // beat (peak-end: the completion moment gets the reward animation), then
@@ -483,10 +517,10 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
       // Each staged file goes as its own transfer (its own bubble + progress
       // + resume), so 20 files become 20 reliable transfers — not one giant
       // multi-blob message that would restart from zero on any hiccup.
-      for (const a of attachments) {
+      attachments.forEach((a, i) => {
         const { file, ...attachmentMeta } = a;
-        sendMessage(inputText, attachmentMeta, file);
-      }
+        sendMessage(inputText, attachmentMeta, file, i);
+      });
     } else {
       sendMessage(inputText);
     }

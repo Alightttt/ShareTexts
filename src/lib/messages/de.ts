@@ -18,7 +18,7 @@ const de: Dict = {
   'app.ended.shareDone': 'Link kopiert',
   'nav.docs': 'Dokumentation',
   'home.title': 'Bewege alles\nzwischen deinen Geräten.',
-  'home.subtitle': 'Vom Telefon zum Laptop oder umgekehrt. Keine App zum Installieren, kein Konto. Fotos und Dateien kommen in Originalqualität an – nichts wird komprimiert. Schließt du den Tab, ist alles weg.',
+  'home.subtitle': 'Keine App. Kein Konto. Kein Kabel.\nÖffne ShareTexts einfach auf beiden Geräten.',
   'home.send': 'Senden',
   'home.sendHint': 'Raum erstellen',
   'home.receive': 'Empfangen',
@@ -149,7 +149,7 @@ const de: Dict = {
   'chat.peerOffline.title': 'Das andere Gerät ist offline',
   'chat.peerOffline.body': 'Es verbindet sich wieder, sobald das andere Gerät zurück ist.',
   'chat.ready': 'Bereit, wenn du es bist',
-  'chat.empty.body': 'Tippe, füge ein oder lege etwas ab. Es geht direkt auf das andere Gerät.',
+  'chat.empty.body': 'Tippe, füge ein oder lege etwas ab – Text, Links, Fotos, Dateien. Es geht direkt auf das andere Gerät.',
   'chat.copyAll': 'Alles kopieren',
   'chat.copiedAll': '{count} Elemente kopiert',
   'chat.newMessage': 'Neue Nachricht',
@@ -170,7 +170,7 @@ const de: Dict = {
   'attach.audioHint': 'Eine Aufnahme wählen',
   'attach.files': 'Dateien',
   'attach.filesHint': 'Beliebige Datei wählen',
-  'composer.placeholder': 'Einfügen oder ablegen…',
+  'composer.placeholder': 'Etwas ablegen – Text, Link, Foto, Datei…',
   'composer.aria': 'Nachricht',
   'composer.title': 'Eingabetaste zum Senden · Umschalt+Enter für eine neue Zeile',
   'composer.enter': 'Eingabe',
@@ -205,6 +205,8 @@ const de: Dict = {
   'status.restoring': 'Datei wird wiederhergestellt… {pct}',
   'status.cancelled': 'Abgebrochen',
   'status.paused': 'Pausiert',
+
+  'status.waiting': 'Warten…',
   'status.interrupted': 'Das andere Gerät wurde getrennt. Verbinde dich neu, um fortzufahren',
   'status.resuming': 'Wird fortgesetzt… {progress}',
   'status.sending': 'Wird gesendet… {progress}',
@@ -272,6 +274,11 @@ const de: Dict = {
   'nearby.accept': 'Annehmen',
   'nearby.decline': 'Ablehnen',
   'nearby.connectAria': 'Mit {name} verbinden',
+  'nearby.visibleTitle': 'Sichtbarkeit in der Nähe',
+  'nearby.visibleWhileOpen': 'Sichtbar, solange ShareTexts offen ist',
+  'nearby.visibleWhileOpenHint': 'Andere Geräte in der Nähe können dieses sehen',
+  'nearby.hiddenTitle': 'Versteckt',
+  'nearby.hiddenHint': 'Du erscheinst auf keinen anderen Geräten',
 
 };
 
