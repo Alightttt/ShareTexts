@@ -1,14 +1,25 @@
 # ShareText
 
-> ShareText is a free web app for moving text, links, photos, videos, and files between any two devices — phone to laptop, iPhone to Windows, Android to Mac — directly in the browser. No app, no account, nothing stored.
+> ShareText is a free web app for moving text, links, photos, videos, and files between any two devices — phone to laptop, iPhone to Windows, Android to Mac — directly in the browser. No app, no account, no cable. Just open ShareTexts on both devices.
 
-Transfers run peer-to-peer over WebRTC: data moves encrypted between the two browsers and the server never sees file contents. Pairing works four ways: nearby device discovery, a six-digit live code, a QR code, or a shareable link. Rooms are temporary and close when you're done.
+Transfers run peer-to-peer over WebRTC: data moves encrypted between the two browsers and the server never sees file contents. Connect two ways: nearby device discovery (both devices on the same Wi-Fi, visible while ShareTexts is open) or, when the network blocks device-to-device traffic, a six-digit live code, a QR code, or a shareable link — those work over any internet connection. Rooms are temporary and close when you're done.
 
 ## How to use
 
 1. Open https://sharetexts.online on both devices.
-2. Tap Send on one, Receive on the other.
-3. Connect them with a code, QR, link, or nearby-device discovery — then send anything.
+2. Tap your other device in the Nearby list — or use Use another way: a 6-digit code, a QR code, or a share link.
+3. Type, paste, or attach anything — it appears on the other device, encrypted.
+
+## Common questions
+
+### Why can't I see my other device in the Nearby list?
+Both devices must be on the same Wi-Fi with ShareTexts open. Office, guest, hotel, and campus networks often block device-to-device connections. Use a personal hotspot, or connect with a 6-digit code, QR code, or link instead — these work over any connection.
+
+### Do I need to install an app or create an account?
+No. ShareTexts runs entirely in the browser on any device with a modern browser: iPhone, iPad, Android, Windows, macOS, Linux, Chromebook.
+
+### What can I send?
+Text, links, photos, videos, audio, documents — any file type. Links render as tappable cards. Transfers are end-to-end encrypted and never stored on a server.
 
 ## Pages
 
@@ -24,5 +35,5 @@ Transfers run peer-to-peer over WebRTC: data moves encrypted between the two bro
 - Works across platforms: iPhone ↔ Windows, Android ↔ Mac, any combination.
 - Transfer types: text, links, photos, videos, audio, documents, any file.
 - End-to-end encrypted via WebRTC (DTLS); the signaling server relays connection metadata only.
-- Nearby discovery shows a device only while ShareText is open on it; it is never a global user list.
+- Nearby discovery shows a device only while ShareTexts is open on it, and you can set yourself Hidden; it is never a global user list.
 - Operated at https://sharetexts.online.

@@ -305,6 +305,21 @@ const en = {
   'nearby.visibleWhileOpenHint': 'Other devices nearby can see this one',
   'nearby.hiddenTitle': 'Hidden',
   'nearby.hiddenHint': 'You won\'t appear on other devices',
+  'nearby.searching': 'Looking for nearby devices…',
+  'nearby.searchingHint': 'Make sure both devices are on the same Wi-Fi',
+  'nearby.nothingFound': 'Can\'t see your device?',
+  'nearby.useAnotherWay': 'Use another way',
+  'nearby.fallbackCode': 'Enter a code',
+  'nearby.recentTitle': 'Recent devices',
+  'nearby.trusted': 'Trusted device',
+  'nearby.seen': '{n} min ago',
+  'nearby.seenHour': '{n} h ago',
+  'nearby.seenDay': '{n} d ago',
+  'nearby.seenNow': 'Just now',
+  'nearby.send': 'Send',
+  'nearby.inviteAgain': 'Connect again',
+  'nearby.offline': 'Last seen {when} — not nearby right now',
+  'nearby.forget': 'Forget',
 
 };
 

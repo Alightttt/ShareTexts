@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Monitor, Smartphone, ArrowRight, Zap, Eye, EyeOff } from 'lucide-react';
+import { Monitor, Smartphone, ArrowRight, Zap, Eye, EyeOff, RefreshCw, Search, Check, X, Wifi } from 'lucide-react';
 import { getSocket } from '../lib/socket';
 import { nearbyPresence, isPresenceHidden, setPresenceHidden, type NearbyDevice } from '../lib/nearby';
+import { getRecentDevices, recordRecentDevice, isTrustedToken, forgetRecentDevice, resolveLiveToken, lastSeenParts } from '../lib/pairing';
 import { useI18n } from '../lib/i18n';
 import { useSession } from '../lib/SessionContext';
 import { ConfirmSheet } from './ConfirmSheet';
@@ -11,16 +12,26 @@ import { cn } from '../lib/utils';
 /**
  * NearbyDevices — the landing-page discovery section.
  *
- * Layout contract (nothing here redesigns the hero):
- *   · a small secondary line under Send/Receive: "Open ShareTexts in another device"
- *   · when eligible devices appear, compact tappable rows appear ABOVE that line
- *   · tapping a device sends a server-relayed invite; the OTHER user must
- *     accept before the EXISTING create → link-join connection flow runs
- *   · a tracker-friendly status string is lifted to the parent via onStatus
+ * The section EXPLAINS ITSELF instead of leaving people wondering why a
+ * device is missing (local-network discovery is genuinely unreliable —
+ * guest networks, AP isolation, VPNs — so the honest states are):
+ *
+ *   SEARCHING  "Looking for nearby devices…" + the one fix that matters:
+ *              "both devices on the same Wi-Fi".
+ *   FOUND      tappable rows for live devices; trusted ones show ✓ and a
+ *              one-tap Send button (auto-accept is pairwise on both sides).
+ *   FALLBACK   after the search grace, "Can't see your device?" + the
+ *              "Use another way" group — code, QR, and link, the methods
+ *              that never depend on the local network.
+ *
+ * A "Recent devices" memory lists everyone this device has paired with;
+ * connecting again re-invites them when they're nearby, and marks the
+ * row "last seen" honestly when they're not.
+ *
+ * Hierarchy: Nearby is the PRIMARY path; code/QR/link live in one quiet
+ * secondary group — a new user never has to weigh four equal mechanisms.
  *
  * Device names render as React text nodes only — never dangerouslySetInnerHTML.
- * Only the socket.io transport supports presence; elsewhere this degrades to
- * the hint line alone.
  */
 
 /**
@@ -38,6 +49,10 @@ export function isAutoConnectEnabled(): boolean {
 function setAutoConnectEnabled(v: boolean) {
   try { localStorage.setItem(AUTO_KEY, v ? '1' : '0'); } catch { /* private mode */ }
 }
+
+/** How long "Looking for nearby devices…" runs before the fallback shows.
+ *  Short enough to never feel dead, long enough that a normal LAN answers. */
+const SEARCH_GRACE_MS = 12_000;
 
 type Phase =
   | { kind: 'idle' }                                     // nothing in flight
@@ -64,9 +79,25 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
   // Nearby visibility: who can find THIS device. Default is the simple,
   // privacy-friendly default — visible only while ShareTexts is open.
   const [presenceHidden, setPresenceHiddenState] = useState<boolean>(() => isPresenceHidden());
+  // Recents memory: re-read whenever a pairing lands or another tab changes it.
+  const [recents, setRecents] = useState(() => getRecentDevices());
+  // The fallback ("Can't see your device?") appears only after the search
+  // grace — presence answers within a couple of seconds on a normal LAN.
+  const [searchExpired, setSearchExpired] = useState(false);
   // True while OUR invite is awaiting an answer — suppresses auto-accept on
   // the inviter side so a mutual tap can't race into two rooms.
   const invitingRef = useRef(false);
+
+  /* --- recents subscription -------------------------------------------- */
+  useEffect(() => {
+    const refresh = () => setRecents(getRecentDevices());
+    window.addEventListener('sharetext:recents', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('sharetext:recents', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, []);
 
   /* --- presence lifecycle --------------------------------------------- */
   // Attach only while the landing page is truly idle (roomless). Any state
@@ -88,6 +119,16 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
     setDevices(list.filter(d => d.id !== selfToken));
   }), []);
 
+  // The search grace: fallback copy appears only after we've genuinely
+  // waited — and the timer resets whenever the first devices arrive.
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchExpired(true), SEARCH_GRACE_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  useEffect(() => {
+    if (devices.length > 0) setSearchExpired(true);
+  }, [devices.length]);
+
   /* --- tracker lift-up -------------------------------------------------- */
   // Only TRANSIENT connection states claim the activity line — the discovery
   // result itself is communicated by the device rows, and the hero's lifetime
@@ -103,6 +144,13 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
 
   /* --- incoming invitation ---------------------------------------------- */
   useEffect(() => nearbyPresence.onInvitation(inv => {
+    // Trust: a token this device has PAIRED with before skips the sheet.
+    // (Presence tokens rotate with the worker; after a rotation the sheet
+    // returns — the conservative outcome, and the pairing re-learns it.)
+    if (!invitingRef.current && isTrustedToken(inv.from)) {
+      const timer = setTimeout(() => { void answerInviteRef.current(true, inv); }, 0);
+      return () => clearTimeout(timer);
+    }
     // Ignore while busy with another connection flow.
     setInvitation(prev => (prev ? prev : inv));
     // AUTO-CONNECT: both devices opted in, we're idle, and we're not already
@@ -144,6 +192,9 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
       // inviter the credentials through the server relay. The inviter runs
       // the ordinary join_with_link — the standard, already-secure path.
       const { roomId, secret } = await createSession();
+      // Memory: remember who we just paired with (both sides learn the other
+      // — the inviter learns on the invite-result below).
+      recordRecentDevice(inv.from, inv.name);
       nearbyPresence.answerInvite(inv.from, true, { roomId, secret });
       setPhase({ kind: 'connecting', device: { id: inv.from, name: inv.name } });
     } catch {
@@ -159,6 +210,8 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
     setPhase(prev => {
       if (prev.kind !== 'inviting') return prev;
       if (result.accepted && result.roomId && result.secret) {
+        // Memory: the invitee accepted — record the pairing on this side too.
+        recordRecentDevice(prev.device.id, prev.device.name);
         // Drop out of the lobby, then join via the EXISTING link path.
         nearbyPresence.stop(getSocket());
         void joinWithLink(result.roomId);
@@ -184,10 +237,31 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
     }
   }, [phase.kind]);
 
-  /* --- render -------------------------------------------------------------- */
+  /* --- derived ------------------------------------------------------------ */
+  // A remembered device is "nearby" when its remembered name matches a live
+  // presence row (presence tokens rotate with the worker; names are what
+  // people recognize). LIVE recents already render in the Nearby rows above
+  // (trusted, with a one-tap Send) — the Recent section lists only the ones
+  // NOT present right now, honestly marked "last seen …", never fake-live.
+  const recentRows = useMemo(() => recents
+    .map(r => ({ ...r, liveToken: resolveLiveToken(r.name, devices) }))
+    .filter(r => r.liveToken === null)
+    .slice(0, 4), [recents, devices]);
+  const busyId = phase.kind === 'inviting' ? phase.device.id : null;
+  const busyName = phase.kind === 'inviting' ? phase.device.name : null;
+  const waiting = devices.length === 0;
 
-  const hidden = !idle || phase.kind === 'connecting';
-  if (hidden) return null;
+  // The section hides while seated in a room; the connecting phase keeps it
+  // mounted so the status line stays honest until the room takes over.
+  if (!idle || phase.kind === 'connecting') return null;
+
+  const lastSeenLabel = (ts: number) => {
+    const { unit, n } = lastSeenParts(ts);
+    if (unit === 'now') return t('nearby.seenNow');
+    if (unit === 'min') return t('nearby.seen', { n });
+    if (unit === 'hour') return t('nearby.seenHour', { n });
+    return t('nearby.seenDay', { n });
+  };
 
   return (
     <div className="w-full">
@@ -206,12 +280,17 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
               {t('nearby.sectionTitle')}
             </p>
             <div className="flex flex-col gap-2">
-              {devices.map(d => {
-                const busy = phase.kind === 'inviting' && phase.device.id === d.id;
+              {devices.map((d, i) => {
+                const trusted = isTrustedToken(d.id);
+                const busy = busyId === d.id || busyName === d.name;
                 return (
-                  <button
+                  <motion.button
                     key={d.id}
                     type="button"
+                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.15 } }}
+                    transition={{ type: 'spring', bounce: 0.25, duration: 0.4, delay: i * 0.04 }}
                     onClick={() => handleInvite(d)}
                     disabled={phase.kind !== 'idle'}
                     aria-label={t('nearby.connectAria', { name: d.name })}
@@ -227,13 +306,129 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
                     </span>
                     <span className="flex-1 flex flex-col min-w-0 leading-tight">
                       <span className="text-[13px] font-semibold text-apple-ink dark:text-white truncate">{d.name}</span>
-                      <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45">
-                        {busy ? t('nearby.waiting') : t('nearby.nearby')}
+                      <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45 flex items-center gap-1">
+                        {busy ? t('nearby.waiting') : trusted ? (
+                          <><Check className="w-3 h-3 text-status-success" strokeWidth={2.5} /> {t('nearby.trusted')}</>
+                        ) : t('nearby.nearby')}
                       </span>
                     </span>
-                  </button>
+                    {trusted && !busy && (
+                      <span className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[11.5px] font-semibold text-[#f06413] dark:text-[#fb9243] group-hover:bg-[#f06413] group-hover:text-white dark:group-hover:bg-[#fb9243] dark:group-hover:text-[#1a1208] transition-colors">
+                        <ArrowRight className="w-3 h-3" /> {t('nearby.send')}
+                      </span>
+                    )}
+                  </motion.button>
                 );
               })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Recent devices — the memory. Live ones already sit in the Nearby
+          rows; this lists the ones NOT present right now, with an honest
+          "last seen" instead of pretending they're around. */}
+      <AnimatePresence>
+        {recentRows.length > 0 && (
+          <motion.div
+            key="recent-devices"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+            className="mt-4 w-full"
+          >
+            <p className="text-[11.5px] font-semibold uppercase tracking-wide text-apple-ink-muted/70 dark:text-white/35 mb-2">
+              {t('nearby.recentTitle')}
+            </p>
+            <div className="flex flex-col gap-2">
+              {recentRows.map((r) => (
+                <motion.div
+                  key={r.token + r.name}
+                  layout
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.15 } }}
+                  transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+                  className="group flex items-center gap-3 px-3.5 py-2.5 rounded-[14px] text-left border bg-apple-parchment/50 dark:bg-white/[0.02] border-apple-divider/30 dark:border-white/[0.04] transition-all"
+                >
+                  <span className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-apple-divider/40 dark:bg-white/[0.06] text-apple-ink-muted dark:text-white/40">
+                    <DeviceGlyph name={r.name} />
+                  </span>
+                  <span className="flex-1 flex flex-col min-w-0 leading-tight">
+                    <span className="text-[13px] font-semibold text-apple-ink dark:text-white truncate">{r.name}</span>
+                    <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45">
+                      {t('nearby.offline', { when: lastSeenLabel(r.lastConnectedAt) })}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { forgetRecentDevice(r.token); setRecents(getRecentDevices()); }}
+                    aria-label={t('nearby.forget')}
+                    className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-apple-ink-muted/50 dark:text-white/30 hover:text-status-danger hover:bg-status-danger/10 active:scale-90 transition-all opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* SEARCHING — the self-explaining empty state. The radar ring breathes
+          while the pool is empty; the hint names the one fix that matters. */}
+      <AnimatePresence>
+        {waiting && (
+          <motion.div
+            key="nearby-searching"
+            data-testid="nearby-searching"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="mt-2.5 flex items-center gap-2.5 px-3.5 py-2.5 rounded-[14px] bg-apple-parchment/60 dark:bg-white/[0.03] border border-apple-divider/40 dark:border-white/[0.06]"
+          >
+            <span className="relative shrink-0 w-7 h-7 flex items-center justify-center" aria-hidden>
+              <span className="absolute inset-0 rounded-full border border-[#f06413]/25 dark:border-[#fb9243]/25 st-halo-ring" />
+              <Search className="relative w-3.5 h-3.5 text-[#f06413]/70 dark:text-[#fb9243]/70" strokeWidth={2.2} />
+            </span>
+            <span className="flex-1 flex flex-col min-w-0 leading-tight">
+              <span className="text-[12.5px] font-semibold text-apple-ink dark:text-white">{t('nearby.searching')}</span>
+              <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45 flex items-center gap-1">
+                <Wifi className="w-3 h-3" aria-hidden /> {t('nearby.searchingHint')}
+              </span>
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* FALLBACK — after the grace, name the reality and offer the paths
+          that never depend on the local network. Never shown while devices
+          are live. */}
+      <AnimatePresence>
+        {waiting && searchExpired && (
+          <motion.div
+            key="nearby-fallback"
+            data-testid="nearby-fallback"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+            className="mt-2.5 w-full"
+          >
+            <p className="text-[12.5px] font-semibold text-apple-ink dark:text-white mb-2">{t('nearby.nothingFound')}</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => { hapticTap(); (window as Window & { __stOpenReceive?: () => void }).__stOpenReceive?.(); }}
+                data-testid="fallback-code"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] text-[12.5px] font-semibold text-apple-ink dark:text-white active:scale-[0.97] transition-all"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /> {t('nearby.fallbackCode')}
+              </button>
+              <span className="flex items-center text-[11px] font-medium text-apple-ink-muted/60 dark:text-white/30 px-1">
+                {t('nearby.useAnotherWay')}
+              </span>
             </div>
           </motion.div>
         )}

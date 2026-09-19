@@ -317,6 +317,14 @@ export function SingleScreenApp() {
   }, [isCreating, createSession, t, friendlyConnectError]);
 
   const handleReceive = useCallback(() => { hapticTap(); setPanelMode('receiving'); setCreateError(null); setJoinError(null); }, []);
+  // The nearby section's fallback ("Can't see your device? → Use another
+  // way") reaches straight into the hero's Receive flow — one window-level
+  // hook, set here where the state lives, so the discovery area never needs
+  // its own copy of the pairing UI.
+  useEffect(() => {
+    (window as Window & { __stOpenReceive?: () => void }).__stOpenReceive = handleReceive;
+    return () => { delete (window as Window & { __stOpenReceive?: () => void }).__stOpenReceive; };
+  }, [handleReceive]);
 
   // One-tap re-entry into the last Stay Connected room. False = the room
   // is really gone (close/expiry) — say so instead of blinking the button.

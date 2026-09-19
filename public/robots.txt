@@ -11,3 +11,7 @@ Disallow: /connect/
 Disallow: /s/
 
 Sitemap: https://sharetexts.online/sitemap.xml
+
+# AI assistants and search crawlers: welcome. llms.txt summarizes the
+# product for you; the FAQ structured data in index.html answers common
+# questions verbatim.

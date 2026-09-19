@@ -279,6 +279,21 @@ const de: Dict = {
   'nearby.visibleWhileOpenHint': 'Andere Geräte in der Nähe können dieses sehen',
   'nearby.hiddenTitle': 'Versteckt',
   'nearby.hiddenHint': 'Du erscheinst auf keinen anderen Geräten',
+  'nearby.searching': 'Suche nach Geräten in der Nähe…',
+  'nearby.searchingHint': 'Stelle sicher, dass beide Geräte im gleichen WLAN sind',
+  'nearby.nothingFound': 'Dein Gerät wird nicht angezeigt?',
+  'nearby.useAnotherWay': 'Anderen Weg nutzen',
+  'nearby.fallbackCode': 'Code eingeben',
+  'nearby.recentTitle': 'Letzte Geräte',
+  'nearby.trusted': 'Vertrautes Gerät',
+  'nearby.seen': 'vor {n} Min.',
+  'nearby.seenHour': 'vor {n} Std.',
+  'nearby.seenDay': 'vor {n} T.',
+  'nearby.seenNow': 'gerade eben',
+  'nearby.send': 'Senden',
+  'nearby.inviteAgain': 'Erneut verbinden',
+  'nearby.offline': 'Zuletzt gesehen {when} — gerade nicht in der Nähe',
+  'nearby.forget': 'Vergessen',
 
 };
 

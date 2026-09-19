@@ -278,6 +278,21 @@ const ar: Dict = {
   'nearby.visibleWhileOpenHint': 'يمكن للأجهزة القريبة الأخرى رؤية هذا الجهاز',
   'nearby.hiddenTitle': 'مخفي',
   'nearby.hiddenHint': 'لن يظهر هذا الجهاز على الأجهزة الأخرى',
+  'nearby.searching': 'جارٍ البحث عن الأجهزة القريبة…',
+  'nearby.searchingHint': 'تأكد من أن الجهازين متصلان بنفس شبكة Wi-Fi',
+  'nearby.nothingFound': 'لا ترى جهازك؟',
+  'nearby.useAnotherWay': 'استخدم طريقة أخرى',
+  'nearby.fallbackCode': 'أدخل الرمز',
+  'nearby.recentTitle': 'الأجهزة الأخيرة',
+  'nearby.trusted': 'جهاز موثوق',
+  'nearby.seen': 'قبل {n} دقيقة',
+  'nearby.seenHour': 'قبل {n} ساعة',
+  'nearby.seenDay': 'قبل {n} يوم',
+  'nearby.seenNow': 'الآن',
+  'nearby.send': 'إرسال',
+  'nearby.inviteAgain': 'إعادة الاتصال',
+  'nearby.offline': 'آخر اتصال {when} — ليس قريبًا الآن',
+  'nearby.forget': 'نسيان',
 
 };
 

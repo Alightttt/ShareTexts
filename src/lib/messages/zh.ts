@@ -278,6 +278,21 @@ const zh: Dict = {
   'nearby.visibleWhileOpenHint': '附近的其他设备可以看到此设备',
   'nearby.hiddenTitle': '隐藏',
   'nearby.hiddenHint': '你不会出现在其他设备上',
+  'nearby.searching': '正在寻找附近的设备…',
+  'nearby.searchingHint': '请确保两台设备连接同一 Wi-Fi',
+  'nearby.nothingFound': '看不到你的设备？',
+  'nearby.useAnotherWay': '换一种方式',
+  'nearby.fallbackCode': '输入配对码',
+  'nearby.recentTitle': '最近的设备',
+  'nearby.trusted': '受信任的设备',
+  'nearby.seen': '{n} 分钟前',
+  'nearby.seenHour': '{n} 小时前',
+  'nearby.seenDay': '{n} 天前',
+  'nearby.seenNow': '刚刚',
+  'nearby.send': '发送',
+  'nearby.inviteAgain': '重新连接',
+  'nearby.offline': '{when}连接过 — 现在不在附近',
+  'nearby.forget': '忘记',
 
 };
 

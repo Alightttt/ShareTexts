@@ -278,6 +278,21 @@ const ja: Dict = {
   'nearby.visibleWhileOpenHint': '付近の他のデバイスからこのデバイスが見えます',
   'nearby.hiddenTitle': '非表示',
   'nearby.hiddenHint': '他のデバイスには表示されません',
+  'nearby.searching': '付近のデバイスを探しています…',
+  'nearby.searchingHint': '両方のデバイスが同じ Wi-Fi に接続しているか確認してください',
+  'nearby.nothingFound': 'デバイスが見つかりませんか？',
+  'nearby.useAnotherWay': '別の方法を使う',
+  'nearby.fallbackCode': 'コードを入力',
+  'nearby.recentTitle': '最近のデバイス',
+  'nearby.trusted': '信頼済みデバイス',
+  'nearby.seen': '{n} 分前',
+  'nearby.seenHour': '{n} 時間前',
+  'nearby.seenDay': '{n} 日前',
+  'nearby.seenNow': 'たった今',
+  'nearby.send': '送信',
+  'nearby.inviteAgain': '再接続',
+  'nearby.offline': '{when}に接続 — 現在付近にいません',
+  'nearby.forget': '削除',
 
 };
 

@@ -278,6 +278,21 @@ const hi: Dict = {
   'nearby.visibleWhileOpenHint': 'आस-पास के अन्य डिवाइस इसे देख सकते हैं',
   'nearby.hiddenTitle': 'छिपा हुआ',
   'nearby.hiddenHint': 'आप दूसरे डिवाइसों पर नहीं दिखेंगे',
+  'nearby.searching': 'आस-पास के डिवाइस खोजे जा रहे हैं…',
+  'nearby.searchingHint': 'सुनिश्चित करें कि दोनों डिवाइस एक ही Wi-Fi पर हों',
+  'nearby.nothingFound': 'आपका डिवाइस नहीं दिख रहा?',
+  'nearby.useAnotherWay': 'दूसरा तरीका अपनाएँ',
+  'nearby.fallbackCode': 'कोड डालें',
+  'nearby.recentTitle': 'हाल के डिवाइस',
+  'nearby.trusted': 'भरोसेमंद डिवाइस',
+  'nearby.seen': '{n} मिनट पहले',
+  'nearby.seenHour': '{n} घंटे पहले',
+  'nearby.seenDay': '{n} दिन पहले',
+  'nearby.seenNow': 'अभी-अभी',
+  'nearby.send': 'भेजें',
+  'nearby.inviteAgain': 'फिर से कनेक्ट करें',
+  'nearby.offline': '{when} देखा गया — अभी आस-पास नहीं',
+  'nearby.forget': 'भूलें',
 
 };
 
