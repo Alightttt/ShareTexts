@@ -127,10 +127,14 @@ const zh: Dict = {
   'details.local': '直接连接，同一网络。',
   'details.direct': '设备间直接连接。',
   'details.connecting': '连接中…',
+
+  'details.started': "开始于 {when}",
   'details.encryptedNote': '传输全程加密。房间关闭后即消失。',
   'details.rejoinLabel': '重新加入代码',
   'details.rejoinNote': '如果另一台设备断开，可用此代码重新加入。',
   'toast.connected': '已连接。可以开始发送了',
+
+  'toast.connectedTo': "已连接到 {name}",
   'end.title': '断开连接？',
   'end.body': '两台设备都将断开。此连接将被关闭。',
   'end.keep': '保持连接',
@@ -264,6 +268,10 @@ const zh: Dict = {
   "nearby.autoTitle": "自动连接",
   "nearby.autoHint": "附近的设备点你时自动连接",
   'nearby.sectionTitle': '附近的设备',
+
+  'nearby.countOne': "附近 · 1 台设备",
+
+  'nearby.countMany': "附近 · {n} 台设备",
   'nearby.nearby': '附近',
   'nearby.waiting': '等待连接…',
   'nearby.connectingTo': '正在连接 {name}…',
@@ -282,6 +290,8 @@ const zh: Dict = {
   'nearby.hiddenHint': '你不会出现在其他设备上',
   'nearby.searching': '正在寻找附近的设备…',
   'nearby.searchingHint': '请确保两台设备连接同一 Wi-Fi',
+
+  'nearby.waitingOther': "正在等待其他设备…",
   'nearby.nothingFound': '看不到你的设备？',
   'nearby.useAnotherWay': '换一种方式',
   'nearby.fallbackCode': '输入配对码',

@@ -67,6 +67,56 @@ function DeviceGlyph({ name }: { name: string }) {
     : <Monitor className="w-4 h-4" aria-hidden />;
 }
 
+/** A settings row with a switch — the compact shape the visibility and
+ *  auto-connect controls share inside the helper panel. */
+function ToggleRow({ icon, active, title, hint, onClick, ariaLabel, testId, rowTestId }: {
+  icon: React.ReactNode; active: boolean; title: string; hint: string;
+  onClick: () => void; ariaLabel: string; testId: string; rowTestId: string;
+}) {
+  return (
+    <div
+      data-testid={rowTestId}
+      className="flex items-center gap-2.5 py-2"
+    >
+      <span
+        className={cn(
+          'shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-colors',
+          active
+            ? 'bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[#f06413] dark:text-[#fb9243]'
+            : 'bg-apple-divider/40 dark:bg-white/[0.06] text-apple-ink-muted dark:text-white/40'
+        )}
+        aria-hidden
+      >
+        {icon}
+      </span>
+      <span className="flex-1 flex flex-col min-w-0 leading-tight">
+        <span className="text-[12.5px] font-semibold text-apple-ink dark:text-white">{title}</span>
+        <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45">{hint}</span>
+      </span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={active}
+        data-testid={testId}
+        aria-label={ariaLabel}
+        onClick={onClick}
+        className={cn(
+          'relative shrink-0 w-[44px] h-[28px] rounded-full transition-colors duration-200 outline-none',
+          'focus-visible:ring-2 focus-visible:ring-[#f06413]/40',
+          active ? 'bg-[#f06413] dark:bg-[#fb9243]' : 'bg-apple-divider dark:bg-white/20'
+        )}
+      >
+        <motion.span
+          initial={false}
+          animate={{ x: active ? 18 : 0 }}
+          transition={{ type: 'spring', stiffness: 550, damping: 38 }}
+          className="absolute top-[2px] left-[2px] w-6 h-6 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.25)]"
+        />
+      </button>
+    </div>
+  );
+}
+
 export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s: string | null) => void; showFallback?: boolean }) {
   const { t } = useI18n();
   const { session, createSession, joinWithLink } = useSession();
@@ -172,23 +222,20 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
 
   /* --- incoming invitation ---------------------------------------------- */
   useEffect(() => nearbyPresence.onInvitation(inv => {
-    // Trust: a token this device has PAIRED with before skips the sheet.
+    // Trust ladder: (1) a previously PAIRED device always skips the sheet —
+    // auto-connect ON or OFF. (2) Auto-connect ON accepts ANY nearby device
+    // without the sheet — that is precisely what the toggle promises
+    // ("connect automatically when a nearby device taps you"), and it's
+    // what makes two opted-in devices find each other with zero taps.
+    // (3) Otherwise the consent sheet shows.
     // (Presence tokens rotate with the worker; after a rotation the sheet
-    // returns — the conservative outcome, and the pairing re-learns it.)
-    if (!invitingRef.current && isTrustedToken(inv.from)) {
+    // returns for unpaired devices — the conservative outcome.)
+    if (!invitingRef.current && (isTrustedToken(inv.from) || autoOn)) {
       const timer = setTimeout(() => { void answerInviteRef.current(true, inv); }, 0);
       return () => clearTimeout(timer);
     }
     // Ignore while busy with another connection flow.
     setInvitation(prev => (prev ? prev : inv));
-    // AUTO-CONNECT: both devices opted in, we're idle, and we're not already
-    // waiting on our own outgoing invite → accept without the sheet.
-    if (autoOn && !invitation && !invitingRef.current) {
-      // answerInvite reads `invitation` state; fire on the next tick with the
-      // payload in hand so the sheet never flashes on screen.
-      const timer = setTimeout(() => { void answerInviteRef.current(true, inv); }, 0);
-      return () => clearTimeout(timer);
-    }
   }), [autoOn, invitation]);
 
   /* --- outgoing invite --------------------------------------------------- */
@@ -309,7 +356,10 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
             className="mt-4 w-full"
           >
             <p className="text-[11.5px] font-semibold uppercase tracking-wide text-apple-ink-muted/70 dark:text-white/35 mb-2">
-              {t('nearby.sectionTitle')}
+              {/* ALIVE: the title itself carries the state — one device found
+                  reads differently from three, and the count moves as devices
+                  come and go. No separate "device found" banner needed. */}
+              {devices.length === 1 ? t('nearby.countOne') : t('nearby.countMany', { n: devices.length })}
             </p>
             <div className="flex flex-col gap-2">
               {devices.map((d, i) => {
@@ -425,9 +475,14 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
               <Search className="relative w-3.5 h-3.5 text-[#f06413]/70 dark:text-[#fb9243]/70" strokeWidth={2.2} />
             </span>
             <span className="flex-1 flex flex-col min-w-0 leading-tight">
-              <span className="text-[12.5px] font-semibold text-apple-ink dark:text-white">{t('nearby.searching')}</span>
+              {/* The standing instruction, promoted to the searching state's
+                  title: "Open ShareTexts in another device" IS what waiting
+                  means here — not a decorative line floating elsewhere. */}
+              <span className="text-[12.5px] font-semibold text-apple-ink dark:text-white">{t('nearby.hint')}</span>
               <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45 flex items-center gap-1">
-                <Wifi className="w-3 h-3" aria-hidden /> {t('nearby.searchingHint')}
+                {searchExpired
+                  ? <><Wifi className="w-3 h-3" aria-hidden /> {t('nearby.searchingHint')}</>
+                  : t('nearby.waitingOther')}
               </span>
             </span>
           </motion.div>
@@ -479,98 +534,6 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Nearby visibility — the user's own discoverability switch. Default
-          ON: visible only while ShareTexts is open (closing the tab withdraws
-          the announce and the server's TTL expires the entry). OFF: Hidden —
-          this device never announces, so it can't be found, though it can
-          still see and invite others. */}
-      <div
-        data-testid="nearby-visibility-row"
-        className="mt-2.5 flex items-center gap-2.5 px-3.5 py-2.5 rounded-[14px] bg-apple-parchment/60 dark:bg-white/[0.03] border border-apple-divider/40 dark:border-white/[0.06]"
-      >
-        <span
-          className={cn(
-            'shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-colors',
-            presenceHidden
-              ? 'bg-apple-divider/40 dark:bg-white/[0.06] text-apple-ink-muted dark:text-white/40'
-              : 'bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[#f06413] dark:text-[#fb9243]'
-          )}
-          aria-hidden
-        >
-          {presenceHidden ? <EyeOff className="w-3.5 h-3.5" strokeWidth={2.2} /> : <Eye className="w-3.5 h-3.5" strokeWidth={2.2} />}
-        </span>
-        <span className="flex-1 flex flex-col min-w-0 leading-tight">
-          <span className="text-[12.5px] font-semibold text-apple-ink dark:text-white">
-            {presenceHidden ? t('nearby.hiddenTitle') : t('nearby.visibleWhileOpen')}
-          </span>
-          <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45">
-            {presenceHidden ? t('nearby.hiddenHint') : t('nearby.visibleWhileOpenHint')}
-          </span>
-        </span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={!presenceHidden}
-          data-testid="nearby-visibility-toggle"
-          aria-label={t('nearby.visibleTitle')}
-          onClick={() => { hapticTap(); setPresenceHiddenState(h => { setPresenceHidden(!h); return !h; }); }}
-          className={cn(
-            'relative shrink-0 w-[44px] h-[28px] rounded-full transition-colors duration-200 outline-none',
-            'focus-visible:ring-2 focus-visible:ring-[#f06413]/40',
-            !presenceHidden ? 'bg-[#f06413] dark:bg-[#fb9243]' : 'bg-apple-divider dark:bg-white/20'
-          )}
-        >
-          <motion.span
-            initial={false}
-            animate={{ x: !presenceHidden ? 18 : 0 }}
-            transition={{ type: 'spring', stiffness: 550, damping: 38 }}
-            className="absolute top-[2px] left-[2px] w-6 h-6 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.25)]"
-          />
-        </button>
-      </div>
-
-      {/* Auto-connect — one quiet row: what it does, plus the switch. */}
-      <div
-        data-testid="auto-connect-row"
-        className="mt-2.5 flex items-center gap-2.5 px-3.5 py-2.5 rounded-[14px] bg-apple-parchment/60 dark:bg-white/[0.03] border border-apple-divider/40 dark:border-white/[0.06]"
-      >
-        <span
-          className={cn(
-            'shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-colors',
-            autoOn
-              ? 'bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[#f06413] dark:text-[#fb9243]'
-              : 'bg-apple-divider/40 dark:bg-white/[0.06] text-apple-ink-muted dark:text-white/40'
-          )}
-          aria-hidden
-        >
-          <Zap className="w-3.5 h-3.5" strokeWidth={2.2} />
-        </span>
-        <span className="flex-1 flex flex-col min-w-0 leading-tight">
-          <span className="text-[12.5px] font-semibold text-apple-ink dark:text-white">{t('nearby.autoTitle')}</span>
-          <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45">{t('nearby.autoHint')}</span>
-        </span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={autoOn}
-          data-testid="auto-connect-toggle"
-          aria-label={t('nearby.autoTitle')}
-          onClick={() => { hapticTap(); setAutoOn(v => { setAutoConnectEnabled(!v); return !v; }); }}
-          className={cn(
-            'relative shrink-0 w-[44px] h-[28px] rounded-full transition-colors duration-200 outline-none',
-            'focus-visible:ring-2 focus-visible:ring-[#f06413]/40',
-            autoOn ? 'bg-[#f06413] dark:bg-[#fb9243]' : 'bg-apple-divider dark:bg-white/20'
-          )}
-        >
-          <motion.span
-            initial={false}
-            animate={{ x: autoOn ? 18 : 0 }}
-            transition={{ type: 'spring', stiffness: 550, damping: 38 }}
-            className="absolute top-[2px] left-[2px] w-6 h-6 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.25)]"
-          />
-        </button>
-      </div>
 
       {/* FAILURE — a name, the one fix that matters, and the two honest
           ways out. Never a bare "Connection failed." */}
@@ -650,6 +613,34 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
                       {t(`nearby.${k}`)}
                     </li>
                   ))}
+                  {/* The two controls that shape discovery live exactly where
+                      someone debugging "why can't we see each other" will
+                      look for them — inside the helper, not floating above
+                      it as permanent clutter. */}
+                  <div className="mt-2 pt-2 border-t border-apple-divider/40 dark:border-white/[0.06]">
+                    <ToggleRow
+                      testId="nearby-visibility-toggle"
+                      rowTestId="nearby-visibility-row"
+                      icon={presenceHidden
+                        ? <EyeOff className="w-3.5 h-3.5" strokeWidth={2.2} />
+                        : <Eye className="w-3.5 h-3.5" strokeWidth={2.2} />}
+                      active={!presenceHidden}
+                      title={presenceHidden ? t('nearby.hiddenTitle') : t('nearby.visibleWhileOpen')}
+                      hint={presenceHidden ? t('nearby.hiddenHint') : t('nearby.visibleWhileOpenHint')}
+                      ariaLabel={t('nearby.visibleTitle')}
+                      onClick={() => { hapticTap(); setPresenceHiddenState(h => { setPresenceHidden(!h); return !h; }); }}
+                    />
+                    <ToggleRow
+                      testId="auto-connect-toggle"
+                      rowTestId="auto-connect-row"
+                      icon={<Zap className="w-3.5 h-3.5" strokeWidth={2.2} />}
+                      active={autoOn}
+                      title={t('nearby.autoTitle')}
+                      hint={t('nearby.autoHint')}
+                      ariaLabel={t('nearby.autoTitle')}
+                      onClick={() => { hapticTap(); setAutoOn(v => { setAutoConnectEnabled(!v); return !v; }); }}
+                    />
+                  </div>
                 </div>
               </motion.ol>
             )}

@@ -15,14 +15,23 @@ const errs = [];
 for (const [tag, p] of [['A', A], ['B', B]]) p.on('pageerror', e => errs.push(`[${tag}] ${String(e).slice(0, 120)}`));
 
 await A.goto(URL, { waitUntil: 'networkidle' });
-await B.goto(URL, { waitUntil: 'networkidle' });
 await sleep(1500);
 
-// Flip Auto-connect ON on both.
-for (const p of [A, B]) {
-  await p.getByTestId('auto-connect-toggle').click();
-}
-await sleep(500);
+// A flips Auto-connect ON through the real UI while it's still alone —
+// the toggle lives inside the expandable "Why isn't my device showing?"
+// helper, which renders exactly while no devices are around. This also
+// verifies the relocated toggle is reachable and writes its setting.
+await A.getByTestId('nearby-why-toggle').click();
+await A.getByTestId('auto-connect-toggle').click();
+await sleep(300);
+const autoSaved = await A.evaluate(() => localStorage.getItem('sharetext.autoConnect.v1'));
+console.log('step 0 — toggle writes the setting:', autoSaved === '1' ? 'OK' : 'FAIL');
+
+// B seeds the same setting before load (once devices are visible the
+// helper is gone by design — the setting, not the panel, is what counts).
+await B.addInitScript(() => localStorage.setItem('sharetext.autoConnect.v1', '1'));
+await B.goto(URL, { waitUntil: 'networkidle' });
+await sleep(1500);
 
 // Pair once manually: A invites B, B auto-accepts (auto-connect ON).
 await A.locator('button:has-text("Nearby")').first().click();

@@ -127,10 +127,14 @@ const fr: Dict = {
   'details.local': 'Connexion directe, même réseau.',
   'details.direct': 'Connexion directe entre les appareils.',
   'details.connecting': 'Connexion…',
+
+  'details.started': "Démarré {when}",
   'details.encryptedNote': 'Chiffré pendant le transfert. Disparaît à la fermeture du salon.',
   'details.rejoinLabel': 'Code de reconnexion',
   'details.rejoinNote': 'Si l’autre appareil se déconnecte, il peut revenir avec ce code.',
   'toast.connected': 'Connecté. Vous pouvez commencer à envoyer',
+
+  'toast.connectedTo': "Connecté à {name}",
   'end.title': 'Se déconnecter ?',
   'end.body': 'Les deux appareils seront déconnectés. Cette connexion sera fermée.',
   'end.keep': 'Rester connecté',
@@ -265,6 +269,10 @@ const fr: Dict = {
   "nearby.autoTitle": "Connexion auto",
   "nearby.autoHint": "Se connecte automatiquement quand un appareil proche vous touche",
   'nearby.sectionTitle': 'Appareils à proximité',
+
+  'nearby.countOne': "À proximité · 1 appareil",
+
+  'nearby.countMany': "À proximité · {n} appareils",
   'nearby.nearby': 'À proximité',
   'nearby.waiting': 'En attente de connexion…',
   'nearby.connectingTo': 'Connexion à {name}…',
@@ -283,6 +291,8 @@ const fr: Dict = {
   'nearby.hiddenHint': 'Vous n’apparaîtrez sur aucun autre appareil',
   'nearby.searching': 'Recherche des appareils à proximité…',
   'nearby.searchingHint': 'Vérifiez que les deux appareils sont sur le même Wi-Fi',
+
+  'nearby.waitingOther': "En attente d’un autre appareil…",
   'nearby.nothingFound': 'Votre appareil n’apparaît pas ?',
   'nearby.useAnotherWay': 'Utiliser un autre moyen',
   'nearby.fallbackCode': 'Saisir un code',

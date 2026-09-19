@@ -127,10 +127,14 @@ const de: Dict = {
   'details.local': 'Direkte Verbindung, gleiches Netzwerk.',
   'details.direct': 'Direkte Verbindung zwischen den Geräten.',
   'details.connecting': 'Verbinde…',
+
+  'details.started': "Gestartet {when}",
   'details.encryptedNote': 'Unterwegs verschlüsselt. Verschwindet, wenn der Raum geschlossen wird.',
   'details.rejoinLabel': 'Wiedereinstiegscode',
   'details.rejoinNote': 'Falls das andere Gerät abbricht, kann es sich mit diesem Code wieder verbinden.',
   'toast.connected': 'Verbunden. Du kannst jetzt senden',
+
+  'toast.connectedTo': "Verbunden mit {name}",
   'end.title': 'Verbindung trennen?',
   'end.body': 'Beide Geräte werden getrennt. Diese Verbindung wird geschlossen.',
   'end.keep': 'Verbunden bleiben',
@@ -265,6 +269,10 @@ const de: Dict = {
   "nearby.autoTitle": "Auto-Verbinden",
   "nearby.autoHint": "Verbindet automatisch, wenn ein Gerät in der Nähe dich antippt",
   'nearby.sectionTitle': 'Geräte in der Nähe',
+
+  'nearby.countOne': "In der Nähe · 1 Gerät",
+
+  'nearby.countMany': "In der Nähe · {n} Geräte",
   'nearby.nearby': 'In der Nähe',
   'nearby.waiting': 'Warte auf Verbindung…',
   'nearby.connectingTo': 'Verbinde mit {name}…',
@@ -283,6 +291,8 @@ const de: Dict = {
   'nearby.hiddenHint': 'Du erscheinst auf keinen anderen Geräten',
   'nearby.searching': 'Suche nach Geräten in der Nähe…',
   'nearby.searchingHint': 'Stelle sicher, dass beide Geräte im gleichen WLAN sind',
+
+  'nearby.waitingOther': "Warte auf ein weiteres Gerät…",
   'nearby.nothingFound': 'Dein Gerät wird nicht angezeigt?',
   'nearby.useAnotherWay': 'Anderen Weg nutzen',
   'nearby.fallbackCode': 'Code eingeben',

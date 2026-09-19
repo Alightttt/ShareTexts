@@ -127,10 +127,14 @@ const ja: Dict = {
   'details.local': '直接接続、同じネットワーク。',
   'details.direct': 'デバイス間の直接接続。',
   'details.connecting': '接続中…',
+
+  'details.started': "{when} に開始",
   'details.encryptedNote': '転送中は暗号化。ルームが閉じると消えます。',
   'details.rejoinLabel': '再接続コード',
   'details.rejoinNote': '相手のデバイスが切断しても、このコードで再接続できます。',
   'toast.connected': '接続完了。送信を始められます',
+
+  'toast.connectedTo': "{name} に接続しました",
   'end.title': '切断しますか？',
   'end.body': '両方のデバイスが切断されます。この接続は閉じられます。',
   'end.keep': '接続を続ける',
@@ -264,6 +268,10 @@ const ja: Dict = {
   "nearby.autoTitle": "自動接続",
   "nearby.autoHint": "近くのデバイスがタップすると自動で接続します",
   'nearby.sectionTitle': '近くのデバイス',
+
+  'nearby.countOne': "付近 · 1台",
+
+  'nearby.countMany': "付近 · {n}台",
   'nearby.nearby': '付近',
   'nearby.waiting': '接続を待っています…',
   'nearby.connectingTo': '{name} に接続中…',
@@ -282,6 +290,8 @@ const ja: Dict = {
   'nearby.hiddenHint': '他のデバイスには表示されません',
   'nearby.searching': '付近のデバイスを探しています…',
   'nearby.searchingHint': '両方のデバイスが同じ Wi-Fi に接続しているか確認してください',
+
+  'nearby.waitingOther': "他のデバイスを待っています…",
   'nearby.nothingFound': 'デバイスが見つかりませんか？',
   'nearby.useAnotherWay': '別の方法を使う',
   'nearby.fallbackCode': 'コードを入力',

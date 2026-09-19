@@ -127,10 +127,14 @@ const pt: Dict = {
   'details.local': 'Conexão direta, mesma rede.',
   'details.direct': 'Conexão direta entre os dispositivos.',
   'details.connecting': 'Conectando…',
+
+  'details.started': "Iniciado {when}",
   'details.encryptedNote': 'Criptografado no caminho. Some quando a sala fecha.',
   'details.rejoinLabel': 'Código de reconexão',
   'details.rejoinNote': 'Se o outro dispositivo cair, ele pode voltar com este código.',
   'toast.connected': 'Conectado. Você já pode enviar',
+
+  'toast.connectedTo': "Conectado a {name}",
   'end.title': 'Desconectar?',
   'end.body': 'Os dois dispositivos serão desconectados. Esta conexão será encerrada.',
   'end.keep': 'Manter conectado',
@@ -265,6 +269,10 @@ const pt: Dict = {
   "nearby.autoTitle": "Conexão automática",
   "nearby.autoHint": "Conecta sozinho quando um dispositivo próximo toca você",
   'nearby.sectionTitle': 'Dispositivos por perto',
+
+  'nearby.countOne': "Por perto · 1 dispositivo",
+
+  'nearby.countMany': "Por perto · {n} dispositivos",
   'nearby.nearby': 'Por perto',
   'nearby.waiting': 'Aguardando conexão…',
   'nearby.connectingTo': 'Conectando a {name}…',
@@ -283,6 +291,8 @@ const pt: Dict = {
   'nearby.hiddenHint': 'Você não aparecerá em outros dispositivos',
   'nearby.searching': 'Procurando dispositivos por perto…',
   'nearby.searchingHint': 'Verifique se os dois dispositivos estão no mesmo Wi-Fi',
+
+  'nearby.waitingOther': "Aguardando outro dispositivo…",
   'nearby.nothingFound': 'Não vê o seu dispositivo?',
   'nearby.useAnotherWay': 'Usar outro método',
   'nearby.fallbackCode': 'Introduzir um código',

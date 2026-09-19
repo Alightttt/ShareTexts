@@ -165,6 +165,18 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     return () => { previewUrls.forEach((u) => URL.revokeObjectURL(u)); };
   }, [previewUrls]);
   const disconnected = !session.partnerConnected && session.connectionType === 'disconnected';
+  // The session's start, as people say it: "7:24 PM" today, else "Sep 19, 7:24
+  // PM". Computed once per room — createdAt never changes mid-room.
+  const startedAtLabel = useMemo(() => {
+    if (!session.createdAt) return null;
+    try {
+      const d = new Date(session.createdAt);
+      const now = new Date();
+      const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      if (d.toDateString() === now.toDateString()) return time;
+      return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}`;
+    } catch { return null; }
+  }, [session.roomId, session.createdAt]);
   // Localized day keys for the date separators — recomputed per render is
   // fine (two string builds), and they must be fresh so midnight rolls over.
   const now = Date.now();
@@ -845,6 +857,13 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                     session.connectionType === 'direct' ? t('details.direct') :
                       t('details.connecting')}
               </div>
+              {/* The session as a memory, not a socket: when it started.
+                  "Today, 7:24 PM" — the room has a beginning people recall. */}
+              {startedAtLabel && (
+                <div className="mt-1.5 text-[12px] text-apple-ink-muted/70 dark:text-white/40">
+                  {t('details.started', { when: startedAtLabel })}
+                </div>
+              )}
               <div className="text-[12px] text-apple-ink-muted dark:text-white/45 mt-2 pt-2 border-t border-apple-divider/50 dark:border-apple-tile-3">
                 {t('details.encryptedNote')}
               </div>
@@ -887,7 +906,9 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             className="absolute top-[76px] sm:top-[80px] left-1/2 -translate-x-1/2 z-40 px-4 py-2.5 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 shadow-float flex items-center gap-2 text-[13.5px] font-semibold whitespace-nowrap"
           >
             <ShareTextLogo size={16} motion="complete" mono />
-            {t('toast.connected')}
+            {/* The moment names the DEVICE: "Connected to iPhone" — a real
+                session with a real counterpart, never a generic ack. */}
+            {session.partnerName ? t('toast.connectedTo', { name: session.partnerName }) : t('toast.connected')}
           </motion.div>
         )}
       </AnimatePresence>

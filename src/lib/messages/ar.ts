@@ -127,10 +127,14 @@ const ar: Dict = {
   'details.local': 'اتصال مباشر، الشبكة نفسها.',
   'details.direct': 'اتصال مباشر بين الجهازين.',
   'details.connecting': 'جارٍ الاتصال…',
+
+  'details.started': "بدأ {when}",
   'details.encryptedNote': 'مشفّر أثناء النقل. يختفي عند إغلاق الغرفة.',
   'details.rejoinLabel': 'رمز إعادة الانضمام',
   'details.rejoinNote': 'إذا انقطع الجهاز الآخر، يمكنه العودة بهذا الرمز.',
   'toast.connected': 'تم الاتصال. يمكنك البدء بالإرسال',
+
+  'toast.connectedTo': "متصل بـ {name}",
   'end.title': 'قطع الاتصال؟',
   'end.body': 'سيتم قطع الاتصال عن الجهازين. ستُغلق هذه الجلسة.',
   'end.keep': 'البقاء متصلًا',
@@ -264,6 +268,10 @@ const ar: Dict = {
   "nearby.autoTitle": "اتصال تلقائي",
   "nearby.autoHint": "يتصل تلقائيًا عند لمس جهاز قريب لك",
   'nearby.sectionTitle': 'الأجهزة القريبة',
+
+  'nearby.countOne': "قريب · جهاز واحد",
+
+  'nearby.countMany': "قريب · {n} أجهزة",
   'nearby.nearby': 'قريب',
   'nearby.waiting': 'في انتظار الاتصال…',
   'nearby.connectingTo': 'جارٍ الاتصال بـ {name}…',
@@ -282,6 +290,8 @@ const ar: Dict = {
   'nearby.hiddenHint': 'لن يظهر هذا الجهاز على الأجهزة الأخرى',
   'nearby.searching': 'جارٍ البحث عن الأجهزة القريبة…',
   'nearby.searchingHint': 'تأكد من أن الجهازين متصلان بنفس شبكة Wi-Fi',
+
+  'nearby.waitingOther': "في انتظار جهاز آخر…",
   'nearby.nothingFound': 'لا ترى جهازك؟',
   'nearby.useAnotherWay': 'استخدم طريقة أخرى',
   'nearby.fallbackCode': 'أدخل الرمز',

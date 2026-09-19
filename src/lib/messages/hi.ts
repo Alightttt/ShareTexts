@@ -127,10 +127,14 @@ const hi: Dict = {
   'details.local': 'डायरेक्ट कनेक्शन, एक ही नेटवर्क।',
   'details.direct': 'डिवाइसों के बीच डायरेक्ट कनेक्शन।',
   'details.connecting': 'कनेक्ट हो रहा है…',
+
+  'details.started': "{when} शुरू हुआ",
   'details.encryptedNote': 'रास्ते में एन्क्रिप्टेड। रूम बंद होते ही मिट जाता है।',
   'details.rejoinLabel': 'फिर जुड़ने का कोड',
   'details.rejoinNote': 'अगर दूसरा डिवाइस डिस्कनेक्ट हो जाए, तो वह इस कोड से फिर जुड़ सकता है।',
   'toast.connected': 'कनेक्टेड। अब आप भेज सकते हैं',
+
+  'toast.connectedTo': "{name} से जुड़ा",
   'end.title': 'डिस्कनेक्ट करें?',
   'end.body': 'दोनों डिवाइस डिस्कनेक्ट होंगे। यह कनेक्शन बंद हो जाएगा।',
   'end.keep': 'कनेक्टेड रहें',
@@ -264,6 +268,10 @@ const hi: Dict = {
   "nearby.autoTitle": "ऑटो-कनेक्ट",
   "nearby.autoHint": "पास के डिवाइस के टैप करने पर अपने आप जुड़ जाए",
   'nearby.sectionTitle': 'नज़दीकी डिवाइस',
+
+  'nearby.countOne': "नज़दीक · 1 डिवाइस",
+
+  'nearby.countMany': "नज़दीक · {n} डिवाइस",
   'nearby.nearby': 'नज़दीक',
   'nearby.waiting': 'कनेक्शन की प्रतीक्षा…',
   'nearby.connectingTo': '{name} से कनेक्ट हो रहे हैं…',
@@ -282,6 +290,8 @@ const hi: Dict = {
   'nearby.hiddenHint': 'आप दूसरे डिवाइसों पर नहीं दिखेंगे',
   'nearby.searching': 'आस-पास के डिवाइस खोजे जा रहे हैं…',
   'nearby.searchingHint': 'सुनिश्चित करें कि दोनों डिवाइस एक ही Wi-Fi पर हों',
+
+  'nearby.waitingOther': "किसी अन्य डिवाइस की प्रतीक्षा…",
   'nearby.nothingFound': 'आपका डिवाइस नहीं दिख रहा?',
   'nearby.useAnotherWay': 'दूसरा तरीका अपनाएँ',
   'nearby.fallbackCode': 'कोड डालें',
