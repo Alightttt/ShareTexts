@@ -42,7 +42,7 @@ import { cn, shortCodeOf, sanitizeDeviceName, formatBytes } from '../lib/utils';
 import {
   LogOut, QrCode, Link2, Copy, Check,
   Smartphone, Monitor, X, Wifi, ArrowRightLeft, ArrowLeft, Info, Pencil, WifiOff, ServerOff,
-  Infinity as InfinityIcon
+  Infinity as InfinityIcon, Upload
 } from 'lucide-react';
 import { generateTOTP } from '../lib/totp';
 import { useFocusTrap } from '../lib/useFocusTrap';
@@ -119,6 +119,11 @@ export function SingleScreenApp() {
   const [isRejoining, setIsRejoining] = useState(false);
   // Nearby discovery status, lifted into the existing activity tracker line.
   const [nearbyStatus, setNearbyStatus] = useState<string | null>(null);
+  // Desktop drop-to-send: files released anywhere over the idle home screen
+  // stage instantly and create the room in one motion — the fastest path
+  // from "I have this file" to "it's moving". No state? No dialog first.
+  const [homeDrop, setHomeDrop] = useState(false);
+  const homeDropDepth = useRef(0);
   // If NearbyDevices unmounts (room created, route change) while a transient
   // status is showing, the counter line must come back — the child's own
   // effect can't run after it's gone, so the parent clears on unmount.
@@ -298,11 +303,15 @@ export function SingleScreenApp() {
     setPanelMode('sending');
     setIsCreating(true);
     setCreateError(null);
+    // Latch for the fallback chips' short poll ("open the QR once the room
+    // exists"): false while attempting, true only on success.
+    (window as Window & { __stRoomReady?: boolean }).__stRoomReady = false;
     const thisAttempt = ++createAbortRef.current;
     try {
       await createSession();
       if (thisAttempt === createAbortRef.current) {
         setRetryCount(0);
+        (window as Window & { __stRoomReady?: boolean }).__stRoomReady = true;
         // The tracker moves the instant THIS room exists — the next /stats
         // poll confirms with the server's lifetime total.
         bumpRoomsCreated();
@@ -317,6 +326,72 @@ export function SingleScreenApp() {
   }, [isCreating, createSession, t, friendlyConnectError]);
 
   const handleReceive = useCallback(() => { hapticTap(); setPanelMode('receiving'); setCreateError(null); setJoinError(null); }, []);
+
+  // Fallback-chip actions: "Show QR" / "Share link" create the room first
+  // (if none exists), then surface the exact QR/link modal the normal send
+  // flow uses. Reuses handleSend's error handling verbatim — one honest
+  // failure path, not two.
+  const waitForRoom = (onReady: () => void) => {
+    const started = Date.now();
+    const iv = setInterval(() => {
+      if ((window as Window & { __stRoomReady?: boolean }).__stRoomReady) {
+        clearInterval(iv);
+        onReady();
+      } else if (Date.now() - started > 8000) clearInterval(iv);
+    }, 120);
+  };
+  const handleSendThenQr = useCallback(async () => {
+    hapticTap();
+    if (session.roomId) { setShowQROverlay(true); return; }
+    await handleSend();
+    // createSession may still be in flight; open the overlay once the room
+    // exists. Short poll instead of wiring a new state channel.
+    waitForRoom(() => setShowQROverlay(true));
+  }, [session.roomId, handleSend]);
+  const handleSendThenLink = useCallback(async () => {
+    hapticTap();
+    if (session.roomId) { void copyLink(); return; }
+    await handleSend();
+    waitForRoom(() => { void copyLink(); });
+    // copyLink/shareUrl are declared later in the component — routing the
+    // call through a ref keeps this callback dependency-clean.
+  }, [session.roomId, handleSend]);
+
+  // Drop-to-send handlers live after handleSend so the dep array can reference
+  // it. The drop parks the FileList on window, then creates the room; the
+  // parked bytes are picked up on mount by ChatView (see __stHomeDropFiles).
+  const homeDropTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onHomeDragEnter = useCallback((e: React.DragEvent) => {
+    if (!e.dataTransfer?.types.includes('Files')) return;
+    e.preventDefault();
+    homeDropDepth.current += 1;
+    setHomeDrop(true);
+  }, []);
+  const onHomeDragOver = useCallback((e: React.DragEvent) => {
+    if (!e.dataTransfer?.types.includes('Files')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+  const onHomeDragLeave = useCallback(() => {
+    homeDropDepth.current = Math.max(0, homeDropDepth.current - 1);
+    if (homeDropDepth.current === 0) setHomeDrop(false);
+  }, []);
+  const onHomeDrop = useCallback((e: React.DragEvent) => {
+    if (!e.dataTransfer?.types.includes('Files')) return;
+    e.preventDefault();
+    homeDropDepth.current = 0;
+    setHomeDrop(false);
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) return;
+    // Park the FileList: createSession() must finish before ChatView mounts,
+    // and a synthetic event's FileList dies with it.
+    const parked: File[] = Array.from(files);
+    if (homeDropTimer.current) clearTimeout(homeDropTimer.current);
+    homeDropTimer.current = setTimeout(() => {
+      (window as Window & { __stHomeDropFiles?: File[] }).__stHomeDropFiles = parked;
+      void handleSend();
+    }, 0);
+  }, [handleSend]);
   // The nearby section's fallback ("Can't see your device? → Use another
   // way") reaches straight into the hero's Receive flow — one window-level
   // hook, set here where the state lives, so the discovery area never needs
@@ -325,6 +400,16 @@ export function SingleScreenApp() {
     (window as Window & { __stOpenReceive?: () => void }).__stOpenReceive = handleReceive;
     return () => { delete (window as Window & { __stOpenReceive?: () => void }).__stOpenReceive; };
   }, [handleReceive]);
+  // Fallback chips: "Show QR" / "Share link" — create the room when none is
+  // live, then surface the QR overlay / copy the link. Idle-only by design:
+  // once connected, the chat header and details sheet carry these actions.
+  useEffect(() => {
+    if (panelMode !== 'idle') return;
+    const w = window as Window & { __stOpenSendQr?: () => void; __stOpenSendLink?: () => void };
+    w.__stOpenSendQr = () => { void handleSendThenQr(); };
+    w.__stOpenSendLink = () => { void handleSendThenLink(); };
+    return () => { delete w.__stOpenSendQr; delete w.__stOpenSendLink; };
+  }, [panelMode, handleSendThenQr, handleSendThenLink]);
 
   // One-tap re-entry into the last Stay Connected room. False = the room
   // is really gone (close/expiry) — say so instead of blinking the button.
@@ -377,7 +462,15 @@ export function SingleScreenApp() {
   const shareUrl = session.roomId ? `${window.location.origin}/s/${shortCodeOf(session.roomId)}` : '';
   const qrCode = session.secret ? generateTOTP(session.secret, session.createdAt) : '';
   const qrValue = qrCode ? `${shareUrl}?c=${qrCode}` : '';
-  const copyLink = async () => { try { await navigator.clipboard.writeText(shareUrl); } catch {} setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000); };
+  // shareUrl changes when the room is created; copyLink may be invoked from
+  // a callback that captured an earlier render (fallback chip after
+  // createSession). The ref keeps every caller honest.
+  const shareUrlRef = useRef('');
+  shareUrlRef.current = shareUrl;
+  const copyLink = async () => { try { await navigator.clipboard.writeText(shareUrlRef.current); } catch {} setCopiedLink(true); setTimeout(() => setCopiedLink(false), 2000); };
+  // "Share link" fallback chip: reuse the live room if one exists, otherwise
+  // create it, then copy — the link chip must never silently do nothing.
+
   const copyCode = async () => { const c = session.secret ? generateTOTP(session.secret, session.createdAt) : ''; try { await navigator.clipboard.writeText(c); } catch {} setCopiedCode(true); setTimeout(() => setCopiedCode(false), 2000); };
   const handleQRScan = useCallback((text: string) => {
     try {
@@ -878,8 +971,37 @@ export function SingleScreenApp() {
   );
 
   const leftPanel = (
-    <div className="relative isolate flex flex-col h-full overflow-hidden bg-apple-canvas dark:bg-[#131315]">
+    <div
+      // Drop-to-send lives on the whole idle home pane: release anywhere.
+      onDragEnter={panelMode === 'idle' ? onHomeDragEnter : undefined}
+      onDragOver={panelMode === 'idle' ? onHomeDragOver : undefined}
+      onDragLeave={panelMode === 'idle' ? onHomeDragLeave : undefined}
+      onDrop={panelMode === 'idle' ? onHomeDrop : undefined}
+      className="relative isolate flex flex-col h-full overflow-hidden bg-apple-canvas dark:bg-[#131315]"
+    >
       {ambientGlow}
+      {/* Drop-to-send veil — the pane answers the drag immediately, so the
+          user knows releasing HERE is the action. pointer-events-none keeps
+          dragleave/drop flowing to the pane beneath. */}
+      <AnimatePresence>
+        {homeDrop && panelMode === 'idle' && (
+          <motion.div
+            key="home-drop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            aria-hidden
+            className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none bg-apple-canvas/85 dark:bg-[#131315]/85 backdrop-blur-[2px]"
+          >
+            <div className="flex flex-col items-center gap-3 px-10 py-8 rounded-[28px] border-2 border-dashed border-[#f06413]/50 dark:border-[#fb9243]/50">
+              <Upload className="w-8 h-8 text-[#f06413] dark:text-[#fb9243]" />
+              <p className="text-[17px] font-semibold text-apple-ink dark:text-white">{t('drop.send')}</p>
+              <p className="text-[13px] font-medium text-apple-ink-muted dark:text-white/50">{t('drop.hint')}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {headerNode}
       {/* Hero area — flex-1 centers each state's content in the half */}
       <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 py-3 sm:py-6 min-h-0 overflow-hidden">

@@ -912,6 +912,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
                 // bubble that never flips. The first chunk is proof the
                 // transfer is live — promote it here.
                 ...(m.attachment.status === 'waiting' ? { status: 'receiving' as const } : {}),
+                // First byte moving: start the honest clock (used by the
+                // "Received · size in time" summary). Kept from the first
+                // attempt if this is a resume — the story stays true.
+                ...(m.attachment.startedAt == null && (m.attachment.status === 'waiting' || m.attachment.status === 'receiving') ? { startedAt: Date.now() } : {}),
                 // Progress never changes the state label: the sender stays
                 // 'sending', the receiver 'receiving', and a cancelled/failed
                 // transfer must not be resurrected by late progress events.
@@ -944,7 +948,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
                 ...m.attachment,
                 status: 'complete',
                 url,
-                progress: 1
+                progress: 1,
+                completedAt: m.attachment.completedAt ?? Date.now()
               }
             };
           }
@@ -1067,7 +1072,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setSession(s => ({
         ...s,
         messages: s.messages.map(m => m.attachment?.id === transferId && m.attachment.status === 'waiting'
-          ? { ...m, attachment: { ...m.attachment, status: 'receiving' } }
+          ? { ...m, attachment: { ...m.attachment, status: 'receiving', startedAt: Date.now() } }
           : m),
       }));
     };
@@ -1080,7 +1085,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setSession(s => ({
         ...s,
         messages: s.messages.map(m => m.attachment?.id === transferId && m.attachment.status === 'waiting'
-          ? { ...m, attachment: { ...m.attachment, status: 'sending' } }
+          ? { ...m, attachment: { ...m.attachment, status: 'sending', startedAt: Date.now() } }
           : m),
       }));
     };
@@ -1204,7 +1209,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         };
         try {
           await pm.resumeTransfer(JSON.stringify(partnerMsg), file, a.id);
-          updateMessageAttachment(m.id, { status: 'complete', progress: 1 });
+          updateMessageAttachment(m.id, { status: 'complete', progress: 1, completedAt: Date.now() });
           void deleteSendable(a.id);
           void deleteTransferState(a.id);
         } catch (e) {
@@ -1698,7 +1703,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     };
     try {
       await pm.resumeTransfer(JSON.stringify(partnerMsg), file, msg.attachment.id);
-      updateMessageAttachment(messageId, { status: 'complete', progress: 1 });
+      updateMessageAttachment(messageId, { status: 'complete', progress: 1, completedAt: Date.now() });
     } catch (e) {
       if (!(e instanceof TransferCancelledError)) {
         try { await pm.send(JSON.stringify({ kind: 'resend_unavailable', id: messageId })); } catch { /* noop */ }
@@ -1735,7 +1740,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     };
     try {
       await pm.resumeTransfer(JSON.stringify(partnerMsg), file, msg.attachment.id);
-      updateMessageAttachment(messageId, { status: 'complete', progress: 1 });
+      updateMessageAttachment(messageId, { status: 'complete', progress: 1, completedAt: Date.now() });
     } catch (e) {
       if (!(e instanceof TransferCancelledError)) {
         updateMessageAttachment(messageId, { status: 'failed' });

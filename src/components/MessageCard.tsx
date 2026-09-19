@@ -163,6 +163,14 @@ function byteProgress(a: Attachment): string {
  *   interrupted → the peer dropped mid-transfer
  *   resuming / sending / receiving → "… 1.2 MB of 4.1 MB"
  */
+/** Compact honest elapsed time: 14 s, 3 m 20 s — no locale burden. */
+function formatElapsed(ms: number): string {
+  const s = Math.max(1, Math.round(ms / 1000));
+  if (s < 90) return `${s}s`;
+  const m = Math.floor(s / 60);
+  return `${m}m ${s % 60}s`;
+}
+
 function transferStatusText(a: Attachment, isMe: boolean, t: I18nApi['t']): string {
   switch (a.status) {
     case 'failed':
@@ -266,7 +274,7 @@ export interface MessageCardProps {
 
 export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = true, isGroupEnd = true, selectMode = false, selected = false, onToggleSelect, onLongPressStart }) => {
   const { t } = useI18n();
-  const { retryTransfer, retryText, cancelTransfer, pauseTransfer, resumeTransferById } = useSession();
+  const { retryTransfer, retryText, cancelTransfer, pauseTransfer, resumeTransferById, session } = useSession();
   const isMe = msg.sender === 'me';
   const a = msg.attachment;
   const [copied, setCopied] = useState(false);
@@ -667,9 +675,16 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
             <div className="min-w-0">
               {a.status === 'complete' ? (
                 <span className="text-[11px] font-medium flex items-center gap-1 flex-wrap break-words text-apple-ink-muted">
-                  {isMe ? <DeliveryTick delivered={msg.delivered} seen={msg.seen} onBlue /> : msg.source === 'push' ? (
+                  {/* Honest completion story: "Sent · 2.0 GB in 18 s" — only
+                      when we hold both timestamps; otherwise the classic
+                      tick line. */}
+                  {a.startedAt && a.completedAt && a.completedAt > a.startedAt ? (
+                    <span className="font-semibold flex items-center gap-1 text-status-success">
+                      <Check className="w-3 h-3" /> {t(isMe ? 'xfer.doneIn' : 'xfer.receivedIn', { size: formatBytes(a.size), time: formatElapsed(a.completedAt - a.startedAt) })}
+                    </span>
+                  ) : isMe ? <DeliveryTick delivered={msg.delivered} seen={msg.seen} onBlue /> : msg.source === 'push' ? (
                     <span className="font-semibold flex items-center gap-1"><Terminal className="w-3 h-3" /> Sent from your computer</span>
-                  ) : <span className="font-semibold">Received</span>}
+                  ) : <span className="font-semibold">{t('xfer.receivedShort')}</span>}
                   {a.verified && <span className="flex items-center gap-0.5" title={t('msg.verifiedTitle')}><ShieldCheck className="w-3 h-3" /> {t('msg.verified')}</span>}
                   {/* Original-quality proof: size · exact pixel dimensions ·
                       exact format — read from the bytes that arrived. */}
@@ -685,8 +700,14 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                   </span>
                 </span>
               ) : (
-                <span className={cn("text-[12.5px] font-semibold", a.status === 'failed' ? "text-status-danger" : a.status === 'cancelled' || a.status === 'interrupted' ? "text-apple-ink-muted" : "text-apple-blue")}>
-                  {transferStatusText(a, isMe, t)}
+                <span className={cn("text-[12.5px] font-semibold flex flex-wrap items-center gap-x-1.5", a.status === 'failed' ? "text-status-danger" : a.status === 'cancelled' || a.status === 'interrupted' ? "text-apple-ink-muted" : "text-apple-blue")}>
+                  {/* Who it's talking to, while bytes are moving. */}
+                  {(a.status === 'sending' || a.status === 'receiving') && (session.partnerName || session.deviceName) && (
+                    <span className="text-apple-ink-muted dark:text-white/50 font-medium">
+                      {t(isMe ? 'xfer.to' : 'xfer.from', { name: isMe ? session.partnerName : session.deviceName })} ·
+                    </span>
+                  )}
+                  <span>{transferStatusText(a, isMe, t)}</span>
                 </span>
               )}
             </div>

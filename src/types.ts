@@ -10,6 +10,11 @@ export interface Attachment {
   url?: string; // object URL for preview/download
   status?: 'draft' | 'waiting' | 'preparing' | 'sending' | 'receiving' | 'interrupted' | 'resuming' | 'paused' | 'complete' | 'failed' | 'cancelled' | 'restoring';
   progress?: number;
+  /** Wall-clock moments for the honest transfer story: when bytes actually
+   *  started moving (status left waiting/preparing) and when the transfer
+   *  finished. Powers the "Sent · 2.0 GB in 18 s" summary. */
+  startedAt?: number;
+  completedAt?: number;
   /** SHA-256 hex of the original bytes, computed by the sender before the
    *  transfer. The receiver hashes what arrived and compares — a mismatch is
    *  surfaced as a failed transfer, never a silent corruption. */

@@ -349,6 +349,26 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   // Per-file limits with honest messages: images above 100 MB can't preview
   // in the browser but still arrive as files; anything over 2 GB is rejected
   // up-front instead of failing mid-transfer.
+  // Drop-to-send handoff: files dropped on the idle home screen were parked
+  // here by SingleScreenApp right before the room was created. Consume once,
+  // staged as attachments the moment the composer exists.
+  const pickedUpRef = useRef(false);
+  useEffect(() => {
+    if (pickedUpRef.current) return;
+    const parked = (window as Window & { __stHomeDropFiles?: File[] }).__stHomeDropFiles;
+    if (!parked || parked.length === 0) return;
+    pickedUpRef.current = true;
+    delete (window as Window & { __stHomeDropFiles?: File[] }).__stHomeDropFiles;
+    const first = parked[0];
+    const type = first.type.startsWith('image/')
+      ? 'image'
+      : first.type.startsWith('video/')
+        ? 'video'
+        : first.type.startsWith('audio/')
+          ? 'audio'
+          : 'file';
+    addFiles(parked, type);
+  }, []);
   const addFiles = (files: FileList | File[], type: 'image' | 'file' | 'video' | 'audio') => {
     const list = Array.from(files);
     if (list.length === 0) return;
@@ -664,7 +684,13 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 "w-1.5 h-1.5 rounded-full",
                 disconnected ? "bg-status-warning" : "bg-status-success"
               )} />
-              {disconnected ? t('chat.offline') : t('chat.online')}
+              {/* Trust signal, not jargon: "Direct connection" once ICE
+                  classifies the route — relay stays the plain label. */}
+              {disconnected
+                ? t('chat.offline')
+                : session.connectionType === 'direct' || session.connectionType === 'local'
+                  ? t('chat.directBadge')
+                  : t('chat.online')}
             </span>
           </span>
           <ArrowRightLeft className="hidden sm:block w-3.5 h-3.5 shrink-0 text-apple-ink-muted/50 dark:text-white/30" />
@@ -680,6 +706,11 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 <>
                   <span className="sm:hidden w-1.5 h-1.5 rounded-full bg-status-warning" />
                   {t('chat.disconnected')}
+                </>
+              ) : session.connectionType === 'direct' || session.connectionType === 'local' ? (
+                <>
+                  <span className="sm:hidden w-1.5 h-1.5 rounded-full bg-status-success" />
+                  {t('chat.directBadge')}
                 </>
               ) : (
                 <>
