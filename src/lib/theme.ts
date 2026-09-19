@@ -48,12 +48,24 @@ export function resolveTheme(choice: ThemeChoice): ResolvedTheme {
 
 export function applyTheme(choice: ThemeChoice) {
   const resolved = resolveTheme(choice);
-  document.documentElement.classList.toggle('dark', resolved === 'dark');
+  const root = document.documentElement;
+  // Kill EVERY color transition for one frame: the flip lands in a single
+  // paint (elements that carry `transition-colors`/`transition-motion` would
+  // otherwise sweep through their 160-250ms curves — the reported "laggy"
+  // feel). One rAF for the class change, a second to restore transitions.
+  const style = document.createElement('style');
+  style.id = 'st-theme-flip';
+  style.textContent = '*,*::before,*::after{transition:none!important;animation-duration:0s!important;animation-delay:0s!important}';
+  document.head.appendChild(style);
+  root.classList.toggle('dark', resolved === 'dark');
   // Keep the browser chrome (address bar / status bar) in sync.
   const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   if (meta) {
     meta.content = resolved === 'dark' ? '#131315' : '#f7f4ee';
   }
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => style.remove());
+  });
 }
 
 /**

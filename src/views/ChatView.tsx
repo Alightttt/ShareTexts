@@ -525,6 +525,27 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
       try { textareaRef.current?.setSelectionRange(next.length, next.length); } catch { /* detached */ }
     });
   };
+  // Root-layer handlers: the WHOLE room accepts drops (header, banner,
+  // composer — anywhere the inner list's handlers don't cover). They reuse
+  // the same depth ref: an enter/leave pair crossing both layers stays
+  // balanced, and a drop anywhere calls the identical handleDrop once.
+  const handleRootDragEnter = (e: React.DragEvent) => {
+    if (!e.dataTransfer?.types.includes('Files') && !dragHasText(e)) return;
+    e.preventDefault();
+    dragDepth.current++;
+    setDragOver(true);
+  };
+  const handleRootDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer?.types.includes('Files') || dragHasText(e)) e.preventDefault();
+  };
+  const handleRootDragLeave = (e: React.DragEvent) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDragOver(false);
+  };
+  const handleRootDrop = (e: React.DragEvent) => {
+    handleDrop(e);
+  };
   // Send morph: after a send, the button's arrow becomes a checkmark for a
   // beat (peak-end: the completion moment gets the reward animation), then
   // settles back to the arrow.
@@ -638,6 +659,15 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
       data-app-state="connected"
       className={cn("relative flex flex-col bg-[#f4f2ec] dark:bg-[#0f0f11] font-sans", panelMode === "embedded" ? "h-full" : "h-dvh")}
       style={visualHeight ? { height: `${visualHeight}px` } : undefined}
+      // The WHOLE room is the drop surface: header, messages, composer —
+      // release anywhere. The messages list keeps its own handlers too;
+      // the outer ones catch everything they miss (bubbling makes both
+      // fire for drops inside the list, so depth bookkeeping lives on a
+      // shared ref and stopPropagation keeps the two layers honest).
+      onDragEnter={handleRootDragEnter}
+      onDragOver={handleRootDragOver}
+      onDragLeave={handleRootDragLeave}
+      onDrop={handleRootDrop}
     >
       {/* Transfer flight overlay — the file traveling device-to-device. */}
       <AnimatePresence custom={flight?.exitMode ?? 'fade'} initial={false}>
@@ -1051,8 +1081,10 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           </div>
         )}
       </div>
-      {/* Input Area */}
-      <div className="p-3 sm:p-5 bg-white/80 dark:bg-[#131315]/80 border-t border-black/[0.06] dark:border-white/[0.04] z-10 pb-[env(safe-area-inset-bottom)] relative">
+      {/* Input Area — on phones the composer floats just above the bottom
+          edge (breathing room + safe area) instead of gluing to it, where
+          thumbs and browser chrome crowd it. */}
+      <div className="p-3 sm:p-5 bg-white/80 dark:bg-[#131315]/80 border-t border-black/[0.06] dark:border-white/[0.04] z-10 pb-[max(env(safe-area-inset-bottom),10px)] sm:pb-5 relative">
         <form onSubmit={handleSend} className="max-w-3xl mx-auto flex flex-col gap-2">
           <div className="hidden sm:flex items-center justify-end gap-1.5 text-[11px] font-medium text-apple-ink-muted/70 dark:text-white/40 px-1">
             <kbd className="px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">{t('composer.enter')}</kbd>

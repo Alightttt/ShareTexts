@@ -353,14 +353,15 @@ html.dark .st-skeleton-sweep::after {
   .st-img-fade { opacity: 1; transform: none; transition: none; }
 }
 
-/* Typing caret for the code input — a plain CSS blink. Under reduced
-   motion it holds steady (visible, not animating) instead of vanishing. */
+/* Typing caret for the code input — a smooth, quick fade blink (ease
+   reads alive; the old step-end made 2px vanish/reappear so abruptly the
+   caret looked frozen). Under reduced motion it holds steady instead. */
 .st-caret {
-  animation: st-caret-blink 1.1s step-end infinite;
+  animation: st-caret-blink 0.9s ease-in-out infinite;
 }
 @keyframes st-caret-blink {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  50% { opacity: 0.15; }
 }
 @media (prefers-reduced-motion: reduce) {
   .st-caret { animation: none; }

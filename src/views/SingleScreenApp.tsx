@@ -91,6 +91,25 @@ function useIsDesktopLayout() {
   return desktop;
 }
 
+/** True on touch-primary devices: phones and tablets, where tapping a chip
+ *  is the natural path. The desktop landing drops the fallback chip row —
+ *  the QR modal and link already live in the send flow there, so the chips
+ *  only repeated what the hero buttons offer. */
+function useIsTouchPrimary() {
+  const [touch, setTouch] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+  });
+  useEffect(() => {
+    const mq = window.matchMedia('(hover: none) and (pointer: coarse)');
+    const update = () => setTouch(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  return touch;
+}
+
 
 /* ------------------------------------------------------------------ */
 /*  Main component                                                    */
@@ -99,6 +118,7 @@ export function SingleScreenApp() {
   const { t } = useI18n();
   const { session, createSession, abandonSession, joinWithCode, joinWithShortCode, setDeviceName, rejoinStayRoom } = useSession();
   const isDesktopLayout = useIsDesktopLayout();
+  const isTouchPrimary = useIsTouchPrimary();
   // Live activity tracker — real aggregate numbers from the signaling
   // service: devices seated right now + rooms ever created.
   const { roomsCreated, bumpRoomsCreated } = useLiveStats();
@@ -633,7 +653,7 @@ export function SingleScreenApp() {
                   screen, never two. */}
               <div className="order-6 w-full flex flex-col items-center lg:items-start">
                 <div className="w-full max-w-md lg:max-w-none">
-                  <NearbyDevices onStatus={setNearbyStatus} />
+                  <NearbyDevices onStatus={setNearbyStatus} showFallback={isTouchPrimary} />
                 </div>
               </div>
               {/* The product, as it actually looks — laptop + phone running
@@ -999,8 +1019,11 @@ export function SingleScreenApp() {
         )}
       </AnimatePresence>
       {headerNode}
-      {/* Hero area — flex-1 centers each state's content in the half */}
-      <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 py-3 sm:py-6 min-h-0 overflow-hidden">
+      {/* Hero area — flex-1 centers each state's content in the half.
+          overflow-y-auto: when the viewport is short (small laptop, split
+          screen, 125% zoom) the content scrolls INSIDE the left pane instead
+          of clipping; justify-center only centers when it fits. */}
+      <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 py-3 sm:py-6 min-h-0 overflow-y-auto overscroll-contain room-scroll">
         {heroContent}
       </div>
       {footerNode}

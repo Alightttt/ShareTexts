@@ -67,7 +67,7 @@ function DeviceGlyph({ name }: { name: string }) {
     : <Monitor className="w-4 h-4" aria-hidden />;
 }
 
-export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => void }) {
+export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s: string | null) => void; showFallback?: boolean }) {
   const { t } = useI18n();
   const { session, createSession, joinWithLink } = useSession();
   const idle = !session.roomId;
@@ -147,6 +147,29 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
     }
   }, [phase, onStatus, t]);
 
+  /* --- outgoing AUTO-INVITE ----------------------------------------------
+     Auto-connect until now only auto-ACCEPTED incoming invites — two idle
+     trusted devices would stare at each other forever, each waiting for the
+     other to tap. With the toggle ON, the moment a remembered (previously
+     paired) device appears live, THIS side invites it. Consent holds:
+     strangers always get the sheet; trusted devices have already said yes
+     once, and their side auto-accepts (or auto-invites first — the loser
+     of that race just gets 'declined' and stops). */
+  const autoInvitedRef = useRef<Set<string>>(new Set());
+  // handleInvite is defined below this effect; the ref keeps the auto-invite
+  // effect dependency-clean while always calling the freshest version.
+  const handleInviteRef = useRef<(device: NearbyDevice) => Promise<void>>(async () => {});
+  useEffect(() => {
+    if (!autoOn || phase.kind !== 'idle' || invitation || devices.length === 0) return;
+    const live = recents
+      .map(r => ({ ...r, liveToken: resolveLiveToken(r.name, devices) }))
+      .find(r => r.liveToken && !autoInvitedRef.current.has(r.name));
+    if (!live) return;
+    autoInvitedRef.current.add(live.name);
+    const device = devices.find(d => d.id === live.liveToken);
+    if (device) void handleInviteRef.current(device);
+  }, [autoOn, phase.kind, invitation, devices, recents]);
+
   /* --- incoming invitation ---------------------------------------------- */
   useEffect(() => nearbyPresence.onInvitation(inv => {
     // Trust: a token this device has PAIRED with before skips the sheet.
@@ -185,6 +208,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
     // Delivery ≠ acceptance. If the other device declines/expires, the
     // presence_invite_result listener below resolves the phase to an error.
   }, [t]);
+  handleInviteRef.current = handleInvite;
 
   /* --- the invitee side: accept creates the room ------------------------- */
   const answerInvite = useCallback(async (accepted: boolean, override?: { from: string; name: string }) => {
@@ -414,7 +438,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
           that never depend on the local network. Never shown while devices
           are live. */}
       <AnimatePresence>
-        {waiting && searchExpired && (
+        {waiting && searchExpired && showFallback && (
           <motion.div
             key="nearby-fallback"
             data-testid="nearby-fallback"
@@ -450,9 +474,6 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
               >
                 <Link2 className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /> {t('nearby.shareLink')}
               </button>
-              <span className="flex items-center text-[11px] font-medium text-apple-ink-muted/60 dark:text-white/30 px-1">
-                {t('nearby.useAnotherWay')}
-              </span>
             </div>
             <p className="mt-2 text-[11px] font-medium text-apple-ink-muted/60 dark:text-white/30">{t('nearby.keepOpenHint')}</p>
           </motion.div>
