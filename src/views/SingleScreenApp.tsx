@@ -42,7 +42,7 @@ import { cn, shortCodeOf, sanitizeDeviceName, formatBytes } from '../lib/utils';
 import {
   LogOut, QrCode, Link2, Copy, Check,
   Smartphone, Monitor, X, Wifi, ArrowRightLeft, ArrowLeft, Info, Pencil, WifiOff, ServerOff,
-  Infinity as InfinityIcon, Upload
+  Infinity as InfinityIcon, Upload, RotateCcw
 } from 'lucide-react';
 import { generateTOTP } from '../lib/totp';
 import { useFocusTrap } from '../lib/useFocusTrap';
@@ -116,7 +116,7 @@ function useIsTouchPrimary() {
 /* ------------------------------------------------------------------ */
 export function SingleScreenApp() {
   const { t } = useI18n();
-  const { session, createSession, abandonSession, joinWithCode, joinWithShortCode, setDeviceName, rejoinStayRoom } = useSession();
+  const { session, createSession, abandonSession, joinWithCode, joinWithShortCode, setDeviceName, rejoinStayRoom, requestReconnect } = useSession();
   const isDesktopLayout = useIsDesktopLayout();
   const isTouchPrimary = useIsTouchPrimary();
   // Live activity tracker — real aggregate numbers from the signaling
@@ -229,6 +229,26 @@ export function SingleScreenApp() {
   // right surface — instead of bouncing back to the connecting screen.
   const everConnectedRoomRef = useRef<string | null>(null);
   const everConnectedRef = useRef(false);
+  /* --- stuck-handshake honesty ------------------------------------------- */
+  // A connecting screen that spins forever teaches users the app is broken.
+  // Two thresholds, one message each: 15s "still trying, hang on" (with a
+  // creator-side retry), 40s "the other device may have left" (the truth).
+  const [stuckConnecting, setStuckConnecting] = useState(false);
+  const [longStuckConnecting, setLongStuckConnecting] = useState(false);
+  // Creator-side retry: re-seat the session and re-offer. The joiner side has
+  // no such button — its only honest exit is cancel + fresh code, because
+  // the joiner cannot re-offer (only the initiator can).
+  const handleStuckRetry = useCallback(() => { void requestReconnect(); }, [requestReconnect]);
+  useEffect(() => {
+    if (panelMode !== 'connecting') {
+      setStuckConnecting(false);
+      setLongStuckConnecting(false);
+      return;
+    }
+    const t1 = setTimeout(() => setStuckConnecting(true), 15_000);
+    const t2 = setTimeout(() => setLongStuckConnecting(true), 40_000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [panelMode, session.roomId, session.partnerConnecting]);
   /* --- panel mode sync --- */
   useEffect(() => {
     if (session.roomId !== everConnectedRoomRef.current) {
@@ -801,6 +821,26 @@ export function SingleScreenApp() {
                     → locked link, staged exactly like the transfer that
                     follows. Works identically on mobile and desktop. */}
                 <ConnectHandshake phase="connecting" localIcon={isMobileDevice ? 'phone' : 'monitor'} />
+                {/* Honest escalation, never an infinite spinner: at 15s the
+                    link is slow (say so + offer retry); at 40s the other
+                    device most likely left (say THAT, and hand back cleanly).
+                    Psychology: uncertainty is the pain — naming the likely
+                    cause with an action beats a spinner that outlives hope. */}
+                {stuckConnecting ? (
+                  <div className="mt-5 flex flex-col items-center gap-3">
+                    <p className="text-[13.5px] font-medium text-apple-ink-muted dark:text-white/55 max-w-[280px] leading-relaxed">
+                      {longStuckConnecting ? t('connect.stuckLong') : t('connect.stuck')}
+                    </p>
+                    {!longStuckConnecting && session.isCreator && (
+                      <button
+                        onClick={handleStuckRetry}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 rounded-full text-[13px] font-semibold text-apple-ink dark:text-white min-h-[40px] active:scale-[0.97] transition-colors"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" /> {t('common.tryAgain')}
+                      </button>
+                    )}
+                  </div>
+                ) : null}
                 {/* Escape hatch: the creator returns to their pairing screen
                     (the room stays open); the joiner abandons and can enter a
                     fresh code. Never a trap. */}
@@ -1208,7 +1248,11 @@ export function SingleScreenApp() {
               <div className="relative isolate flex flex-1 flex-col bg-apple-canvas dark:bg-[#131315]">
                 {ambientGlow}
                 {headerNode}
-                <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 py-4 sm:py-6 min-h-0">
+                {/* TOP-ANCHORED like the desktop pane: justify-center with
+                    overflowing content pushes the heading into dead space
+                    above (and clips it) — start-anchoring keeps the title
+                    right under the header on every phone height. */}
+                <div className="flex-1 flex flex-col justify-start px-6 lg:px-10 pt-3 sm:pt-6 pb-6 min-h-0">
                   {heroContent}
                 </div>
               </div>

@@ -157,7 +157,9 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
           maxHeight: TRACK_H,
           flex: '0 0 auto',
           borderRadius: RADIUS_TRACK,
-          backgroundColor: isDark ? GREEN_ON : GRAY_OFF,
+          // OFF in light mode uses a visibly darker track than the white
+          // thumb — the old #e9e9ea vanished against parchment cards.
+          backgroundColor: isDark ? GREEN_ON : GRAY_OFF_DARK,
           transition: 'background-color 250ms cubic-bezier(0.23, 1, 0.32, 1)',
         }}
       >

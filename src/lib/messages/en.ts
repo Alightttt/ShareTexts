@@ -49,6 +49,9 @@ const en = {
   'receive.hint': 'Type the six-digit code from the other screen.',
   'receive.scan': 'Scan QR code',
   'receive.note': 'Codes refresh every 30 seconds. If yours stops working, ask for a new one.',
+  'connect.stuck': "Still linking — the other device is slow to respond.",
+  'connect.stuckLong': "This is taking unusually long. The other device may have closed ShareText — cancel and try a fresh code.",
+  'common.tryAgain': "Try again",
 
   // ── connected summary / device pair ────────────────────────────────
   'common.connected': 'Connected',
@@ -114,7 +117,7 @@ const en = {
   'room.receiveHint': 'Enter the code from the other device.',
   'room.step.1': 'Open ShareText on both devices.',
   'room.step.2': 'Tap Send on one, Receive on the other.',
-  'room.step.3': 'Connect both and you good to go.',
+  'room.step.3': 'Connect both — and you\'re good to go.',
 
   // ── QR overlays ────────────────────────────────────────────────────
   'qr.close': 'Close',
@@ -188,6 +191,7 @@ const en = {
   'attach.files': 'Files',
   'attach.filesHint': 'Choose any file',
   'composer.placeholder': 'Drop anything — text, link, photo, file…',
+  'composer.placeholderShort': "Message, file, link…",
   'composer.aria': 'Message',
   'composer.title': 'Enter to send · Shift+Enter for a new line',
   'composer.enter': 'Enter',

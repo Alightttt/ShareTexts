@@ -397,10 +397,30 @@ export class PeerManager {
     return this.cryptoPromise;
   }
 
+  /**
+   * Manual re-offer for the stuck-handshake UI: tears down and re-runs the
+   * whole offer cycle exactly like the automatic retry, resetting the retry
+   * budget so a user-timed retry gets a fresh set of attempts. No-op when
+   * the channel is already open (the button only shows while stuck).
+   */
+  public retryConnection(): void {
+    if (this.destroyed || !this.peerId) return;
+    if (this.dc && this.dc.readyState === 'open') return;
+    if (this.retryTimer) { clearInterval(this.retryTimer); this.retryTimer = null; }
+    diag('webrtc.retry_manual', true);
+    this.teardownPeerConnection();
+    this.startOfferCycle();
+  }
+
   public initiateConnection(peerId: string) {
     if (this.destroyed) return;
     this.peerId = peerId;
     diag('webrtc.initiate', true, `to ${(peerId || '').slice(0, 8)}`);
+    this.startOfferCycle();
+  }
+
+  /** Shared offer + bounded auto-retry loop (used by initiate and manual retry). */
+  private startOfferCycle() {
     this.createPeerConnection();
     this.dc = this.pc!.createDataChannel('chat', { negotiated: false });
     this.setupDataChannel(this.dc);
@@ -426,12 +446,18 @@ export class PeerManager {
         return;
       }
       this.teardownPeerConnection();
-      this.createPeerConnection();
-      this.dc = this.pc!.createDataChannel('chat', { negotiated: false });
-      this.setupDataChannel(this.dc);
-      this.openControlChannel();
-      this.sendOffer();
+      this.startOfferCycleBody();
     }, OFFER_RETRY_DELAY);
+  }
+
+  /** Rebuild the peer connection + data channel and send a fresh offer
+   *  (shared body of the automatic retry). */
+  private startOfferCycleBody() {
+    this.createPeerConnection();
+    this.dc = this.pc!.createDataChannel('chat', { negotiated: false });
+    this.setupDataChannel(this.dc);
+    this.openControlChannel();
+    this.sendOffer();
   }
 
   private teardownPeerConnection() {
