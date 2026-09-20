@@ -114,10 +114,13 @@ export class CloudflareSocket implements SignalingSocket {
       this.lobbyWs = null;
       this.lobbyOpening = null;
       try { lobby.close(); } catch { /* noop */ }
-      // Presence listeners treat 'connect' as "announce again" — fire it so
-      // the re-dial happens now, not on the next heartbeat.
-      this.emitLocal('connect');
     }
+    // Presence listeners treat 'connect' as "announce again" — fire it
+    // UNCONDITIONALLY: the common case is a lobby that already FAILED against
+    // the stale worker (no lobbyWs to close), and without this nudge nothing
+    // re-dials until the next keepalive. In a room, presence is detached, so
+    // the extra event is inert.
+    this.emitLocal('connect');
   }
 
   private loadRoomCids(): Record<string, string> {
