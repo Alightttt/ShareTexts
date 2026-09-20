@@ -92,6 +92,34 @@ export class CloudflareSocket implements SignalingSocket {
 
   private _onVisibility: (() => void) | null = null;
 
+  /**
+   * Point the transport at a different signaling worker — the boot probe's
+   * verdict when the baked-in URL turns out stale (older deploy, missing
+   * protocol features). Bases are swapped immediately; every FUTURE dial
+   * (room opens, lobby opens, reconnects) re-reads them, so nothing else
+   * needs to know. A live lobby socket is dropped so the presence layer's
+   * 'connect' re-announce re-dials against the new base; an OPEN ROOM
+   * socket is left alone — a live transfer outlives the probe, and its
+   * next reconnect lands on the new base anyway.
+   */
+  retarget(endpoint: string): void {
+    const normalized = endpoint.replace(/\/+$/, '').replace(/\/ws$/i, '');
+    const wsBase = normalized.replace(/^http/, 'ws') + '/ws';
+    if (wsBase === this.wsBase) return;
+    this.wsBase = wsBase;
+    this.httpBase = normalized.replace(/^ws/, 'http');
+    devLog('CloudflareSocket: retargeted to', this.httpBase);
+    const lobby = this.lobbyWs;
+    if (lobby && lobby.readyState !== WebSocket.CLOSED && lobby.readyState !== WebSocket.CLOSING) {
+      this.lobbyWs = null;
+      this.lobbyOpening = null;
+      try { lobby.close(); } catch { /* noop */ }
+      // Presence listeners treat 'connect' as "announce again" — fire it so
+      // the re-dial happens now, not on the next heartbeat.
+      this.emitLocal('connect');
+    }
+  }
+
   private loadRoomCids(): Record<string, string> {
     try {
       const raw = localStorage.getItem('sharetext.roomCids');

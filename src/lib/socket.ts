@@ -16,6 +16,9 @@ export interface SignalingSocket {
   once(event: string, listener: (...args: any[]) => void): unknown;
   off(event: string, listener?: (...args: any[]) => void): unknown;
   emit(event: string, ...args: any[]): unknown;
+  /** Boot-probe redirect: point the live transport at the current worker.
+   *  Only the Cloudflare transport implements it. */
+  retarget?(endpoint: string): void;
 }
 
 const isProd = !import.meta.env.DEV;
@@ -75,6 +78,11 @@ async function selectBestCloudflareBase(): Promise<void> {
     activeCfBase = candidates[idx];
     console.warn('[ShareText] signaling worker redirect:', bakedBase, '→', activeCfBase);
     diag('transport.redirect', true, `${bakedBase} -> ${activeCfBase}`);
+    // The probe can lose the race against the first getSocket() call (the
+    // lobby mounts on page load). If the singleton already exists — and it
+    // is dialing the stale worker — retarget it NOW so the lobby re-dials
+    // against the current worker and the stats tracker follows.
+    if (activeCfBase) instance?.retarget?.(activeCfBase);
   } else {
     // Baked worker is current (or nothing answered — keep the baked URL;
     // the ordinary connect-time error paths handle that honestly).
@@ -149,7 +157,10 @@ export function signalingTransportMode(): 'cloudflare' | 'socketio' {
  */
 export function pushEndpoint(): string | null {
   if (mode === 'cloudflare' && url) {
-    return url.replace(/\/+$/, '').replace(/\/ws$/i, '') + '/api/push';
+    // Honor the boot-probe redirect: a curl against the stale worker would
+    // 404 on new endpoints.
+    const base = signalingHttpBase();
+    return (base ?? url).replace(/\/+$/, '').replace(/\/ws$/i, '') + '/api/push';
   }
   if (typeof window === 'undefined') return null;
   return window.location.origin + '/api/push';
@@ -282,7 +293,10 @@ export async function resolveShortCode(
 ): Promise<{ success: boolean; roomId?: string; secret?: string; createdAt?: number }> {
   const normalized = code.toLowerCase().trim();
   if (mode === 'cloudflare' && url) {
-    const httpBase = url.replace(/\/+$/, '').replace(/\/ws$/i, '').replace(/^ws/, 'http');
+    // Route through signalingHttpBase() so a boot-probe redirect is honored
+    // — code/QR joins must reach the SAME worker the transport uses.
+    const httpBase = signalingHttpBase();
+    if (!httpBase) return { success: false };
     try {
       const res = await fetch(httpBase + '/resolve-short', {
         method: 'POST',
