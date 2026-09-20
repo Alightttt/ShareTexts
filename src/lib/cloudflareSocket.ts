@@ -53,7 +53,7 @@ export class CloudflareSocket implements SignalingSocket {
   private reconnectAttempts = 0;
   private stopped = false;
 
-  constructor(endpoint: string) {
+  constructor(endpoint: string, private onRepeatedLobbyFailure?: () => void) {
     const normalized = endpoint.replace(/\/+$/, '').replace(/\/ws$/i, '');
     this.wsBase = normalized.replace(/^http/, 'ws') + '/ws';
     this.httpBase = normalized.replace(/^ws/, 'http');
@@ -524,6 +524,7 @@ export class CloudflareSocket implements SignalingSocket {
 
   private lobbyWs: WebSocket | null = null;
   private lobbyOpening: Promise<WebSocket> | null = null;
+  private lobbyFailures = 0;
 
   /**
    * One request/response over the lobby WebSocket. Opens the lobby lazily and
@@ -562,6 +563,7 @@ export class CloudflareSocket implements SignalingSocket {
       ws.onopen = () => {
         if (timer) { clearTimeout(timer); timer = null; }
         this.lobbyWs = ws;
+        this.lobbyFailures = 0;
         settled = true;
         resolve(ws);
       };
@@ -571,7 +573,18 @@ export class CloudflareSocket implements SignalingSocket {
       ws.onclose = () => {
         if (timer) { clearTimeout(timer); timer = null; }
         if (this.lobbyWs === ws) this.lobbyWs = null;
-        if (!settled) { settled = true; reject(new Error('lobby closed')); }
+        if (!settled) {
+          settled = true;
+          reject(new Error('lobby closed'));
+          // A lobby that won't open is the transport's own health signal: two
+          // consecutive failures mean the dialed worker is down/stale — tell
+          // socket.ts to re-probe the endpoints and retarget if one is better.
+          this.lobbyFailures++;
+          if (this.lobbyFailures >= 2) {
+            this.lobbyFailures = 0;
+            try { this.onRepeatedLobbyFailure?.(); } catch { /* noop */ }
+          }
+        }
         // Presence listeners treat a socket drop as "device list gone" and a
         // subsequent 'connect' as "announce again" — mirror that only when no
         // room socket is live (in a room, presence is already stopped).

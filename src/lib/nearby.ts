@@ -140,6 +140,7 @@ export class NearbyPresence {
   /** Leave the pool (state moved into a room / component unmounted). */
   stop(socket: SignalingSocket): void {
     this.clearTimer();
+    if (this.retryTimer) { clearTimeout(this.retryTimer); this.retryTimer = null; }
     try { socket.emit('presence_withdraw'); } catch { /* best effort */ }
     this.detach();
     this.devices = [];
@@ -260,6 +261,22 @@ export class NearbyPresence {
     if (this.timer) { clearInterval(this.timer); this.timer = null; }
   }
 
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private announceRetries = 0;
+  /** Quick bounded retry after a failed announce (transport couldn't dial
+   *  the lobby). 3s→6s→12s→15s cap; resets on success. This is what turns a
+   *  stale-worker boot into a self-heal in seconds instead of waiting for
+   *  the 45s keepalive. */
+  private scheduleAnnounceRetry(): void {
+    if (this.retryTimer) return;
+    const delay = Math.min(3000 * 2 ** this.announceRetries, 15000);
+    this.announceRetries++;
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      if (this.socket && !isPresenceHidden()) void this.announce();
+    }, delay);
+  }
+
   private scheduleKeepalive(): void {
     this.clearTimer();
     this.timer = setInterval(() => { if (!this.unsupported) void this.announce(); }, ANNOUNCE_INTERVAL_MS);
@@ -287,6 +304,7 @@ export class NearbyPresence {
               diag('presence.announce', true);
               devLog('presence announced');
             }
+            this.announceRetries = 0;
             this.selfToken = res.token;
             // A list broadcast may have raced ahead of this ack — filter it now.
             if (this.pendingList) {
@@ -296,9 +314,14 @@ export class NearbyPresence {
             }
             this.scheduleKeepalive();
           } else if (!res?.success) {
-            // e.g. "In a room" — drop out of the pool quietly.
+            // Server answered: "In a room" etc. — drop out of the pool
+            // quietly. UNREACHABLE is different: the LOBBY DIAL itself failed
+            // (stale/down worker). Retry quickly with backoff — two dial
+            // failures also trip the transport's health callback, which
+            // re-probes the endpoints and retargets to a live worker.
             this.selfToken = null;
-            this.clearTimer();
+            if ((res as { code?: string })?.code === 'UNREACHABLE') this.scheduleAnnounceRetry();
+            else this.clearTimer();
           }
           resolve();
         });

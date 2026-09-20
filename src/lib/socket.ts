@@ -33,9 +33,11 @@ const CF_FALLBACKS = [
 
 /**
  * Fetch the CURRENT worker's /stats — a cheap, CORS-enabled, version-bearing
- * liveness+capability check. Resolves null when unreachable/blocked.
+ * liveness+capability check. Resolves null when unreachable/blocked. The
+ * budget is generous (3.5s): on a weak network even a health probe can take
+ * seconds, and aborting early means falsely keeping a stale worker.
  */
-async function probeWorker(base: string, timeoutMs = 2500): Promise<{ users?: number; roomsCreated?: number } | null> {
+async function probeWorker(base: string, timeoutMs = 3500): Promise<{ users?: number; roomsCreated?: number } | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -75,7 +77,13 @@ async function selectBestCloudflareBase(): Promise<void> {
   // NB: map(base => probeWorker(base)) — passing probeWorker directly would
   // feed the array INDEX into the timeoutMs parameter (0ms, 1ms), aborting
   // every probe before the request even leaves the page.
-  const results = await Promise.all(candidates.map((b) => probeWorker(b)));
+  let results = await Promise.all(candidates.map((b) => probeWorker(b)));
+  // A weak network can starve even a 3.5s probe (cold DNS, TLS handshakes).
+  // One second round for the candidates that answered null before declaring
+  // the baked worker current — a false "current" costs weeks of breakage.
+  if (!results.some(r => r && typeof r.roomsCreated === 'number')) {
+    results = await Promise.all(candidates.map((b) => probeWorker(b)));
+  }
   const idx = results.findIndex(r => r && typeof r.roomsCreated === 'number');
   if (idx > 0) {
     activeCfBase = candidates[idx];
@@ -94,9 +102,26 @@ async function selectBestCloudflareBase(): Promise<void> {
 }
 
 /** Kick the boot probe once, from the first getSocket() call. Idempotent. */
+let bootProbeDone = false;
 function ensureEndpointSelected(): void {
-  if (mode !== 'cloudflare' || redirectPromise) return;
+  if (mode !== 'cloudflare' || bootProbeDone) return;
+  bootProbeDone = true;
   redirectPromise = selectBestCloudflareBase();
+}
+
+let lastProbeKick = 0;
+/**
+ * Re-run the endpoint probe when the transport itself reports the worker
+ * unhealthy (repeated lobby/room dial failures). The boot probe can lose a
+ * slow network; the failures are the evidence, so listen to them. Throttled
+ * to one kick per 30s so a flaky network can't loop.
+ */
+export function kickEndpointProbe(): void {
+  if (mode !== 'cloudflare' || !url || redirectPromise) return;
+  const now = Date.now();
+  if (now - lastProbeKick < 30_000) return;
+  lastProbeKick = now;
+  redirectPromise = selectBestCloudflareBase().finally(() => { redirectPromise = null; });
 }
 
 /**
@@ -239,7 +264,7 @@ export function getSocket(): SignalingSocket {
     const endpoint = activeCfBase ?? url;
     instance =
       mode === 'cloudflare'
-        ? new CloudflareSocket(endpoint!)
+        ? new CloudflareSocket(endpoint!, () => kickEndpointProbe())
         : io(url, {
             // WebSocket first (fastest), polling as automatic fallback. A
             // websocket-only transport dies permanently behind proxies that
