@@ -260,13 +260,13 @@ const hi: Dict = {
   'stay.hint': 'यह कमरा तब तक चालू रहेगी जब तक आप खुद इसे बंद न करें।',
   'stay.badge': 'यह कमरा जुड़ी रहेगी',
   'stay.rejoinTitle': 'अपने कमरे में वापस जाएँ',
-  'stay.rejoinHint': 'आपका जुड़ा हुआ कमरा इतिहास सहित इंतज़ार कर रहा है।',
+  'stay.rejoinHint': "आपका आखिरी रूम इंतज़ार कर रहा है — आपके हिस्ट्री के साथ।",
   'stay.rejoining': 'दोबारा जुड़ रहे हैं…',
 
   // ── nearby device discovery ───────────────────────────────────────
   'nearby.hint': 'दूसरे डिवाइस पर ShareTexts खोलें',
   "nearby.autoTitle": "ऑटो-कनेक्ट",
-  "nearby.autoHint": "पास के डिवाइस के टैप करने पर अपने आप जुड़ जाए",
+  "nearby.autoHint": "आस-पास का डिवाइस दिखते ही अपने आप कनेक्ट हो जाए",
   'nearby.sectionTitle': 'नज़दीकी डिवाइस',
 
   'nearby.countOne': "नज़दीक · 1 डिवाइस",

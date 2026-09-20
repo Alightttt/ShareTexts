@@ -651,7 +651,9 @@ export function SingleScreenApp() {
                   searching row says "Looking for nearby devices…" in the
                   same words, right where the action is. One instruction on
                   screen, never two. */}
-              <div className="order-6 w-full flex flex-col items-center lg:items-start">
+              {/* mt-8: real air between the hero image (or the rejoin card)
+                  and the nearby section — they were touching on mobile. */}
+              <div className="order-6 mt-8 w-full flex flex-col items-center lg:items-start">
                 <div className="w-full max-w-md lg:max-w-none">
                   <NearbyDevices onStatus={setNearbyStatus} showFallback={isTouchPrimary} />
                 </div>
@@ -662,8 +664,11 @@ export function SingleScreenApp() {
                   the same scene in the room pane, so hide it here. */}
               {/* Mobile: sized to sit INSIDE the column borders — slightly
                   narrower than the text above so nothing touches the edges.
-                  order-5 keeps it last inside this ordered flex column. */}
-              <div className="order-5 lg:hidden mt-4 sm:mt-8 -mb-4 flex justify-center">
+                  order-5 keeps it last inside this ordered flex column. The
+                  bottom margin (not the old negative one) keeps clear air
+                  between the image and the "Open ShareTexts in another
+                  device" row that follows. */}
+              <div className="order-5 lg:hidden mt-4 sm:mt-8 mb-5 flex justify-center">
                 <div className="w-full max-w-[340px] px-1">
                   <HeroTransferScene />
                 </div>
@@ -1019,11 +1024,13 @@ export function SingleScreenApp() {
         )}
       </AnimatePresence>
       {headerNode}
-      {/* Hero area — flex-1 centers each state's content in the half.
-          overflow-y-auto: when the viewport is short (small laptop, split
-          screen, 125% zoom) the content scrolls INSIDE the left pane instead
-          of clipping; justify-center only centers when it fits. */}
-      <div className="flex-1 flex flex-col justify-center px-6 lg:px-10 py-3 sm:py-6 min-h-0 overflow-y-auto overscroll-contain room-scroll">
+      {/* Hero area — TOP-ANCHORED. As the landing grew (tracker, rejoin,
+          nearby), justify-center kept pushing the heading upward to squeeze
+          everything in — the title visibly "climbed". Anchoring the block
+          under the header with real breathing room keeps the heading where
+          it belongs no matter how much content follows; the pane scrolls
+          when a viewport is genuinely short. */}
+      <div className="flex-1 flex flex-col justify-start px-6 lg:px-10 pt-3 sm:pt-6 lg:pt-12 pb-6 min-h-0 overflow-y-auto overscroll-contain room-scroll">
         {heroContent}
       </div>
       {footerNode}

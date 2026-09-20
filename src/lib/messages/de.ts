@@ -261,13 +261,13 @@ const de: Dict = {
   'stay.hint': 'Hält diesen Raum offen, bis du ihn selbst trennst.',
   'stay.badge': 'Dieser Raum bleibt verbunden',
   'stay.rejoinTitle': 'Zurück in deinen Raum',
-  'stay.rejoinHint': 'Dein dauerhaft verbundener Raum wartet – samt Verlauf.',
+  'stay.rejoinHint': "Dein letzter Raum wartet – mit deinem Verlauf.",
   'stay.rejoining': 'Verbinde erneut…',
 
   // ── nearby device discovery ───────────────────────────────────────
   'nearby.hint': 'Öffne ShareTexts auf einem anderen Gerät',
   "nearby.autoTitle": "Auto-Verbinden",
-  "nearby.autoHint": "Verbindet automatisch, wenn ein Gerät in der Nähe dich antippt",
+  "nearby.autoHint": "Automatisch verbinden, sobald ein Gerät in der Nähe erscheint",
   'nearby.sectionTitle': 'Geräte in der Nähe',
 
   'nearby.countOne': "In der Nähe · 1 Gerät",

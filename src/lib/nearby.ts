@@ -323,6 +323,13 @@ export class NearbyPresence {
     return !this.unsupported;
   }
 
+  /** This device's presence token (null before the announce ack, or when
+   *  hidden/withdrawn). The auto-connect tiebreak compares tokens to pick
+   *  exactly one inviter out of a mutual-invite race. */
+  getSelfToken(): string | null {
+    return this.selfToken;
+  }
+
   private emit(): void {
     for (const fn of this.listeners) fn(this.devices, this.selfToken);
   }

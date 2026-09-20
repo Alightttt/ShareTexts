@@ -260,13 +260,13 @@ const ja: Dict = {
   'stay.hint': '自分で切断するまで、このルームは生きたままです。',
   'stay.badge': 'このルームは接続を維持します',
   'stay.rejoinTitle': 'ルームに戻る',
-  'stay.rejoinHint': '履歴ごと、維持中のルームが待っています。',
+  'stay.rejoinHint': "前回のルームが履歴とともに待っています。",
   'stay.rejoining': '再接続中…',
 
   // ── nearby device discovery ───────────────────────────────────────
   'nearby.hint': '別のデバイスでShareTextsを開く',
   "nearby.autoTitle": "自動接続",
-  "nearby.autoHint": "近くのデバイスがタップすると自動で接続します",
+  "nearby.autoHint": "近くのデバイスが見つかると自動的に接続します",
   'nearby.sectionTitle': '近くのデバイス',
 
   'nearby.countOne': "付近 · 1台",

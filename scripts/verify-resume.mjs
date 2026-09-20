@@ -16,7 +16,7 @@ const B = await ctxB.newPage();
 let errors = 0;
 for (const p of [A, B]) p.on('pageerror', () => errors++);
 
-await A.goto('http://localhost:3010', { waitUntil: 'domcontentloaded' });
+await A.goto(process.env.URL || 'http://localhost:3010', { waitUntil: 'domcontentloaded' });
 await A.waitForTimeout(2000);
 await A.getByRole('group', { name: 'Pairing code' }).waitFor({ timeout: 10000 }).catch(async () => {
   await A.locator('button', { hasText: 'Send' }).first().click();
@@ -24,7 +24,7 @@ await A.getByRole('group', { name: 'Pairing code' }).waitFor({ timeout: 10000 })
 const code = await readLiveCode(A);
 console.log('code:', code);
 
-await B.goto('http://localhost:3010', { waitUntil: 'domcontentloaded' });
+await B.goto(process.env.URL || 'http://localhost:3010', { waitUntil: 'domcontentloaded' });
 await B.locator('button', { hasText: 'Receive' }).first().click();
 await sleep(500);
 await B.locator('input[inputmode="numeric"]').first().fill(code);

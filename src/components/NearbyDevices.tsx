@@ -198,27 +198,48 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
   }, [phase, onStatus, t]);
 
   /* --- outgoing AUTO-INVITE ----------------------------------------------
-     Auto-connect until now only auto-ACCEPTED incoming invites — two idle
-     trusted devices would stare at each other forever, each waiting for the
-     other to tap. With the toggle ON, the moment a remembered (previously
-     paired) device appears live, THIS side invites it. Consent holds:
-     strangers always get the sheet; trusted devices have already said yes
-     once, and their side auto-accepts (or auto-invites first — the loser
-     of that race just gets 'declined' and stops). */
+     Auto-connect is two-way: with the toggle ON, this device (a) auto-accepts
+     incoming invites (see the incoming handler) and (b) auto-INVITES devices
+     that appear nearby — otherwise two idle opted-in devices would stare at
+     each other forever, each waiting for the other to tap. Any nearby device
+     qualifies (both sides opted in, so consent holds), not just previously
+     paired ones. Guards: one invite at a time, a per-device cooldown so a
+     declined/expired target isn't spammed, and 'once' marks stop repeats
+     after a failure. The loser of a mutual auto-invite race just gets
+     'declined' (the winner seated us) and stops. */
   const autoInvitedRef = useRef<Set<string>>(new Set());
+  const autoCooldownRef = useRef<Map<string, number>>(new Map());
+  const AUTO_COOLDOWN_MS = 45_000;
   // handleInvite is defined below this effect; the ref keeps the auto-invite
   // effect dependency-clean while always calling the freshest version.
   const handleInviteRef = useRef<(device: NearbyDevice) => Promise<void>>(async () => {});
   useEffect(() => {
     if (!autoOn || phase.kind !== 'idle' || invitation || devices.length === 0) return;
-    const live = recents
-      .map(r => ({ ...r, liveToken: resolveLiveToken(r.name, devices) }))
-      .find(r => r.liveToken && !autoInvitedRef.current.has(r.name));
-    if (!live) return;
-    autoInvitedRef.current.add(live.name);
-    const device = devices.find(d => d.id === live.liveToken);
-    if (device) void handleInviteRef.current(device);
-  }, [autoOn, phase.kind, invitation, devices, recents]);
+    // Mutual-invite tiebreak: if the other opted-in device would invite us
+    // too, both sides compare tokens and only the deterministic winner
+    // actually invites (the loser waits to be invited). Without this, both
+    // sides create rooms and the invitees end up in crossed rooms.
+    const self = nearbyPresence.getSelfToken();
+    const iShouldLead = (theirToken: string) => !self || self < theirToken;
+    const now = Date.now();
+    const target = devices.find(d =>
+      !autoInvitedRef.current.has(d.id) &&
+      (autoCooldownRef.current.get(d.id) ?? 0) < now &&
+      iShouldLead(d.id)
+    );
+    if (!target) return;
+    autoInvitedRef.current.add(target.id);
+    void handleInviteRef.current(target).then((ok) => {
+      if (ok) {
+        // Seated (or connecting) — no retry needed.
+        autoCooldownRef.current.delete(target.id);
+      } else {
+        // Declined/expired/gone: allow a later retry, but not a flurry.
+        autoInvitedRef.current.delete(target.id);
+        autoCooldownRef.current.set(target.id, Date.now() + AUTO_COOLDOWN_MS);
+      }
+    });
+  }, [autoOn, phase.kind, invitation, devices]);
 
   /* --- incoming invitation ---------------------------------------------- */
   useEffect(() => nearbyPresence.onInvitation(inv => {
@@ -239,7 +260,7 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
   }), [autoOn, invitation]);
 
   /* --- outgoing invite --------------------------------------------------- */
-  const handleInvite = useCallback(async (device: NearbyDevice) => {
+  const handleInvite = useCallback(async (device: NearbyDevice): Promise<boolean> => {
     hapticTap();
     setPhase({ kind: 'inviting', device });
     setFailedDevice(null);
@@ -250,10 +271,11 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
       // Named failure + the two honest ways out (retry / QR).
       setFailedDevice(device);
       setPhase({ kind: 'error', text: t('nearby.failTitle', { name: device.name }) });
-      return;
+      return false;
     }
     // Delivery ≠ acceptance. If the other device declines/expires, the
     // presence_invite_result listener below resolves the phase to an error.
+    return true;
   }, [t]);
   handleInviteRef.current = handleInvite;
 

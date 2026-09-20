@@ -260,13 +260,13 @@ const zh: Dict = {
   'stay.hint': '在自己主动断开之前，此房间将一直保持可用。',
   'stay.badge': '此房间将保持连接',
   'stay.rejoinTitle': '回到你的房间',
-  'stay.rejoinHint': '你的常连房间正在等待，历史记录都在。',
+  'stay.rejoinHint': "你的上一个房间正在等待——保留历史记录。",
   'stay.rejoining': '正在重新连接…',
 
   // ── nearby device discovery ───────────────────────────────────────
   'nearby.hint': '在另一台设备上打开 ShareTexts',
   "nearby.autoTitle": "自动连接",
-  "nearby.autoHint": "附近的设备点你时自动连接",
+  "nearby.autoHint": "附近设备出现时自动连接",
   'nearby.sectionTitle': '附近的设备',
 
   'nearby.countOne': "附近 · 1 台设备",

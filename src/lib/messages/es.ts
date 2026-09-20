@@ -261,13 +261,13 @@ const es: Dict = {
   'stay.hint': 'Mantiene esta sala activa hasta que tú la desconectes.',
   'stay.badge': 'Esta sala permanecerá conectada',
   'stay.rejoinTitle': 'Volver a tu sala',
-  'stay.rejoinHint': 'Tu sala con conexión permanente te espera, con tu historial.',
+  'stay.rejoinHint': "Tu última sala te espera, con tu historial.",
   'stay.rejoining': 'Reconectando…',
 
   // ── nearby device discovery ───────────────────────────────────────
   'nearby.hint': 'Abre ShareTexts en otro dispositivo',
   "nearby.autoTitle": "Conexión automática",
-  "nearby.autoHint": "Se conecta solo cuando un dispositivo cercano te toca",
+  "nearby.autoHint": "Conéctate automáticamente cuando aparezca un dispositivo cercano",
   'nearby.sectionTitle': 'Dispositivos cercanos',
 
   'nearby.countOne': "Cerca · 1 dispositivo",

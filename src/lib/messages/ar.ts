@@ -260,13 +260,13 @@ const ar: Dict = {
   'stay.hint': 'تبقى هذه الغرفة حية حتى تقوم أنت بقطعها.',
   'stay.badge': 'ستبقى هذه الغرفة متصلة',
   'stay.rejoinTitle': 'العودة إلى غرفتك',
-  'stay.rejoinHint': 'غرفتك دائمة الاتصال بانتظارك، مع سجلّك.',
+  'stay.rejoinHint': "غرفتك الأخيرة في الانتظار — مع سجلّك.",
   'stay.rejoining': 'جارٍ إعادة الاتصال…',
 
   // ── nearby device discovery ───────────────────────────────────────
   'nearby.hint': 'افتح ShareTexts على جهاز آخر',
   "nearby.autoTitle": "اتصال تلقائي",
-  "nearby.autoHint": "يتصل تلقائيًا عند لمس جهاز قريب لك",
+  "nearby.autoHint": "اتصال تلقائي عند ظهور جهاز قريب",
   'nearby.sectionTitle': 'الأجهزة القريبة',
 
   'nearby.countOne': "قريب · جهاز واحد",

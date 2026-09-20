@@ -442,10 +442,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         stayConnected: session.stayConnected,
         messages: sanitizeStoredMessages(session.messages.slice(-100))
       };
-      // While the Stay Connected promise is live, mirror the latest history
-      // into the last-stay record: resetSession will clear the main stored
-      // session on disconnect, and this snapshot is what re-entry restores.
-      if (session.stayConnected) {
+      // The last-room credential is remembered for EVERY seated room, not
+      // only Stay Connected ones — the landing page's rejoin card must be
+      // there for any session that ended without an explicit close (refresh,
+      // tab close, crash), or mobile users never see it. Rooms closed with
+      // the button or ended via room_closed drop the record instead.
+      {
         saveLastStayCredentials(session.roomId, session.secret);
         const stay = loadLastStayRoom();
         if (stay) saveLastStayRoom({ ...stay, messages: payload.messages });
@@ -1963,9 +1965,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
     diag('stay.rejoin', !!res.success, res.success ? 'ok' : (res.error || 'fail'));
     if (!res.success) {
-      // The room truly died (other device closed it) — stop offering re-entry.
-      saveLastStayRoom(null);
-      setSession(s => ({ ...s, lastStayRoom: null }));
+      // Only a definitive "room gone / bad secret" clears the re-entry card;
+      // a timeout or unreachable network is transient — the card must survive
+      // so the user can retry from a better connection.
+      if (/not.?found|expired|invalid|denied|secret|gone|closed/i.test(res.error || '')) {
+        saveLastStayRoom(null);
+        setSession(s => ({ ...s, lastStayRoom: null }));
+      }
       return false;
     }
     // History snapshot: the last-stay record keeps its own sanitized copy of

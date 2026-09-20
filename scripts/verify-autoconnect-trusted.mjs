@@ -1,8 +1,6 @@
-// Auto-connect regression: two pages pair once (become trusted), then
-// reload — the trusted auto-invite must reconnect them with ZERO taps.
-// Original probe: two fresh pages, both flip Auto-connect ON, both pair
-// once manually (to become trusted), disconnect, then reload → the trusted
-// auto-invite must reconnect them WITHOUT any taps.
+// Auto-connect regression: two pages flip Auto-connect ON and meet — the
+// any-device auto-invite must connect them with ZERO taps, on first
+// encounter AND again after a reload (returning/trusted case).
 import { chromium } from 'playwright';
 
 const URL = process.env.URL || 'http://localhost:3013';
@@ -33,16 +31,16 @@ await B.addInitScript(() => localStorage.setItem('sharetext.autoConnect.v1', '1'
 await B.goto(URL, { waitUntil: 'networkidle' });
 await sleep(1500);
 
-// Pair once manually: A invites B, B auto-accepts (auto-connect ON).
-await A.locator('button:has-text("Nearby")').first().click();
+// THE TEST (first encounter): zero taps. With auto-connect ON on both
+// sides, one side must auto-invite and the other auto-accept.
 let connected = false;
-for (let i = 0; i < 20; i++) {
-  await sleep(800);
-  connected = await A.evaluate(() => !!document.querySelector('textarea'));
-  const bConn = await B.evaluate(() => !!document.querySelector('textarea'));
-  if (connected && bConn) break;
+for (let i = 0; i < 24; i++) {
+  await sleep(1000);
+  connected = (await A.evaluate(() => !!document.querySelector('textarea')))
+    && (await B.evaluate(() => !!document.querySelector('textarea')));
+  if (connected) break;
 }
-console.log('step 1 — manual pair with auto-accept:', connected ? 'OK' : 'FAIL');
+console.log('step 1 — first encounter, ZERO taps:', connected ? 'OK' : 'FAIL');
 
 // Disconnect both and reload so both go back to the idle landing.
 for (const p of [A, B]) {

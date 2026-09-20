@@ -20,6 +20,74 @@ export interface SignalingSocket {
 
 const isProd = !import.meta.env.DEV;
 
+/** Cloudflare endpoints a deployed build may fall back to when the baked-in
+ *  worker is stale or unreachable. The current production worker first — it
+ *  speaks the newest protocol and exposes /stats roomsCreated. */
+const CF_FALLBACKS = [
+  'https://sharetext-signaling.alighttt.workers.dev',
+  'https://sharetext-signaling.garv29devra.workers.dev',
+];
+
+/**
+ * Fetch the CURRENT worker's /stats — a cheap, CORS-enabled, version-bearing
+ * liveness+capability check. Resolves null when unreachable/blocked.
+ */
+async function probeWorker(base: string, timeoutMs = 2500): Promise<{ users?: number; roomsCreated?: number } | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(base + '/stats', { cache: 'no-store', credentials: 'omit', signal: controller.signal });
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => null);
+    if (data && typeof data === 'object' && (typeof (data as any).users === 'number' || typeof (data as any).roomsCreated === 'number')) {
+      return data as { users?: number; roomsCreated?: number };
+    }
+    return null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Self-healing endpoint selection. A build bakes ONE worker URL in, but a
+ * Vercel dashboard env var can override it with an older deploy — the app
+ * then runs a protocol/feature mismatch for weeks unnoticed (blank stats
+ * tracker, room-create failures). At boot — BEFORE any socket is created —
+ * we probe the baked worker's /stats; if it doesn't answer with the current
+ * capability set, we try the known fallbacks and remember the winner. The
+ * redirect must happen before getSocket() is first called; later calls are
+ * no-ops (the singleton already exists).
+ *
+ * In dev (same-origin socket.io) this is a no-op.
+ */
+let activeCfBase: string | null = null;
+let redirectPromise: Promise<void> | null = null;
+
+async function selectBestCloudflareBase(): Promise<void> {
+  if (mode !== 'cloudflare' || !url) return;
+  const bakedBase = url.replace(/\/+$/, '').replace(/\/ws$/i, '');
+  const candidates = [bakedBase, ...CF_FALLBACKS.filter(f => f !== bakedBase)];
+  const results = await Promise.all(candidates.map(probeWorker));
+  const idx = results.findIndex(r => r && typeof r.roomsCreated === 'number');
+  if (idx > 0) {
+    activeCfBase = candidates[idx];
+    console.warn('[ShareText] signaling worker redirect:', bakedBase, '→', activeCfBase);
+    diag('transport.redirect', true, `${bakedBase} -> ${activeCfBase}`);
+  } else {
+    // Baked worker is current (or nothing answered — keep the baked URL;
+    // the ordinary connect-time error paths handle that honestly).
+    activeCfBase = null;
+  }
+}
+
+/** Kick the boot probe once, from the first getSocket() call. Idempotent. */
+function ensureEndpointSelected(): void {
+  if (mode !== 'cloudflare' || redirectPromise) return;
+  redirectPromise = selectBestCloudflareBase();
+}
+
 /**
  * Resolve the signaling endpoint.
  *
@@ -107,7 +175,10 @@ export function signalingConfigIssue(): string | null {
  */
 export function signalingHttpBase(): string | null {
   if (mode === 'cloudflare' && url) {
-    return url.replace(/\/+$/, '').replace(/\/ws$/i, '').replace(/^ws/, 'http');
+    // The redirect, once chosen, is authoritative for HTTP too — the stats
+    // widget must read the SAME worker the transport talks to.
+    const base = activeCfBase ?? url;
+    return base.replace(/\/+$/, '').replace(/\/ws$/i, '').replace(/^ws/, 'http');
   }
   if (mode === 'socketio' && url) return url;
   return typeof window === 'undefined' ? null : window.location.origin;
@@ -147,9 +218,14 @@ let instance: SignalingSocket | null = null;
 
 export function getSocket(): SignalingSocket {
   if (!instance) {
+    ensureEndpointSelected();
+    // The probe races the first connection by design: if it finishes before
+    // the socket is created, the redirect wins cleanly; if not, the baked
+    // URL serves this session and the next boot redirects earlier.
+    const endpoint = activeCfBase ?? url;
     instance =
       mode === 'cloudflare'
-        ? new CloudflareSocket(url!)
+        ? new CloudflareSocket(endpoint!)
         : io(url, {
             // WebSocket first (fastest), polling as automatic fallback. A
             // websocket-only transport dies permanently behind proxies that
@@ -189,6 +265,11 @@ export function prewarmSignaling(): void {
   try {
     getSocket();
   } catch { /* never let telemetry warm-up break the page */ }
+}
+
+/** Boot-time redirect probe result, for tests/diagnostics. */
+export function activeSignalingBase(): string | null {
+  return activeCfBase;
 }
 
 /**

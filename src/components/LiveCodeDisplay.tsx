@@ -19,11 +19,15 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
     setCode(generateTOTP(secret, createdAt));
     setProgress(getTOTPProgress(createdAt));
     setRemaining(getTOTPRemainingSeconds(createdAt));
+    // 250ms ticks: the ring animates smoothly instead of jumping once a
+    // second, and a window rollover lands within a quarter second — the
+    // typed-into code never sits stale for up to a full second.
     const interval = setInterval(() => {
-      setCode(generateTOTP(secret, createdAt));
+      const next = generateTOTP(secret, createdAt);
+      setCode(prev => (prev === next ? prev : next)); // avoid re-render churn
       setProgress(getTOTPProgress(createdAt));
       setRemaining(getTOTPRemainingSeconds(createdAt));
-    }, 1000);
+    }, 250);
     return () => clearInterval(interval);
   }, [secret, createdAt]);
 
