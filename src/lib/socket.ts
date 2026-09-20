@@ -72,7 +72,10 @@ async function selectBestCloudflareBase(): Promise<void> {
   if (mode !== 'cloudflare' || !url) return;
   const bakedBase = url.replace(/\/+$/, '').replace(/\/ws$/i, '');
   const candidates = [bakedBase, ...CF_FALLBACKS.filter(f => f !== bakedBase)];
-  const results = await Promise.all(candidates.map(probeWorker));
+  // NB: map(base => probeWorker(base)) — passing probeWorker directly would
+  // feed the array INDEX into the timeoutMs parameter (0ms, 1ms), aborting
+  // every probe before the request even leaves the page.
+  const results = await Promise.all(candidates.map((b) => probeWorker(b)));
   const idx = results.findIndex(r => r && typeof r.roomsCreated === 'number');
   if (idx > 0) {
     activeCfBase = candidates[idx];
