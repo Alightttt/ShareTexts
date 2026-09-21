@@ -556,16 +556,6 @@ export function SingleScreenApp() {
         <div className="flex items-center gap-1.5 sm:gap-2">
           <CommandBarChip onClick={() => { productEvent('product.diagnostics_opened'); setCmdOpen(true); }} />
           <LanguageMenu />
-          {/* Docs — an OPEN book icon; the name appears as a tooltip on hover. */}
-          <a
-            href="/docs"
-            aria-label={t('nav.docs')}
-            title={t('nav.docs')}
-            className="flex items-center justify-center w-10 h-10 rounded-full text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-apple-divider/50 dark:hover:bg-white/[0.07] transition-colors"
-          >
-            {/* Docs — Gravity UI's open book with writing on the page. */}
-            <BookOpen width="18" height="18" aria-hidden />
-          </a>
           <ThemeToggle />
         </div>
     </header>
@@ -578,9 +568,10 @@ export function SingleScreenApp() {
             // Deterministic first paint: the hero renders visible immediately;
             // only the swap-out fades. Never gate first paint on animation.
             <motion.div key="idle" exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto flex flex-col">
-              {/* Flex + order lets the live tracker sit between the subtitle
-                  and the buttons on mobile, but BELOW the buttons on desktop
-                  — one DOM, two honest layouts. */}
+              {/* Flex + order: H1 → subtitle → live tracker → actions. The
+                  tracker is passive status, so it lives ABOVE the action
+                  cluster — status never interrupts the Send/Receive flow
+                  (usability audit #6). */}
               <h1 className="order-1 text-[34px] sm:text-[42px] lg:text-[56px] font-bold tracking-[-0.035em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left" style={{ fontFamily: 'var(--font-display)' }}>
                 {(() => { const [a, b] = t('home.title').split('\n'); return (<>{a}{b ? <><br />{b}</> : null}</>); })()}
               </h1>
@@ -600,7 +591,7 @@ export function SingleScreenApp() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
-                className="order-4 mt-5 flex items-center justify-center lg:justify-start gap-2.5 whitespace-nowrap w-fit mx-auto lg:mx-0"
+                className="order-2 mt-4 flex items-center justify-center lg:justify-start gap-2.5 whitespace-nowrap w-fit mx-auto lg:mx-0"
               >
                 {/* Halo dot: two slow radar rings drift outward from a solid
                     glowing core — layered, staggered, so it reads as breath,
@@ -617,14 +608,18 @@ export function SingleScreenApp() {
                     <span className="text-[16px] font-medium text-apple-ink-muted dark:text-white leading-none">{t('home.roomsMade')}</span>
                   </>}
               </motion.div>
-              <div className="order-3 mt-6 flex gap-6 justify-center sm:justify-start">
-                <div className="flex flex-col items-center gap-1.5">
-                  <TactileButton onClick={handleSend} variant="primary" size="lg" className="lg:text-[16.5px] lg:min-h-[56px] lg:px-9" icon={<SendCircleIcon size={18} />} disabled={isCreating}>{t('home.send')}</TactileButton>
-                  <span className="text-[11.5px] lg:text-[13px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.sendHint')}</span>
+              {/* Equal-width grid: the two primary actions share ONE geometry
+                  (audit #12 — Receive rendered wider than Send), and each
+                  hint sits directly beneath its own button so the
+                  label↔action mapping is unambiguous (audit #11). */}
+              <div className="order-3 mt-6 grid grid-cols-2 gap-x-3 gap-y-1 max-w-[360px] mx-auto sm:mx-0">
+                <div className="flex flex-col items-center gap-1.5 min-w-0">
+                  <TactileButton onClick={handleSend} variant="primary" size="lg" className="w-full lg:text-[16px] lg:min-h-[56px]" icon={<SendCircleIcon size={18} />} disabled={isCreating}>{t('home.send')}</TactileButton>
+                  <span className="text-[13px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.sendHint')}</span>
                 </div>
-                <div className="flex flex-col items-center gap-1.5">
-                  <TactileButton onClick={handleReceive} variant="soft" size="lg" className="lg:text-[16.5px] lg:min-h-[56px] lg:px-9" icon={<ReceiveCircleIcon size={18} />}>{t('home.receive')}</TactileButton>
-                  <span className="text-[11.5px] lg:text-[13px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.receiveHint')}</span>
+                <div className="flex flex-col items-center gap-1.5 min-w-0">
+                  <TactileButton onClick={handleReceive} variant="soft" size="lg" className="w-full lg:text-[16px] lg:min-h-[56px]" icon={<ReceiveCircleIcon size={18} />}>{t('home.receive')}</TactileButton>
+                  <span className="text-[13px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.receiveHint')}</span>
                 </div>
               </div>
               {/* Stay Connected re-entry: the room this device promised to
@@ -658,7 +653,7 @@ export function SingleScreenApp() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 4 }}
                       transition={{ type: 'spring', bounce: 0, duration: 0.32 }}
-                      className="order-4 mt-3 w-full"
+                      className="order-4 mt-5 w-full"
                     >
                       <button
                         type="button"
@@ -670,14 +665,14 @@ export function SingleScreenApp() {
                         <span className="relative shrink-0 w-9 h-9 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/15 flex items-center justify-center text-[#f06413] dark:text-[#fb9243]" aria-hidden>
                           {/* Live pulse: this room is still breathing upstream. */}
                           <span className="absolute inset-0 rounded-full bg-[#f06413]/20 dark:bg-[#fb9243]/20 st-halo-ring motion-reduce:animate-none" />
-                          <InfinityIcon className="relative w-4 h-4" strokeWidth={2.2} />
+                          <InfinityIcon className="relative w-4 h-4" strokeWidth={2} />
                         </span>
                         <span className="flex-1 flex flex-col min-w-0 gap-0.5 leading-tight">
-                          <span className="text-[13.5px] font-semibold text-apple-ink dark:text-white">
+                          <span className="text-[13px] font-semibold text-apple-ink dark:text-white">
                             {isRejoining ? t('stay.rejoining') : t('stay.rejoinTitle')}
                           </span>
                           {facts.length > 0 ? (
-                            <span className="flex items-center gap-1.5 text-[11.5px] font-medium text-apple-ink-muted dark:text-white/45 min-w-0">
+                            <span className="flex items-center gap-1.5 text-[13px] font-medium text-apple-ink-muted dark:text-white/45 min-w-0">
                               {facts.map((f, i) => (
                                 <span key={i} className="flex items-center gap-1.5 min-w-0">
                                   {i > 0 && <span className="opacity-50" aria-hidden>·</span>}
@@ -686,7 +681,7 @@ export function SingleScreenApp() {
                               ))}
                             </span>
                           ) : (
-                            <span className="text-[11.5px] font-medium text-apple-ink-muted dark:text-white/45 truncate">
+                            <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/45 truncate">
                               {t('stay.rejoinHint')}
                             </span>
                           )}
@@ -706,7 +701,7 @@ export function SingleScreenApp() {
                   screen, never two. */}
               {/* mt-8: real air between the hero image (or the rejoin card)
                   and the nearby section — they were touching on mobile. */}
-              <div className="order-6 mt-8 w-full flex flex-col items-center lg:items-start">
+              <div className="order-6 mt-10 w-full flex flex-col items-center lg:items-start">
                 <div className="w-full max-w-md lg:max-w-none">
                   <NearbyDevices onStatus={setNearbyStatus} showFallback={isTouchPrimary} />
                 </div>
@@ -742,7 +737,7 @@ export function SingleScreenApp() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-medium text-status-danger leading-relaxed">{createError.text}</p>
-                    <button onClick={handleSend} className="mt-2 px-4 py-1.5 min-h-[36px] rounded-full text-[12px] font-semibold bg-status-danger/10 text-status-danger hover:bg-status-danger/20 transition-colors active:scale-95">{t('home.retry')}</button>
+                    <button onClick={handleSend} className="mt-2 px-4 py-1.5 min-h-[36px] rounded-full text-[13px] font-semibold bg-status-danger/10 text-status-danger hover:bg-status-danger/20 transition-colors active:scale-95">{t('home.retry')}</button>
                   </div>
                 </motion.div>
               )}
@@ -1041,7 +1036,9 @@ export function SingleScreenApp() {
         {/* One line: links with real gaps, the handle as a compact chip so
             the X glyph and name can never wrap or split. Links are a step
             bolder than the classic muted footer so they read as navigation. */}
-        <div className="flex items-center justify-between gap-x-5 gap-y-2 flex-wrap">
+        {/* Same measure as the hero column above — footer nav shares the
+            content's left edge instead of drifting to the pane edge. */}
+        <div className="max-w-md mx-auto flex items-center justify-between gap-x-5 gap-y-2 flex-wrap">
           <nav className="flex items-center gap-5 sm:gap-7 text-[13px] font-semibold text-apple-ink/75 dark:text-white/60">
             <a href="/docs" className="hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.docs')}</a>
             <a href="/about" className="hover:text-apple-ink dark:hover:text-white transition-colors">About</a>
@@ -1204,8 +1201,8 @@ export function SingleScreenApp() {
                   <div className="w-full max-w-[420px] space-y-3.5">
                     {[t('room.step.1'), t('room.step.2'), t('room.step.3')].map((step, i) => (
                       <div key={i} className="flex items-center gap-3">
-                        <span className="shrink-0 w-7 h-7 rounded-full bg-ember/[0.1] dark:bg-ember/[0.16] text-ember dark:text-[#fb9243] text-[12.5px] font-bold flex items-center justify-center">{i + 1}</span>
-                        <span className="text-[14.5px] font-medium text-apple-ink/85 dark:text-white/65 leading-snug">{step}</span>
+                        <span className="shrink-0 w-7 h-7 rounded-full bg-ember/[0.1] dark:bg-ember/[0.16] text-ember dark:text-[#fb9243] text-[13px] font-bold flex items-center justify-center">{i + 1}</span>
+                        <span className="text-[14px] font-medium text-apple-ink/85 dark:text-white/65 leading-snug">{step}</span>
                       </div>
                     ))}
                   </div>
@@ -1223,7 +1220,7 @@ export function SingleScreenApp() {
                     {panelMode === 'sending' && (isCreating && !session.secret ? t('create.creating') : t('room.created'))}
                     {panelMode === 'receiving' && t('room.waiting')}
                   </p>
-                  <p className="text-[12.5px] text-apple-ink-muted/50 dark:text-white/25 max-w-[260px] leading-relaxed">
+                  <p className="text-[13px] text-apple-ink-muted/50 dark:text-white/25 max-w-[260px] leading-relaxed">
                     {panelMode === 'sending' && (isCreating && !session.secret ? t('room.setup') : t('room.sendHint'))}
                     {panelMode === 'receiving' && t('room.receiveHint')}
                   </p>

@@ -37,11 +37,11 @@ export function StayConnectedToggle({ className }: { className?: string }) {
         )}
         aria-hidden
       >
-        <InfinityIcon className="w-4 h-4" strokeWidth={2.2} />
+        <InfinityIcon className="w-4 h-4" strokeWidth={2} />
       </span>
       <span className="flex-1 flex flex-col min-w-0 leading-tight">
-        <span className="text-[12.5px] font-semibold text-apple-ink dark:text-white">{t('stay.title')}</span>
-        <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45">{t('stay.hint')}</span>
+        <span className="text-[13px] font-semibold text-apple-ink dark:text-white">{t('stay.title')}</span>
+        <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/45">{t('stay.hint')}</span>
       </span>
       {/* iOS-style switch: 44×28 track, 24px thumb, 2px inset, 18px travel.
           role=switch + aria-checked; Enter/Space toggle natively via button. */}
@@ -88,7 +88,7 @@ export function StayBadge({ className, onOpenDetails }: { className?: string; on
         className
       )}
     >
-      <InfinityIcon className="w-3.5 h-3.5" strokeWidth={2.4} aria-hidden />
+      <InfinityIcon className="w-3.5 h-3.5" strokeWidth={2} aria-hidden />
     </span>
   );
   // Wrapped in a real button when the header can open the details sheet:
@@ -106,7 +106,7 @@ export function StayBadge({ className, onOpenDetails }: { className?: string; on
       <span
         className="w-7 h-7 rounded-full flex items-center justify-center bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[#f06413] dark:text-[#fb9243]"
       >
-        <InfinityIcon className="w-3.5 h-3.5" strokeWidth={2.4} aria-hidden />
+        <InfinityIcon className="w-3.5 h-3.5" strokeWidth={2} aria-hidden />
       </span>
     </button>
   );

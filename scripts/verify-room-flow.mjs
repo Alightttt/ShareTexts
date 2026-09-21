@@ -36,9 +36,20 @@ try {
   await pb.waitForTimeout(3000);
 
   // Wait for BOTH devices to see the connected toast (fires on entry).
-  let toastOnEntryB = false, toastOnEntryA = false;
-  try { await pb.waitForSelector(`text=${TOAST}`, { timeout: 25000 }); toastOnEntryB = true; } catch {}
-  try { await pa.waitForSelector(`text=${TOAST}`, { timeout: 8000 }); toastOnEntryA = true; } catch {}
+  // The toast is name-aware ("Connected to Windows PC", generic fallback)
+  // and auto-dismisses after 2.8s — so POLL from the instant of join
+  // instead of waiting for a fixed string that may already be gone.
+  const toastSeen = async (page) => {
+    for (let i = 0; i < 130; i++) {
+      const hit = await page.evaluate(() =>
+        /Connected\. You can start sending|Connected to \S/.test(document.body.textContent)
+      ).catch(() => false);
+      if (hit) return true;
+      await page.waitForTimeout(200);
+    }
+    return false;
+  };
+  const [toastOnEntryB, toastOnEntryA] = await Promise.all([toastSeen(pb), toastSeen(pa)]);
   out('joiner sees Connected toast on ENTRY', toastOnEntryB);
   out('creator sees Connected toast on ENTRY', toastOnEntryA);
 

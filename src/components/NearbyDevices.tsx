@@ -10,6 +10,17 @@ import { ConfirmSheet } from './ConfirmSheet';
 import { hapticTap } from '../lib/haptics';
 import { productEvent } from '../lib/telemetry';
 import { cn } from '../lib/utils';
+
+/* ONE ghost-pill recipe (usability audit #2): Code / QR / Link fallbacks and
+   the failure card's QR escape all share this exact style — hover, active,
+   focus ring included — so secondary actions read as one family. */
+const pillGhost = cn(
+  'flex items-center gap-1.5 px-3.5 py-2 rounded-full',
+  'bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10',
+  'hover:bg-apple-parchment dark:hover:bg-white/[0.08] text-apple-ink dark:text-white',
+  'text-[13px] font-semibold active:scale-[0.97] transition-all',
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-azure-500'
+);
 /**
  * NearbyDevices — the landing-page discovery section.
  *
@@ -91,8 +102,8 @@ function ToggleRow({ icon, active, title, hint, onClick, ariaLabel, testId, rowT
         {icon}
       </span>
       <span className="flex-1 flex flex-col min-w-0 leading-tight">
-        <span className="text-[12.5px] font-semibold text-apple-ink dark:text-white">{title}</span>
-        <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45">{hint}</span>
+        <span className="text-[13px] font-semibold text-apple-ink dark:text-white">{title}</span>
+        <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/45">{hint}</span>
       </span>
       <button
         type="button"
@@ -379,7 +390,7 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
             transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
             className="mt-4 w-full"
           >
-            <p className="text-[11.5px] font-semibold uppercase tracking-wide text-apple-ink-muted/70 dark:text-white/35 mb-2">
+            <p className="text-[12px] font-semibold uppercase tracking-wide text-apple-ink-muted/70 dark:text-white/35 mb-2">
               {/* ALIVE: the title itself carries the state — one device found
                   reads differently from three, and the count moves as devices
                   come and go. No separate "device found" banner needed. */}
@@ -412,14 +423,14 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
                     </span>
                     <span className="flex-1 flex flex-col min-w-0 leading-tight">
                       <span className="text-[13px] font-semibold text-apple-ink dark:text-white truncate">{d.name}</span>
-                      <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45 flex items-center gap-1">
+                      <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/45 flex items-center gap-1">
                         {busy ? t('nearby.waiting') : trusted ? (
                           <><Check className="w-3 h-3 text-status-success" strokeWidth={2.5} /> {t('nearby.trusted')}</>
                         ) : t('nearby.nearby')}
                       </span>
                     </span>
                     {trusted && !busy && (
-                      <span className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[11.5px] font-semibold text-[#f06413] dark:text-[#fb9243] group-hover:bg-[#f06413] group-hover:text-white dark:group-hover:bg-[#fb9243] dark:group-hover:text-[#1a1208] transition-colors">
+                      <span className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[12px] font-semibold text-[#f06413] dark:text-[#fb9243] group-hover:bg-[#f06413] group-hover:text-white dark:group-hover:bg-[#fb9243] dark:group-hover:text-[#1a1208] transition-colors">
                         <ArrowRight className="w-3 h-3" /> {t('nearby.send')}
                       </span>
                     )}
@@ -444,7 +455,7 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
             transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
             className="mt-4 w-full"
           >
-            <p className="text-[11.5px] font-semibold uppercase tracking-wide text-apple-ink-muted/70 dark:text-white/35 mb-2">
+            <p className="text-[12px] font-semibold uppercase tracking-wide text-apple-ink-muted/70 dark:text-white/35 mb-2">
               {t('nearby.recentTitle')}
             </p>
             <div className="flex flex-col gap-2">
@@ -463,7 +474,7 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
                   </span>
                   <span className="flex-1 flex flex-col min-w-0 leading-tight">
                     <span className="text-[13px] font-semibold text-apple-ink dark:text-white truncate">{r.name}</span>
-                    <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45">
+                    <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/45">
                       {t('nearby.offline', { when: lastSeenLabel(r.lastConnectedAt) })}
                     </span>
                   </span>
@@ -492,18 +503,21 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="mt-2.5 flex items-center gap-2.5 px-3.5 py-2.5 rounded-[14px] bg-apple-parchment/60 dark:bg-white/[0.03] border border-apple-divider/40 dark:border-white/[0.06]"
+            className="mt-2.5 flex items-center gap-2.5 px-1 py-1"
           >
             <span className="relative shrink-0 w-7 h-7 flex items-center justify-center" aria-hidden>
               <span className="absolute inset-0 rounded-full border border-[#f06413]/25 dark:border-[#fb9243]/25 st-halo-ring" />
-              <Search className="relative w-3.5 h-3.5 text-[#f06413]/70 dark:text-[#fb9243]/70" strokeWidth={2.2} />
+              <Search className="relative w-3.5 h-3.5 text-[#f06413]/70 dark:text-[#fb9243]/70" strokeWidth={2.4} />
             </span>
             <span className="flex-1 flex flex-col min-w-0 leading-tight">
               {/* The standing instruction, promoted to the searching state's
                   title: "Open ShareTexts in another device" IS what waiting
-                  means here — not a decorative line floating elsewhere. */}
-              <span className="text-[12.5px] font-semibold text-apple-ink dark:text-white">{t('nearby.hint')}</span>
-              <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45 flex items-center gap-1">
+                  means here. Deliberately NOT a card — the surrounding rows
+                  are buttons, and an identical container reads as clickable
+                  when it isn't (usability audit #8/#9): status is typography,
+                  actions are surfaces. */}
+              <span className="text-[13px] font-semibold text-apple-ink dark:text-white">{t('nearby.hint')}</span>
+              <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/45 flex items-center gap-1">
                 {searchExpired
                   ? <><Wifi className="w-3 h-3" aria-hidden /> {t('nearby.searchingHint')}</>
                   : t('nearby.waitingOther')}
@@ -527,13 +541,13 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
             transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
             className="mt-2.5 w-full"
           >
-            <p className="text-[12.5px] font-semibold text-apple-ink dark:text-white mb-2">{t('nearby.nothingFound')}</p>
+            <p className="text-[13px] font-semibold text-apple-ink dark:text-white mb-2">{t('nearby.nothingFound')}</p>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => { hapticTap(); (window as Window & { __stOpenReceive?: () => void }).__stOpenReceive?.(); }}
                 data-testid="fallback-code"
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] text-[12.5px] font-semibold text-apple-ink dark:text-white active:scale-[0.97] transition-all"
+                className={pillGhost}
               >
                 <RefreshCw className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /> {t('nearby.fallbackCode')}
               </button>
@@ -541,7 +555,7 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
                 type="button"
                 onClick={() => { hapticTap(); (window as Window & { __stOpenSendQr?: () => void }).__stOpenSendQr?.(); }}
                 data-testid="fallback-qr"
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] text-[12.5px] font-semibold text-apple-ink dark:text-white active:scale-[0.97] transition-all"
+                className={pillGhost}
               >
                 <QrCode className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /> {t('nearby.showQr')}
               </button>
@@ -549,12 +563,12 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
                 type="button"
                 onClick={() => { hapticTap(); (window as Window & { __stOpenSendLink?: () => void }).__stOpenSendLink?.(); }}
                 data-testid="fallback-link"
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] text-[12.5px] font-semibold text-apple-ink dark:text-white active:scale-[0.97] transition-all"
+                className={pillGhost}
               >
                 <Link2 className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /> {t('nearby.shareLink')}
               </button>
             </div>
-            <p className="mt-2 text-[11px] font-medium text-apple-ink-muted/60 dark:text-white/30">{t('nearby.keepOpenHint')}</p>
+            <p className="mt-2 text-[13px] font-medium text-apple-ink-muted/60 dark:text-white/30">{t('nearby.keepOpenHint')}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -573,10 +587,10 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
             data-testid="nearby-failure-card"
             className="mt-2.5 w-full px-3.5 py-3 rounded-[14px] bg-status-danger/[0.06] dark:bg-status-danger/[0.08] border border-status-danger/25"
           >
-            <p className="text-[12.5px] font-semibold text-status-danger">{phase.text}</p>
+            <p className="text-[13px] font-semibold text-status-danger">{phase.text}</p>
             {failedDevice && (
               <>
-                <p className="mt-1 text-[11.5px] font-medium text-apple-ink-muted dark:text-white/50 leading-snug">
+                <p className="mt-1 text-[13px] font-medium text-apple-ink-muted dark:text-white/50 leading-snug">
                   {t('nearby.failBody')}
                 </p>
                 <div className="mt-2.5 flex flex-wrap gap-2">
@@ -584,7 +598,7 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
                     type="button"
                     data-testid="nearby-fail-retry"
                     onClick={() => { hapticTap(); void handleInvite(failedDevice); }}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[12px] font-semibold active:scale-[0.97] transition-all min-h-[36px]"
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[13px] font-semibold active:scale-[0.97] transition-all min-h-[36px]"
                   >
                     <RefreshCw className="w-3.5 h-3.5" /> {t('nearby.failRetry')}
                   </button>
@@ -592,7 +606,7 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
                     type="button"
                     data-testid="nearby-fail-qr"
                     onClick={() => { hapticTap(); (window as Window & { __stOpenSendQr?: () => void }).__stOpenSendQr?.(); }}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 text-[12px] font-semibold text-apple-ink dark:text-white active:scale-[0.97] transition-all min-h-[36px]"
+                    className={pillGhost}
                   >
                     <QrCode className="w-3.5 h-3.5" /> {t('nearby.failUseQr')}
                   </button>
@@ -613,7 +627,7 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
             data-testid="nearby-why-toggle"
             aria-expanded={whyOpen}
             onClick={() => { hapticTap(); setWhyOpen(o => !o); }}
-            className="flex items-center gap-1.5 px-1 py-1 text-[12px] font-semibold text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors"
+            className="flex items-center gap-1.5 px-1 py-1 text-[13px] font-semibold text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors"
           >
             {t('nearby.whyTitle')}
             <motion.span animate={{ rotate: whyOpen ? 180 : 0 }} transition={{ duration: 0.2 }} className="inline-flex" aria-hidden>
@@ -632,8 +646,8 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
               >
                 <div className="mt-1.5 px-3.5 py-3 rounded-[14px] bg-apple-parchment/60 dark:bg-white/[0.03] border border-apple-divider/40 dark:border-white/[0.06]">
                   {(['why1', 'why2', 'why3', 'why4', 'why5'] as const).map((k, i) => (
-                    <li key={k} className="flex items-start gap-2.5 py-1 text-[12px] font-medium text-apple-ink-muted dark:text-white/50 leading-snug">
-                      <span className="shrink-0 w-4 h-4 mt-px rounded-full bg-apple-divider/50 dark:bg-white/[0.08] flex items-center justify-center text-[9.5px] font-bold text-apple-ink-muted dark:text-white/50 tnum" aria-hidden>{i + 1}</span>
+                    <li key={k} className="flex items-start gap-2.5 py-1 text-[13px] font-medium text-apple-ink-muted dark:text-white/50 leading-snug">
+                      <span className="shrink-0 w-4 h-4 mt-px rounded-full bg-apple-divider/50 dark:bg-white/[0.08] flex items-center justify-center text-[10px] font-bold text-apple-ink-muted dark:text-white/50 tnum" aria-hidden>{i + 1}</span>
                       {t(`nearby.${k}`)}
                     </li>
                   ))}

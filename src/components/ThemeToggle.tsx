@@ -20,7 +20,7 @@ import { useTheme } from '../lib/theme';
  *                                    track; release settles by midpoint
  *   keyboard (Enter/Space)         → toggle; role=switch + aria-checked
  *
- * The visible pill stays 64×30; the clickable/keyboard target is an
+ * The visible pill stays 56×26; the clickable/keyboard target is an
  * invisible padded wrapper so the hit area stays comfortable
  * without ever changing the visual size.
  */
@@ -120,14 +120,15 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
       className={className}
       style={{
         // Invisible comfort padding around the fixed 56×26 pill — hit
-        // target ~66×36. The matching negative margin cancels the padding
-        // in flow, so layout spacing sees exactly the 60×34 pill while the
-        // touch target still extends 5px beyond it on every side.
+        // target 70×40, matching the header's uniform 40px control slot
+        // (Language menu etc.). The matching negative margin cancels the
+        // padding in flow, so layout spacing sees exactly the 56×26 pill
+        // while the touch target extends 7px beyond it on every side.
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 5,
-        margin: -5,
+        padding: 7,
+        margin: -7,
         flex: '0 0 auto',
         cursor: 'pointer',
         WebkitTapHighlightColor: 'transparent',

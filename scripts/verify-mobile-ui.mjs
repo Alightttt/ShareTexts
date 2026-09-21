@@ -30,13 +30,15 @@ const flipMs = await M.evaluate(async () => {
 });
 ok(`mobile theme flip < 40ms (${flipMs.toFixed(1)}ms)`, flipMs >= 0 && flipMs < 40);
 
-// Mobile header heights.
+// Mobile header heights. NOTE: the header intentionally has NO Docs link
+// anymore (usability audit #10 — it lives in the footer only), so the
+// uniform-slot check covers language menu + theme toggle + command chip.
 const headerHeights = await M.evaluate(() => {
   const header = document.querySelector('header');
-  const controls = header.querySelectorAll('a[href="/docs"], button[aria-haspopup="listbox"], [role="switch"]');
-  return Array.from(controls).map(c => Math.round(c.getBoundingClientRect().height));
+  const controls = header.querySelectorAll('button[aria-haspopup="listbox"], [role="switch"], button');
+  return Array.from(controls).filter(c => c.getBoundingClientRect().height > 0).map(c => Math.round(c.getBoundingClientRect().height));
 });
-ok(`mobile header uniform (${headerHeights.join(',')})`, headerHeights.length >= 3 && headerHeights.every(h => h === 40));
+ok(`mobile header uniform (${headerHeights.join(',')})`, headerHeights.length >= 2 && headerHeights.every(h => h === 40));
 
 // ── Room flow on mobile: connect A(mobile) to B(desktop) ─────────
 const D = await browser.newPage();

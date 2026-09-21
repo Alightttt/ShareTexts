@@ -614,30 +614,59 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   // friction, and the composer reads as "ready to type" on every platform.
   // We never blur afterwards — stealing focus back would undo the benefit.
   const mountedAtRef = useRef(Date.now());
-  const partnerWasConnectedRef = useRef(false);
+  // The retry chain lives in a ref, NOT in this effect's cleanup: during
+  // connect, session.partnerConnected can FLAP (true→false→true) while the
+  // link settles. An effect-cleanup timer would be cancelled by that first
+  // flap and a once-only guard would then block a restart — focus would
+  // never land. The chain is instead restart-on-demand: any effect run with
+  // the peer connected and NO pending chain starts one. That stays correct
+  // across partnerConnected flaps AND StrictMode's double-mount (where a
+  // once-ref would survive cleanup and eat the second mount's only chance).
+  const focusTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const aliveRef = useRef(true);
   useEffect(() => {
-    const ready = session.partnerConnected;
-    if (!ready || partnerWasConnectedRef.current) return;
+    // Reset on (re)run: React's dev double-mount runs this effect twice on
+    // the SAME instance — the first cleanup would otherwise leave the flag
+    // false forever and silently kill every retry.
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+      if (focusTimerRef.current) { clearTimeout(focusTimerRef.current); focusTimerRef.current = undefined; }
+    };
+  }, []);
+  useEffect(() => {
+    if (!session.partnerConnected) return;
     if (panelMode !== 'embedded' && panelMode !== 'standalone') return;
-    partnerWasConnectedRef.current = true;
+    // A chain already counting down? Let it run — re-runs are for flaps.
+    if (focusTimerRef.current !== undefined) return;
     // The mount sequence around a fresh connect unmounts/remounts panels
-    // (takeover animation, Suspense swap) and ANY of those moves can cancel
-    // a single focus() call — so retry gently until the caret actually
-    // lands (max ~2.4s), then stop. First attempt inside the gesture window
-    // may even raise the mobile keyboard.
+    // (takeover animation, Suspense swap, lazy-chunk load) and ANY of those
+    // moves can cancel a single focus() call — or replace the composer node
+    // after focus already landed. Retry gently until the caret actually
+    // lands (max ~8s — the mobile takeover + lazy ChatView load can settle
+    // slower than the old 2.4s window on real devices), then stop. First
+    // attempt inside the gesture window may even raise the mobile keyboard.
     const fresh = Date.now() - mountedAtRef.current < 1200;
     let tries = 0;
-    let timer: ReturnType<typeof setTimeout> | undefined;
     const attempt = () => {
+      focusTimerRef.current = undefined;
+      if (!aliveRef.current) return;
       const el = textareaRef.current;
-      if (el && document.activeElement !== el) {
+      // If the user deliberately focused something else (another input, a
+      // button), STOP — a longer window must never steal their choice back.
+      // Only the churn state (body holding focus) is ours to correct.
+      const active = document.activeElement;
+      const userChoseElsewhere = active !== null && active !== document.body
+        && active !== (el as HTMLTextAreaElement | null)
+        && (active as HTMLElement).tagName !== 'HTML';
+      if (userChoseElsewhere) return;
+      if (el && active !== el) {
         el.focus({ preventScroll: true });
       }
-      if (document.activeElement === el || ++tries > 12) return;
-      timer = setTimeout(attempt, 200);
+      if (document.activeElement === el || ++tries > 40) return;
+      focusTimerRef.current = setTimeout(attempt, 200);
     };
-    timer = setTimeout(attempt, fresh ? 380 : 320);
-    return () => clearTimeout(timer);
+    focusTimerRef.current = setTimeout(attempt, fresh ? 380 : 320);
   }, [panelMode, session.partnerConnected]);
 
   // Transfer flight: while a file is genuinely in motion (sender hashing it
