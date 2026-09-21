@@ -133,7 +133,7 @@ function loadStoredSession(): StoredSession | null {
 // resetSession deliberately clears the MAIN stored session, so this key is
 // the only surviving copy of the room's history.
 const LAST_STAY_KEY = 'sharetext.lastStayRoom.v1';
-interface LastStayRoom { roomId: string; secret: string; messages?: ChatMessage[] }
+interface LastStayRoom { roomId: string; secret: string; messages?: ChatMessage[]; partnerName?: string | null; messageCount?: number; lastActiveAt?: number }
 function loadLastStayRoom(): LastStayRoom | null {
   try {
     const raw = localStorage.getItem(LAST_STAY_KEY);
@@ -450,7 +450,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       {
         saveLastStayCredentials(session.roomId, session.secret);
         const stay = loadLastStayRoom();
-        if (stay) saveLastStayRoom({ ...stay, messages: payload.messages });
+        if (stay) saveLastStayRoom({
+          ...stay,
+          messages: payload.messages,
+          partnerName: session.partnerName,
+          messageCount: session.messages.length,
+          lastActiveAt: Date.now(),
+        });
       }
       try {
         const serialized = JSON.stringify(payload);

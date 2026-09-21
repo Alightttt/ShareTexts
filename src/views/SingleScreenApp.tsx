@@ -631,6 +631,23 @@ export function SingleScreenApp() {
                 {(() => {
                   const stay = session.lastStayRoom;
                   if (!stay || stayGone) return null;
+                  // The card earns trust by showing real, local facts: who
+                  // this room was with, how much history it holds, and when
+                  // it was last used. Nothing here is fabricated.
+                  const facts: string[] = [];
+                  if (stay.partnerName) facts.push(stay.partnerName);
+                  if (typeof stay.messageCount === 'number' && stay.messageCount > 0) {
+                    facts.push(t('stay.rejoinMsgs', { n: stay.messageCount.toLocaleString() }));
+                  }
+                  if (typeof stay.lastActiveAt === 'number') {
+                    const d = new Date(stay.lastActiveAt);
+                    const today = new Date();
+                    const isToday = d.toDateString() === today.toDateString();
+                    const isYesterday = new Date(today.getTime() - 86_400_000).toDateString() === d.toDateString();
+                    facts.push(isToday ? t('time.today')
+                      : isYesterday ? t('time.yesterday')
+                      : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+                  }
                   return (
                     <motion.div
                       key="stay-rejoin"
@@ -645,22 +662,35 @@ export function SingleScreenApp() {
                         data-testid="stay-rejoin"
                         onClick={handleStayRejoin}
                         disabled={isRejoining}
-                        className="group w-full flex items-center gap-3 px-4 py-3 rounded-[16px] bg-[#f06413]/[0.06] dark:bg-[#fb9243]/[0.08] border border-[#f06413]/20 dark:border-[#fb9243]/25 hover:bg-[#f06413]/[0.1] dark:hover:bg-[#fb9243]/[0.12] hover:border-[#f06413]/40 dark:hover:border-[#fb9243]/45 active:scale-[0.985] transition-all duration-200 text-left disabled:opacity-60"
+                        className="group w-full flex items-center gap-3.5 pl-3.5 pr-3 py-3 rounded-[16px] bg-white dark:bg-[#232329] border border-apple-divider dark:border-[#2c2c33] shadow-sm hover:shadow-card hover:border-[#f06413]/35 dark:hover:border-[#fb9243]/40 active:scale-[0.985] transition-all duration-200 text-left disabled:opacity-60"
                       >
-                        <span className="relative shrink-0 w-8 h-8 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/15 flex items-center justify-center text-[#f06413] dark:text-[#fb9243]" aria-hidden>
+                        <span className="relative shrink-0 w-9 h-9 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/15 flex items-center justify-center text-[#f06413] dark:text-[#fb9243]" aria-hidden>
                           {/* Live pulse: this room is still breathing upstream. */}
                           <span className="absolute inset-0 rounded-full bg-[#f06413]/20 dark:bg-[#fb9243]/20 st-halo-ring motion-reduce:animate-none" />
                           <InfinityIcon className="relative w-4 h-4" strokeWidth={2.2} />
                         </span>
-                        <span className="flex-1 flex flex-col min-w-0 leading-tight">
+                        <span className="flex-1 flex flex-col min-w-0 gap-0.5 leading-tight">
                           <span className="text-[13.5px] font-semibold text-apple-ink dark:text-white">
                             {isRejoining ? t('stay.rejoining') : t('stay.rejoinTitle')}
                           </span>
-                          <span className="text-[11.5px] font-medium text-apple-ink-muted dark:text-white/45 truncate">
-                            {t('stay.rejoinHint')}
-                          </span>
+                          {facts.length > 0 ? (
+                            <span className="flex items-center gap-1.5 text-[11.5px] font-medium text-apple-ink-muted dark:text-white/45 min-w-0">
+                              {facts.map((f, i) => (
+                                <span key={i} className="flex items-center gap-1.5 min-w-0">
+                                  {i > 0 && <span className="opacity-50" aria-hidden>·</span>}
+                                  <span className="truncate">{f}</span>
+                                </span>
+                              ))}
+                            </span>
+                          ) : (
+                            <span className="text-[11.5px] font-medium text-apple-ink-muted dark:text-white/45 truncate">
+                              {t('stay.rejoinHint')}
+                            </span>
+                          )}
                         </span>
-                        <ArrowRightLeft className="w-4 h-4 shrink-0 text-[#f06413]/60 dark:text-[#fb9243]/60 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
+                        <span className="shrink-0 w-7 h-7 rounded-full bg-apple-ink/[0.05] dark:bg-white/[0.07] flex items-center justify-center transition-colors duration-200 group-hover:bg-[#f06413]/12 dark:group-hover:bg-[#fb9243]/18" aria-hidden>
+                          <ArrowRightLeft className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50 group-hover:text-[#f06413] dark:group-hover:text-[#fb9243] transition-transform duration-200 group-hover:translate-x-px motion-reduce:transition-none" />
+                        </span>
                       </button>
                     </motion.div>
                   );

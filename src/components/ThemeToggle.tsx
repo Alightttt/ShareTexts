@@ -7,8 +7,8 @@ import { useTheme } from '../lib/theme';
  *
  * Visual contract (fixed at every breakpoint — never scales with viewport):
  *
- *   TRACK  82 × 36 · radius 18 · green when on, gray when off
- *   THUMB  50 × 32  · radius 16 · 2px inset all around
+ *   TRACK  56 × 26 · radius 13 · green when on, gray when off
+ *   THUMB  34 × 22 · radius 11 · 2px inset all around
  *
  * The thumb fills 88% of the track height — a large white pill inside a
  * slim colored margin. The silhouette never changes; the only animations
@@ -26,19 +26,19 @@ import { useTheme } from '../lib/theme';
  */
 
 /* ── Geometry ───────────────────────────────────────────────────────────
- * Compact header footprint: 64×30 track, 40×26 thumb, 2px inset, 20px
+ * Compact header footprint: 56×26 track, 34×22 thumb, 2px inset, 18px
  * travel. Same wide-pill silhouette
  * at every breakpoint — all sizes FIXED: no vw, no clamp(), no responsive
  * prefixes, no aspect-ratio.
  */
-const TRACK_W = 64;
-const TRACK_H = 30;
-const INSET = 2;                      // (30 − 26) / 2
-const THUMB_W = 40;
-const THUMB_H = 26;
-const X_ON = TRACK_W - THUMB_W - 2 * INSET; // 20 — thumb's travel distance
-const RADIUS_TRACK = 15;
-const RADIUS_THUMB = 13;
+const TRACK_W = 56;
+const TRACK_H = 26;
+const INSET = 2;                      // (26 − 22) / 2
+const THUMB_W = 34;
+const THUMB_H = 22;
+const X_ON = TRACK_W - THUMB_W - 2 * INSET; // 18 — thumb's travel distance
+const RADIUS_TRACK = 13;
+const RADIUS_THUMB = 11;
 /* iOS settle: quick ease-out without overshoot. */
 const SPRING = { type: 'spring', stiffness: 550, damping: 38 } as const;
 
@@ -119,8 +119,8 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
       onLostPointerCapture={settle}
       className={className}
       style={{
-        // Invisible comfort padding around the fixed 60×34 pill — hit
-        // target ~72×44. The matching negative margin cancels the padding
+        // Invisible comfort padding around the fixed 56×26 pill — hit
+        // target ~66×36. The matching negative margin cancels the padding
         // in flow, so layout spacing sees exactly the 60×34 pill while the
         // touch target still extends 5px beyond it on every side.
         display: 'inline-flex',

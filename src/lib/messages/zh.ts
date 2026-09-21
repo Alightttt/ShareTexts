@@ -264,7 +264,8 @@ const zh: Dict = {
   'stay.hint': '在自己主动断开之前，此房间将一直保持可用。',
   'stay.badge': '此房间将保持连接',
   'stay.rejoinTitle': '回到你的房间',
-  'stay.rejoinHint': "你的上一个房间正在等待——保留历史记录。",
+  'stay.rejoinHint': '你的上一个房间正在等待——保留历史记录。',
+  'stay.rejoinMsgs': '{n} 条消息',
   'stay.rejoining': '正在重新连接…',
 
   // ── nearby device discovery ───────────────────────────────────────

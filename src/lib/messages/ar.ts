@@ -264,7 +264,8 @@ const ar: Dict = {
   'stay.hint': 'تبقى هذه الغرفة حية حتى تقوم أنت بقطعها.',
   'stay.badge': 'ستبقى هذه الغرفة متصلة',
   'stay.rejoinTitle': 'العودة إلى غرفتك',
-  'stay.rejoinHint': "غرفتك الأخيرة في الانتظار — مع سجلّك.",
+  'stay.rejoinHint': 'غرفتك الأخيرة في الانتظار — مع سجلّك.',
+  'stay.rejoinMsgs': '{n} رسالة',
   'stay.rejoining': 'جارٍ إعادة الاتصال…',
 
   // ── nearby device discovery ───────────────────────────────────────

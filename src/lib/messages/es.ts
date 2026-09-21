@@ -265,7 +265,8 @@ const es: Dict = {
   'stay.hint': 'Mantiene esta sala activa hasta que tú la desconectes.',
   'stay.badge': 'Esta sala permanecerá conectada',
   'stay.rejoinTitle': 'Volver a tu sala',
-  'stay.rejoinHint': "Tu última sala te espera, con tu historial.",
+  'stay.rejoinHint': 'Tu última sala te espera, con tu historial.',
+  'stay.rejoinMsgs': '{n} mensajes',
   'stay.rejoining': 'Reconectando…',
 
   // ── nearby device discovery ───────────────────────────────────────

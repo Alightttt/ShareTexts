@@ -265,7 +265,8 @@ const de: Dict = {
   'stay.hint': 'Hält diesen Raum offen, bis du ihn selbst trennst.',
   'stay.badge': 'Dieser Raum bleibt verbunden',
   'stay.rejoinTitle': 'Zurück in deinen Raum',
-  'stay.rejoinHint': "Dein letzter Raum wartet – mit deinem Verlauf.",
+  'stay.rejoinHint': 'Dein letzter Raum wartet – mit deinem Verlauf.',
+  'stay.rejoinMsgs': '{n} Nachrichten',
   'stay.rejoining': 'Verbinde erneut…',
 
   // ── nearby device discovery ───────────────────────────────────────

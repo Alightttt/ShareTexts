@@ -264,7 +264,8 @@ const ja: Dict = {
   'stay.hint': '自分で切断するまで、このルームは生きたままです。',
   'stay.badge': 'このルームは接続を維持します',
   'stay.rejoinTitle': 'ルームに戻る',
-  'stay.rejoinHint': "前回のルームが履歴とともに待っています。",
+  'stay.rejoinHint': '前回のルームが履歴とともに待っています。',
+  'stay.rejoinMsgs': '{n} 件のメッセージ',
   'stay.rejoining': '再接続中…',
 
   // ── nearby device discovery ───────────────────────────────────────
