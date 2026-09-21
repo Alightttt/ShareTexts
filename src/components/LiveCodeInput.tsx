@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
-import { ShareTextLogo } from './ShareTextLogo';
+import { ShareTextsLogo } from './ShareTextsLogo';
 import { useI18n } from '../lib/i18n';
 
 export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (code: string) => void, isJoining: boolean, error?: string | null }) {
@@ -110,7 +110,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
         aria-invalid={!!error}
         aria-current={isJoining ? 'step' : undefined}
         className="absolute inset-0 opacity-0 cursor-default"
-        style={{ fontSize: '16px' }}
+        style={{ fontSize: '16px', caretColor: 'transparent' }}
       />
       
       <motion.div 
@@ -181,7 +181,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
 
       {isJoining && (
         <div role="status" className="flex flex-col items-center justify-center mt-6 sm:mt-8">
-          <ShareTextLogo size={20} motion="connecting" />
+          <ShareTextsLogo size={20} motion="connecting" />
           <p className="text-[14px] sm:text-[15px] font-medium text-apple-ink-muted">{t('code.verifying')}</p>
         </div>
       )}

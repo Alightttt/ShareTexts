@@ -15,7 +15,7 @@ const PERIOD = 90; // seconds per code window (generous so the code doesn't refr
 
 function totpFor(secret: string, createdAt?: number): OTPAuth.TOTP {
   return new OTPAuth.TOTP({
-    issuer: "ShareText",
+    issuer: "ShareTexts",
     label: "Session",
     algorithm: "SHA1",
     digits: 6,

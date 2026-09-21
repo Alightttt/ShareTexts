@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ShareTextLogo } from '../components/ShareTextLogo';
+import { ShareTextsLogo } from '../components/ShareTextsLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import {
   Send, Inbox, Copy, Download, Share2, QrCode, Link2,
@@ -74,7 +74,7 @@ function OverviewSection() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-1">ShareText</h1>
+        <h1 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-1">ShareTexts</h1>
         <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-lg">
           Like AirDrop, but it works between any two devices, even an iPhone and a Windows PC. Send text, photos, or files from a browser. Nothing is kept once the room closes.
         </p>
@@ -141,7 +141,7 @@ function PairingSection() {
       <div>
         <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-4">Pairing & QR</h2>
         <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-2xl">
-          ShareText uses a 6-digit pairing code to connect two devices. The code refreshes automatically and expires after a short time for security.
+          ShareTexts uses a 6-digit pairing code to connect two devices. The code refreshes automatically and expires after a short time for security.
         </p>
       </div>
 
@@ -189,7 +189,7 @@ function NearbySection() {
         <h3 className="text-[18px] font-semibold text-apple-ink dark:text-white">How it works</h3>
         <div className="space-y-3 text-[15px] text-apple-ink-muted dark:text-white/60 leading-relaxed">
           <p><strong className="text-apple-ink dark:text-white">Open ShareTexts on both devices.</strong> When another ShareTexts device is nearby and idle, it appears under the Send and Receive buttons on your home screen.</p>
-          <p><strong className="text-apple-ink dark:text-white">Tap the device.</strong> The other device gets an invitation and must accept. Once accepted, the connection is established exactly like any other ShareText connection.</p>
+          <p><strong className="text-apple-ink dark:text-white">Tap the device.</strong> The other device gets an invitation and must accept. Once accepted, the connection is established exactly like any other ShareTexts connection.</p>
           <p>Prefer a code? The 6-digit code, QR code, and share link always remain available as alternative methods.</p>
         </div>
       </div>
@@ -255,7 +255,7 @@ function PrivacySection() {
 
       <div className="space-y-3">
         {[
-          { icon: <Lock className="w-4 h-4" />, title: 'Encrypted end-to-end', desc: 'DTLS + app-level encryption. ShareText never sees your content.' },
+          { icon: <Lock className="w-4 h-4" />, title: 'Encrypted end-to-end', desc: 'DTLS + app-level encryption. ShareTexts never sees your content.' },
           { icon: <Shield className="w-4 h-4" />, title: 'No accounts, no history', desc: 'No sign-up, no cloud, no tracking. Close the tab, it is gone.' },
           { icon: <Clock className="w-4 h-4" />, title: 'Temporary rooms', desc: 'Rooms expire automatically. Your data is never stored long-term.' },
           { icon: <Check className="w-4 h-4" />, title: 'Verified transfers', desc: 'SHA-256 on every transfer. What you send is exactly what arrives.' },
@@ -279,7 +279,7 @@ function DevicesSection() {
       <div>
         <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-4">Supported Devices</h2>
         <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-2xl">
-          ShareText works in any modern browser. No app installation required.
+          ShareTexts works in any modern browser. No app installation required.
         </p>
       </div>
 
@@ -321,7 +321,7 @@ function AgentSection() {
           For AI Agents
         </h2>
         <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-2xl">
-          ShareText supports programmatic access for trusted tools. Send text or files into an active room
+          ShareTexts supports programmatic access for trusted tools. Send text or files into an active room
           using the temporary agent send permission.
         </p>
       </div>
@@ -344,7 +344,7 @@ function AgentSection() {
         <ol className="space-y-3 text-[14px] text-apple-ink-muted dark:text-white/60">
           <li className="flex gap-3">
             <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-[#f06413]">1</span>
-            <span>Open ShareText and create a room (click "Send")</span>
+            <span>Open ShareTexts and create a room (click "Send")</span>
           </li>
           <li className="flex gap-3">
             <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-[#f06413]">2</span>
@@ -402,7 +402,7 @@ function APISection() {
           API Reference
         </h2>
         <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-2xl">
-          ShareText exposes a minimal REST API for agent integration.
+          ShareTexts exposes a minimal REST API for agent integration.
         </p>
       </div>
 
@@ -484,7 +484,7 @@ function SecuritySection() {
           Security
         </h2>
         <p className="text-[16px] text-apple-ink-muted dark:text-white/60 leading-relaxed max-w-2xl">
-          ShareText is designed with privacy and security as core principles.
+          ShareTexts is designed with privacy and security as core principles.
         </p>
       </div>
 
@@ -494,7 +494,7 @@ function SecuritySection() {
             Encrypted in the browser
           </h3>
           <p className="text-[14px] text-apple-ink-muted dark:text-white/60">
-            Transfer content is encrypted between devices. ShareText is designed for temporary handoffs, not permanent storage.
+            Transfer content is encrypted between devices. ShareTexts is designed for temporary handoffs, not permanent storage.
           </p>
         </div>
 
@@ -530,7 +530,7 @@ function SecuritySection() {
       </div>
 
       <div className="p-5 rounded-[16px] bg-apple-parchment dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3">
-        <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-3">What ShareText does NOT store</h3>
+        <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-3">What ShareTexts does NOT store</h3>
         <ul className="space-y-2 text-[14px] text-apple-ink-muted dark:text-white/60">
           <li className="flex items-start gap-2">
             <Check className="w-4 h-4 text-status-success shrink-0 mt-0.5" />
@@ -559,8 +559,8 @@ function FAQSection() {
 
   const faqs = [
     {
-      q: 'What is ShareText?',
-      a: 'ShareText is a temporary bridge between two devices. Move text, links, photos, videos, and files directly from one screen to another. No app, no account, nothing kept.'
+      q: 'What is ShareTexts?',
+      a: 'ShareTexts is a temporary bridge between two devices. Move text, links, photos, videos, and files directly from one screen to another. No app, no account, nothing kept.'
     },
     {
       q: 'How do devices discover each other?',
@@ -572,15 +572,15 @@ function FAQSection() {
     },
     {
       q: 'Is it free?',
-      a: 'Yes. ShareText is completely free to use.'
+      a: 'Yes. ShareTexts is completely free to use.'
     },
     {
       q: 'Is it private?',
-      a: 'Yes. Transfers are encrypted between devices. ShareText does not store your files, text, or transfer history.'
+      a: 'Yes. Transfers are encrypted between devices. ShareTexts does not store your files, text, or transfer history.'
     },
     {
       q: 'What if my internet drops mid-transfer?',
-      a: 'If the connection is interrupted, ShareText will tell you whether the transfer can be retried. For large files, we recommend a stable connection.'
+      a: 'If the connection is interrupted, ShareTexts will tell you whether the transfer can be retried. For large files, we recommend a stable connection.'
     },
     {
       q: 'How long does the pairing code last?',       a: 'The code refreshes every 90 seconds. If it expires, a new one appears automatically.'
@@ -591,19 +591,19 @@ function FAQSection() {
     },
     {
       q: 'What file types are supported?',
-      a: 'Any file type. ShareText transfers the original bytes without conversion. Images, videos, audio, documents, archives, code, and more.'
+      a: 'Any file type. ShareTexts transfers the original bytes without conversion. Images, videos, audio, documents, archives, code, and more.'
     },
     {
       q: 'Is there a file size limit?',
-      a: 'ShareText has been tested with large files. Actual limits depend on your browser, device memory, and network stability. For very large files, a stable connection is recommended.'
+      a: 'ShareTexts has been tested with large files. Actual limits depend on your browser, device memory, and network stability. For very large files, a stable connection is recommended.'
     },
     {
       q: 'Does it work on mobile?',
-      a: 'Yes. ShareText works in any modern mobile browser. No app download required.'
+      a: 'Yes. ShareTexts works in any modern mobile browser. No app download required.'
     },
     {
       q: 'Can I transfer between iPhone and Android?',
-      a: 'Yes. ShareText works across all platforms and devices with a modern browser.'
+      a: 'Yes. ShareTexts works across all platforms and devices with a modern browser.'
     },
   ];
 
@@ -656,7 +656,7 @@ export function Docs() {
   // Per-route document title — the home shell has its own static <title>.
   useEffect(() => {
     const previous = document.title;
-    document.title = 'ShareText Docs | transfer text, photos & files between devices';
+    document.title = 'ShareTexts Docs | transfer text, photos & files between devices';
     return () => { document.title = previous; };
   }, []);
 
@@ -680,10 +680,10 @@ export function Docs() {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-apple-canvas/85 dark:bg-night-900/85 backdrop-blur-md border-b border-apple-divider dark:border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">
-          <a href="/" className="flex items-center gap-2 shrink-0" aria-label="ShareText, back to home">
+          <a href="/" className="flex items-center gap-2 shrink-0" aria-label="ShareTexts, back to home">
             <ArrowLeft className="w-4 h-4 text-apple-ink-muted dark:text-white/60" />
-            <ShareTextLogo size={21} />
-            <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareText</span>
+            <ShareTextsLogo size={21} />
+            <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareTexts</span>
           </a>
           <div className="flex items-center gap-3 sm:gap-4 ml-auto">
             <a href="/about" className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60 hover:text-apple-ink dark:hover:text-white transition-colors">About</a>

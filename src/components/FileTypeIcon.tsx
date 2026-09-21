@@ -7,7 +7,7 @@ import {
 import { cn } from '../lib/utils';
 
 /**
- * One coherent file-icon language for every type ShareText can move.
+ * One coherent file-icon language for every type ShareTexts can move.
  * Unknown extensions still get a real icon (generic file) — a transfer is
  * never rejected just because the extension is unfamiliar.
  *

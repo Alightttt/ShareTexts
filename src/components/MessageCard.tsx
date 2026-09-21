@@ -375,7 +375,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
         if (canSendFile) {
           await navigator.share({ files: [file], title: name });
         } else {
-          await navigator.share({ title: 'ShareText', text: name, url: a.url });
+          await navigator.share({ title: 'ShareTexts', text: name, url: a.url });
         }
         setShared(true);
         setTimeout(() => setShared(false), 2000);

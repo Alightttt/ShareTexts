@@ -1,6 +1,6 @@
-# ShareText
+# ShareTexts
 
-> ShareText is a free web app for moving text, links, photos, videos, and files between any two devices — phone to laptop, iPhone to Windows, Android to Mac — directly in the browser. No app, no account, no cable. Just open ShareTexts on both devices.
+> ShareTexts is a free web app for moving text, links, photos, videos, and files between any two devices — phone to laptop, iPhone to Windows, Android to Mac — directly in the browser. No app, no account, no cable. Just open ShareTexts on both devices.
 
 Transfers run peer-to-peer over WebRTC: data moves encrypted between the two browsers and the server never sees file contents. Connect two ways: nearby device discovery (both devices on the same Wi-Fi, visible while ShareTexts is open) or, when the network blocks device-to-device traffic, a six-digit live code, a QR code, or a shareable link — those work over any internet connection. Rooms are temporary and close when you're done.
 
@@ -23,7 +23,7 @@ Text, links, photos, videos, audio, documents — any file type. Links render as
 
 ## Pages
 
-- [About ShareText](https://sharetexts.online/about): what ShareText is, what it transfers, supported devices.
+- [About ShareTexts](https://sharetexts.online/about): what ShareTexts is, what it transfers, supported devices.
 - [Docs](https://sharetexts.online/docs): full documentation — pairing, transfers, privacy, developer API.
 - [How It Works](https://sharetexts.online/guides/how-it-works.html): the signaling + WebRTC architecture explained.
 - [Privacy](https://sharetexts.online/privacy): the privacy model — no accounts, no stored content.
@@ -32,8 +32,9 @@ Text, links, photos, videos, audio, documents — any file type. Links render as
 ## Facts
 
 - Free, no sign-up; runs in any modern browser with WebRTC (Chrome, Safari, Firefox, Edge).
-- Works across platforms: iPhone ↔ Windows, Android ↔ Mac, any combination.
+- Works across platforms: iPhone ↔ Windows, Android ↔ Mac, iPhone ↔ Android, any combination.
 - Transfer types: text, links, photos, videos, audio, documents, any file.
-- End-to-end encrypted via WebRTC (DTLS); the signaling server relays connection metadata only.
+- End-to-end encrypted via WebRTC (DTLS) with an additional AES-GCM layer; the signaling server relays connection metadata only and never sees content.
 - Nearby discovery shows a device only while ShareTexts is open on it, and you can set yourself Hidden; it is never a global user list.
+- Stay Connected keeps a room alive until you disconnect it yourself; rejoining is one tap from the landing page, and refreshes/network drops recover automatically.
 - Operated at https://sharetexts.online.

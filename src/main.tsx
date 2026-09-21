@@ -25,7 +25,7 @@ prewarmSignaling();
 const shell = document.getElementById("loading-shell");
 if (shell) {
   shell.classList.add("fade-out");
-  setTimeout(() => shell.remove(), 350);
+  setTimeout(() => shell.remove(), 260);
 }
 
 createRoot(document.getElementById('root')!).render(

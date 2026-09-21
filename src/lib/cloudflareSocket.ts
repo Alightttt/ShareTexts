@@ -66,7 +66,7 @@ export class CloudflareSocket implements SignalingSocket {
     // 'connect' so any listener attached synchronously sees it. Without
     // this, SessionContext's ensureSocketConnected would wait for a
     // 'connect' event that already fired and hang until its 10s timeout,
-    // showing "Couldn't reach ShareText." before the room socket is even
+    // showing "Couldn't reach ShareTexts." before the room socket is even
     // opened. Failures surface via connect_error / ack timeouts.
     this.connected = true;
     queueMicrotask(() => this.emitLocal('connect'));
@@ -282,7 +282,7 @@ export class CloudflareSocket implements SignalingSocket {
    *         browser, DNS) → generic unreachable message.
    */
   private async classifyFailure(): Promise<string> {
-    const generic = "Couldn't reach ShareText.";
+    const generic = "Couldn't reach ShareTexts.";
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 3000);
@@ -293,15 +293,15 @@ export class CloudflareSocket implements SignalingSocket {
       });
       clearTimeout(timer);
       if (res.status === 403) {
-        return "ShareText's server rejected this browser. The site may need to be added to the server's allow list.";
+        return "ShareTexts's server rejected this browser. The site may need to be added to the server's allow list.";
       }
       if (res.ok) {
-        return "ShareText's server is reachable but the connection dropped. Try again.";
+        return "ShareTexts's server is reachable but the connection dropped. Try again.";
       }
       return generic;
     } catch (err) {
       if (err && err.name === "AbortError") {
-        return "ShareText's server responded slowly. Try again in a moment.";
+        return "ShareTexts's server responded slowly. Try again in a moment.";
       }
       return generic;
     }
@@ -337,7 +337,7 @@ export class CloudflareSocket implements SignalingSocket {
     return new Promise<any>((resolve) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        resolve({ success: false, code: 'UNREACHABLE', error: "Couldn't reach ShareText." });
+        resolve({ success: false, code: 'UNREACHABLE', error: "Couldn't reach ShareTexts." });
       }, WS_OPEN_TIMEOUT + 4000);
       this.pending.set(id, (res) => {
         clearTimeout(timer);
@@ -391,7 +391,7 @@ export class CloudflareSocket implements SignalingSocket {
       if (res.success) this.lastSecret = res.secret;
       cb?.(res);
     } catch {
-      cb?.({ success: false, error: "Couldn't reach ShareText." });
+      cb?.({ success: false, error: "Couldn't reach ShareTexts." });
     }
   }
 
@@ -413,7 +413,7 @@ export class CloudflareSocket implements SignalingSocket {
       if (joined.success) this.lastSecret = joined.secret;
       cb?.(joined);
     } catch {
-      cb?.({ success: false, error: "Couldn't reach ShareText." });
+      cb?.({ success: false, error: "Couldn't reach ShareTexts." });
     }
   }
 
@@ -425,7 +425,7 @@ export class CloudflareSocket implements SignalingSocket {
       if (res.success) this.lastSecret = res.secret;
       cb?.(res);
     } catch {
-      cb?.({ success: false, error: "Couldn't reach ShareText." });
+      cb?.({ success: false, error: "Couldn't reach ShareTexts." });
     }
   }
 
@@ -438,7 +438,7 @@ export class CloudflareSocket implements SignalingSocket {
       const res = await this.request(roomId, 'resume_room', { roomId, secret });
       cb?.(res);
     } catch {
-      cb?.({ success: false, error: "Couldn't reach ShareText." });
+      cb?.({ success: false, error: "Couldn't reach ShareTexts." });
     }
   }
 
@@ -537,7 +537,7 @@ export class CloudflareSocket implements SignalingSocket {
       const id = `${Date.now().toString(36)}-${this.reqSeq++}`;
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        cb?.({ success: false, code: 'UNREACHABLE', error: "Couldn't reach ShareText." });
+        cb?.({ success: false, code: 'UNREACHABLE', error: "Couldn't reach ShareTexts." });
       }, WS_OPEN_TIMEOUT + 4000);
       this.pending.set(id, (res) => {
         clearTimeout(timer);
@@ -545,7 +545,7 @@ export class CloudflareSocket implements SignalingSocket {
       });
       ws.send(JSON.stringify({ v: PROTOCOL_VERSION, id, event, payload }));
     } catch {
-      cb?.({ success: false, code: 'UNREACHABLE', error: "Couldn't reach ShareText." });
+      cb?.({ success: false, code: 'UNREACHABLE', error: "Couldn't reach ShareTexts." });
     }
   }
 

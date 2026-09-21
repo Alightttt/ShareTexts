@@ -317,7 +317,7 @@ const ROOM_EMPTY_TTL = 4 * 60 * 60 * 1000; // rooms stay rejoinable 4h after bot
 const RECONNECT_GRACE = 5 * 60 * 1000;    // must match connectionStateRecovery window
 
 function log(...parts: unknown[]) {
-  console.log('[ShareText]', ...parts);
+  console.log('[ShareTexts]', ...parts);
 }
 
 const httpServer = createServer(app);
@@ -657,7 +657,7 @@ io.on('connection', (socket) => {
 
     for (const room of rooms.values()) {
       const totp = new OTPAuth.TOTP({
-        issuer: "ShareText",
+        issuer: "ShareTexts",
         label: "Session",
         algorithm: "SHA1",
         digits: 6,
@@ -1070,6 +1070,14 @@ async function start() {
     const vite = await createViteServer({
       server: { middlewareMode: true, hmr: { server: httpServer } },
       appType: "spa",
+    });
+    // Dev parity with production routing: the About page is a static SEO
+    // guide served at its canonical URL (vercel.json rewrites it there, and
+    // the prod branch maps it explicitly). Registered BEFORE Vite's SPA
+    // fallback, which would otherwise serve the app shell and the client
+    // would render its 404 view on a 200 status.
+    app.get('/about', (_req, res) => {
+      res.sendFile(path.join(process.cwd(), 'public', 'guides', 'about.html'));
     });
     app.use(vite.middlewares);
   } else {

@@ -13,13 +13,13 @@ const en = {
   'app.ended.sub': 'No account needed, and nothing is kept after the room closes.',
   'app.ended.cta': 'Start a transfer',
   'app.ended.home': 'Back to Home',
-  'app.ended.share': 'Send ShareText to someone you know',
+  'app.ended.share': 'Send ShareTexts to someone you know',
   'app.ended.shareDone': 'Link copied',
 
   // ── brand / nav / landing ──────────────────────────────────────────
   'nav.docs': 'Docs',
   'home.title': 'Move anything\nbetween your devices.',
-  'home.subtitle': "Windows to IPhone, Mobile to PC, you can share Texts/Files/Images across any devices. thats why we call it AirDrop for any Device",
+  'home.subtitle': "iPhone to Windows, phone to laptop — share texts, files, and photos across any devices. That's why we call it AirDrop for any device",
   'home.send': 'Send',
   'home.sendHint': 'Create a room',
   'home.receive': 'Receive',
@@ -37,7 +37,7 @@ const en = {
   'cancel': 'Cancel',
   'create.title': 'Connect your other device.',
   'create.creating': 'Creating room…',
-  'create.hint': 'Open ShareText on the other device and enter this code.',
+  'create.hint': 'Open ShareTexts on the other device and enter this code.',
   'create.establishing': 'Establishing secure connection…',
   'create.connecting': 'Connecting…',
   'create.showQr': 'Show QR',
@@ -50,7 +50,7 @@ const en = {
   'receive.scan': 'Scan QR code',
   'receive.note': 'Codes refresh every 30 seconds. If yours stops working, ask for a new one.',
   'connect.stuck': "Still linking — the other device is slow to respond.",
-  'connect.stuckLong': "This is taking unusually long. The other device may have closed ShareText — cancel and try a fresh code.",
+  'connect.stuckLong': "This is taking unusually long. The other device may have closed ShareTexts — cancel and try a fresh code.",
   'common.tryAgain': "Try again",
 
   // ── connected summary / device pair ────────────────────────────────
@@ -59,16 +59,16 @@ const en = {
   'common.close': 'Close',
   'common.disconnectAria': 'Disconnect',
   'common.loading': 'Loading…',
-  'err.connectFailed': 'ShareText couldn\'t connect right now. Please check your internet and try again.',
+  'err.connectFailed': 'ShareTexts couldn\'t connect right now. Please check your internet and try again.',
   'err.timeout': 'Connection took too long. Please check your internet and try again.',
   'err.codeInactive': "That code isn't active. Ask for a fresh one.",
-  'err.generic': 'ShareText couldn\'t connect. Please check your internet and try again.',
+  'err.generic': 'ShareTexts couldn\'t connect. Please check your internet and try again.',
   // Honest, specific connect failures (Phase 0): each names the real cause
   // and the real next step instead of blaming the user's internet.
   'err.offline': 'This device is offline. Reconnect to Wi-Fi or data, then try again.',
-  'err.unreachable': "ShareText's service isn't responding right now. We're on it. Try again in a moment.",
+  'err.unreachable': "ShareTexts's service isn't responding right now. We're on it. Try again in a moment.",
   'err.timeout2': 'The connection took too long. One more try usually fixes it.',
-  'err.config': "ShareText's connection service isn't configured for this deployment. The site owner needs to set the signaling URL.",
+  'err.config': "ShareTexts's connection service isn't configured for this deployment. The site owner needs to set the signaling URL.",
   'err.ratelimited': 'Too many attempts. Wait a minute and try again.',
   'err.retrying': 'Couldn\'t connect. Retrying automatically…',
   'pair.paired': 'Paired',
@@ -115,7 +115,7 @@ const en = {
   'room.setup': 'Setting up your transfer room.',
   'room.sendHint': 'Connect the other device: enter the code shown on this one.',
   'room.receiveHint': 'Enter the code from the other device.',
-  'room.step.1': 'Open ShareText on both devices.',
+  'room.step.1': 'Open ShareTexts on both devices.',
   'room.step.2': 'Tap Send on one, Receive on the other.',
   'room.step.3': 'Connect both — and you\'re good to go.',
 
@@ -126,7 +126,7 @@ const en = {
   'qr.scan.body': 'Point your camera at the QR code on the other device.',
   'qr.scan.loading': 'Loading scanner...',
   'qr.scan.typeCode': 'Camera not opening? Type the code instead',
-  'qr.display.body': 'Open ShareText on your other device, choose {receive}, then scan.',
+  'qr.display.body': 'Open ShareTexts on your other device, choose {receive}, then scan.',
   'qr.display.receive': 'Receive',
 
   // ── transfer room (chat) ───────────────────────────────────────────
@@ -178,7 +178,7 @@ const en = {
   'attach.max': 'You can attach up to {max} files in one message. Send this batch first.',
   'attach.overflow': 'Not added: you can send up to {max} files at once.',
   'attach.largeImage': '{name} is larger than 100 MB. Photos above 100 MB still transfer full quality. They arrive as a file you can open, with no preview.',
-  'attach.tooLarge': '{name} is too large. ShareText works best with files under a few hundred MB.',
+  'attach.tooLarge': '{name} is too large. ShareTexts works best with files under a few hundred MB.',
   'attach.count': '{count} of {max} attached',
   'attach.add': 'Add attachment',
   'attach.remove': 'Remove attachment',
@@ -255,7 +255,7 @@ const en = {
   // ── image viewer ───────────────────────────────────────────────────
 
   // ── command bar (⌘K) ─────────────────────────────────────────────
-  'command.title': 'ShareText commands',
+  'command.title': 'ShareTexts commands',
   'command.transferStats': 'Transfer stats',
   'command.clearStats': 'Clear',
   'stats.transfers': 'Transfers',

@@ -17,7 +17,7 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import { ShareTextLogo } from '../components/ShareTextLogo';
+import { ShareTextsLogo } from '../components/ShareTextsLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { LiveCodeDisplay } from '../components/LiveCodeDisplay';
 import { LiveCodeInput } from '../components/LiveCodeInput';
@@ -117,7 +117,7 @@ function useIsTouchPrimary() {
 /* ------------------------------------------------------------------ */
 export function SingleScreenApp() {
   const { t } = useI18n();
-  const { session, createSession, abandonSession, joinWithCode, joinWithShortCode, setDeviceName, rejoinStayRoom, requestReconnect } = useSession();
+  const { session, createSession, abandonSession, joinWithCode, joinWithShortCode, setDeviceName, rejoinStayRoom, requestReconnect, refreshCode } = useSession();
   const isDesktopLayout = useIsDesktopLayout();
   const isTouchPrimary = useIsTouchPrimary();
   // Live activity tracker — real aggregate numbers from the signaling
@@ -525,7 +525,7 @@ export function SingleScreenApp() {
       if (/^\d{6}$/.test(text.trim())) { setShowQRScan(false); handleCodeComplete(text.trim()); }
     }
   }, [handleCodeComplete]);
-  const shareLink = async () => { if (navigator.share) { try { await navigator.share({ title: 'ShareText', url: shareUrl }); return; } catch {} } await copyLink(); };
+  const shareLink = async () => { if (navigator.share) { try { await navigator.share({ title: 'ShareTexts', url: shareUrl }); return; } catch {} } await copyLink(); };
 
   /* ---------------------------------------------------------------- */
   /*  LEFT / TOP PANEL                                                */
@@ -546,15 +546,25 @@ export function SingleScreenApp() {
             gradient defs inside the display:none copy, which browsers refuse
             to paint — the desktop mark vanished). CSS overrides the intrinsic
             size for the responsive step. */}
-        <a href="/" className="flex items-center gap-[8px] shrink-0" aria-label="ShareText — home">
-          <ShareTextLogo size={30} className="w-7 sm:w-[30px] h-auto" />
-          <span className="font-semibold tracking-tight text-[19px] sm:text-[21px] text-apple-ink dark:text-white">ShareText</span>
+        <a href="/" className="flex items-center gap-[8px] shrink-0" aria-label="ShareTexts — home">
+          <ShareTextsLogo size={30} className="w-7 sm:w-[30px] h-auto" />
+          <span className="font-semibold tracking-tight text-[19px] sm:text-[21px] text-apple-ink dark:text-white">ShareTexts</span>
         </a>
         {/* One rhythm for every header control — desktop AND mobile. Each
             item is a 40px-tall slot on a 6px gap grid; icons are uniform
             18px. No per-item -my hacks: the grid does the aligning. */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           <CommandBarChip onClick={() => { productEvent('product.diagnostics_opened'); setCmdOpen(true); }} />
+          {/* Docs returns to the header (user request) — same 40px slot, same
+              quiet icon style as its neighbors; the footer link stays too. */}
+          <a
+            href="/docs"
+            aria-label="Docs"
+            title="Docs"
+            className="flex items-center justify-center w-10 h-10 rounded-full text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.07] active:scale-95 transition-all"
+          >
+            <BookOpen className="w-[18px] h-[18px]" aria-hidden />
+          </a>
           <LanguageMenu />
           <ThemeToggle />
         </div>
@@ -568,13 +578,11 @@ export function SingleScreenApp() {
             // Deterministic first paint: the hero renders visible immediately;
             // only the swap-out fades. Never gate first paint on animation.
             <motion.div key="idle" exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto flex flex-col">
-              {/* Flex + order: H1 → subtitle → live tracker → actions. The
-                  tracker is passive status, so it lives ABOVE the action
-                  cluster — status never interrupts the Send/Receive flow
-                  (usability audit #6). */}
-              <h1 className="order-1 text-[34px] sm:text-[42px] lg:text-[56px] font-bold tracking-[-0.035em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left" style={{ fontFamily: 'var(--font-display)' }}>
-                {(() => { const [a, b] = t('home.title').split('\n'); return (<>{a}{b ? <><br />{b}</> : null}</>); })()}
-              </h1>
+              {/* Flex + order: subtitle → tracker → actions (the H1 itself
+                  is pinned by the pane, above this scroller — it never
+                  moves). The tracker is passive status, so it lives ABOVE
+                  the action cluster — status never interrupts the
+                  Send/Receive flow (usability audit #6). */}
               {/* whitespace-pre-line honors the subtitle's deliberate line
                   break ("No app. No account. No cable." / "Just open …"). */}
               <p className="order-2 mt-4 text-[16.5px] sm:text-[18px] lg:text-[20px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[40ch] text-center sm:text-left whitespace-pre-line">
@@ -699,11 +707,12 @@ export function SingleScreenApp() {
                   searching row says "Looking for nearby devices…" in the
                   same words, right where the action is. One instruction on
                   screen, never two. */}
-              {/* mt-8: real air between the hero image (or the rejoin card)
-                  and the nearby section — they were touching on mobile. */}
-              <div className="order-6 mt-10 w-full flex flex-col items-center lg:items-start">
+              {/* On mobile the hero image already carries mb-5 before this
+                  row — a second mt-10 stacked on top read as a dead gap.
+                  mt-2 keeps one breath of air, nothing more. */}
+              <div className="order-6 mt-10 max-lg:mt-2 w-full flex flex-col items-center lg:items-start">
                 <div className="w-full max-w-md lg:max-w-none">
-                  <NearbyDevices onStatus={setNearbyStatus} showFallback={isTouchPrimary} />
+                  <NearbyDevices onStatus={setNearbyStatus} />
                 </div>
               </div>
               {/* The product, as it actually looks — laptop + phone running
@@ -756,7 +765,7 @@ export function SingleScreenApp() {
               </div>
               {isCreating && !session.secret ? (
                 <div className="flex flex-col items-center py-8">
-                  <ShareTextLogo size={20} motion="connecting" />
+                  <ShareTextsLogo size={20} motion="connecting" />
                   <p className="text-[14px] font-medium text-apple-ink-muted dark:text-white/50">{t('create.creating')}</p>
                 </div>
               ) : (
@@ -773,7 +782,7 @@ export function SingleScreenApp() {
                       </motion.div>
                     ) : (
                       <motion.div key="code" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-                        {session.secret && <LiveCodeDisplay secret={session.secret} createdAt={session.createdAt} />}
+                        {session.secret && <LiveCodeDisplay secret={session.secret} createdAt={session.createdAt} onRefresh={refreshCode} />}
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -1071,6 +1080,9 @@ export function SingleScreenApp() {
       className="relative isolate flex flex-col h-full overflow-hidden bg-apple-canvas dark:bg-[#131315]"
     >
       {ambientGlow}
+      {/* Soft top ambience — a wide, low-alpha ember/violet breath that keeps
+          the canvas from reading as flat, in both themes. Decorative. */}
+      <div aria-hidden className="st-ambient" />
       {/* Drop-to-send veil — the pane answers the drag immediately, so the
           user knows releasing HERE is the action. pointer-events-none keeps
           dragleave/drop flowing to the pane beneath. */}
@@ -1100,8 +1112,18 @@ export function SingleScreenApp() {
           under the header with real breathing room keeps the heading where
           it belongs no matter how much content follows; the pane scrolls
           when a viewport is genuinely short. */}
-      <div className="flex-1 flex flex-col justify-start px-6 lg:px-10 pt-3 sm:pt-6 lg:pt-12 pb-6 min-h-0 overflow-y-auto overscroll-contain room-scroll">
-        {heroContent}
+      {/* Heading stays PUT (user request: "the heading moves up, make it in
+          its place"): H1 is sticky under the header and the hero body scrolls
+          beneath it. Short viewports lose the tail into the scroll, not the
+          title. The negative bottom + backdrop keeps the title zone stable
+          while scrolled content slides under it. */}
+      <div className="flex-1 flex flex-col min-h-0 px-6 lg:px-10 pt-3 sm:pt-6 lg:pt-12 pb-6 overflow-hidden">
+        <h1 className="order-1 shrink-0 sticky top-0 z-20 pt-1 pb-3 -mb-3 bg-apple-canvas/95 dark:bg-[#131315]/95 text-[38px] sm:text-[42px] lg:text-[56px] font-bold tracking-[-0.035em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left" style={{ fontFamily: 'var(--font-display)' }}>
+          {(() => { const [a, b] = t('home.title').split('\n'); return (<>{a}{b ? <><br />{b}</> : null}</>); })()}
+        </h1>
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain room-scroll">
+          {heroContent}
+        </div>
       </div>
       {footerNode}
     </div>
@@ -1112,13 +1134,20 @@ export function SingleScreenApp() {
   /* ---------------------------------------------------------------- */
   const roomPanel = (
     <div
-      className="relative flex flex-col h-full min-h-0 overflow-hidden bg-[#f4f2ec] dark:bg-[#0f0f11]"
+      className={cn(
+        "relative flex flex-col h-full min-h-0 overflow-hidden bg-[#f4f2ec] dark:bg-[#0f0f11]",
+        /* The animated dot field lives ONLY here: the desktop landing's
+           right panel, before a connection exists. Not mobile, not in-room,
+           not the pairing/connected states — one quiet stage for the hero. */
+        panelMode === 'idle' && "st-dotfield"
+      )}
       data-testid="room-panel"
     >
+      {panelMode === 'idle' && <div aria-hidden className="st-ambient" />}
       {/* Room header */}
       <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-[#f4f2ec]/80 dark:bg-[#0f0f11]/80 backdrop-blur-xl z-10">
         <div className="flex items-center gap-2.5">
-          <ShareTextLogo size={16} />
+          <ShareTextsLogo size={16} />
           <span className="text-[13px] font-semibold text-apple-ink dark:text-white">
             {panelMode === 'connected' ? t('room.transfer') : t('room.title')}
           </span>
@@ -1159,7 +1188,7 @@ export function SingleScreenApp() {
       {/* Room content */}
       <div className="flex-1 min-h-0 flex flex-col">
         {panelMode === 'connected' ? (
-          <Suspense fallback={<div className="h-full flex items-center justify-center"><ShareTextLogo size={24} motion="connecting" /></div>}>
+          <Suspense fallback={<div className="h-full flex items-center justify-center"><ShareTextsLogo size={24} motion="connecting" /></div>}>
             {/* Definite-height flex wrapper: keeps ChatView's h-full resolved on
                 the desktop two-pane layout (Suspense itself is not a flex item). */}
             <div className="flex-1 min-h-0 flex flex-col">
@@ -1259,7 +1288,7 @@ export function SingleScreenApp() {
         panelMode === 'connected' ? (
           <Suspense fallback={
             <div className="h-full flex items-center justify-center bg-[#f4f2ec] dark:bg-[#0f0f11]">
-              <ShareTextLogo size={26} motion="connecting" />
+              <ShareTextsLogo size={26} motion="connecting" />
             </div>
           }>
             <motion.div

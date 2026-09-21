@@ -16,7 +16,7 @@ import { StayConnectedToggle, StayBadge } from '../components/StayConnectedToggl
 import { cn, formatBytes, sanitizeDeviceName } from '../lib/utils';
 import { Attachment } from '../types';
 import { MessageCard } from '../components/MessageCard';
-import { ShareTextLogo } from '../components/ShareTextLogo';
+import { ShareTextsLogo } from '../components/ShareTextsLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
 import { saveDraft, loadDraft, clearDraft, ComposerDraft } from '../lib/draftStore';
@@ -934,7 +934,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             role="status"
             className="absolute top-[76px] sm:top-[80px] left-1/2 -translate-x-1/2 z-40 px-4 py-2.5 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 shadow-float flex items-center gap-2 text-[13.5px] font-semibold whitespace-nowrap"
           >
-            <ShareTextLogo size={16} motion="complete" mono />
+            <ShareTextsLogo size={16} motion="complete" mono />
             {/* The moment names the DEVICE: "Connected to iPhone" — a real
                 session with a real counterpart, never a generic ack. */}
             {session.partnerName ? t('toast.connectedTo', { name: session.partnerName }) : t('toast.connected')}
@@ -1404,17 +1404,55 @@ function EmptyRoomIllustration({ connected = true }: { connected?: boolean }) {
   );
 }
 
-/** The traveling packet that rides the empty-room link (separated from the
- *  static SVG so it can be motion-driven and thus reduced-motion aware). */
+/** The traveling packet train that rides the empty-room link (separated from
+ *  the static SVG so it can be motion-driven and thus reduced-motion aware).
+ *  Three staggered comets with fading trails read as a living stream — one
+ *  lone dot read as a glitch; a train reads as data flowing. Each comet is
+ *  a compositor-only transform/opacity loop; no layout, no paint per frame. */
 function EmptyRoomPacket() {
+  const comets = [
+    { size: 7, delay: 0, lead: true },
+    { size: 5, delay: 0.22, lead: false },
+    { size: 4, delay: 0.44, lead: false },
+  ] as const;
   return (
-    <motion.span
-      aria-hidden="true"
-      className="absolute left-1/2 top-1/2 block w-[7px] h-[7px] -mt-[3.5px] rounded-full bg-[#f06413] dark:bg-[#fb9243] shadow-[0_0_8px_rgba(240,100,19,0.5)]"
-      initial={{ x: -36, opacity: 0 }}
-      animate={{ x: 36, opacity: [0, 1, 1, 0] }}
-      transition={{ duration: 2.2, times: [0, 0.18, 0.82, 1], repeat: Infinity, ease: 'easeInOut' }}
-    />
+    <>
+      {comets.map((c, i) => (
+        <motion.span
+          key={i}
+          aria-hidden="true"
+          className="absolute left-1/2 top-1/2 rounded-full bg-[#f06413] dark:bg-[#fb9243]"
+          style={{
+            width: c.size,
+            height: c.size,
+            marginLeft: -c.size / 2,
+            marginTop: -c.size / 2,
+            boxShadow: c.lead
+              ? '0 0 10px rgba(240,100,19,0.55), 0 0 22px rgba(240,100,19,0.2)'
+              : 'none',
+            opacity: c.lead ? 1 : 0.55 - i * 0.15,
+          }}
+          initial={{ x: -22, opacity: 0 }}
+          animate={{ x: 50, opacity: [0, 1, 1, 0] }}
+          transition={{
+            duration: 2.2,
+            times: [0, 0.18, 0.82, 1],
+            repeat: Infinity,
+            ease: 'easeInOut',
+            delay: c.delay,
+          }}
+        />
+      ))}
+      {/* Soft arrival glow where packets land on the phone side */}
+      <motion.span
+        aria-hidden="true"
+        className="absolute right-[47px] top-1/2 -mt-[7px] block w-[14px] h-[14px] rounded-full"
+        style={{ background: 'radial-gradient(circle, rgba(52,199,89,0.35), transparent 70%)' }}
+        initial={{ opacity: 0, scale: 0.6 }}
+        animate={{ opacity: [0, 0.9, 0], scale: [0.6, 1.15, 0.9] }}
+        transition={{ duration: 2.2, times: [0, 0.2, 0.5], repeat: Infinity, ease: 'easeOut', delay: 0.1 }}
+      />
+    </>
   );
 }
 /** Live rejoin code for the disconnect banner — same TOTP the connect screen

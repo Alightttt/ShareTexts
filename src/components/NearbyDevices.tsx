@@ -129,7 +129,7 @@ function ToggleRow({ icon, active, title, hint, onClick, ariaLabel, testId, rowT
   );
 }
 
-export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s: string | null) => void; showFallback?: boolean }) {
+export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => void }) {
   const { t } = useI18n();
   const { session, createSession, joinWithLink } = useSession();
   const idle = !session.roomId;
@@ -154,6 +154,29 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
   // True while OUR invite is awaiting an answer — suppresses auto-accept on
   // the inviter side so a mutual tap can't race into two rooms.
   const invitingRef = useRef(false);
+  // Bounded wait for the auto-connect tiebreak loser (see the auto-invite
+  // effect): after this long with no incoming invitation, the loser leads.
+  const AUTO_YIELD_MS = 12_000;
+  const yieldDeadlineRef = useRef<number | null>(null);
+  const yieldTickRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [yieldTick, setYieldTick] = useState(0);
+  // ONE live timer for the deadline, armed here — the auto-invite effect
+  // re-runs on every presence broadcast, and a cleanup-based timer would be
+  // cleared and never re-armed (the wait would silently never fire).
+  useEffect(() => {
+    if (yieldDeadlineRef.current == null) return;
+    if (yieldTickRef.current) return;
+    const remaining = Math.max(0, yieldDeadlineRef.current - Date.now()) + 250;
+    yieldTickRef.current = setTimeout(() => {
+      yieldTickRef.current = null;
+      setYieldTick(n => n + 1);
+    }, remaining);
+    return () => { if (yieldTickRef.current) { clearTimeout(yieldTickRef.current); yieldTickRef.current = null; } };
+  }, [yieldTick]);
+  const cancelYieldWait = useCallback(() => {
+    yieldDeadlineRef.current = null;
+    if (yieldTickRef.current) { clearTimeout(yieldTickRef.current); yieldTickRef.current = null; }
+  }, []);
 
   /* --- recents subscription -------------------------------------------- */
   useEffect(() => {
@@ -231,6 +254,15 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
     // too, both sides compare tokens and only the deterministic winner
     // actually invites (the loser waits to be invited). Without this, both
     // sides create rooms and the invitees end up in crossed rooms.
+    //
+    // "Wait to be invited" has a real failure mode, though: the winning
+    // device's auto-invite can silently fail (stale lobby, invite cooldown
+    // on its side, user toggle just flipped). A loser that waits FOREVER
+    // turns "auto-connect" into "never connects" — the intermittent bug
+    // this whole toggle kept catching. So the wait is bounded: after a full
+    // invite window with no incoming invitation, the loser leads anyway.
+    // At that point a race is the lesser harm (both sides' answerInvite /
+    // invite-result handlers are one-shot and idle-phase-guarded).
     const self = nearbyPresence.getSelfToken();
     const iShouldLead = (theirToken: string) => !self || self < theirToken;
     const now = Date.now();
@@ -239,22 +271,51 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
       (autoCooldownRef.current.get(d.id) ?? 0) < now &&
       iShouldLead(d.id)
     );
-    if (!target) return;
-    autoInvitedRef.current.add(target.id);
-    void handleInviteRef.current(target).then((ok) => {
-      if (ok) {
-        // Seated (or connecting) — no retry needed.
-        autoCooldownRef.current.delete(target.id);
-      } else {
-        // Declined/expired/gone: allow a later retry, but not a flurry.
-        autoInvitedRef.current.delete(target.id);
-        autoCooldownRef.current.set(target.id, Date.now() + AUTO_COOLDOWN_MS);
+    if (target) {
+      autoInvitedRef.current.add(target.id);
+      void handleInviteRef.current(target).then((ok) => {
+        if (ok) {
+          // Seated (or connecting) — no retry needed.
+          autoCooldownRef.current.delete(target.id);
+        } else {
+          // Declined/expired/gone: allow a later retry, but not a flurry.
+          autoInvitedRef.current.delete(target.id);
+          autoCooldownRef.current.set(target.id, Date.now() + AUTO_COOLDOWN_MS);
+        }
+      });
+      return;
+    }
+    // Everyone here outranks us in the tiebreak — arm the bounded wait.
+    if (yieldDeadlineRef.current == null) {
+      yieldDeadlineRef.current = Date.now() + AUTO_YIELD_MS;
+      setYieldTick(n => n + 1); // arm the deadline timer (see its effect)
+      return;
+    }
+    if (Date.now() >= yieldDeadlineRef.current) {
+      // Waited a full window with no incoming invite: lead after all.
+      const fallback = devices.find(d =>
+        !autoInvitedRef.current.has(d.id) &&
+        (autoCooldownRef.current.get(d.id) ?? 0) < now
+      );
+      if (fallback) {
+        cancelYieldWait();
+        autoInvitedRef.current.add(fallback.id);
+        void handleInviteRef.current(fallback).then((ok) => {
+          if (ok) autoCooldownRef.current.delete(fallback.id);
+          else {
+            autoInvitedRef.current.delete(fallback.id);
+            autoCooldownRef.current.set(fallback.id, Date.now() + AUTO_COOLDOWN_MS);
+          }
+        });
       }
-    });
-  }, [autoOn, phase.kind, invitation, devices]);
+    }
+  }, [autoOn, phase.kind, invitation, devices, yieldTick, cancelYieldWait]);
 
   /* --- incoming invitation ---------------------------------------------- */
   useEffect(() => nearbyPresence.onInvitation(inv => {
+    // An invite arrived — the tiebreak wait is over, whoever yielded can
+    // stop planning a fallback lead.
+    cancelYieldWait();
     // Trust ladder: (1) a previously PAIRED device always skips the sheet —
     // auto-connect ON or OFF. (2) Auto-connect ON accepts ANY nearby device
     // without the sheet — that is precisely what the toggle promises
@@ -527,48 +588,42 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
         )}
       </AnimatePresence>
 
-      {/* FALLBACK — after the grace, name the reality and offer the paths
-          that never depend on the local network. Never shown while devices
-          are live. */}
+      {/* CONTROLS — visibility and auto-connect live here, always findable
+          while nothing is connected yet: the two switches that shape
+          discovery sit exactly where a user wondering "why can't I see my
+          device" will look. Rows, not cards — settings, not actions. */}
       <AnimatePresence>
-        {waiting && searchExpired && showFallback && (
+        {waiting && (
           <motion.div
-            key="nearby-fallback"
-            data-testid="nearby-fallback"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
-            className="mt-2.5 w-full"
+            key="nearby-controls"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="mt-2 w-full px-1"
           >
-            <p className="text-[13px] font-semibold text-apple-ink dark:text-white mb-2">{t('nearby.nothingFound')}</p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => { hapticTap(); (window as Window & { __stOpenReceive?: () => void }).__stOpenReceive?.(); }}
-                data-testid="fallback-code"
-                className={pillGhost}
-              >
-                <RefreshCw className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /> {t('nearby.fallbackCode')}
-              </button>
-              <button
-                type="button"
-                onClick={() => { hapticTap(); (window as Window & { __stOpenSendQr?: () => void }).__stOpenSendQr?.(); }}
-                data-testid="fallback-qr"
-                className={pillGhost}
-              >
-                <QrCode className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /> {t('nearby.showQr')}
-              </button>
-              <button
-                type="button"
-                onClick={() => { hapticTap(); (window as Window & { __stOpenSendLink?: () => void }).__stOpenSendLink?.(); }}
-                data-testid="fallback-link"
-                className={pillGhost}
-              >
-                <Link2 className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /> {t('nearby.shareLink')}
-              </button>
-            </div>
-            <p className="mt-2 text-[13px] font-medium text-apple-ink-muted/60 dark:text-white/30">{t('nearby.keepOpenHint')}</p>
+            <ToggleRow
+              testId="nearby-visibility-toggle"
+              rowTestId="nearby-visibility-row"
+              icon={presenceHidden
+                ? <EyeOff className="w-3.5 h-3.5" strokeWidth={2.2} />
+                : <Eye className="w-3.5 h-3.5" strokeWidth={2.2} />}
+              active={!presenceHidden}
+              title={presenceHidden ? t('nearby.hiddenTitle') : t('nearby.visibleWhileOpen')}
+              hint={presenceHidden ? t('nearby.hiddenHint') : t('nearby.visibleWhileOpenHint')}
+              ariaLabel={t('nearby.visibleTitle')}
+              onClick={() => { hapticTap(); setPresenceHiddenState(h => { setPresenceHidden(!h); return !h; }); }}
+            />
+            <ToggleRow
+              testId="auto-connect-toggle"
+              rowTestId="auto-connect-row"
+              icon={<Zap className="w-3.5 h-3.5" strokeWidth={2.2} />}
+              active={autoOn}
+              title={t('nearby.autoTitle')}
+              hint={t('nearby.autoHint')}
+              ariaLabel={t('nearby.autoTitle')}
+              onClick={() => { hapticTap(); setAutoOn(v => { setAutoConnectEnabled(!v); return !v; }); }}
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -655,30 +710,8 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
                       someone debugging "why can't we see each other" will
                       look for them — inside the helper, not floating above
                       it as permanent clutter. */}
-                  <div className="mt-2 pt-2 border-t border-apple-divider/40 dark:border-white/[0.06]">
-                    <ToggleRow
-                      testId="nearby-visibility-toggle"
-                      rowTestId="nearby-visibility-row"
-                      icon={presenceHidden
-                        ? <EyeOff className="w-3.5 h-3.5" strokeWidth={2.2} />
-                        : <Eye className="w-3.5 h-3.5" strokeWidth={2.2} />}
-                      active={!presenceHidden}
-                      title={presenceHidden ? t('nearby.hiddenTitle') : t('nearby.visibleWhileOpen')}
-                      hint={presenceHidden ? t('nearby.hiddenHint') : t('nearby.visibleWhileOpenHint')}
-                      ariaLabel={t('nearby.visibleTitle')}
-                      onClick={() => { hapticTap(); setPresenceHiddenState(h => { setPresenceHidden(!h); return !h; }); }}
-                    />
-                    <ToggleRow
-                      testId="auto-connect-toggle"
-                      rowTestId="auto-connect-row"
-                      icon={<Zap className="w-3.5 h-3.5" strokeWidth={2.2} />}
-                      active={autoOn}
-                      title={t('nearby.autoTitle')}
-                      hint={t('nearby.autoHint')}
-                      ariaLabel={t('nearby.autoTitle')}
-                      onClick={() => { hapticTap(); setAutoOn(v => { setAutoConnectEnabled(!v); return !v; }); }}
-                    />
-                  </div>
+                  {/* Controls live in the main section now (see nearby-controls);
+                      the helper stays pure help. */}
                 </div>
               </motion.ol>
             )}

@@ -22,7 +22,7 @@ export function diag(stage: string, ok: boolean, detail?: string) {
   RING.push({ t: Date.now(), stage, ok, detail });
   if (RING.length > MAX_EVENTS) RING.splice(0, RING.length - MAX_EVENTS);
   // eslint-disable-next-line no-console
-  console.debug(`[ShareText] ${ok ? '✓' : '✗'} ${stage}${detail ? ' — ' + detail : ''}`);
+  console.debug(`[ShareTexts] ${ok ? '✓' : '✗'} ${stage}${detail ? ' — ' + detail : ''}`);
 }
 
 export function diagSnapshot(): DiagEvent[] {

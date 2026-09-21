@@ -1,6 +1,6 @@
 {
-  "name": "ShareText",
-  "short_name": "ShareText",
+  "name": "ShareTexts",
+  "short_name": "ShareTexts",
   "description": "Send text, photos, and files between any two devices, phone to laptop, iPhone to Windows. No app, no account, nothing to install.",
   "start_url": "/",
   "display": "standalone",

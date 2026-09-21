@@ -46,6 +46,27 @@ function DeviceTile({ kindIcon, accent, lifted }: { kindIcon: 'phone' | 'monitor
   );
 }
 
+/** The radar sweep while connecting: a rotating conic-gradient ring just
+ *  outside the partner tile. Reads as "searching for the other device" —
+ *  rotation only (compositor transform), no scale, no movement of the
+ *  tiles themselves. Hidden under reduced motion via MotionConfig. */
+function SweepRing({ accent }: { accent: string }) {
+  return (
+    <motion.span
+      aria-hidden="true"
+      className="absolute -inset-[7px] rounded-[26px]"
+      style={{
+        background: `conic-gradient(from 0deg, transparent 0deg, transparent 300deg, ${accent}66 345deg, transparent 360deg)`,
+        WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), black calc(100% - 2px))',
+        mask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), black calc(100% - 2px))',
+        opacity: 0.8,
+      }}
+      animate={{ rotate: 360 }}
+      transition={{ duration: 2.4, repeat: Infinity, ease: 'linear' }}
+    />
+  );
+}
+
 export function ConnectHandshake({ phase, localIcon = 'phone', partnerName }: ConnectHandshakeProps) {
   const { t } = useI18n();
   const connecting = phase === 'connecting';
@@ -70,7 +91,7 @@ export function ConnectHandshake({ phase, localIcon = 'phone', partnerName }: Co
           animate={{ marginRight: 0 }}
         >
           <DeviceTile kindIcon={localIcon} accent={accent} lifted={connecting || connected} />
-          <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45">{t('connect.thisDevice')}</span>
+          <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/45">{t('connect.thisDevice')}</span>
         </motion.div>
 
         {/* The middle: fixed width — a level bridge between the tiles */}
@@ -152,9 +173,11 @@ export function ConnectHandshake({ phase, localIcon = 'phone', partnerName }: Co
         </div>
 
         {/* Partner tile — its accent ring pulses gently while linking
-            (a soft breath, alpha-only, never a scale change). */}
+            (a soft breath, alpha-only, never a scale change), wrapped in
+            the radar sweep ring that says "finding this device…". */}
         <motion.div className="relative z-10 flex flex-col items-center gap-2">
           <motion.div
+            className="relative"
             animate={connecting ? { boxShadow: [
               `0 10px 28px -14px ${accent}66`,
               `0 10px 34px -12px ${accent}99`,
@@ -162,6 +185,7 @@ export function ConnectHandshake({ phase, localIcon = 'phone', partnerName }: Co
             ] } : undefined}
             transition={connecting ? { duration: 1.7, repeat: Infinity, ease: 'easeInOut' } : undefined}
           >
+            {connecting && <SweepRing accent={accent} />}
             <DeviceTile kindIcon={isPhone ? 'monitor' : 'phone'} accent={connected ? 'rgba(52,199,89,0.45)' : accent} lifted={connecting} />
           </motion.div>
           <motion.span
@@ -169,7 +193,7 @@ export function ConnectHandshake({ phase, localIcon = 'phone', partnerName }: Co
             initial={{ opacity: 0, y: 3 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, ease: EASE }}
-            className="max-w-[110px] truncate text-[11px] font-medium text-apple-ink-muted dark:text-white/45"
+            className="max-w-[110px] truncate text-[13px] font-medium text-apple-ink-muted dark:text-white/45"
           >
             {connected ? (partnerName || t('pair.paired')) : t('connect.otherDevice')}
           </motion.span>
@@ -191,7 +215,7 @@ export function ConnectHandshake({ phase, localIcon = 'phone', partnerName }: Co
         </motion.p>
       </AnimatePresence>
       {!connected && (
-        <p className="mt-1 text-[12px] text-apple-ink-muted/70 dark:text-white/35">{t('connect.sub')}</p>
+        <p className="mt-1 text-[13px] text-apple-ink-muted/70 dark:text-white/35">{t('connect.sub')}</p>
       )}
     </div>
   );

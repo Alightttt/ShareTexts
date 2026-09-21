@@ -7,18 +7,18 @@
  * server (server.ts). Unknown codes fall back to a generic message.
  */
 const ERROR_COPY: Record<string, string> = {
-  ROOM_FULL: 'This ShareText room is already full.',
+  ROOM_FULL: 'This ShareTexts room is already full.',
   INVALID_CODE: "That code isn't valid or has expired. Ask for a fresh one.",
   SESSION_EXPIRED: 'This room has expired. Start a new one.',
   INVALID_SESSION: "This room link isn't active anymore. Ask for a fresh code.",
   ROOM_NOT_FOUND: "This room isn't active anymore.",
   RATE_LIMITED: 'Too many attempts. Try again in a minute.',
   UNSUPPORTED_VERSION: 'This app is out of date. Refresh to continue.',
-  ORIGIN_NOT_ALLOWED: "ShareText's server rejected this browser. The site may need to be added to the server's allow list.",
+  ORIGIN_NOT_ALLOWED: "ShareTexts's server rejected this browser. The site may need to be added to the server's allow list.",
   INVALID_MESSAGE: 'Something went wrong with that request.',
-  UNREACHABLE: "Couldn't reach ShareText.",
-  SIGNALING_TIMEOUT: "ShareText's server responded slowly. Try again in a moment.",
-  SIGNALING_UNREACHABLE: "ShareText's connection server is unreachable. Check your internet.",
+  UNREACHABLE: "Couldn't reach ShareTexts.",
+  SIGNALING_TIMEOUT: "ShareTexts's server responded slowly. Try again in a moment.",
+  SIGNALING_UNREACHABLE: "ShareTexts's connection server is unreachable. Check your internet.",
 
   // Device-to-device (WebRTC) failure taxonomy. These surface when the
   // SERVER handshake worked but the direct browser-to-browser link failed —
@@ -33,7 +33,7 @@ const ERROR_COPY: Record<string, string> = {
   HASH_MISMATCH: "The file arrived damaged and was discarded. Try sending it again.",
   QUOTA_EXCEEDED: "This device is out of storage space. Free up space and try again.",
   TRANSFER_CANCELLED: 'Transfer cancelled.',
-  PROTOCOL_MISMATCH: 'The other device is running a different ShareText version. Refresh both devices.',
+  PROTOCOL_MISMATCH: 'The other device is running a different ShareTexts version. Refresh both devices.',
 };
 
 export function humanizeError(code: string | undefined, fallback: string): string {
@@ -45,7 +45,7 @@ export function humanizeError(code: string | undefined, fallback: string): strin
  * Structured connect failures.
  *
  * The old path matched raw English error strings with `.includes()` and
- * blamed "your internet" even when ShareText's own server was down. Every
+ * blamed "your internet" even when ShareTexts's own server was down. Every
  * connect/create/join failure now carries a machine-readable code so the UI
  * can say what ACTUALLY happened and translate it:
  *

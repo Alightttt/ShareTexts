@@ -1,5 +1,5 @@
 /**
- * ShareText transfer protocol — transport-agnostic wire and object model.
+ * ShareTexts transfer protocol — transport-agnostic wire and object model.
  *
  * The protocol is deliberately NOT tied to the React UI. It separates the
  * layers so humans and (future) AI agents share one transport:

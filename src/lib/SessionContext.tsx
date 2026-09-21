@@ -288,10 +288,10 @@ function friendlyJoinCopy(e: unknown): string {
   const code = describeConnectFailure(e);
   switch (code) {
     case 'OFFLINE': return "You're offline. Check your internet and try again.";
-    case 'UNREACHABLE': return "ShareText's connection server isn't reachable right now. Try again in a moment.";
-    case 'CONFIG': return (e instanceof Error && e.message) || "ShareText couldn't reach its connection server. Please try again later.";
+    case 'UNREACHABLE': return "ShareTexts's connection server isn't reachable right now. Try again in a moment.";
+    case 'CONFIG': return (e instanceof Error && e.message) || "ShareTexts couldn't reach its connection server. Please try again later.";
     case 'TIMEOUT': return "The connection took too long. One more try usually fixes it.";
-    default: return "Couldn't reach ShareText. Check your connection and try again.";
+    default: return "Couldn't reach ShareTexts. Check your connection and try again.";
   }
 }
 
@@ -515,6 +515,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // device rejoins and the remaining peer gets this event and re-offers.
       if (session.roomId && session.secret) {
         if (peerManagerRef.current) peerManagerRef.current.destroy();
+        startSeatKeepalive();
         void createPeerManager(session.roomId, session.secret, true).then(pm => {
           peerManagerRef.current = pm;
           setupPeerManager(pm);
@@ -534,6 +535,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // Re-establish it from this side.
       if (session.roomId && session.secret && peerId) {
         if (peerManagerRef.current) peerManagerRef.current.destroy();
+        startSeatKeepalive();
         void createPeerManager(session.roomId, session.secret, true).then(pm => {
           peerManagerRef.current = pm;
           setupPeerManager(pm);
@@ -1274,6 +1276,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           // Server is the source of truth for the Stay Connected badge.
           stayConnected: !!(res as { stayConnected?: boolean }).stayConnected
         }));
+        startSeatKeepalive();
         if (peerManagerRef.current) peerManagerRef.current.destroy();
         void createPeerManager(stored.roomId, stored.secret, false).then(pm => {
           peerManagerRef.current = pm;
@@ -1418,7 +1421,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         // Kick the transport like createRoomOnce does — the next attempt
         // then starts from a fresh connection, not a stale backoff.
         try { (getSocket() as any).connect?.(); } catch { /* best effort */ }
-        resolve({ success: false, error: "Couldn't reach ShareText." });
+        resolve({ success: false, error: "Couldn't reach ShareTexts." });
       }, 12000);
       getSocket().emit('join_with_code', { code }, (res: { success: boolean; roomId?: string; secret?: string; createdAt?: number; error?: string; code?: string }) => {
         clearTimeout(timeout);
@@ -1429,7 +1432,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         } else {
           roomCreateDiagEnd(requestId, 'failure', 'ROOM_CREATE_REJECTED', res.code);
         }
-        resolve({ ...res, error: humanJoinError(res.code, humanizeError(res.code, res.error || "Couldn't reach ShareText. Check your connection and try again.")) });
+        resolve({ ...res, error: humanJoinError(res.code, humanizeError(res.code, res.error || "Couldn't reach ShareTexts. Check your connection and try again.")) });
       });
     });
   };
@@ -1450,7 +1453,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       lastJoin = { success: false, error: friendlyJoinCopy(e) };
       break;
     }
-    if (lastJoin.success || !/Couldn't reach ShareText/.test(lastJoin.error || '')) break;
+    if (lastJoin.success || !/Couldn't reach ShareTexts/.test(lastJoin.error || '')) break;
     if (attempt < MAX_JOIN_ATTEMPTS) {
       diag('room.join_retry', true, `attempt ${attempt + 1} after emit timeout`);
       try { await ensureSocketConnected(6000); } catch { break; }
@@ -1466,7 +1469,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       const timeout = setTimeout(() => {
         // Kick the transport so a retry starts from a fresh connection.
         try { (getSocket() as any).connect?.(); } catch { /* best effort */ }
-        resolve({ success: false, error: "Couldn't reach ShareText." });
+        resolve({ success: false, error: "Couldn't reach ShareTexts." });
       }, 12000);
       getSocket().emit('join_with_link', { roomId }, (res: { success: boolean; roomId?: string; secret?: string; createdAt?: number; error?: string; code?: string }) => {
         clearTimeout(timeout);
@@ -1474,13 +1477,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         if (res.success) {
           setupJoiner(res.roomId!, res.secret!, res.createdAt);
         }
-        resolve({ ...res, error: humanJoinError(res.code, humanizeError(res.code, res.error || "Couldn't reach ShareText. Check your connection and try again.")) });
+        resolve({ ...res, error: humanJoinError(res.code, humanizeError(res.code, res.error || "Couldn't reach ShareTexts. Check your connection and try again.")) });
       });
     });
     // One silent retry for transport-shaped failures, same as code joins:
     // an /s/ link tap should never die to one slow handshake.
     let res = await linkOnce();
-    if (!res.success && /Couldn't reach ShareText/.test(res.error || '')) {
+    if (!res.success && /Couldn't reach ShareTexts/.test(res.error || '')) {
       diag('room.join_link_retry', true, 'retrying after emit timeout');
       try { await ensureSocketConnected(6000); res = await linkOnce(); } catch { /* keep first result */ }
     }
@@ -1527,6 +1530,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       stayConnected: false,
       lastStayRoom: session.lastStayRoom
     });
+    startSeatKeepalive();
     if (peerManagerRef.current) peerManagerRef.current.destroy();
     void createPeerManager(roomId, secret, false).then(pm => {
       peerManagerRef.current = pm;
@@ -1858,6 +1862,89 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   };
   requestReconnectRef.current = requestReconnect;
 
+  // ---- Seat keepalive -------------------------------------------------------
+  // "Persistent while the tab is open" needs an active heartbeat, not hope.
+  // Browsers silently suspend background tabs: timers clamp past a minute,
+  // socket.io's ping timeout (65s of silence) can quietly reap the seat, and
+  // the WebRTC channel dies with the DTLS association — all while the tab
+  // still LOOKS open to the user. On return, nothing re-seats until the user
+  // acts. This is the root cause of "sometimes it just stops working".
+  //
+  // Two mechanisms, both cheap and idempotent:
+  //   · a 90s visible-only cadence that quietly re- seats via resume_room
+  //     (the server no-ops when we still hold the seat, so the cost when
+  //     everything is healthy is one tiny ack), and
+  //   · a visibility guard that runs the same re-seat the instant the tab
+  //     becomes visible again — rebuilding the peer ONLY when the WebRTC
+  //     channel is actually dead, so a healthy room is never churned.
+  const SEAT_KEEPALIVE_MS = 90_000;
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+  const seatKeepaliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stopSeatKeepalive = useCallback(() => {
+    if (seatKeepaliveRef.current) { clearInterval(seatKeepaliveRef.current); seatKeepaliveRef.current = null; }
+  }, []);
+  /** Channel truth: is the WebRTC link (or its relay stand-in) actually up? */
+  const channelHealthy = (): boolean => {
+    const pc = peerManagerRef.current?.getPeerConnection?.() ?? null;
+    if (!pc) return peerManagerRef.current != null && sessionRef.current.connectionType === 'relay';
+    const st = (pc as RTCPeerConnection).connectionState;
+    return st === 'connected' || st === 'connecting';
+  };
+  const reseatQuietly = useCallback(async (why: string): Promise<void> => {
+    const s = sessionRef.current;
+    if (!s.roomId || !s.secret) return;
+    try {
+      await ensureSocketConnected(8000);
+    } catch { return; }
+    const res = await new Promise<{ success: boolean; error?: string }>((resolve) => {
+      const sock = getSocket();
+      const timer = setTimeout(() => resolve({ success: false, error: 'timeout' }), 10_000);
+      sock.emit('resume_room', { roomId: s.roomId, secret: s.secret }, (r: { success: boolean; error?: string }) => {
+        clearTimeout(timer);
+        resolve(r);
+      });
+    });
+    if (!res.success) return;
+    diag('seat.reseat', true, why);
+    if (channelHealthy()) return; // everything fine — the ack was the whole point
+    // Dead channel: rebuild the peer so the partner's peer_joined trigger
+    // and our fresh ICE restart the link. UI shows 'connecting' until open.
+    if (peerManagerRef.current) peerManagerRef.current.destroy();
+    void createPeerManager(s.roomId, s.secret, false).then(pm => {
+      peerManagerRef.current = pm;
+      setupPeerManager(pm);
+    });
+    setSession(prev => ({
+      ...prev,
+      connectionType: prev.connectionType === 'direct' || prev.connectionType === 'relay' || prev.connectionType === 'local' ? 'connecting' : prev.connectionType,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const startSeatKeepalive = useCallback(() => {
+    stopSeatKeepalive();
+    seatKeepaliveRef.current = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      void reseatQuietly('keepalive');
+    }, SEAT_KEEPALIVE_MS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Re-seat on tab return — the complement of the cadence (covers the
+  // suspend-kill that happens BETWEEN beats).
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (!sessionRef.current.roomId) return;
+      if (channelHealthy()) return;
+      void reseatQuietly('visibility');
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => stopSeatKeepalive, [stopSeatKeepalive]);
+
   /**
    * Re-anchor the pairing-code window to now, so the countdown restarts at
    * 40s with a freshly-made code. Only meaningful for the creator on the
@@ -1933,6 +2020,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // casual disconnect so the landing page can offer re-entry. It is only
     // cleared by closeSession (explicit close) or the re-entry itself.
     saveStoredSession(null);
+    stopSeatKeepalive();
     // 6. Clear the URL bar (remove /s/<code> or ?join= params)
     try {
       if (window.location.pathname !== '/' && window.location.pathname !== '/docs') {
@@ -2002,6 +2090,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       messages: history
     });
     if (peerManagerRef.current) peerManagerRef.current.destroy();
+    startSeatKeepalive();
     void createPeerManager(stay.roomId, stay.secret, false).then(pm => {
       peerManagerRef.current = pm;
       setupPeerManager(pm);

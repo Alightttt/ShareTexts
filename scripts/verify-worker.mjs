@@ -379,6 +379,56 @@ async function runStayConnected() {
   joiner.close();
 }
 
+// Stay Connected must outlive BOTH devices going away — that is the promise's
+// entire point. The empty room keeps accepting a remembered member (or a
+// fresh device holding the secret when no snapshot exists), never a stranger;
+// only a member can close it in that phase.
+async function runStayEmptySurvival() {
+  const roomId = uuid();
+  const ctx = new FakeCtx();
+  const room = new Room(ctx, makeEnv());
+  const creator = await connect(room, roomId);
+  const created = await creator.send('create_room');
+  const secret = created.secret;
+  const joiner = await connect(room, roomId);
+  const codeRes = await creator.send('refresh_code', { roomId, secret });
+  const code = codeFor(secret, ctx.storage.map.get('room').codeAnchor);
+  const joined = await joiner.send('join_with_code', { code });
+  check('stay-empty: joiner seated', joined.success === true);
+  await joiner.send('stay_connected_enable');
+
+  // Both devices go away (the exact "closed both tabs" case).
+  creator.close();
+  joiner.close();
+  await sleep(50);
+  check('stay-empty: room survives both tabs closing', ctx.storage.map.get('room') != null);
+
+  // A stranger (no secret knowledge, fresh cid) must NOT get the empty seat.
+  const stranger = await connect(room, roomId);
+  const strangerJoin = await stranger.send('resume_room', { roomId, secret: 'wrong-secret-xxxxxxxxxxxxxxx' });
+  check('stay-empty: stranger rejected with bad secret', strangerJoin.success === false, strangerJoin.error);
+  stranger.close();
+
+  // The creator returns with the right secret — recognized via the persisted
+  // membership snapshot even though its seat was freed.
+  const returning = await connect(room, roomId);
+  const resumed = await returning.send('resume_room', { roomId, secret });
+  check('stay-empty: member re-enters empty room', resumed.success === true, resumed.error || '');
+  check('stay-empty: promise still on', resumed.stayConnected === true);
+
+  // A socket that never joined (fresh cid, no seat, no membership) cannot
+  // close someone else's promise room even by sending close_room directly.
+  const outside = await connect(room, roomId);
+  await outside.send('close_room');
+  check('stay-empty: outsider close did not destroy room', ctx.storage.map.get('room') != null);
+  outside.close();
+
+  // The member who IS part of the room can end it for everyone.
+  await returning.send('close_room');
+  check('stay-empty: member close ends the room', ctx.storage.map.get('room') == null);
+  returning.close();
+}
+
 async function runPush() {
   const roomId = uuid();
   const ctx = new FakeCtx();
@@ -530,6 +580,7 @@ async function runMetrics() {
 await runRoomProtocol();
 await runRefreshCode();
 await runStayConnected();
+await runStayEmptySurvival();
 await runPush();
 await runLiveIdleExpiry();
 await runDisconnectedState();

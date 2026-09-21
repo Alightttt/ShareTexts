@@ -43,6 +43,9 @@ const CODE_FAIL_WINDOW = 60 * 1000;
  *  tab or blips off the network holds its seat for this long before the other
  *  peer is told it is really gone. Makes a refresh invisible to the far side. */
 const DISCONNECT_GRACE_MS = 60_000;
+/** How long an empty Stay Connected room survives with both devices gone
+ *  (matches the server-side stay-registry prune: 30 idle days). */
+const STAY_EMPTY_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** Explicit room lifecycle. No scattered booleans. */
 export type RoomPhase =
@@ -74,8 +77,20 @@ interface RoomState {
   codeFailReset: number;
   /** Stay Connected (server.ts parity): when either device opts in, the idle
    *  TTL no longer expires the room and the echo below keeps both badges
-   *  honest. The promise is the USER's, so it survives their disconnect. */
+   *  honest. The promise is the USER's, so it survives their disconnect —
+   *  even with BOTH seats empty, the room stays re-enterable (STAY_EMPTY_MS).
+   *  Cleared only by an explicit close_room from a seated member. */
   stayConnected?: boolean;
+  /** Who last held the Stay Connected promise (cid). Recorded on enable and
+   *  kept through disconnections so handleClose can honor the promise's
+   *  meaning: only a device that was PART of the room ends it for everyone. */
+  stayOwner?: string | null;
+  /** Remembered membership across empty-room phases: when a Stay Connected
+   *  room has both seats empty, the last two cids are kept here (persisted
+   *  with the room) so a returning device is recognized as a member, and so
+   *  a random third device cannot close the promise room. Snapshot on
+   *  enable; survives hibernation because it lives on RoomState. */
+  stayMembers?: string[];
 }
 
 interface ConnMeta {
@@ -567,6 +582,18 @@ export class Room extends DurableObject<Env> {
     // empty for a full TTL still ends via the tombstone branch below.
     const idleExpired = !r.stayConnected && now - r.lastActive > ROOM_TTL;
     if (live.length === 0 && !idleExpired && r.peerA === null && r.peerB === null) {
+      if (r.stayConnected) {
+        // Stay Connected with both seats empty: the promise outlives a closed
+        // tab (that is its entire point) — a device can re-enter the room
+        // hours later from the landing card and it must still be there.
+        // Re-arm long, not tombstone-short. The 30-day idle cap matches the
+        // server's stay-registry pruning so an abandoned promise can't pile
+        // up forever.
+        const stayUntil = now + STAY_EMPTY_MS;
+        const alarm = await this.ctx.storage.getAlarm();
+        if (!alarm || alarm > stayUntil) await this.ctx.storage.setAlarm(stayUntil);
+        return;
+      }
       // Last seat just finalized → DISCONNECTED tombstone keeps the 5h rejoin
       // window (join_with_code / resume_room can still revive the room).
       const tombstoneUntil = now + ROOM_TTL;
@@ -698,6 +725,18 @@ export class Room extends DurableObject<Env> {
       await this.notifyOthers(cid, 'peer_recovered', { peerId: cid });
       return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.codeAnchor, stayConnected: !!r.stayConnected });
     }
+    // Stay Connected re-entry from the landing card: both seats are empty,
+    // the room survived because of the promise, and the caller presents the
+    // room secret. Accept the return of a remembered member (or of anyone
+    // holding the 128-bit secret when no membership snapshot exists — the
+    // secret IS the room's credential) instead of reporting a full room.
+    if (r.peerA === null && r.peerB === null) {
+      const remembered = r.stayMembers?.includes(cid) ?? false;
+      if (!remembered && (!r.stayConnected || (r.stayMembers?.length ?? 0) > 0)) {
+        await count(this.env, 'joins.failed:room_full');
+        return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText room is already full.');
+      }
+    }
     // Drop stale seats whose sockets are gone so the returning device can
     // sit. A dropped seat is a real eviction: notify the survivors (the
     // returning device itself is excluded — its own old seat must not make
@@ -791,8 +830,17 @@ export class Room extends DurableObject<Env> {
   }
 
   private async handleClose(cid: string) {
-    if (!(await this.memberOf(cid))) return;
-    log('room closed manually', this.room?.roomId.slice(0, 8));
+    const r = this.room;
+    if (!r) return;
+    // Member check with memory: normally the live-seat check is enough, but a
+    // Stay Connected room can be re-entered with BOTH seats empty (that is
+    // the promise's point). In that phase the seats say nothing, so consult
+    // the remembered membership — a random device that somehow reaches the
+    // close event must never end someone else's promise room.
+    const isLiveMember = (await this.memberOf(cid));
+    const remembered = r.stayMembers?.includes(cid) ?? false;
+    if (!isLiveMember && !(r.stayConnected && r.peerA === null && r.peerB === null && remembered)) return;
+    log('room closed manually', r.roomId.slice(0, 8));
     await this.destroyRoom('manual_close');
   }
 
@@ -808,6 +856,16 @@ export class Room extends DurableObject<Env> {
     if (!(await this.memberOf(cid))) return this.ackErr(cid, id, 'NOT_A_MEMBER', 'Not a member of this room.');
     r.stayConnected = enabled;
     r.lastActive = Date.now();
+    if (enabled) {
+      r.stayOwner = cid;
+      // Snapshot the current membership: these are the devices the promise
+      // belongs to. Kept across the empty-room phase so re-entry recognizes
+      // members and only members can later close the room.
+      r.stayMembers = [r.peerA, r.peerB].filter((p): p is string => !!p);
+    } else {
+      r.stayOwner = null;
+      r.stayMembers = undefined;
+    }
     await this.ctx.storage.put('room', r);
     const event = { type: 'event' as const, event: 'stay_connected_state', payload: { enabled } };
     for (const peer of [r.peerA, r.peerB]) {

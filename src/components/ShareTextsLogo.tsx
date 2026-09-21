@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 
 /**
- * The ShareText mark: two device screens on the diagonal, joined by a
+ * The ShareTexts mark: two device screens on the diagonal, joined by a
  * connection beam — the whole transfer story in one silhouette. No arrow,
  * no generic share glyph: the two screens are the two devices, and the beam
  * between them is the transfer.
@@ -35,7 +35,7 @@ const reducedMotion = typeof window !== 'undefined'
   ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
   : false;
 
-export function ShareTextLogo({
+export function ShareTextsLogo({
   className,
   size = 28,
   motion: motionState,

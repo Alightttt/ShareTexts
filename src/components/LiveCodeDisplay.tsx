@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { generateTOTP, getTOTPRemainingSeconds, getTOTPProgress } from '../lib/totp';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -7,9 +7,13 @@ import { useI18n } from '../lib/i18n';
 interface LiveCodeDisplayProps {
   secret: string;
   createdAt?: number;
+  /** Called once when the visible window hits zero — the session re-anchors
+   *  the code server-side so the pair window and the JOINER's validation
+   *  stay in lockstep. Omit (tests, static contexts) to disable. */
+  onRefresh?: () => void;
 }
 
-export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
+export function LiveCodeDisplay({ secret, createdAt, onRefresh }: LiveCodeDisplayProps) {
   const { t } = useI18n();
   const [code, setCode] = useState(() => generateTOTP(secret, createdAt));
   const [progress, setProgress] = useState(() => getTOTPProgress(createdAt));
@@ -30,6 +34,19 @@ export function LiveCodeDisplay({ secret, createdAt }: LiveCodeDisplayProps) {
     }, 250);
     return () => clearInterval(interval);
   }, [secret, createdAt]);
+
+  /** Never show the user "expired": the instant the window empties while the
+   *  code screen is open, re-anchor server-side. The panel re-renders with
+   *  the new anchor through session.createdAt, digits swap in place, and a
+   *  joiner typing the previous code still validates (±window grace). */
+  const firedRef = useRef(false);
+  useEffect(() => {
+    if (!onRefresh) return;
+    if (remaining > 0.25) { firedRef.current = false; return; }
+    if (firedRef.current) return;
+    firedRef.current = true;
+    onRefresh();
+  }, [remaining, onRefresh]);
 
   const digits = code.split('');
   const isUrgent = remaining <= 5;

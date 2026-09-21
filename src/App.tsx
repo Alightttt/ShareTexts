@@ -7,7 +7,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { SessionProvider, useSession } from './lib/SessionContext';
 import { I18nProvider, useI18n } from './lib/i18n';
 import { X, DoorOpen } from 'lucide-react';
-import { ShareTextLogo } from './components/ShareTextLogo';
+import { ShareTextsLogo } from './components/ShareTextsLogo';
 
 // SingleScreenApp (the landing IS the app) loads eagerly — one less network
 // round-trip before the hero is interactive. Docs/Legal stay lazy: they are
@@ -73,12 +73,12 @@ function AppSkeleton() {
   return (
     <div className="min-h-screen bg-apple-canvas dark:bg-[#131315] flex flex-col items-center justify-center gap-7">
       <div className="st-boot-logo" aria-hidden>
-        <ShareTextLogo size={52} mono />
+        <ShareTextsLogo size={52} mono />
       </div>
       <span
         className="st-boot-spinner"
         role="status"
-        aria-label="Loading ShareText"
+        aria-label="Loading ShareTexts"
       />
     </div>
   );
@@ -93,8 +93,8 @@ function ErrorFallback({ onReset }: { onReset: () => void }) {
     <div className="min-h-screen flex flex-col bg-apple-canvas dark:bg-[#131315] dot-bg">
       <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
         <div className="flex items-center gap-2.5">
-          <ShareTextLogo size={24} className="text-apple-ink dark:text-white" mono />
-          <span className="font-semibold tracking-tight text-[16px] text-apple-ink dark:text-white">ShareText</span>
+          <ShareTextsLogo size={24} className="text-apple-ink dark:text-white" mono />
+          <span className="font-semibold tracking-tight text-[16px] text-apple-ink dark:text-white">ShareTexts</span>
         </div>
         <a
           href="/docs"
@@ -103,17 +103,17 @@ function ErrorFallback({ onReset }: { onReset: () => void }) {
       </header>
       <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
         <div className="w-[72px] h-[72px] rounded-[22px] bg-white dark:bg-[#1c1c21] border border-apple-divider/70 dark:border-white/[0.08] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.18)] flex items-center justify-center mb-7">
-          <ShareTextLogo size={34} motion="connecting" className="opacity-90" />
+          <ShareTextsLogo size={34} motion="connecting" className="opacity-90" />
         </div>
         <h2 className="text-[26px] sm:text-[28px] font-semibold text-apple-ink dark:text-white mb-2 tracking-[-0.02em]">Something went wrong</h2>
         <p className="text-[15px] text-apple-ink-muted dark:text-white/60 max-w-sm mb-8 leading-relaxed">
-          ShareText couldn't load properly. Your data is safe — nothing was lost.
+          ShareTexts couldn't load properly. Your data is safe — nothing was lost.
         </p>
         <button
           onClick={onReset}
           className="px-7 min-h-[50px] bg-ember hover:bg-[#d9560e] text-white rounded-full text-[15px] font-semibold shadow-[0_1px_2px_rgba(240,100,19,0.25),0_4px_10px_-4px_rgba(240,100,19,0.35)] hover:shadow-[0_4px_10px_rgba(240,100,19,0.2),0_12px_26px_-8px_rgba(240,100,19,0.4)] transition-all active:scale-[0.97]"
         >
-          Return to ShareText
+          Return to ShareTexts
         </button>
         <div className="mt-4 flex items-center gap-5 text-[13px] font-medium text-apple-ink-muted dark:text-white/45">
           <a href="/" className="hover:text-apple-ink dark:hover:text-white transition-colors">Go home</a>

@@ -3,22 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Security — ShareText Transfer Security Architecture</title>
-  <meta name="description" content="How ShareText secures file transfers. WebRTC encryption, DTLS, SHA-256 verification, TOTP pairing, rate limiting, and ephemeral rooms." />
+  <title>Security — ShareTexts Transfer Security Architecture</title>
+  <meta name="description" content="How ShareTexts secures file transfers. WebRTC encryption, DTLS, SHA-256 verification, TOTP pairing, rate limiting, and ephemeral rooms." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://sharetexts.online/guides/security.html" />
   <meta property="og:type" content="article" />
-  <meta property="og:site_name" content="ShareText" />
-  <meta property="og:title" content="Security — ShareText Transfer Security" />
-  <meta property="og:description" content="How ShareText secures file transfers. WebRTC encryption, DTLS, SHA-256 verification." />
+  <meta property="og:site_name" content="ShareTexts" />
+  <meta property="og:title" content="Security — ShareTexts Transfer Security" />
+  <meta property="og:description" content="How ShareTexts secures file transfers. WebRTC encryption, DTLS, SHA-256 verification." />
   <meta property="og:url" content="https://sharetexts.online/guides/security.html" />
   <meta property="og:image" content="https://sharetexts.online/og/sharetext-og-v10.png?v=1" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:type" content="image/png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Security — ShareText" />
-  <meta name="twitter:description" content="How ShareText secures file transfers." />
+  <meta name="twitter:title" content="Security — ShareTexts" />
+  <meta name="twitter:description" content="How ShareTexts secures file transfers." />
   <meta name="twitter:image" content="https://sharetexts.online/og/sharetext-og-v10.png?v=1" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
@@ -62,12 +62,12 @@
   </style>
 </head>
 <body>
-  <header><div class="hdr-inner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span>ShareText</span><a href="/" class="back">Home →</a></div></header>
+  <header><div class="hdr-inner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span>ShareTexts</span><a href="/" class="back">Home →</a></div></header>
 
   <main class="container"><article>
     <p class="muted" style="font-size:13px; margin-bottom:8px;">Security</p>
     <h1>Security Architecture</h1>
-    <p class="subtitle">How ShareText protects your transfers — from pairing to encrypted transfer to completion.</p>
+    <p class="subtitle">How ShareTexts protects your transfers — from pairing to encrypted transfer to completion.</p>
 
     <div class="callout"><p><strong>Summary:</strong> All data between devices is encrypted using DTLS via WebRTC. Pairing uses TOTP-based codes. Files are verified with SHA-256 checksums. No data is stored on any server. Rooms expire automatically.</p></div>
 
@@ -77,7 +77,7 @@
     </div>
 
     <h3>How DTLS Works</h3>
-    <p>When two devices connect via WebRTC, they perform a DTLS handshake — the same type of key exchange used by HTTPS. After the handshake, all data flowing between the devices is encrypted with a unique session key. No one else — including ShareText's servers — can read the data in transit.</p>
+    <p>When two devices connect via WebRTC, they perform a DTLS handshake — the same type of key exchange used by HTTPS. After the handshake, all data flowing between the devices is encrypted with a unique session key. No one else — including ShareTexts's servers — can read the data in transit.</p>
 
     <h3>Key Properties</h3>
     <table>
@@ -89,7 +89,7 @@
     </table>
 
     <h2>Pairing Security</h2>
-    <p>ShareText uses TOTP (Time-based One-Time Password) for device pairing:</p>
+    <p>ShareTexts uses TOTP (Time-based One-Time Password) for device pairing:</p>
     <ul>
       <li><strong>6-digit rotating codes</strong> — change every 40 seconds</li>
       <li><strong>Server-authoritative</strong> — the server validates codes, not the client</li>
@@ -102,7 +102,7 @@
       <p style="margin-bottom:8px;"><strong>Algorithm:</strong> SHA-256 (Secure Hash Algorithm, 256-bit)</p>
       <p style="margin-bottom:8px;"><strong>Scope:</strong> Every file transfer includes a checksum verification</p>
       <p style="margin-bottom:8px;"><strong>Process:</strong> Sender computes checksum before sending. Receiver computes after receiving.</p>
-      <p style="margin:0;"><strong>Result:</strong> If checksums match, the file arrived intact. If not, ShareText flags the discrepancy.</p>
+      <p style="margin:0;"><strong>Result:</strong> If checksums match, the file arrived intact. If not, ShareTexts flags the discrepancy.</p>
     </div>
 
     <h2>Room Security</h2>
@@ -123,7 +123,7 @@
       <li><strong>CORS allowlist</strong> — only configured frontend origins can connect</li>
     </ul>
 
-    <h2>What ShareText Cannot See</h2>
+    <h2>What ShareTexts Cannot See</h2>
     <ul>
       <li>File contents (encrypted end-to-end)</li>
       <li>Text messages (encrypted end-to-end)</li>
@@ -132,7 +132,7 @@
       <li>IP addresses after connection (not stored)</li>
     </ul>
 
-    <h2>What ShareText Can See</h2>
+    <h2>What ShareTexts Can See</h2>
     <ul>
       <li>That a room exists (room ID)</li>
       <li>That two devices are connected (peer IDs)</li>
@@ -149,19 +149,19 @@
       <li>No protection against a compromised browser</li>
     </ul>
 
-    <div style="text-align:center; margin: 40px 0;"><a href="/" class="cta">Try ShareText Free →</a></div>
+    <div style="text-align:center; margin: 40px 0;"><a href="/" class="cta">Try ShareTexts Free →</a></div>
 
     <section class="related">
       <h2>Related</h2>
       <div class="related-links">
         <a href="/guides/privacy.html">Privacy</a>
-        <a href="/guides/about.html">About ShareText</a>
+        <a href="/guides/about.html">About ShareTexts</a>
         <a href="/guides/how-it-works.html">How It Works</a>
         <a href="/docs">API Documentation</a>
       </div>
     </section>
   </article></main>
 
-  <footer><p><a href="/" style="color:inherit; text-decoration:none;">ShareText</a> — The temporary bridge between your devices.</p></footer>
+  <footer><p><a href="/" style="color:inherit; text-decoration:none;">ShareTexts</a> — The temporary bridge between your devices.</p></footer>
 </body>
 </html>

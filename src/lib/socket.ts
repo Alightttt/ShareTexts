@@ -87,7 +87,7 @@ async function selectBestCloudflareBase(): Promise<void> {
   const idx = results.findIndex(r => r && typeof r.roomsCreated === 'number');
   if (idx > 0) {
     activeCfBase = candidates[idx];
-    console.warn('[ShareText] signaling worker redirect:', bakedBase, '→', activeCfBase);
+    console.warn('[ShareTexts] signaling worker redirect:', bakedBase, '→', activeCfBase);
     diag('transport.redirect', true, `${bakedBase} -> ${activeCfBase}`);
     // The probe can lose the race against the first getSocket() call (the
     // lobby mounts on page load). If the singleton already exists — and it
@@ -143,7 +143,7 @@ function resolveEndpoints(): { mode: 'cloudflare' | 'socketio'; url?: string } {
 
   if (cf) {
     if (isProd && /^https?:\/\/(localhost|127\.0\.0\.1)([:/]|$)/i.test(cf)) {
-      console.error('[ShareText] VITE_SIGNALING_URL points at localhost in a production build — refusing. Deployed builds must use the real Cloudflare Worker (e.g. https://sharetext-signaling.<subdomain>.workers.dev).');
+      console.error('[ShareTexts] VITE_SIGNALING_URL points at localhost in a production build — refusing. Deployed builds must use the real Cloudflare Worker (e.g. https://sharetext-signaling.<subdomain>.workers.dev).');
       return { mode: 'socketio', url: node };
     }
     return { mode: 'cloudflare', url: cf };
@@ -151,7 +151,7 @@ function resolveEndpoints(): { mode: 'cloudflare' | 'socketio'; url?: string } {
 
   if (node) {
     if (isProd && /^https?:\/\/(localhost|127\.0\.0\.1)([:/]|$)/i.test(node)) {
-      console.error('[ShareText] VITE_SOCKET_URL points at localhost in a production build — refusing. Deployed builds must use a real signaling server.');
+      console.error('[ShareTexts] VITE_SOCKET_URL points at localhost in a production build — refusing. Deployed builds must use a real signaling server.');
       return { mode: 'socketio' };
     }
     return { mode: 'socketio', url: node };
@@ -159,7 +159,7 @@ function resolveEndpoints(): { mode: 'cloudflare' | 'socketio'; url?: string } {
 
   if (isProd) {
     console.error(
-      '[ShareText] Neither VITE_SIGNALING_URL nor VITE_SOCKET_URL is set. A deployed build must point at a signaling backend ' +
+      '[ShareTexts] Neither VITE_SIGNALING_URL nor VITE_SOCKET_URL is set. A deployed build must point at a signaling backend ' +
       '(Cloudflare Worker or Node server). Falling back to same-origin — this only works when the backend serves this frontend.'
     );
   }
@@ -204,7 +204,7 @@ export function signalingConfigIssue(): string | null {
   if (import.meta.env.DEV) return null;
   if (mode === 'cloudflare' && url) return null;
   if (mode === 'socketio' && url) return null;
-  return "ShareText couldn't reach its connection server. Please try again later.";
+  return "ShareTexts couldn't reach its connection server. Please try again later.";
 }
 
 /**
@@ -282,7 +282,7 @@ export function getSocket(): SignalingSocket {
             // Try EVERY transport in the list before giving up. Without this,
             // socket.io v4 attempts only the FIRST entry (websocket) and dies
             // behind proxies that block the upgrade handshake — the user sat
-            // through the full 10s timeout and saw "Couldn't reach ShareText"
+            // through the full 10s timeout and saw "Couldn't reach ShareTexts"
             // even though polling worked fine the whole time.
             tryAllTransports: true,
             autoConnect: true,
