@@ -36,6 +36,7 @@ import { hapticTap } from '../lib/haptics';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { StayConnectedToggle, StayBadge } from '../components/StayConnectedToggle';
 import { NearbyDevices } from '../components/NearbyDevices';
+import { productEvent } from '../lib/telemetry';
 import { useI18n } from '../lib/i18n';
 import { LanguageMenu } from '../components/LanguageMenu';
 import { cn, shortCodeOf, sanitizeDeviceName, formatBytes } from '../lib/utils';
@@ -340,6 +341,8 @@ export function SingleScreenApp() {
   const handleSend = useCallback(async () => {
     if (isCreating) return;
     hapticTap();
+    productEvent('product.first_interaction');
+    productEvent('product.method_code'); // Send = create room → the code/QR/link path
     setPanelMode('sending');
     setIsCreating(true);
     setCreateError(null);
@@ -365,7 +368,7 @@ export function SingleScreenApp() {
     }
   }, [isCreating, createSession, t, friendlyConnectError]);
 
-  const handleReceive = useCallback(() => { hapticTap(); setPanelMode('receiving'); setCreateError(null); setJoinError(null); }, []);
+  const handleReceive = useCallback(() => { hapticTap(); productEvent('product.first_interaction'); setPanelMode('receiving'); setCreateError(null); setJoinError(null); }, []);
 
   // Fallback-chip actions: "Show QR" / "Share link" create the room first
   // (if none exists), then surface the exact QR/link modal the normal send
@@ -446,7 +449,7 @@ export function SingleScreenApp() {
   useEffect(() => {
     if (panelMode !== 'idle') return;
     const w = window as Window & { __stOpenSendQr?: () => void; __stOpenSendLink?: () => void };
-    w.__stOpenSendQr = () => { void handleSendThenQr(); };
+    w.__stOpenSendQr = () => { productEvent('product.qr_opened'); void handleSendThenQr(); };
     w.__stOpenSendLink = () => { void handleSendThenLink(); };
     return () => { delete w.__stOpenSendQr; delete w.__stOpenSendLink; };
   }, [panelMode, handleSendThenQr, handleSendThenLink]);
@@ -551,7 +554,7 @@ export function SingleScreenApp() {
             item is a 40px-tall slot on a 6px gap grid; icons are uniform
             18px. No per-item -my hacks: the grid does the aligning. */}
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <CommandBarChip onClick={() => setCmdOpen(true)} />
+          <CommandBarChip onClick={() => { productEvent('product.diagnostics_opened'); setCmdOpen(true); }} />
           <LanguageMenu />
           {/* Docs — an OPEN book icon; the name appears as a tooltip on hover. */}
           <a

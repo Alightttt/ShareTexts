@@ -10,6 +10,7 @@ import { speedTrackerFor, dropSpeedTracker } from './speedEngine';
 import { startNetStats, stopNetStats } from './netStats';
 import { nearbyPresence } from './nearby';
 import { beginTransferRecord, finishTransferRecord } from './transferMetrics';
+import { productEvent } from './telemetry';
 import { saveSendable, getSendable, deleteSendable, saveTransferState, deleteTransferState } from './transferStore';
 import { sanitizeFilename } from './utils';
 import { normalizePastedText } from './textFidelity';
@@ -970,6 +971,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // Metrics: bytes on disk, duration done. Outcome upgrades to
       // 'checksum-mismatch' later if verification fails.
       finishTransferRecord(transferId, 'received', blob.size, 'ok', { name: srcMsg?.attachment?.name, kind: 'file' });
+      productEvent('product.transfer_completed');
+      productEvent('product.activation');
       void deleteTransferState(transferId);
       dropSpeedTracker(transferId);
       lastSpeedReadings.current.delete(transferId);
@@ -1402,6 +1405,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     throw lastError instanceof Error ? lastError : new ConnectError('UNKNOWN');
   };
   const joinWithCode = async (code: string) => {
+    productEvent('product.first_interaction');
+    productEvent('product.method_code');
     const requestId = crypto.randomUUID();
     roomCreateDiagStart(requestId, 'join');
     await ensureSocketConnected();
@@ -1455,6 +1460,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 };
 
   const joinWithLink = async (roomId: string) => {
+    productEvent('product.first_interaction');
+    productEvent('product.method_link');
     const linkOnce = () => new Promise<{ success: boolean; error?: string }>((resolve) => {
       const timeout = setTimeout(() => {
         // Kick the transport so a retry starts from a fresh connection.
@@ -1486,6 +1493,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
    * and tells the other peer to connect — same flow as any other join.
    */
   const joinWithShortCode = async (code: string) => {
+    productEvent('product.method_link'); // /s/<code> short links resolve here
     await ensureSocketConnected();
     const res = await resolveShortCode(code);
     diag('room.join_short', !!res.success, res.success ? 'ok' : 'not found');
@@ -1628,6 +1636,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         if (!(e instanceof TransferCancelledError)) {
           updateMessageAttachment(msg.id, { status: 'failed' });
           finishTransferRecord(attachment.id, 'sent', 0, 'failed', { name: file.name, kind: 'file' });
+          productEvent('product.transfer_failed');
         } else {
           finishTransferRecord(attachment.id, 'sent', 0, 'cancelled', { name: file.name, kind: 'file' });
           // Cancelled is final — drop the durable copies too.

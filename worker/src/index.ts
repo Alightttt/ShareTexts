@@ -138,6 +138,25 @@ export default {
       return push(request, env, cors);
     }
 
+    if (path === '/api/event' && request.method === 'POST') {
+      // Product telemetry — one whitelisted event name as the entire body.
+      // Same anonymity contract as the internal metrics pipeline; rate
+      // limited per IP like every other public endpoint.
+      if (!(await rateLimited(env, 'push', clientIp(request)))) {
+        return json({ error: 'Too many attempts. Wait a moment and try again.' }, 429, cors);
+      }
+      const CLIENT_EVENTS = /^product\.(page_view|first_interaction|activation|transfer_completed|transfer_failed|method_nearby|method_code|method_qr|method_link|qr_opened|docs_opened|diagnostics_opened)$/;
+      let name = '';
+      try { name = (await request.text()).trim(); } catch { /* keep empty */ }
+      if (!CLIENT_EVENTS.test(name)) return json({ error: 'Bad request' }, 400, cors);
+      const stub = env.METRICS.get(env.METRICS.idFromName('metrics'));
+      await stub.fetch(new Request('https://internal/event', {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      }));
+      return new Response(null, { status: 204, headers: cors });
+    }
+
     if (path === '/metrics') {
       // Anonymous aggregate counters (see metrics.ts). Optional bearer gate so
       // operators can keep volumes private if they want to.

@@ -3,6 +3,7 @@ import { encryptText, decryptText, generateKey, encryptBinaryChunk, decryptBinar
 import { uuidToBytes, bytesToUuid } from './binaryUtils';
 import { diag } from './diag';
 import { beginTransferRecord, finishTransferRecord, recordTransferProgress, setCurrentTransport } from './transferMetrics';
+import { productEvent } from './telemetry';
 import type { ChunkEnvelope } from './protocol';
 import { setDataChannel } from './netStats';
 
@@ -1426,6 +1427,8 @@ export class PeerManager {
       }
       diag('transfer.complete', true, file.name);
       finishTransferRecord(transferId, 'sent', file.size);
+      productEvent('product.transfer_completed');
+      productEvent('product.activation');
     } finally {
       fileSendSlots.release();
       this.transferControllers.delete(transferId);

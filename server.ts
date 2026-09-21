@@ -260,6 +260,34 @@ function handlePush(req: express.Request, res: express.Response) {
 // req.body and the other skips it (body-parser calls next() on type mismatch).
 // Two separate mounts would let the first handler see an empty body for the
 // octet-stream case and reject it before the raw parser ever ran.
+// ---------------------------------------------------------------------------
+// Product telemetry — anonymous, aggregate-only product events from the
+// client. Same contract as the rest of the metrics pipeline: a single event
+// name from a fixed whitelist, no payload, no identifiers. Rate limited so
+// a script can't inflate counters. Answers: which connection method people
+// use, where they fail, when activation (first completed transfer) happens.
+// ---------------------------------------------------------------------------
+const CLIENT_EVENTS: ReadonlySet<string> = new Set([
+  'product.page_view',
+  'product.first_interaction',
+  'product.activation',
+  'product.transfer_completed',
+  'product.transfer_failed',
+  'product.method_nearby',
+  'product.method_code',
+  'product.method_qr',
+  'product.method_link',
+  'product.qr_opened',
+  'product.docs_opened',
+  'product.diagnostics_opened',
+]);
+app.post('/api/event', express.text({ type: () => true, limit: '256b' }), (req, res) => {
+  const name = typeof req.body === 'string' ? req.body.trim() : '';
+  if (!CLIENT_EVENTS.has(name)) return res.status(400).json({ error: 'Bad request' });
+  count(name);
+  res.status(204).end();
+});
+
 app.post('/api/push', express.json({ limit: '12mb', type: 'application/json' }), express.raw({ limit: '12mb', type: 'application/octet-stream' }), handlePush);
 
 // CORS allowlist. Production must NOT accept `*` — only the intended

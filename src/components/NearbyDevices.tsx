@@ -8,6 +8,7 @@ import { useI18n } from '../lib/i18n';
 import { useSession } from '../lib/SessionContext';
 import { ConfirmSheet } from './ConfirmSheet';
 import { hapticTap } from '../lib/haptics';
+import { productEvent } from '../lib/telemetry';
 import { cn } from '../lib/utils';
 /**
  * NearbyDevices — the landing-page discovery section.
@@ -261,6 +262,7 @@ export function NearbyDevices({ onStatus, showFallback = true }: { onStatus?: (s
 
   /* --- outgoing invite --------------------------------------------------- */
   const handleInvite = useCallback(async (device: NearbyDevice): Promise<boolean> => {
+    productEvent('product.method_nearby');
     hapticTap();
     setPhase({ kind: 'inviting', device });
     setFailedDevice(null);

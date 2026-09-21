@@ -3,8 +3,14 @@ import {createRoot} from 'react-dom/client';
 import { MotionConfig } from 'motion/react';
 import App from './App.tsx';
 import { installDiagGlobal } from './lib/diag';
-import { prewarmSignaling } from './lib/socket';
+import { prewarmSignaling, signalingHttpBaseForTelemetry } from './lib/socket';
+import { productEvent } from './lib/telemetry';
 import './index.css';
+
+// Product telemetry: one anonymous page_view per load (see lib/telemetry.ts
+// for the privacy contract — event names only, no payloads, whitelist both ends).
+(window as unknown as { __stSignalingHttpBase?: () => string | null }).__stSignalingHttpBase = signalingHttpBaseForTelemetry;
+productEvent('product.page_view');
 
 // Lifecycle diagnostics for the signaling/transfer journey — read them via
 // window.__sharetextDiag.snapshot() when a connect or transfer fails.

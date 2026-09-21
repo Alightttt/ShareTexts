@@ -212,6 +212,12 @@ export function signalingConfigIssue(): string | null {
  * other HTTP call to the backend itself (e.g. the live /stats widget).
  * Null when the transport is same-origin socket.io (probe /health there).
  */
+/** Telemetry hook: expose the active signaling HTTP base so the beacon
+ *  follows the self-healing endpoint selection (see lib/telemetry.ts). */
+export function signalingHttpBaseForTelemetry(): string | null {
+  return signalingHttpBase();
+}
+
 export function signalingHttpBase(): string | null {
   if (mode === 'cloudflare' && url) {
     // The redirect, once chosen, is authoritative for HTTP too — the stats
