@@ -725,18 +725,13 @@ export class Room extends DurableObject<Env> {
       await this.notifyOthers(cid, 'peer_recovered', { peerId: cid });
       return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.codeAnchor, stayConnected: !!r.stayConnected });
     }
-    // Stay Connected re-entry from the landing card: both seats are empty,
-    // the room survived because of the promise, and the caller presents the
-    // room secret. Accept the return of a remembered member (or of anyone
-    // holding the 128-bit secret when no membership snapshot exists — the
-    // secret IS the room's credential) instead of reporting a full room.
-    if (r.peerA === null && r.peerB === null) {
-      const remembered = r.stayMembers?.includes(cid) ?? false;
-      if (!remembered && (!r.stayConnected || (r.stayMembers?.length ?? 0) > 0)) {
-        await count(this.env, 'joins.failed:room_full');
-        return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText room is already full.');
-      }
-    }
+    // Re-entry into a room with both seats empty: the caller already proved
+    // possession of the 128-bit room secret (checked above) — the secret IS
+    // the room's credential, so the return is accepted. (The old snapshot
+    // gate here rejected a legitimate device whose connection id changed
+    // across reconnects, making rejoin fail "sometimes".) The snapshot is
+    // still honored for CLOSE: only remembered members may end an empty
+    // promise room for everyone (handleClose).
     // Drop stale seats whose sockets are gone so the returning device can
     // sit. A dropped seat is a real eviction: notify the survivors (the
     // returning device itself is excluded — its own old seat must not make

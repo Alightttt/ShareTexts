@@ -135,6 +135,19 @@ export class NearbyPresence {
     socket.on('disconnect', this.onDown);
     socket.on('connect', this.onUp);
     if (socket.connected) void this.announce();
+    // Foreground re-announce: mobile OSes silently kill background sockets,
+    // so a tab returned to the foreground may have a DEAD lobby socket while
+    // this.device sits on the landing page looking "present" only to itself.
+    // Without this, the device isn't discoverable/invitable until the next
+    // 45s keepalive — the "auto-connect doesn't work when I come back" bug.
+    if (typeof document !== 'undefined' && !this.visHandler) {
+      this.visHandler = () => {
+        if (document.visibilityState !== 'visible') return;
+        if (!this.socket || this.unsupported) return;
+        void this.announce();
+      };
+      document.addEventListener('visibilitychange', this.visHandler);
+    }
   }
 
   /** Leave the pool (state moved into a room / component unmounted). */
@@ -198,6 +211,10 @@ export class NearbyPresence {
   private detach(): void {
     const socket = this.socket;
     this.clearTimer();
+    if (this.visHandler && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.visHandler);
+      this.visHandler = null;
+    }
     if (!socket) return;
     socket.off('presence_list', this.onList);
     socket.off('presence_invitation', this.handleIncoming);
@@ -263,6 +280,7 @@ export class NearbyPresence {
 
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private announceRetries = 0;
+  private visHandler: (() => void) | null = null;
   /** Quick bounded retry after a failed announce (transport couldn't dial
    *  the lobby). 3s→6s→12s→15s cap; resets on success. This is what turns a
    *  stale-worker boot into a self-heal in seconds instead of waiting for

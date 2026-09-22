@@ -1,15 +1,19 @@
-/* ShareText service worker — minimal offline-capable shell.
+/* ShareTexts service worker — minimal offline-capable shell.
  *
  * Strategy:
  *   - Precache the app shell on install (HTML, manifest, icons).
  *   - Navigations (the app is a single page at "/", including ?join= links):
  *     network-first so the HTML is always fresh, falling back to the cached
  *     shell when offline.
- *   - Other same-origin GETs (hashed assets, icons): cache-first, filling the
- *     cache on first fetch. Cross-origin requests (the signaling Worker's
- *     /health, /lookup, /ws) are never intercepted.
+ *   - UNHASHED app files (manifest, favicons, icons, og image): network-first
+ *     with a cache fallback. Cache-first here froze branding for returning
+ *     visitors — a rebranded manifest/favicon never reached browsers that had
+ *     an older copy, and no cache-key bump can be trusted to ship every time.
+ *   - Other same-origin GETs (content-hashed assets): cache-first, filling
+ *     the cache on first fetch. Cross-origin requests (the signaling
+ *     Worker's /health, /lookup, /ws) are never intercepted.
  */
-const CACHE = 'sharetext-v16';
+const CACHE = 'sharetexts-v17';
 const SHELL = [
   '/',
   '/index.html',
@@ -62,6 +66,24 @@ self.addEventListener('fetch', (event) => {
         .catch(() =>
           caches.match('/').then((cached) => cached || caches.match('/index.html'))
         )
+    );
+    return;
+  }
+
+  // Unhashed shell files must track the server: a branding/icon update has
+  // to reach every visitor on their next load, online or not.
+  const unhashed = SHELL.includes(url.pathname) && url.pathname !== '/';
+  if (unhashed) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || Response.error()))
     );
     return;
   }

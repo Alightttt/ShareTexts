@@ -553,6 +553,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
 
     socket.on('room_closed', ({ reason }) => {
+      // The server CONFIRMED this room is destroyed. A stored re-entry
+      // credential for it is now dead weight — the landing card would offer
+      // a rejoin that can only fail. Keep the record ONLY for Stay Connected
+      // rooms, whose rooms survive empty by design (the promise).
+      if (!sessionRef.current.stayConnected) saveLastStayRoom(null);
       if (abandonedRef.current) {
         abandonedRef.current = false;
         resetSession();
@@ -2027,7 +2032,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         window.history.replaceState({}, document.title, '/');
       }
     } catch { /* noop */ }
-    // 7. Update React state — landing renders immediately
+    // 7. Update React state — landing renders immediately. Re-read the
+    // last-stay credential from localStorage: the persist effect wrote it
+    // WHILE seated, but React state only learns at page mount — keeping the
+    // stale value here hid the rejoin card until a reload ("rejoin works
+    // sometimes").
     setSession(s => ({
       roomId: null,
       secret: null,
@@ -2041,7 +2050,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       deviceName: s.deviceName,
       partnerName: null,
       stayConnected: false,
-      lastStayRoom: s.lastStayRoom
+      lastStayRoom: loadLastStayRoom()
     }));
   };
 

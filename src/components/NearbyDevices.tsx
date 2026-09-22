@@ -156,7 +156,11 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
   const invitingRef = useRef(false);
   // Bounded wait for the auto-connect tiebreak loser (see the auto-invite
   // effect): after this long with no incoming invitation, the loser leads.
-  const AUTO_YIELD_MS = 12_000;
+  // 4s comfortably outlasts a lobby round-trip in both directions (invite
+  // + answer ride the same open socket), so a healthy winner still beats
+  // the failover — but a silent loser wait no longer costs a third of a
+  // minute of "staring at each other".
+  const AUTO_YIELD_MS = 4_000;
   const yieldDeadlineRef = useRef<number | null>(null);
   const yieldTickRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [yieldTick, setYieldTick] = useState(0);

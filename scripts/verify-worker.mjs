@@ -429,6 +429,36 @@ async function runStayEmptySurvival() {
   returning.close();
 }
 
+// Regression for the "rejoin doesn't always work" bug: a device whose
+// connection id CHANGED (every real reconnect after the old socket dies)
+// must be able to re-enter a room it holds the secret for — stay promise or
+// not. The 128-bit secret is the room's credential; the old snapshot gate
+// wrongly demanded a remembered cid and answered ROOM_FULL instead.
+async function runFreshCidRejoin() {
+  // Non-stay room: creator seats, both sockets die (seats freed), a brand-new
+  // cid presents the correct secret — must be let back in, not ROOM_FULL.
+  const roomId = uuid();
+  const ctx = new FakeCtx();
+  const room = new Room(ctx, makeEnv());
+  const creator = await connect(room, roomId);
+  const created = await creator.send('create_room');
+  const secret = created.secret;
+  creator.close();
+  await sleep(50);
+  check('rejoin: room survives creator leaving', ctx.storage.map.get('room') != null);
+  const fresh = await connect(room, roomId);
+  const resumed = await fresh.send('resume_room', { roomId, secret });
+  check('rejoin: fresh cid + correct secret enters empty room', resumed.success === true, resumed.error || '');
+  check('rejoin: room seated again', ctx.storage.map.get('room')?.peerA != null || ctx.storage.map.get('room')?.peerB != null);
+  // ...and the security half: a WRONG secret still gets nothing.
+  const intruder = await connect(room, roomId);
+  const denied = await intruder.send('resume_room', { roomId, secret: 'WRONG-SECRET-WRONG-SECRET-1' });
+  check('rejoin: wrong secret still rejected', denied.success === false, denied.error);
+  intruder.close();
+  await fresh.send('close_room');
+  fresh.close();
+}
+
 async function runPush() {
   const roomId = uuid();
   const ctx = new FakeCtx();
@@ -581,6 +611,7 @@ await runRoomProtocol();
 await runRefreshCode();
 await runStayConnected();
 await runStayEmptySurvival();
+await runFreshCidRejoin();
 await runPush();
 await runLiveIdleExpiry();
 await runDisconnectedState();

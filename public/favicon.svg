@@ -1,6 +1,6 @@
 <svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- ShareText mark: two device screens joined by a connection beam, in the
-       ember brand gradient. Must match src/components/ShareTextLogo.tsx and
+  <!-- ShareTexts mark: two device screens joined by a connection beam, in the
+       ember brand gradient. Must match src/components/ShareTextsLogo.tsx and
        scripts/gen-brand-assets.mjs. -->
   <defs>
     <linearGradient id="ember" x1="24" y1="20" x2="216" y2="236" gradientUnits="userSpaceOnUse">
