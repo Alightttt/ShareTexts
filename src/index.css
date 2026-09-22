@@ -298,12 +298,15 @@ html:not(.dark) .st-ambient {
 }
 
 /* ── Animated dot field — the landing page's right panel, desktop only ────
-   Two dot layers drift in opposite directions at different speeds (parallax
-   = depth), over a slowly wandering ember glow. A radial mask concentrates
-   the field behind the hero scene and dissolves it at the edges, so text
-   never fights the texture. Light mode: warm ink + ember speckle on canvas.
-   Dark mode: soft white + brighter ember on graphite. Compositor-only
-   (background-position + opacity); disabled under reduced motion. */
+   Three reads, all compositor-only:
+   · ::before — the base field. Two dot grids drift in opposite directions
+     (parallax = depth) while a slow twinkle pulses the whole layer between
+     BOLD and LIGHT, so the dots visibly breathe instead of sitting still.
+   · ::after  — a slowly wandering ember glow that warms one region.
+   A radial mask concentrates the field behind the hero scene and dissolves
+   it at the edges, so text never fights the texture. Light mode: warm ink +
+   ember speckle on canvas. Dark mode: soft white + brighter ember on
+   graphite. Disabled under reduced motion. */
 .st-dotfield {
   position: relative;
 }
@@ -313,19 +316,24 @@ html:not(.dark) .st-ambient {
   inset: 0;
   pointer-events: none;
   background-image:
-    radial-gradient(circle, rgba(240, 100, 19, 0.20) 1.1px, transparent 1.7px),
-    radial-gradient(circle, rgba(33, 31, 26, 0.10) 1px, transparent 1.5px);
+    radial-gradient(circle, rgba(240, 100, 19, 0.30) 1.2px, transparent 1.8px),
+    radial-gradient(circle, rgba(33, 31, 26, 0.16) 1.1px, transparent 1.6px);
   background-size: 30px 30px, 44px 44px;
   background-position: 0 0, 15px 19px;
   -webkit-mask-image: radial-gradient(ellipse 92% 82% at 50% 42%, black 30%, transparent 76%);
   mask-image: radial-gradient(ellipse 92% 82% at 50% 42%, black 30%, transparent 76%);
-  animation: st-dot-drift 34s linear infinite alternate;
-  will-change: background-position;
+  /* Drift (background-position) and twinkle (opacity) compose: two
+     animations touching different properties, so the field slides while
+     its dots pulse bold ↔ light. */
+  animation:
+    st-dot-drift 34s linear infinite alternate,
+    st-dot-twinkle 6.5s ease-in-out infinite;
+  will-change: background-position, opacity;
 }
 html.dark .st-dotfield::before {
   background-image:
-    radial-gradient(circle, rgba(251, 146, 67, 0.16) 1.2px, transparent 1.8px),
-    radial-gradient(circle, rgba(255, 255, 255, 0.075) 1px, transparent 1.5px);
+    radial-gradient(circle, rgba(251, 146, 67, 0.26) 1.3px, transparent 1.9px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.12) 1.1px, transparent 1.6px);
 }
 .st-dotfield::after {
   content: '';
@@ -341,6 +349,12 @@ html.dark .st-dotfield::after {
 @keyframes st-dot-drift {
   from { background-position: 0 0, 15px 19px; }
   to   { background-position: 60px 30px, -44px 38px; }
+}
+/* Bold ↔ light: the layer swells to full strength then relaxes to a
+   whisper — dots read as alive, never static, never flashing. */
+@keyframes st-dot-twinkle {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.38; }
 }
 @keyframes st-dot-glow {
   from { transform: translate3d(-14px, 8px, 0); opacity: 0.85; }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { signalingHttpBase } from './socket';
+import { signalingHttpBase, endpointSelectionSettled } from './socket';
 
 /**
  * Live landing-page stats from the ACTIVE signaling backend's aggregate
@@ -51,10 +51,14 @@ export function useLiveStats(pollMs = 10_000): { devices: number | null; roomsCr
 
   useEffect(() => {
     let cancelled = false;
-    const base = signalingHttpBase();
-    if (!base) return;
+    // The FIRST poll must read the worker the transport actually landed on.
+    // On the Cloudflare transport the boot probe may redirect the base (a
+    // build can bake a stale worker); polling before it settles reads the
+    // stale /stats, which lacks roomsCreated — the tracker then sits at the
+    // floor until the next 10s tick. Await the probe, then poll.
+    const boot = endpointSelectionSettled();
     const tick = async () => { if (!cancelled) await load(); };
-    void tick();
+    void boot.then(tick);
     const timer = setInterval(tick, pollMs);
     // Returning to the tab (e.g. after finishing a room) refreshes at once,
     // so the tracker shows the room just created without waiting a full

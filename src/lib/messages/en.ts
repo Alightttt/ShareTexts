@@ -19,7 +19,7 @@ const en = {
   // ── brand / nav / landing ──────────────────────────────────────────
   'nav.docs': 'Docs',
   'home.title': 'Move anything\nbetween your devices.',
-  'home.subtitle': "iPhone to Windows, phone to laptop — share texts, files, and photos across any devices. That's why we call it AirDrop for any device",
+  'home.subtitle': "Windows to IPhone, Mobile to PC, you can share Texts/Files/Images across any devices. thats why we call it AirDrop for any Device",
   'home.send': 'Send',
   'home.sendHint': 'Create a room',
   'home.receive': 'Receive',

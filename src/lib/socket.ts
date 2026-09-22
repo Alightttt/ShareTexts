@@ -24,11 +24,12 @@ export interface SignalingSocket {
 const isProd = !import.meta.env.DEV;
 
 /** Cloudflare endpoints a deployed build may fall back to when the baked-in
- *  worker is stale or unreachable. The current production worker first — it
- *  speaks the newest protocol and exposes /stats roomsCreated. */
+ *  worker is stale or unreachable. The current production worker — it speaks
+ *  the newest protocol and exposes /stats roomsCreated. (Older workers are
+ *  deliberately NOT listed: the capability probe requires roomsCreated, so a
+ *  pre-stats worker can never be selected — listing one only wastes a probe.) */
 const CF_FALLBACKS = [
   'https://sharetext-signaling.alighttt.workers.dev',
-  'https://sharetext-signaling.garv29devra.workers.dev',
 ];
 
 /**
@@ -107,6 +108,20 @@ function ensureEndpointSelected(): void {
   if (mode !== 'cloudflare' || bootProbeDone) return;
   bootProbeDone = true;
   redirectPromise = selectBestCloudflareBase();
+}
+
+/**
+ * Resolves when the boot-time endpoint probe has finished (or immediately,
+ * when there is nothing to probe — same-origin/socket.io builds). HTTP
+ * consumers that must read the SAME worker the transport landed on (the
+ * live /stats widget) await this before their first fetch, so the tracker's
+ * very first poll can't race the redirect and read a stale worker that
+ * lacks the fields it needs (the "tracker stuck at the floor" bug).
+ */
+export function endpointSelectionSettled(): Promise<void> {
+  if (mode !== 'cloudflare') return Promise.resolve();
+  ensureEndpointSelected();
+  return redirectPromise ?? Promise.resolve();
 }
 
 let lastProbeKick = 0;
@@ -270,7 +285,7 @@ export function getSocket(): SignalingSocket {
     const endpoint = activeCfBase ?? url;
     instance =
       mode === 'cloudflare'
-        ? new CloudflareSocket(endpoint!, () => kickEndpointProbe())
+        ? new CloudflareSocket(endpoint!, () => kickEndpointProbe(), redirectPromise ?? undefined)
         : io(url, {
             // WebSocket first (fastest), polling as automatic fallback. A
             // websocket-only transport dies permanently behind proxies that

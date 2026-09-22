@@ -92,25 +92,6 @@ function useIsDesktopLayout() {
   return desktop;
 }
 
-/** True on touch-primary devices: phones and tablets, where tapping a chip
- *  is the natural path. The desktop landing drops the fallback chip row —
- *  the QR modal and link already live in the send flow there, so the chips
- *  only repeated what the hero buttons offer. */
-function useIsTouchPrimary() {
-  const [touch, setTouch] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.matchMedia('(hover: none) and (pointer: coarse)').matches;
-  });
-  useEffect(() => {
-    const mq = window.matchMedia('(hover: none) and (pointer: coarse)');
-    const update = () => setTouch(mq.matches);
-    update();
-    mq.addEventListener('change', update);
-    return () => mq.removeEventListener('change', update);
-  }, []);
-  return touch;
-}
-
 
 /* ------------------------------------------------------------------ */
 /*  Main component                                                    */
@@ -119,7 +100,6 @@ export function SingleScreenApp() {
   const { t } = useI18n();
   const { session, createSession, abandonSession, joinWithCode, joinWithShortCode, setDeviceName, rejoinStayRoom, requestReconnect, refreshCode } = useSession();
   const isDesktopLayout = useIsDesktopLayout();
-  const isTouchPrimary = useIsTouchPrimary();
   // Live activity tracker — real aggregate numbers from the signaling
   // service: devices seated right now + rooms ever created.
   const { roomsCreated, bumpRoomsCreated } = useLiveStats();
@@ -551,9 +531,10 @@ export function SingleScreenApp() {
           <span className="font-semibold tracking-tight text-[19px] sm:text-[21px] text-apple-ink dark:text-white">ShareTexts</span>
         </a>
         {/* One rhythm for every header control — desktop AND mobile. Each
-            item is a 40px-tall slot on a 6px gap grid; icons are uniform
-            18px. No per-item -my hacks: the grid does the aligning. */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+            item is a 40px-tall slot on a tight gap grid; icons are uniform
+            18px. Docs and language sit closest (one shared cluster), the
+            theme toggle breathes a little after them. */}
+        <div className="flex items-center gap-1">
           <CommandBarChip onClick={() => { productEvent('product.diagnostics_opened'); setCmdOpen(true); }} />
           <LanguageMenu />
           {/* Docs sits BETWEEN the language and theme toggles (user request) —
@@ -579,14 +560,16 @@ export function SingleScreenApp() {
             // Deterministic first paint: the hero renders visible immediately;
             // only the swap-out fades. Never gate first paint on animation.
             <motion.div key="idle" exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto flex flex-col">
-              {/* Flex + order: subtitle → tracker → actions (the H1 itself
-              {/* DOM order IS visual order: subtitle → live tracker →
-                  actions. The tracker is passive status, so it lives ABOVE
-                  the action cluster — status never interrupts the
-                  Send/Receive flow (usability audit #6). */}
+              {/* Flex + order: H1 → subtitle → live tracker → actions. The
+                  tracker is passive status, so it lives ABOVE the action
+                  cluster — status never interrupts the Send/Receive flow
+                  (usability audit #6). */}
+              <h1 className="order-1 text-[34px] sm:text-[42px] lg:text-[56px] font-bold tracking-[-0.035em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left" style={{ fontFamily: 'var(--font-display)' }}>
+                {(() => { const [a, b] = t('home.title').split('\n'); return (<>{a}{b ? <><br />{b}</> : null}</>); })()}
+              </h1>
               {/* whitespace-pre-line honors the subtitle's deliberate line
                   break ("No app. No account. No cable." / "Just open …"). */}
-              <p className="mt-4 text-[16.5px] sm:text-[18px] lg:text-[20px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[40ch] text-center sm:text-left whitespace-pre-line">
+              <p className="order-2 mt-4 text-[16.5px] sm:text-[18px] lg:text-[20px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[40ch] text-center sm:text-left whitespace-pre-line">
                 {t('home.subtitle')}
               </p>
               {/* Live activity tracker — bare (NO pill): a breathing dot, the
@@ -600,7 +583,7 @@ export function SingleScreenApp() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
-                className="mt-4 flex items-center justify-center lg:justify-start gap-2.5 whitespace-nowrap w-fit mx-auto lg:mx-0"
+                className="order-2 mt-4 flex items-center justify-center lg:justify-start gap-2.5 whitespace-nowrap w-fit mx-auto lg:mx-0"
               >
                 {/* Halo dot: two slow radar rings drift outward from a solid
                     glowing core — layered, staggered, so it reads as breath,
@@ -621,7 +604,7 @@ export function SingleScreenApp() {
                   (audit #12 — Receive rendered wider than Send), and each
                   hint sits directly beneath its own button so the
                   label↔action mapping is unambiguous (audit #11). */}
-              <div className="mt-6 grid grid-cols-2 gap-x-3 gap-y-1 max-w-[360px] mx-auto sm:mx-0">
+              <div className="order-3 mt-6 grid grid-cols-2 gap-x-3 gap-y-1 max-w-[360px] mx-auto sm:mx-0">
                 <div className="flex flex-col items-center gap-1.5 min-w-0">
                   <TactileButton onClick={handleSend} variant="primary" size="lg" className="w-full lg:text-[16px] lg:min-h-[56px]" icon={<SendCircleIcon size={18} />} disabled={isCreating}>{t('home.send')}</TactileButton>
                   <span className="text-[13px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.sendHint')}</span>
@@ -662,7 +645,7 @@ export function SingleScreenApp() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 4 }}
                       transition={{ type: 'spring', bounce: 0, duration: 0.32 }}
-                      className="mt-5 w-full"
+                      className="order-4 mt-5 w-full"
                     >
                       <button
                         type="button"
@@ -711,7 +694,7 @@ export function SingleScreenApp() {
               {/* On mobile the hero image already carries mb-5 before this
                   row — a second mt-10 stacked on top read as a dead gap.
                   mt-2 keeps one breath of air, nothing more. */}
-              <div className="mt-10 max-lg:mt-2 w-full flex flex-col items-center lg:items-start">
+              <div className="order-6 mt-10 w-full flex flex-col items-center lg:items-start">
                 <div className="w-full max-w-md lg:max-w-none">
                   <NearbyDevices onStatus={setNearbyStatus} />
                 </div>
@@ -722,11 +705,11 @@ export function SingleScreenApp() {
                   the same scene in the room pane, so hide it here. */}
               {/* Mobile: sized to sit INSIDE the column borders — slightly
                   narrower than the text above so nothing touches the edges.
-                  It sits right before the Nearby block in DOM order, matching
-                  the visual flow. The bottom margin (not the old negative
-                  one) keeps clear air between the image and the "Open
-                  ShareTexts in another device" row that follows. */}
-              <div className="lg:hidden mt-4 sm:mt-8 mb-5 flex justify-center">
+                  order-5 keeps it last inside this ordered flex column. The
+                  bottom margin (not the old negative one) keeps clear air
+                  between the image and the "Open ShareTexts in another
+                  device" row that follows. */}
+              <div className="order-5 lg:hidden mt-4 sm:mt-8 mb-5 flex justify-center">
                 <div className="w-full max-w-[340px] px-1">
                   <HeroTransferScene />
                 </div>
@@ -1107,22 +1090,11 @@ export function SingleScreenApp() {
         )}
       </AnimatePresence>
       {headerNode}
-      {/* Hero area — TOP-ANCHORED. As the landing grew (tracker, rejoin,
-          nearby), justify-center kept pushing the heading upward to squeeze
-          everything in — the title visibly "climbed". Anchoring the block
-          under the header with real breathing room keeps the heading where
-          it belongs no matter how much content follows; the pane scrolls
-          when a viewport is genuinely short. */}
-      {/* Heading stays at the TOP of the page (user request — do not move):
-          H1 sits directly under the header, subtitle right beneath it, then
-          the rest of the hero in a scroll area for short viewports. */}
-      <div className="flex-1 flex flex-col min-h-0 px-6 lg:px-10 pt-3 sm:pt-6 lg:pt-8 pb-6 overflow-hidden">
-        <h1 className="shrink-0 pt-2 pb-1 text-[38px] sm:text-[42px] lg:text-[56px] font-bold tracking-[-0.035em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left" style={{ fontFamily: 'var(--font-display)' }}>
-          {(() => { const [a, b] = t('home.title').split('\n'); return (<>{a}{b ? <><br />{b}</> : null}</>); })()}
-        </h1>
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain room-scroll">
-          {heroContent}
-        </div>
+      {/* Hero area — the H1 lives INSIDE the hero column (restored): one
+          source of truth for the headline on desktop and mobile, sitting in
+          the same max-w-md column as the subtitle and actions. */}
+      <div className="flex-1 flex flex-col justify-start px-6 lg:px-10 pt-3 sm:pt-6 lg:pt-12 pb-6 min-h-0 overflow-y-auto overscroll-contain room-scroll">
+        {heroContent}
       </div>
       {footerNode}
     </div>
@@ -1306,16 +1278,12 @@ export function SingleScreenApp() {
               <div className="relative isolate flex flex-1 flex-col bg-apple-canvas dark:bg-[#131315]">
                 {ambientGlow}
                 {headerNode}
-                {/* TOP-ANCHORED like the desktop pane, and the SAME heading
-                    structure: H1 directly under the header, hero beneath it.
-                    Mobile and desktop tell one layout story. */}
-                <div className="flex flex-col px-6 pt-1 pb-6">
-                  <h1 className="pt-1 text-[38px] font-bold tracking-[-0.035em] leading-[1.08] text-apple-ink dark:text-white text-center" style={{ fontFamily: 'var(--font-display)' }}>
-                    {(() => { const [a, b] = t('home.title').split('\n'); return (<>{a}{b ? <><br />{b}</> : null}</>); })()}
-                  </h1>
-                  <div className="flex flex-col justify-start">
-                    {heroContent}
-                  </div>
+                {/* TOP-ANCHORED like the desktop pane: justify-center with
+                    overflowing content pushes the heading into dead space
+                    above (and clips it) — start-anchoring keeps the title
+                    right under the header on every phone height. */}
+                <div className="flex-1 flex flex-col justify-start px-6 lg:px-10 pt-3 sm:pt-6 pb-6 min-h-0">
+                  {heroContent}
                 </div>
               </div>
               {footerNode}

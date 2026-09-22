@@ -53,7 +53,7 @@ export class CloudflareSocket implements SignalingSocket {
   private reconnectAttempts = 0;
   private stopped = false;
 
-  constructor(endpoint: string, private onRepeatedLobbyFailure?: () => void) {
+  constructor(endpoint: string, private onRepeatedLobbyFailure?: () => void, private bootProbe?: Promise<void>) {
     const normalized = endpoint.replace(/\/+$/, '').replace(/\/ws$/i, '');
     this.wsBase = normalized.replace(/^http/, 'ws') + '/ws';
     this.httpBase = normalized.replace(/^ws/, 'http');
@@ -206,6 +206,11 @@ export class CloudflareSocket implements SignalingSocket {
     if (this.ws && this.ws.readyState === WebSocket.OPEN && this.currentRoom === roomId) {
       return this.ws;
     }
+    // Never dial-stab a stale worker during boot: if the endpoint probe is
+    // still deciding (a build can bake an old worker URL), wait for it so
+    // the FIRST room dial already targets the winning base. A live room
+    // socket short-circuits above — an in-flight transfer is never stalled.
+    if (this.bootProbe) { try { await this.bootProbe; } catch { /* probe failure must not block connecting */ } }
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -552,7 +557,14 @@ export class CloudflareSocket implements SignalingSocket {
   private async openLobby(): Promise<WebSocket> {
     if (this.lobbyWs && this.lobbyWs.readyState === WebSocket.OPEN) return this.lobbyWs;
     if (this.lobbyOpening) return this.lobbyOpening;
-    this.lobbyOpening = new Promise<WebSocket>((resolve, reject) => {
+    // Same boot guard as the room socket: the lobby's first dial must not
+    // race the endpoint probe and fail against a stale baked worker (the
+    // production "nearby devices never load until reload" bug). The await
+    // lives INSIDE the shared promise so concurrent callers can't both
+    // pass the null check and double-dial.
+    this.lobbyOpening = (async () => {
+      if (this.bootProbe) { try { await this.bootProbe; } catch { /* probe failure must not block presence */ } }
+      return new Promise<WebSocket>((resolve, reject) => {
       let settled = false;
       const ws = new WebSocket(`${this.wsBase.replace(/\/ws$/, '')}/lobby`);
       let timer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
@@ -593,7 +605,8 @@ export class CloudflareSocket implements SignalingSocket {
         }
       };
       ws.onerror = () => { /* close handler rejects */ };
-    });
+      });
+    })();
     try {
       const ws = await this.lobbyOpening;
       return ws;
