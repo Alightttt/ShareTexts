@@ -1,53 +1,22 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { SessionState, ChatMessage, ConnectionType } from '../types';
-import { getSocket, devLog, signalingConfigIssue, probeSignalingHealth, resolveShortCode, refreshCode as refreshCodeRPC } from './socket';
-import { PeerManager, TransferCancelledError, hasSendProgress, clearAllTransferState, clearTransferState, getPartialInfo, chunkCountForSize, sendQueueDepth } from './webrtc';
-import { generateKey } from './crypto';
+import { getSocket, devLog, resolveShortCode, refreshCode as refreshCodeRPC } from './socket';
+import { PeerManager, clearAllTransferState, getPartialInfo } from './webrtc';
 import { humanizeError, ConnectError, describeConnectFailure } from './errors';
 import { diag, roomCreateDiagStart, roomCreateDiagEnd } from './diag';
 import { connMachine, mapToConnState } from './connectionState';
-import { speedTrackerFor, dropSpeedTracker } from './speedEngine';
 import { startNetStats, stopNetStats } from './netStats';
 import { nearbyPresence } from './nearby';
-import { beginTransferRecord, finishTransferRecord } from './transferMetrics';
 import { productEvent } from './telemetry';
-import { saveSendable, getSendable, deleteSendable, saveTransferState, deleteTransferState } from './transferStore';
-import { sanitizeFilename } from './utils';
-import { normalizePastedText } from './textFidelity';
-
-function toHex(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  let hex = '';
-  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
-  return hex;
-}
-
-/**
- * SHA-256 hex of a Blob/File with bounded memory at any size.
- *
- * Fast path: browsers that accept a Blob directly stream it natively. Some
- * engines (older Chromium, some WebViews) reject Blob in digest() — the
- * fallback then hashes per-64KB slice and combines the per-chunk digests
- * into one final hash. Same corruption-detection power (any changed byte
- * changes a chunk hash), but memory stays at 32 bytes per chunk (~1 MB for
- * a 2 GB file) instead of the whole file.
- */
-async function sha256Hex(blob: Blob): Promise<string> {
-  try {
-    return toHex(await crypto.subtle.digest('SHA-256', blob as unknown as BufferSource));
-  } catch {
-    // Fallback — chunk-combined digest.
-    const CH = 64 * 1024;
-    const n = Math.ceil(blob.size / CH);
-    const parts = new Uint8Array(n * 32);
-    for (let i = 0; i < n; i++) {
-      const slice = blob.slice(i * CH, Math.min(blob.size, (i + 1) * CH));
-      const d = new Uint8Array(await crypto.subtle.digest('SHA-256', await slice.arrayBuffer()));
-      parts.set(d, i * 32);
-    }
-    return toHex(await crypto.subtle.digest('SHA-256', parts));
-  }
-}
+// Round 03 decomposition: focused session modules (behavior moved verbatim).
+import { loadStoredSession, saveStoredSession, loadLastStayRoom, saveLastStayRoom, saveLastStayCredentials, sanitizeStoredMessages, type StoredSession } from './session/persistence';
+import { DEVICE_NAME_KEY, platformDefaultName, guessDeviceName, ensureDeviceNameSeeded } from './session/deviceIdentity';
+import { sha256Hex } from './session/fileIntegrity';
+import { ensureSocketConnected, humanJoinError, friendlyJoinCopy } from './session/socketReady';
+import { useCryptoKeyCache } from './session/cryptoCache';
+import { useSeenReceipts } from './session/seenReceipts';
+import { useMessageEngine } from './session/messageEngine';
+import { useTransferWakeLock } from './session/wakeLock';
 
 interface SessionContextValue {
   session: SessionState;
@@ -92,209 +61,11 @@ interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
-const STORAGE_KEY = 'sharetext.session.v1';
-const DEVICE_NAME_KEY = 'sharetext.deviceName';
-
 export function useSession() {
   const ctx = useContext(SessionContext);
   if (!ctx) throw new Error('useSession must be used within SessionProvider');
   return ctx;
 }
-
-interface StoredSession {
-  roomId: string;
-  secret: string;
-  isCreator: boolean;
-  /** Anchors the 40s pairing-code window across refreshes. */
-  createdAt?: number;
-  deviceName?: string;
-  partnerName?: string | null;
-  messages?: ChatMessage[];
-  /** Room's Stay Connected state, persisted so a refresh restores the badge. */
-  stayConnected?: boolean;
-}
-
-// Rooms are persistent: credentials + recent messages live in localStorage so
-// a session can be rejoined even after the tab is closed.
-function loadStoredSession(): StoredSession | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed.roomId === 'string' && typeof parsed.secret === 'string') {
-      return parsed;
-    }
-  } catch { /* ignore */ }
-  return null;
-}
-
-// Stay Connected rooms survive normal disconnects: the credentials live in a
-// separate key so a casual "session ended" clear never destroys the promise.
-// A sanitized message snapshot rides along so re-entry restores the chat —
-// resetSession deliberately clears the MAIN stored session, so this key is
-// the only surviving copy of the room's history.
-const LAST_STAY_KEY = 'sharetext.lastStayRoom.v1';
-interface LastStayRoom { roomId: string; secret: string; messages?: ChatMessage[]; partnerName?: string | null; messageCount?: number; lastActiveAt?: number }
-function loadLastStayRoom(): LastStayRoom | null {
-  try {
-    const raw = localStorage.getItem(LAST_STAY_KEY);
-    if (raw) {
-      const p = JSON.parse(raw);
-      if (p && typeof p.roomId === 'string' && typeof p.secret === 'string') return p;
-    }
-  } catch { /* ignore */ }
-  return null;
-}
-function saveLastStayRoom(v: LastStayRoom | null) {
-  try {
-    if (v) localStorage.setItem(LAST_STAY_KEY, JSON.stringify(v));
-    else localStorage.removeItem(LAST_STAY_KEY);
-  } catch { /* ignore */ }
-}
-/** Refresh ONLY the credential half of the last-stay record, preserving any
- *  message snapshot already saved for that room. */
-function saveLastStayCredentials(roomId: string, secret: string) {
-  const prev = loadLastStayRoom();
-  saveLastStayRoom({ roomId, secret, messages: prev?.roomId === roomId ? prev.messages : undefined });
-}
-
-function saveStoredSession(s: StoredSession | null) {
-  try {
-    if (s) localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-    else localStorage.removeItem(STORAGE_KEY);
-  } catch { /* ignore */ }
-}
-
-/**
- * Blob object URLs die with the page — they are page-lifetime artifacts, so
- * they must NEVER be persisted. A restored session that keeps the old `blob:`
- * URL renders a broken preview (and logs REQFAIL) after every reload. Strip
- * the URL on the way out AND on the way in (for data stored before this fix),
- * and mark partner files we received but no longer hold as 'restoring' — the
- * peer is asked to re-send the bytes the moment the channel reopens.
- */
-function sanitizeStoredMessages(msgs: ChatMessage[] | undefined): ChatMessage[] {
-  if (!msgs) return [];
-  return msgs.map(m => {
-    if (!m.attachment) return m;
-    const a = { ...m.attachment };
-    delete a.url;
-    if (m.sender === 'partner' && a.status === 'complete') {
-      a.status = 'restoring';
-      a.progress = 0;
-    }
-    return { ...m, attachment: a };
-  });
-}
-
-/** The platform-based default name, ignoring anything the user set. Used to
- *  tell "still an unedited default" apart from a deliberate (even identical)
- *  rename — auto-disambiguation must never touch a user's choice. */
-export function platformDefaultName(): string {
-  if (typeof navigator === 'undefined') return 'Device';
-  const ua = navigator.userAgent;
-  if (/iPhone/i.test(ua)) return 'iPhone';
-  if (/iPad/i.test(ua)) return 'iPad';
-  if (/Android/i.test(ua)) return 'Android Phone';
-  if (/Windows/i.test(ua)) return 'Windows PC';
-  if (/Macintosh|Mac OS X/i.test(ua)) return 'MacBook';
-  if (/Linux/i.test(ua)) return 'Linux PC';
-  return 'Device';
-}
-
-/** Names the FIRST-EVER defaults used before the product dropped the
- *  "Guest" prefix. A device that stored one of these keeps an outdated
- *  label forever unless it is migrated — every device that still shows
- *  one gets the modern, recognizable default instead. A user's custom
- *  name never matches these patterns, so renames are respected. */
-const LEGACY_DEFAULT_NAMES = /^(Guest Device|Guest iPhone|Guest iPad|Guest Android|Guest Windows PC|Guest MacBook|Guest Linux|Unnamed device)$/;
-
-export function guessDeviceName(): string {
-  const stored = localStorage.getItem(DEVICE_NAME_KEY);
-  if (stored) return stored;
-  return platformDefaultName();
-}
-
-/**
- * Wait until the shared socket is connected, or fail with a CLASSIFIED error.
- *
- * The socket.io transport already retries with bounded exponential backoff
- * (reconnectionAttempts: 60, delay 2–8s, polling fallback), so a single
- * transient connect_error must NOT reject the request — the connection
- * commonly comes up on the very next attempt. Only the overall window is
- * terminal, and the failure carries a code (OFFLINE / UNREACHABLE / TIMEOUT /
- * CONFIG) so the UI can say what actually happened.
- */
-function ensureSocketConnected(timeoutMs = 16000): Promise<void> {
-  const socket = getSocket();
-  if (socket.connected) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      cleanup();
-      diag('connect.timeout', false, `waited ${timeoutMs}ms`);
-      // A dropped/idle connection may recover on its own — force the
-      // transport to restart NOW instead of waiting out its backoff while
-      // the user stares at a spinner.
-      try { (socket as any).connect?.(); } catch { /* best effort */ }
-      // Classify before rejecting: a device with no network or a dead
-      // service gets a different, honest message than a slow one.
-      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-        reject(new ConnectError('OFFLINE'));
-        return;
-      }
-      const config = signalingConfigIssue();
-      if (config) {
-        reject(new ConnectError('CONFIG', config));
-        return;
-      }
-      // Probe the service: up → our transport failed locally; down → the
-      // service itself is out. The probe result picks the truthful copy.
-      void probeSignalingHealth().then((health) => {
-        reject(new ConnectError(health === 'ok' ? 'TIMEOUT' : health === 'slow' ? 'TIMEOUT' : 'UNREACHABLE'));
-      });
-    }, timeoutMs);
-    const onConnect = () => { cleanup(); diag('connect.ok', true); resolve(); };
-    const onError = () => { /* transient — keep waiting for the retry */ };
-    const cleanup = () => {
-      clearTimeout(timer);
-      socket.off('connect', onConnect);
-      socket.off('connect_error', onError);
-    };
-    socket.once('connect', onConnect);
-    socket.once('connect_error', onError);
-  });
-}
-/**
- * Friendly, actionable error messages based on the failure code.
- * Users should always know WHAT went wrong and WHAT to try next.
- */
-function humanJoinError(code: string | undefined, fallback: string): string {
-  switch (code) {
-    case 'INVALID_CODE':
-      return "That code isn't active. Check the other device and enter its latest six-digit code.";
-    case 'ROOM_FULL':
-      return "This room already has two devices. Only two can connect at once.";
-    case 'RATE_LIMITED':
-      return "Too many attempts. Wait a moment and try again.";
-    case 'SESSION_EXPIRED':
-      return "This session expired. Ask the other device to create a new room.";
-    default:
-      return fallback;
-  }
-}
-/** Friendly copy when a join THROWS (socket never came up) — mirrors the
- *  Send-side classification so both paths speak the same language. */
-function friendlyJoinCopy(e: unknown): string {
-  const code = describeConnectFailure(e);
-  switch (code) {
-    case 'OFFLINE': return "You're offline. Check your internet and try again.";
-    case 'UNREACHABLE': return "ShareTexts's connection server isn't reachable right now. Try again in a moment.";
-    case 'CONFIG': return (e instanceof Error && e.message) || "ShareTexts couldn't reach its connection server. Please try again later.";
-    case 'TIMEOUT': return "The connection took too long. One more try usually fixes it.";
-    default: return "Couldn't reach ShareTexts. Check your connection and try again.";
-  }
-}
-
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<SessionState>(() => {
@@ -315,30 +86,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     };
   });
 
-  // One-time: persist the platform-guessed device name so every surface
-  // agrees. The WebRTC hello reads the name from localStorage directly, and
-  // the connected hero reads it from session state — if we never write the
-  // guess, the partner sees "Guest Device" while this device shows
-  // "Guest Windows PC", and two devices on the same platform are
-  // indistinguishable. Writing the guess once keeps them identical until
-  // the user edits the name. Legacy "Guest …" defaults migrate to the
-  // modern platform name here too.
+  // One-time identity bootstrap (in session/deviceIdentity.ts).
   useEffect(() => {
-    try {
-      if (!localStorage.getItem(DEVICE_NAME_KEY)) {
-        localStorage.setItem(DEVICE_NAME_KEY, guessDeviceName());
-      } else {
-        // Migration: a device that still carries one of the first-ever
-        // defaults ("Guest iPhone"…) gets the modern, recognizable one.
-        // Custom names never match, so deliberate renames are respected.
-        const current = localStorage.getItem(DEVICE_NAME_KEY);
-        if (current && LEGACY_DEFAULT_NAMES.test(current)) {
-          const modern = guessDeviceName();
-          localStorage.setItem(DEVICE_NAME_KEY, modern);
-          setSession(s => ({ ...s, deviceName: modern }));
-        }
-      }
-    } catch { /* private mode */ }
+    const migrated = ensureDeviceNameSeeded();
+    if (migrated) setSession(s => ({ ...s, deviceName: migrated }));
   }, []);
 
   const peerManagerRef = useRef<PeerManager | null>(null);
@@ -351,66 +102,36 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   /** Client-side disconnect grace timer — keeps the UI calm for the same 60s
    *  the server holds the peer's seat. Cleared by recovery or a confirmed leave. */
   const disconnectCalmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Pre-computed crypto key: derived once per session secret, shared across
-  // PeerManager instances (saves ~100ms PBKDF2 on reconnect/refresh).
-  const cryptoKeyRef = useRef<Map<string, CryptoKey>>(new Map());
-
-  /** Get or derive the crypto key for a room secret. The key is cached so
-   *  reconnects skip the expensive PBKDF2 derivation (~100ms). */
-  const getCryptoKey = async (secret: string): Promise<CryptoKey> => {
-    const cached = cryptoKeyRef.current.get(secret);
-    if (cached) return cached;
-    const key = await generateKey(secret);
-    cryptoKeyRef.current.set(secret, key);
-    // Keep the cache bounded (most users only have 1–2 sessions).
-    if (cryptoKeyRef.current.size > 5) {
-      const oldest = cryptoKeyRef.current.keys().next().value;
-      if (oldest !== undefined) cryptoKeyRef.current.delete(oldest);
-    }
-    return key;
-  };
-
-  /** Create a PeerManager with a precomputed key for instant crypto. */
-  const createPeerManager = async (roomId: string, secret: string, isInitiator: boolean): Promise<PeerManager> => {
-    const key = await getCryptoKey(secret);
-    return new PeerManager(roomId, secret, isInitiator, key);
-  };
-  // Last-published progress per transfer, for throttling onFileProgress.
-  const progressRef = useRef<Map<string, number>>(new Map());
-  /** Rolling speed readings per transfer, consumed by MessageCard rows. */
-  const lastSpeedReadings = useRef<Map<string, { bytesPerSec: number; etaSec: number | null }>>(new Map());
-  /** Fixed chunk grid of the wire protocol (mirrors webrtc.ts CHUNK_SIZE). */
-  const CHUNK_BYTES = 128 * 1024;
+  const { getCryptoKey, createPeerManager } = useCryptoKeyCache();
   // True while the user deliberately leaves the pairing screen: the room
   // close we emit comes back as room_closed, which must NOT show the
   // "Session ended" screen — it was an intentional exit to the landing page.
   const abandonedRef = useRef(false);
-  // In-memory File references for failed transfers, so "Retry" can resend
-  // the actual bytes. Files aren't serializable (JSON.stringify drops them),
-  // so they can't live on the message; this map is keyed by message id and
-  // cleared when the session resets.
-  const pendingFilesRef = useRef<Map<string, File>>(new Map());
   // Live mirror of session.messages so socket callbacks (registered once per
   // room) dedupe against the CURRENT list, not the one from the first render.
   const messagesRef = useRef(session.messages);
   messagesRef.current = session.messages;
-  // Synchronous received-id ledger. The mirror above only updates on RENDER,
-  // so two deliveries of the same message inside one batch (the classic case:
-  // the data channel opens mid-transfer and BOTH it and the relay fallback
-  // deliver the same payload) both pass a `messagesRef`-based check and append
-  // twice — duplicate bubbles and duplicate React keys. A Set updated in the
-  // handler itself is immune to batching.
-  const receivedIdsRef = useRef<Set<string>>(new Set());
-  // Seen receipts already sent for this session — the senders of `seen` must
-  // be idempotent (a message can render again after a reconnect blip).
-  const seenSentRef = useRef<Set<string>>(new Set());
-  // True while a ChatView (the actual room screen) is mounted AND visible —
-  // the ONLY condition under which this device claims "seen".
-  const chatMountedRef = useRef(false);
-  // In-flight agent-push file chunks, keyed by push message id. The server
-  // delivers files as ~45KB base64 chunks (to fit WS frame caps on both
-  // transports); this buffer reassembles them before the bubble appears.
-  const pushBuffersRef = useRef<Map<string, { name: string; mimeType: string; size: number; chunkCount: number; timestamp: number; chunks: string[]; filled: number }>>(new Map());
+  // Live mirror of sessionRef (below) so the engine's UI actions read the
+  // CURRENT render's messages exactly as the original closures did.
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+  const { chatMountedRef, registerRoomViewer, claimSeen, catchUpSeenOnOpen, sendSeenWhenVisible } =
+    useSeenReceipts(
+      useCallback(() => messagesRef.current, []),
+      useCallback(() => peerManagerRef.current, []),
+    );
+  // Message/transfer engine (session/messageEngine.ts): ingestion, dedupe,
+  // progress/completion, checksums, push reassembly, send/retry/cancel.
+  // Deps are fresh closures per render — the same closure semantics the
+  // original render-scoped functions had.
+  const messageEngine = useMessageEngine({
+    setSession,
+    getMessages: () => messagesRef.current,
+    getRenderMessages: () => sessionRef.current.messages,
+    getPeer: () => peerManagerRef.current,
+    sendSeenWhenVisible,
+  });
+  const { updateMessageAttachment, sendMessage, retryText, retryTransfer, cancelTransfer, pauseTransfer, resumeTransferById, transferSpeedFor, wirePeerHandlers, handleChannelOpen, handlePushMessage, clearRuntimeState } = messageEngine;
 
   // Dev/test hook: reach the live PeerManager without exposing the secret.
   // requestReconnect is re-created each render (it closes over `session`), so
@@ -580,92 +301,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       });
     });
 
-    // Agent push API — a script/AI agent pushed text or a file into this
-    // room (authenticated with the room secret). It lands as an incoming
-    // message on every seated device, even before a joiner pairs.
-    socket.on('push_message', (payload) => {
-      if (!payload || typeof payload !== 'object') return;
-      const id = (payload as any).id;
-      if (typeof id !== 'string' || !id) return;
-      if (messagesRef.current.some(m => m.id === id)) return; // dedupe
-
-      if ((payload as any).kind === 'text') {
-        const msg: ChatMessage = {
-          id,
-          sender: 'partner',
-          source: 'push',
-          text: String((payload as any).text ?? ''),
-          timestamp: typeof (payload as any).timestamp === 'number' ? (payload as any).timestamp : Date.now(),
-        };
-        setSession(s => ({ ...s, messages: [...s.messages, msg] }));
-        return;
-      }
-
-      if ((payload as any).kind === 'file') {
-        const chunkIndex = (payload as any).chunkIndex;
-        const chunkCount = (payload as any).chunkCount;
-        const dataBase64 = (payload as any).dataBase64;
-        if (typeof chunkIndex !== 'number' || typeof chunkCount !== 'number' || typeof dataBase64 !== 'string') return;
-
-        let buf = pushBuffersRef.current.get(id);
-        if (!buf) {
-          buf = {
-            name: sanitizeFilename(String((payload as any).name ?? 'file')),
-            mimeType: String((payload as any).mimeType ?? 'application/octet-stream'),
-            size: typeof (payload as any).size === 'number' ? (payload as any).size : 0,
-            chunkCount,
-            timestamp: typeof (payload as any).timestamp === 'number' ? (payload as any).timestamp : Date.now(),
-            chunks: new Array(chunkCount),
-            filled: 0,
-          };
-          pushBuffersRef.current.set(id, buf);
-        }
-        if (!buf.chunks[chunkIndex]) {
-          buf.chunks[chunkIndex] = dataBase64;
-          buf.filled++;
-        }
-        if (buf.filled >= buf.chunkCount) {
-          pushBuffersRef.current.delete(id);
-          try {
-            const binary = atob(buf.chunks.join(''));
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-            const blob = new Blob([bytes], { type: buf.mimeType });
-            const url = URL.createObjectURL(blob);
-            const mime = buf.mimeType.toLowerCase();
-            const type: import('../types').Attachment['type'] = mime.startsWith('image/')
-              ? 'image'
-              : mime.startsWith('video/')
-                ? 'video'
-                : mime.startsWith('audio/')
-                  ? 'audio'
-                  : 'file';
-            const msg: ChatMessage = {
-              id,
-              sender: 'partner',
-              source: 'push',
-              text: '',
-              timestamp: buf.timestamp,
-              attachment: {
-                id,
-                type,
-                name: buf.name,
-                size: buf.size,
-                mimeType: buf.mimeType,
-                url,
-                status: 'complete',
-                progress: 1,
-              },
-            };
-            setSession(s => ({ ...s, messages: [...s.messages, msg] }));
-          } catch {
-            // Undecodable chunk data — drop the push silently.
-            pushBuffersRef.current.delete(id);
-          }
-        }
-        return;
-      }
-    });
+    // Agent push API ingestion (text + chunked file reassembly) now lives in
+    // the message engine (session/messageEngine.ts).
+    socket.on('push_message', handlePushMessage);
 
     socket.on('connect_error', () => {
       // Surface nothing here; individual actions report their own errors.
@@ -682,38 +320,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.isCreator, session.roomId]);
 
-  // ---- Wake Lock: while a transfer is in flight, keep the screen awake so a
-  // phone doesn't lock mid-transfer and browsers don't throttle the tab. The
-  // lock is released the moment nothing is sending/receiving; re-acquired
-  // after a visibility change (the OS may drop it when the app is backgrounded
-  // and Chrome re-requests it on return).
-  useEffect(() => {
-    const active = messagesRef.current.some(m => {
-      const st = m.attachment?.status;
-      return st === 'sending' || st === 'receiving' || st === 'resuming' || st === 'waiting';
-    });
-    if (!active) return;
-    let lock: { release: () => Promise<void> } | null = null;
-    let cancelled = false;
-    const acquire = () => {
-      try {
-        if (typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
-          (navigator as any).wakeLock.request('screen').then((l: any) => {
-            if (cancelled) { try { l.release(); } catch { /* noop */ } return; }
-            lock = l;
-          }).catch(() => { /* denied or unavailable — transfer still runs */ });
-        }
-      } catch { /* unsupported */ }
-    };
-    acquire();
-    const onVis = () => { if (document.visibilityState === 'visible') acquire(); };
-    document.addEventListener('visibilitychange', onVis);
-    return () => {
-      cancelled = true;
-      document.removeEventListener('visibilitychange', onVis);
-      if (lock) { try { lock.release(); } catch { /* noop */ } lock = null; }
-    };
-  }, [session.messages]);
+  // Wake lock while a transfer is in flight (session/wakeLock.ts).
+  useTransferWakeLock(session.messages);
 
   const setupPeerManager = (pm: PeerManager) => {
     pm.onConnectionTypeChange = (type) => {
@@ -741,38 +349,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       if (disconnectCalmTimerRef.current) { clearTimeout(disconnectCalmTimerRef.current); disconnectCalmTimerRef.current = null; }
       setSession(s => ({ ...s, partnerConnected: true, partnerConnecting: false }));
       connMachine.to('CONNECTED');
-      // If a transfer was interrupted by the drop, resume it from the
-      // position the peer actually received — never from zero.
-      void resumeInterruptedTransfers();
-      // Honest late receipts: after a reload/rejoin, the OTHER device may
-      // still be open with messages it sent us that never got confirmed. We
-      // genuinely hold them (restored from localStorage), so confirm
-      // DELIVERED now — but never SEEN here: nobody has looked at them yet.
-      // Seen is claimed only by the room-viewer (below) when the message is
-      // actually rendered on a visible screen.
-      for (const m of messagesRef.current) {
-        if (m.sender === 'partner' && (m.attachment?.status === 'complete' || !m.attachment)) {
-          pm.sendReceipt(m.id);
-        }
-        // Restored files we received but no longer hold bytes for: ask the
-        // peer to re-send them now that the channel is open.
-        if (m.sender === 'partner' && m.attachment?.status === 'restoring') {
-          try { void pm.send(JSON.stringify({ kind: 'resend_request', id: m.id })); } catch { /* channel closed */ }
-        }
-      }
+      handleChannelOpen(pm);
       // Catch-up SEEN for messages from a previous visit that are already
       // scrolled up in an OPEN, VISIBLE room: the reader has had them on
       // screen — they were here before this session began. Unseen messages
       // that arrive LIVE are confirmed by the viewer effect instead.
-      if (typeof document === 'undefined' || document.visibilityState !== 'visible') return;
-      const chatMounted = chatMountedRef.current;
-      if (!chatMounted) return;
-      for (const m of messagesRef.current) {
-        if (m.sender === 'partner' && !m.seen && !m.attachment && seenSentRef.current.has(m.id) === false) {
-          seenSentRef.current.add(m.id);
-          pm.sendSeen(m.id);
-        }
-      }
+      catchUpSeenOnOpen(pm.sendSeen.bind(pm));
     };
 
     // The peer confirmed one of our messages is on their screen.
@@ -813,300 +395,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    pm.onMessage = (dataStr) => {
-      try {
-        const parsed = JSON.parse(dataStr);
-        // Control packets: a peer that reloaded asks us to re-send a file it
-        // previously received (its bytes died with the page), or tells us it
-        // no longer holds the bytes so we can fail honestly instead of waiting.
-        if (parsed.kind === 'resend_request') { void handleResendRequest(parsed.id); return; }
-        if (parsed.kind === 'resend_unavailable') { updateMessageAttachment(parsed.id, { status: 'failed', note: 'resend-unavailable' }); return; }
-        if (parsed.id && parsed.sender) {
-          // New structured format. Dedupe by message id so a retried transfer
-          // (metadata re-sent after a failure) doesn't create a duplicate
-          // bubble, while still (re)registering the binary expectation.
-          const isDuplicate = receivedIdsRef.current.has(parsed.id);
-          receivedIdsRef.current.add(parsed.id);
-          if (!isDuplicate) {
-            // A peer's 'sending' is our 'receiving'.
-            // Sanitize the sender-provided filename to prevent path traversal,
-            // control characters, and other injection vectors.
-            const incoming = parsed.attachment && parsed.attachment.status === 'sending'
-              ? { ...parsed, attachment: { ...parsed.attachment, status: 'receiving', name: sanitizeFilename(parsed.attachment.name || 'file') } }
-              : parsed.attachment ? { ...parsed, attachment: { ...parsed.attachment, name: sanitizeFilename(parsed.attachment.name || 'file') } } : parsed;
-            setSession(s => ({
-              ...s,
-              messages: [...s.messages, incoming]
-            }));
-          } else if (parsed.attachment) {
-            // A re-sent metadata for a message we already have (e.g. the
-            // checksum arrives after the sender finished hashing). Merge the
-            // new fields into the existing bubble — never duplicate it — and
-            // keep our status ('receiving'/'interrupted'/'complete') intact.
-            // The merge runs INSIDE the updater against current state so a
-            // stale snapshot can never clobber a newer one (e.g. completion).
-            setSession(s => {
-              if (!s.messages.some(m => m.id === parsed.id && m.attachment)) return s;
-              return {
-                ...s,
-                messages: s.messages.map(m => {
-                  if (m.id !== parsed.id || !m.attachment) return m;
-                  return {
-                    ...m,
-                    attachment: {
-                      ...m.attachment,
-                      ...parsed.attachment,
-                      status: m.attachment.status,
-                      name: sanitizeFilename(m.attachment.name || parsed.attachment.name || 'file')
-                    }
-                  };
-                })
-              };
-            });
-          }
-          if (parsed.attachment) {
-            // The chunk count comes from the SAME grid the sender uses
-            // (chunkCountForSize) — a mismatch here would leave the receiver
-            // waiting for chunks that never come or rejecting real ones.
-            pm.expectBinaryTransfer(parsed.attachment.id, chunkCountForSize(parsed.attachment.size));
-            // Metrics: a file transfer is now officially in flight on THIS
-            // device. Duration/throughput are computed when it finishes.
-            beginTransferRecord({
-              transferId: parsed.attachment.id,
-              kind: 'file',
-              direction: 'received',
-              name: parsed.attachment.name,
-              bytes: parsed.attachment.size,
-            });
-          } else {
-            // Text arrived — confirm receipt immediately so the sender can
-            // show a true "Delivered" (not a guessed one).
-            pm.sendReceipt(parsed.id);
-            // SEEN is NOT claimed here: a message that just landed in state
-            // may be below the fold, on another screen, or the tab may be in
-            // the background. The room viewer (claimSeen / the ChatView
-            // visibility effect) marks it seen only when it is actually
-            // rendered on a visible screen.
-          }
-          return;
-        }
-      } catch (e) {
-        // Fallback
-      }
-      setSession(s => ({
-        ...s,
-        messages: [...s.messages, { id: crypto.randomUUID(), sender: 'partner', text: dataStr, timestamp: Date.now() }]
-      }));
-    };
-
-    pm.onFileProgress = (transferId, progress, total) => {
-      const pct = progress / total;
-      // Throttle to ~1% steps: every chunk otherwise triggers a full React
-      // re-render + scrollIntoView, which drags large transfers to a crawl.
-      const last = progressRef.current.get(transferId) ?? -1;
-      if (pct - last < 0.01 && pct < 1) return;
-      progressRef.current.set(transferId, pct);
-      // Speed engine: rolling-window throughput + ETA. The peer reports
-      // progress in CHUNKS (chunk grid is fixed), so bytes = chunks × chunk size.
-      const totalBytes = total * CHUNK_BYTES;
-      const reading = speedTrackerFor(transferId, totalBytes).update(progress * CHUNK_BYTES);
-      lastSpeedReadings.current.set(transferId, reading);
-      // Durable resume floor (receiver side): every ~1% we persist the
-      // contiguous progress, so a crash/refresh can answer a sender's
-      // resume_query honestly even across a browser restart.
-      void saveTransferState({ transferId, status: 'receiving', ackedChunks: progress, totalChunks: total });
-      setSession(s => ({
-        ...s,
-        messages: s.messages.map(m => {
-          if (m.attachment?.id === transferId) {
-            return {
-              ...m,
-              attachment: {
-                ...m.attachment,
-                // Queued self-heal: queued_start (control channel) can race
-                // ahead of the metadata (data channel), leaving a 'waiting'
-                // bubble that never flips. The first chunk is proof the
-                // transfer is live — promote it here.
-                ...(m.attachment.status === 'waiting' ? { status: 'receiving' as const } : {}),
-                // First byte moving: start the honest clock (used by the
-                // "Received · size in time" summary). Kept from the first
-                // attempt if this is a resume — the story stays true.
-                ...(m.attachment.startedAt == null && (m.attachment.status === 'waiting' || m.attachment.status === 'receiving') ? { startedAt: Date.now() } : {}),
-                // Progress never changes the state label: the sender stays
-                // 'sending', the receiver 'receiving', and a cancelled/failed
-                // transfer must not be resurrected by late progress events.
-                progress: pct
-              }
-            };
-          }
-          return m;
-        })
-      }));
-    };
-
-    pm.onFileComplete = (transferId, blob) => {
-      // The reassembled blob carries no MIME type — attach the one from the
-      // metadata so previews, downloads and clipboard copy get the correct
-      // type. Blob composition references the original bytes, so this stays
-      // cheap even for large disk-backed (OPFS) files.
-      const srcMsg = messagesRef.current.find(m => m.attachment?.id === transferId);
-      const mime = srcMsg?.attachment?.mimeType;
-      const checksum = srcMsg?.attachment?.checksum;
-      const finalBlob = mime && blob.type !== mime ? new Blob([blob], { type: mime }) : blob;
-      const url = URL.createObjectURL(finalBlob);
-      setSession(s => ({
-        ...s,
-        messages: s.messages.map(m => {
-          if (m.attachment?.id === transferId) {
-            return {
-              ...m,
-              attachment: {
-                ...m.attachment,
-                status: 'complete',
-                url,
-                progress: 1,
-                completedAt: m.attachment.completedAt ?? Date.now()
-              }
-            };
-          }
-          return m;
-        })
-      }));
-      // Mark that this user has completed at least one transfer, so the
-      // install prompt can appear after meaningful use.
-      try { localStorage.setItem('sharetext.hasTransfer', '1'); } catch { /* ignore */ }
-      // Metrics: bytes on disk, duration done. Outcome upgrades to
-      // 'checksum-mismatch' later if verification fails.
-      finishTransferRecord(transferId, 'received', blob.size, 'ok', { name: srcMsg?.attachment?.name, kind: 'file' });
-      productEvent('product.transfer_completed');
-      productEvent('product.activation');
-      void deleteTransferState(transferId);
-      dropSpeedTracker(transferId);
-      lastSpeedReadings.current.delete(transferId);
-      // The whole file arrived — only now confirm receipt (metadata alone
-      // would be a lie if the transfer later failed).
-      const msg = messagesRef.current.find(m => m.attachment?.id === transferId);
-      if (msg && msg.sender === 'partner') {
-        pm.sendReceipt(msg.id);
-        // The completed file card is on screen in the open room — confirm
-        // seen too (same honesty rule as text: only after it's rendered).
-        // Only claim seen if the page is actually visible.
-        const sendSeenIfVisible = () => {
-          if (document.visibilityState === 'visible') {
-            pm.sendSeen(msg.id);
-          } else {
-            const onVis = () => {
-              if (document.visibilityState === 'visible') {
-                document.removeEventListener('visibilitychange', onVis);
-                pm.sendSeen(msg.id);
-              }
-            };
-            document.addEventListener('visibilitychange', onVis);
-          }
-        };
-        setTimeout(sendSeenIfVisible, 450);
-      }
-
-      // Integrity: if the sender included a checksum, verify the bytes that
-      // actually arrived. The card stays usable (download works) while the
-      // background hash runs; a mismatch flips it to a clear failure with
-      // Retry instead of silently keeping corrupted data.
-      if (checksum && srcMsg) {
-        // updateMessageAttachment keys on the MESSAGE id — the transferId is
-        // the attachment id, so resolve the owning message first.
-        const msgId = srcMsg.id;
-        void sha256Hex(finalBlob)
-          .then((got) => {
-            const ok = got === checksum;
-            diag('transfer.checksum', ok, ok ? 'verified' : `mismatch expected ${checksum.slice(0, 12)}… got ${got.slice(0, 12)}…`);
-            if (!ok) finishTransferRecord(transferId, 'received', 0, 'checksum-mismatch', { name: srcMsg?.attachment?.name, kind: 'file', verified: false });
-            updateMessageAttachment(msgId, ok
-              ? { verified: true }
-              : { status: 'failed', note: 'checksum-mismatch', progress: 1, verified: false });
-          })
-          .catch(() => { /* hashing failed (quota?) — leave complete, unverified */ });
-      } else {
-        // The sender hashes in parallel with the transfer, so the checksum
-        // metadata can trail the file. Wait briefly for it before declaring
-        // the transfer unverifiable.
-        const msgId = srcMsg?.id;
-        setTimeout(() => {
-          const now = msgId ? messagesRef.current.find(m => m.id === msgId)?.attachment : undefined;
-          if (now?.checksum) {
-            void sha256Hex(finalBlob)
-              .then((got) => {
-              const ok = got === now.checksum;
-              diag('transfer.checksum', ok, ok ? 'verified (late)' : `mismatch expected ${now.checksum.slice(0, 12)}… got ${got.slice(0, 12)}…`);
-              if (!ok) finishTransferRecord(transferId, 'received', 0, 'checksum-mismatch', { name: srcMsg?.attachment?.name, kind: 'file', verified: false });
-              updateMessageAttachment(msgId, ok
-                ? { verified: true }
-                : { status: 'failed', note: 'checksum-mismatch', progress: 1, verified: false });
-              })
-              .catch(() => { /* hashing failed — leave complete, unverified */ });
-          } else {
-            diag('transfer.checksum_skipped', true, `${transferId.slice(0, 8)} no checksum`);
-          }
-        }, 4000);
-      }
-    };
-
-    // The peer confirmed one of our messages arrived.
-    pm.onReceipt = (messageId) => {
-      setSession(s => ({
-        ...s,
-        messages: s.messages.map(m => m.id === messageId ? { ...m, delivered: true } : m)
-      }));
-    };
-
-    // The peer cancelled a transfer (or cancelled ours mid-send). Mark the
-    // matching bubble cancelled on this side too.
-    pm.onCancel = (transferId) => {
-      finishTransferRecord(transferId, 'received', 0, 'cancelled', { kind: 'file' });
-      void deleteTransferState(transferId);
-      setSession(s => ({
-        ...s,
-        messages: s.messages.map(m => {
-          if (m.attachment?.id === transferId) {
-            return { ...m, attachment: { ...m.attachment, status: 'cancelled' } };
-          }
-          return m;
-        })
-      }));
-    };
-
-    // Protocol HASH_VERIFY arriving on its own (control channel): stash it on
-    // the attachment like the metadata-borne checksum, and if the file already
-    // finished unverified, verify immediately with the bytes we hold.
-    pm.onFileHash = (transferId, sha256) => {
-      const srcMsg = messagesRef.current.find(m => m.attachment?.id === transferId);
-      if (srcMsg) {
-        updateMessageAttachment(srcMsg.id, { checksum: sha256 });
-      }
-    };
-
-    // Transfer queue: the peer's queue freed a slot for this transfer —
-    // flip our bubble from 'Waiting…' to a live percentage.
-    pm.onQueuedSendStart = (transferId) => {
-      setSession(s => ({
-        ...s,
-        messages: s.messages.map(m => m.attachment?.id === transferId && m.attachment.status === 'waiting'
-          ? { ...m, attachment: { ...m.attachment, status: 'receiving', startedAt: Date.now() } }
-          : m),
-      }));
-    };
-
-    // Transfer queue, sender side: THIS device's queue freed a slot — flip
-    // our 'Waiting…' bubble to 'sending' (the send loop owns it from here:
-    // hash ran in parallel at send time, chunks are already flowing). Sender
-    // bubbles hold their label until completion — same as a non-queued send.
-    pm.onLocalQueueStart = (transferId) => {
-      setSession(s => ({
-        ...s,
-        messages: s.messages.map(m => m.attachment?.id === transferId && m.attachment.status === 'waiting'
-          ? { ...m, attachment: { ...m.attachment, status: 'sending', startedAt: Date.now() } }
-          : m),
-      }));
-    };
+    // Message/transfer callbacks (ingestion, progress, completion,
+// checksums, queue flips) — owned by session/messageEngine.ts.
+    wirePeerHandlers(pm);
 
     // Client-side disconnect grace — MUST match the server's 60s hold. When
     // the peer's tab closes, its DTLS association dies instantly and the data
@@ -1183,63 +474,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         })
       }));
     };
-  };
-
-  /**
-   * After the data channel reopens (reconnect / recovery), walk the message
-   * list and resume anything that was interrupted. Own sends re-send metadata
-   * + the missing chunk range; inbound transfers just flip back to
-   * "Receiving…" — the sender re-registers and resumes on its side.
-   */
-  const resumeInterruptedTransfers = async () => {
-    const pm = peerManagerRef.current;
-    if (!pm) return;
-    for (const m of messagesRef.current) {
-      const a = m.attachment;
-      if (!a) continue;
-      // A 'sending' attachment WITHOUT active loop progress after a reload
-      // is exactly the crashed-mid-send case: sendProgress (memory) died with
-      // the page. The IDB sendable makes it resumable again.
-      const crashedMidSend = a.status === 'sending' && !hasSendProgress(a.id) && !peerManagerRef.current?.isSendLoopActive(a.id);
-      // A 'waiting' transfer with NO live send loop lost its page (refresh/
-      // crash) while queued — restore it from the IndexedDB sendable and
-      // re-queue. An ALIVE queued transfer has a controller registered in
-      // its PeerManager, so isSendLoopActive keeps a mere reconnect from
-      // resuming (and double-sending) it.
-      const queuedButDead = a.status === 'waiting' && !peerManagerRef.current?.isSendLoopActive(a.id);
-      if (m.sender === 'me' && (a.status === 'interrupted' || a.status === 'resuming' || (a.status === 'sending' && hasSendProgress(a.id)) || crashedMidSend || queuedButDead)) {
-        let file = pendingFilesRef.current.get(m.id);
-        if (!file) {
-          // Memory lost (refresh/sleep) — the IndexedDB sendable is exactly
-          // for this case: restore the bytes and RESUME instead of failing.
-          file = (await getSendable(a.id)) ?? undefined;
-          if (file) {
-            pendingFilesRef.current.set(m.id, file);
-            diag('transfer.sendable_restored', true, `${a.name} (${a.size}b)`);
-          }
-        }
-        if (!file) continue; // no bytes anywhere — nothing safe to re-send
-        updateMessageAttachment(m.id, { status: 'resuming', progress: a.progress });
-        const partnerMsg: ChatMessage = {
-          ...m,
-          sender: 'partner',
-          attachment: { ...a, status: 'sending', progress: a.progress }
-        };
-        try {
-          await pm.resumeTransfer(JSON.stringify(partnerMsg), file, a.id);
-          updateMessageAttachment(m.id, { status: 'complete', progress: 1, completedAt: Date.now() });
-          void deleteSendable(a.id);
-          void deleteTransferState(a.id);
-        } catch (e) {
-          if (!(e instanceof TransferCancelledError)) {
-            updateMessageAttachment(m.id, { status: 'failed' });
-          }
-        }
-      } else if (m.sender === 'partner' && (a.status === 'interrupted' || a.status === 'receiving')) {
-        // The peer is back and will re-send; surface it as plain receiving.
-        updateMessageAttachment(m.id, { status: 'receiving' });
-      }
-    }
   };
 
   // Restore an in-progress session after a refresh. Requires the secret, so
@@ -1543,290 +777,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const sendMessage = async (rawText: string, attachment?: import('../types').Attachment, file?: File, batchIndex = 0) => {
-    if (!peerManagerRef.current) return;
-    // Text fidelity: normalize ONCE on the sender so both devices hold the
-    // exact same JS string. Valid text (emoji, RTL, tabs, CRLF, all unicode)
-    // is untouched — only lone surrogates (which cannot survive the UTF-8
-    // wire anyway) become a deterministic U+FFFD instead of differing
-    // silently between devices.
-    const text = normalizePastedText(rawText);
-    const msg: ChatMessage = {
-      id: crypto.randomUUID(),
-      sender: 'me',
-      text,
-      timestamp: Date.now(),
-      // Multi-file queue: files beyond the 3 concurrent slots start as
-      // 'Waiting…' until their slot frees (onLocalQueueStart flips locally,
-      // the queued_start control packet flips the peer's bubble). Batch
-      // position decides because the whole batch's sendMessage calls run
-      // before any transfer acquires a slot — the live depth is 0 for all.
-      attachment: attachment ? { ...attachment, status: file ? (batchIndex + sendQueueDepth() >= 3 ? 'waiting' : 'preparing') : 'complete' } : undefined
-    };
-
-    if (file) {
-      pendingFilesRef.current.set(msg.id, file);
-      // Keep the map bounded — only recent transfers can be retried anyway.
-      if (pendingFilesRef.current.size > 20) {
-        const oldest = pendingFilesRef.current.keys().next().value;
-        if (oldest !== undefined) pendingFilesRef.current.delete(oldest);
-      }
-      // Durable resume: persist the bytes in IndexedDB so a refresh (or a
-      // closed tab) can still RESUME instead of failing. Cleaned up when the
-      // transfer completes or is cancelled below.
-      void saveSendable(attachment.id, file);
-      void saveTransferState({ transferId: attachment.id, status: 'sending', ackedChunks: 0, totalChunks: chunkCountForSize(file.size) });
-    }
-
-    setSession(s => ({
-      ...s,
-      messages: [...s.messages, msg]
-    }));
-
-    if (file && attachment) {
-      const localUrl = URL.createObjectURL(file);
-      updateMessageAttachment(msg.id, { url: localUrl });
-
-      // SHA-256 of the original bytes — computed in the background so the
-      // transfer starts immediately. The hash runs in parallel with the first
-      // chunks; for small files it finishes before the transfer does.
-      let checksum: string | undefined;
-      const hashPromise = sha256Hex(file).then(c => {
-        checksum = c;
-        diag('transfer.hash_ok', true, c.slice(0, 12));
-        updateMessageAttachment(msg.id, { checksum: c });
-        // Protocol: the final HASH_VERIFY step. A tiny control packet (rides
-        // the dedicated control channel when open) tells the receiver the
-        // SHA-256 directly — verification no longer depends on the chunked
-        // metadata update also landing.
-        void peerManagerRef.current?.sendFileHash(attachment.id, c);
-        // Re-send the metadata with the checksum so the peer can verify the
-        // bytes that land on its side. The receiver dedupes by message id and
-        // merges the checksum into the existing bubble.
-        void peerManagerRef.current?.send(JSON.stringify({
-          ...partnerMsg,
-          attachment: { ...partnerMsg.attachment!, checksum: c }
-        })).catch(() => { /* peer may be gone — the transfer itself will fail */ });
-        return c;
-      }).catch(e => {
-        diag('transfer.hash_failed', false, String(e));
-        return undefined;
-      });
-
-      // Queued files KEEP 'Waiting…' — their send loop is parked in the slot
-      // queue, and onLocalQueueStart flips the bubble the moment a slot
-      // frees. Only files that own a slot right now move to 'sending'.
-      if (msg.attachment?.status !== 'waiting') {
-        updateMessageAttachment(msg.id, { status: 'sending' });
-      }
-
-      // The peer's bubble must mirror ours: a queued file arrives as
-      // 'waiting' (so their card renders Waiting… too), and the queued_start
-      // control packet flips it to 'receiving' when the transfer actually
-      // leaves the queue.
-      const partnerMsg = { ...msg, sender: 'partner', attachment: { ...msg.attachment!, status: msg.attachment!.status === 'waiting' ? 'waiting' : 'sending' } };
-      const payload = JSON.stringify(partnerMsg);
-      try {
-        await peerManagerRef.current.send(payload);
-      } catch {
-        updateMessageAttachment(msg.id, { status: 'failed' });
-        return;
-      }
-
-      try {
-        await peerManagerRef.current.sendFile(file, attachment.id);
-        updateMessageAttachment(msg.id, { status: 'complete', progress: 1 });
-        // Transfer done — the durable copies are no longer needed.
-        void deleteSendable(attachment.id);
-        void deleteTransferState(attachment.id);
-        pendingFilesRef.current.delete(msg.id);
-      } catch (e) {
-        // A user cancel stops the loop cleanly — don't overwrite 'cancelled'.
-        if (!(e instanceof TransferCancelledError)) {
-          updateMessageAttachment(msg.id, { status: 'failed' });
-          finishTransferRecord(attachment.id, 'sent', 0, 'failed', { name: file.name, kind: 'file' });
-          productEvent('product.transfer_failed');
-        } else {
-          finishTransferRecord(attachment.id, 'sent', 0, 'cancelled', { name: file.name, kind: 'file' });
-          // Cancelled is final — drop the durable copies too.
-          void deleteSendable(attachment.id);
-          void deleteTransferState(attachment.id);
-          pendingFilesRef.current.delete(msg.id);
-        }
-      }
-      return;
-    }
-
-    // Plain text: metadata (the text itself) goes immediately — no hash step.
-    const partnerMsg = { ...msg, sender: 'partner' };
-    const payload = JSON.stringify(partnerMsg);
-    try {
-      await peerManagerRef.current.send(payload);
-    } catch {
-      setSession(s => ({
-        ...s,
-        messages: s.messages.map(m => m.id === msg.id ? { ...m, delivery: 'failed' } : m)
-      }));
-    }
-  };
-
-  /**
-   * Re-send a failed text message. The original bubble is replaced by a
-   * fresh message with a new id — the receiver dedupes by message id, so
-   * re-sending the same id would be silently swallowed.
-   */
-  const retryText = async (messageId: string) => {
-    const pm = peerManagerRef.current;
-    const msg = session.messages.find(m => m.id === messageId);
-    if (!pm || !msg) return;
-    const fresh: ChatMessage = {
-      id: crypto.randomUUID(),
-      sender: 'me',
-      text: normalizePastedText(msg.text),
-      timestamp: Date.now()
-    };
-    setSession(s => ({
-      ...s,
-      messages: [...s.messages.filter(m => m.id !== messageId), fresh]
-    }));
-    try {
-      await pm.send(JSON.stringify({ ...fresh, sender: 'partner' }));
-    } catch {
-      setSession(s => ({
-        ...s,
-        messages: s.messages.map(m => m.id === fresh.id ? { ...m, delivery: 'failed' } : m)
-      }));
-    }
-  };
-
-  /**
-   * Re-send a failed/interrupted file transfer. Re-sends the metadata packet
-   * (so a partner that reloaded re-registers the binary expectation), then
-   * resumes from the position the peer confirmed — the receiver dedupes by
-   * chunk sequence, so anything already stored is skipped, never duplicated.
-   */
-  /**
-   * A peer that reloaded lost the bytes of a file we sent them and is asking
-   * us to re-send it. Works only while this tab still holds the File in
-   * memory; otherwise we tell them honestly it's gone (resend_unavailable) so
-   * their card fails cleanly instead of spinning forever.
-   */
-  const handleResendRequest = async (messageId: string) => {
-    const pm = peerManagerRef.current;
-    if (!pm) return;
-    const msg = messagesRef.current.find(m => m.id === messageId);
-    if (!msg?.attachment) return;
-    const file = pendingFilesRef.current.get(messageId);
-    if (!file) {
-      try { await pm.send(JSON.stringify({ kind: 'resend_unavailable', id: messageId })); } catch { /* channel gone */ }
-      return;
-    }
-    updateMessageAttachment(messageId, { status: 'resuming', progress: 0 });
-    const partnerMsg: ChatMessage = {
-      ...msg,
-      sender: 'partner',
-      attachment: { ...msg.attachment, status: 'sending', progress: 0 }
-    };
-    try {
-      await pm.resumeTransfer(JSON.stringify(partnerMsg), file, msg.attachment.id);
-      updateMessageAttachment(messageId, { status: 'complete', progress: 1, completedAt: Date.now() });
-    } catch (e) {
-      if (!(e instanceof TransferCancelledError)) {
-        try { await pm.send(JSON.stringify({ kind: 'resend_unavailable', id: messageId })); } catch { /* noop */ }
-      }
-    }
-  };
-
-  const retryTransfer = async (messageId: string) => {
-    const pm = peerManagerRef.current;
-    if (!pm) return;
-    const msg = session.messages.find(m => m.id === messageId);
-    if (!msg?.attachment) return;
-    // Receiver-side recovery: the peer said it no longer holds the bytes, or
-    // we restored this file and never got it back — ask again now. For a
-    // checksum mismatch the partial receive must be discarded so the resend
-    // restarts from zero instead of the corrupted position.
-    if (msg.sender === 'partner' && (msg.attachment.note === 'resend-unavailable' || msg.attachment.status === 'restoring' || msg.attachment.note === 'checksum-mismatch')) {
-      if (msg.attachment.note === 'checksum-mismatch') {
-        clearTransferState(msg.attachment.id);
-        diag('transfer.restart', true, msg.attachment.name);
-      }
-      updateMessageAttachment(messageId, { status: 'restoring', note: undefined });
-      try { await pm.send(JSON.stringify({ kind: 'resend_request', id: messageId })); } catch { /* channel gone */ }
-      return;
-    }
-    const file = pendingFilesRef.current.get(messageId);
-    if (!file) return;
-
-    updateMessageAttachment(messageId, { status: 'resuming', progress: msg.attachment.progress || 0 });
-    const partnerMsg: ChatMessage = {
-      ...msg,
-      sender: 'partner',
-      attachment: { ...msg.attachment, status: 'sending', progress: msg.attachment.progress || 0 }
-    };
-    try {
-      await pm.resumeTransfer(JSON.stringify(partnerMsg), file, msg.attachment.id);
-      updateMessageAttachment(messageId, { status: 'complete', progress: 1, completedAt: Date.now() });
-    } catch (e) {
-      if (!(e instanceof TransferCancelledError)) {
-        updateMessageAttachment(messageId, { status: 'failed' });
-      }
-    }
-  };
-
-  /**
-   * Cancel an in-flight file transfer. Works from either side: the local
-   * bubble flips to 'cancelled' immediately, the send loop (if ours) stops,
-   * and the peer is told via an encrypted control packet.
-   */
-  const cancelTransfer = (messageId: string) => {
-    const pm = peerManagerRef.current;
-    const msg = session.messages.find(m => m.id === messageId);
-    if (!pm || !msg?.attachment) return;
-    const st = msg.attachment.status;
-    if (st !== 'sending' && st !== 'receiving' && st !== 'interrupted' && st !== 'resuming' && st !== 'waiting') return;
-    finishTransferRecord(msg.attachment.id, 'sent', 0, 'cancelled', { name: msg.attachment.name, kind: 'file' });
-    updateMessageAttachment(messageId, { status: 'cancelled' });
-    pm.cancelTransfer(msg.attachment.id);
-  };
-
-  /** Pause one of our in-flight uploads at the next chunk boundary. */
-  const pauseTransfer = (messageId: string) => {
-    const pm = peerManagerRef.current;
-    const msg = session.messages.find(m => m.id === messageId);
-    if (!pm || !msg?.attachment) return;
-    if (msg.attachment.status !== 'sending') return;
-    updateMessageAttachment(messageId, { status: 'paused' });
-    pm.pauseTransfer(msg.attachment.id);
-  };
-
-  /** Resume a paused upload — the same send loop continues. */
-  const resumeTransferById = (messageId: string) => {
-    const pm = peerManagerRef.current;
-    const msg = session.messages.find(m => m.id === messageId);
-    if (!pm || !msg?.attachment) return;
-    if (msg.attachment.status !== 'paused') return;
-    updateMessageAttachment(messageId, { status: 'sending' });
-    pm.resumeTransferById(msg.attachment.id);
-  };
-
-  const updateMessageAttachment = (messageId: string, updates: Partial<ChatMessage['attachment']>) => {
-    setSession(s => {
-      return {
-        ...s,
-        messages: s.messages.map(m => {
-          if (m.id === messageId && m.attachment) {
-            return {
-              ...m,
-              attachment: { ...m.attachment, ...updates }
-            };
-          }
-          return m;
-        })
-      };
-    });
-  };
-
   const setDeviceName = (name: string) => {
     try {
       localStorage.setItem(DEVICE_NAME_KEY, name);
@@ -1838,11 +788,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // the next connect announces anyway.
     void peerManagerRef.current?.sendHello().catch(() => { /* best-effort */ });
   };
-
-  /** Live rolling-window speed for an in-flight transfer (MessageCard). */
-  const transferSpeedFor = useCallback((transferId: string) => {
-    return lastSpeedReadings.current.get(transferId) ?? null;
-  }, []);
 
   // Ask the server to put us back in the room and make the other peer
   // re-offer a fresh WebRTC connection. Keeps messages and room state.
@@ -1883,8 +828,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   //     becomes visible again — rebuilding the peer ONLY when the WebRTC
   //     channel is actually dead, so a healthy room is never churned.
   const SEAT_KEEPALIVE_MS = 90_000;
-  const sessionRef = useRef(session);
-  sessionRef.current = session;
   const seatKeepaliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stopSeatKeepalive = useCallback(() => {
     if (seatKeepaliveRef.current) { clearInterval(seatKeepaliveRef.current); seatKeepaliveRef.current = null; }
@@ -2008,11 +951,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       try { peerManagerRef.current.destroy(); } catch { /* noop — idempotent */ }
       peerManagerRef.current = null;
     }
-    // 3. Clear in-flight state
-    pendingFilesRef.current.clear();
-    receivedIdsRef.current.clear();
-    progressRef.current.clear();
-    pushBuffersRef.current.clear();
+    // 3. Clear in-flight state (owned by the message engine)
+    clearRuntimeState();
     // 4. Clear transfer state and revoke object URLs
     clearAllTransferState();
     for (const m of messagesRef.current) {
@@ -2128,45 +1068,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setSession(s => ({ ...s, stayConnected: enabled }));
     getSocket().emit(enabled ? 'stay_connected_enable' : 'stay_connected_disable', { roomId: session.roomId });
   };
-
-  /** The room screen mounted/unmounted (or is about to). Honest seen
-   *  receipts flow only from an active, visible viewer. */
-  const registerRoomViewer = useCallback((mounted: boolean) => {
-    chatMountedRef.current = mounted;
-    if (!mounted) return;
-    claimSeenRef.current();
-  }, []);
-
-  /** Mark every partner text message currently in state as seen. Called by
-   *  the viewer on mount, on message arrival, and on tab re-focus — never
-   *  on raw socket delivery. */
-  const claimSeenImpl = useCallback(() => {
-    if (!chatMountedRef.current) return;
-    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-    const pm = peerManagerRef.current;
-    if (!pm) return;
-    let sent = false;
-    for (const m of messagesRef.current) {
-      if (m.sender === 'partner' && !m.seen && !m.attachment && !seenSentRef.current.has(m.id)) {
-        seenSentRef.current.add(m.id);
-        pm.sendSeen(m.id);
-        sent = true;
-      }
-    }
-    if (sent) diag('seen.claimed', true);
-  }, []);
-  const claimSeenRef = useRef(claimSeenImpl);
-  claimSeenRef.current = claimSeenImpl;
-  const claimSeen = claimSeenImpl;
-
-  // While a viewer is registered, re-claim seen when the tab becomes visible
-  // again (backgrounded tabs must not silently mark messages read).
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const onVis = () => { if (document.visibilityState === 'visible') claimSeenRef.current(); };
-    document.addEventListener('visibilitychange', onVis);
-    return () => document.removeEventListener('visibilitychange', onVis);
-  }, []);
 
   return (
     <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, joinWithShortCode, sendMessage, updateMessageAttachment, retryTransfer, retryText, cancelTransfer, pauseTransfer, resumeTransferById, setDeviceName, transferSpeedFor, requestReconnect, refreshCode, closeSession, leaveView, abandonSession, setStayConnected, registerRoomViewer, claimSeen, rejoinStayRoom }}>
