@@ -93,6 +93,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const peerManagerRef = useRef<PeerManager | null>(null);
+  /** Generation token for PeerManager creation. `peer_joined` can fire twice
+   *  (churn / duplicate delivery); both firings start an async
+   *  createPeerManager, and destroying "the current" PM before the first
+   *  promise resolves leaves that first PM's socket listeners permanently
+   *  attached (duplicate handlers → duplicate transfers). Only the newest
+   *  generation may install itself. */
+  const pmGenerationRef = useRef(0);
   /** Why the last connection dropped (error taxonomy, src/lib/errors.ts).
    *  Read by diagnostics; cleared when a channel opens again. */
   const lastFailureCodeRef = useRef<string | null>(null);
@@ -237,7 +244,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       if (session.roomId && session.secret) {
         if (peerManagerRef.current) peerManagerRef.current.destroy();
         startSeatKeepalive();
+        const gen = ++pmGenerationRef.current;
         void createPeerManager(session.roomId, session.secret, true).then(pm => {
+          if (gen !== pmGenerationRef.current) { pm.destroy(); return; } // superseded
           peerManagerRef.current = pm;
           setupPeerManager(pm);
           pm.initiateConnection(peerId);
@@ -257,7 +266,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       if (session.roomId && session.secret && peerId) {
         if (peerManagerRef.current) peerManagerRef.current.destroy();
         startSeatKeepalive();
+        const gen = ++pmGenerationRef.current;
         void createPeerManager(session.roomId, session.secret, true).then(pm => {
+          if (gen !== pmGenerationRef.current) { pm.destroy(); return; } // superseded
           peerManagerRef.current = pm;
           setupPeerManager(pm);
           pm.initiateConnection(peerId);
@@ -517,7 +528,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         }));
         startSeatKeepalive();
         if (peerManagerRef.current) peerManagerRef.current.destroy();
+        const gen = ++pmGenerationRef.current;
         void createPeerManager(stored.roomId, stored.secret, false).then(pm => {
+          if (gen !== pmGenerationRef.current) { pm.destroy(); return; } // superseded
           peerManagerRef.current = pm;
           setupPeerManager(pm);
         });
@@ -771,7 +784,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
     startSeatKeepalive();
     if (peerManagerRef.current) peerManagerRef.current.destroy();
+    const gen = ++pmGenerationRef.current;
     void createPeerManager(roomId, secret, false).then(pm => {
+      if (gen !== pmGenerationRef.current) { pm.destroy(); return; } // superseded
       peerManagerRef.current = pm;
       setupPeerManager(pm);
     });
@@ -804,7 +819,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
     if (!res.success) return;
     if (peerManagerRef.current) peerManagerRef.current.destroy();
+    const gen = ++pmGenerationRef.current;
     void createPeerManager(roomId, secret, false).then(pm => {
+      if (gen !== pmGenerationRef.current) { pm.destroy(); return; } // superseded
       peerManagerRef.current = pm;
       setupPeerManager(pm);
     });
@@ -859,7 +876,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // Dead channel: rebuild the peer so the partner's peer_joined trigger
     // and our fresh ICE restart the link. UI shows 'connecting' until open.
     if (peerManagerRef.current) peerManagerRef.current.destroy();
+    const gen = ++pmGenerationRef.current;
     void createPeerManager(s.roomId, s.secret, false).then(pm => {
+      if (gen !== pmGenerationRef.current) { pm.destroy(); return; } // superseded
       peerManagerRef.current = pm;
       setupPeerManager(pm);
     });
@@ -1040,7 +1059,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
     if (peerManagerRef.current) peerManagerRef.current.destroy();
     startSeatKeepalive();
+    const gen = ++pmGenerationRef.current;
     void createPeerManager(stay.roomId, stay.secret, false).then(pm => {
+      if (gen !== pmGenerationRef.current) { pm.destroy(); return; } // superseded
       peerManagerRef.current = pm;
       setupPeerManager(pm);
     });

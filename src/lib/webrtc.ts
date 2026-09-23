@@ -129,7 +129,9 @@ function scheduleOpfsSweep(sink: OpfsSink) {
  */
 function firstMissing(chunks: ArrayBuffer[]): number {
   let i = 0;
-  while (i < chunks.length && chunks[i]) i++;
+  // A zero-length entry is an in-flight decryption RESERVATION (see the
+  // memory receive path), not arrived data — the ack must not overstate.
+  while (i < chunks.length && chunks[i] && (chunks[i] as ArrayBuffer).byteLength > 0) i++;
   return i;
 }
 
@@ -971,10 +973,10 @@ export class PeerManager {
       if (transfer.opfs) {
         const opfs = transfer.opfs;
         if (opfs.bitmap[sequence]) return; // duplicate
+        opfs.bitmap[sequence] = 1; // reserve BEFORE any await (see memory path)
         try {
           const decrypted = await decryptBinaryChunk(payload, this.cryptoKey);
           await opfs.writable.write({ type: 'write', position: sequence * CHUNK_SIZE, data: decrypted });
-          opfs.bitmap[sequence] = 1;
           transfer.received++;
           transfer.updatedAt = Date.now();
 
@@ -1010,6 +1012,16 @@ export class PeerManager {
       }
 
       if (transfer.chunks && !transfer.chunks[sequence]) {
+        // Reserve the slot BEFORE the await. Two peers can share the
+        // module-level partialReceives map after join churn (a duplicate
+        // PeerManager briefly exists); if the check ran after the decrypt
+        // await, both instances would see the slot empty, both decrypt, and
+        // both increment `received` — the transfer would "complete" with a
+        // count that reached `total` while chunks were still missing, and the
+        // reassembled file would fail its checksum (observed: 4-chunk relay
+        // transfer assembled with only 2 present). Reserving synchronously
+        // makes the second arrival a plain duplicate.
+        transfer.chunks[sequence] = new Uint8Array(0); // placeholder reservation
         try {
           const decrypted = await decryptBinaryChunk(payload, this.cryptoKey);
           transfer.chunks[sequence] = decrypted;
@@ -1032,6 +1044,13 @@ export class PeerManager {
           if (transfer.received % 64 === 0) diag('transfer.received', true, `${transfer.received}/${transfer.total}`);
 
           if (transfer.received === transfer.total) {
+            // Belt-and-braces before assembly: a reserved-but-unfilled slot
+            // (a decrypt that never landed) must not become a hole in the
+            // blob. Block assembly; the checksum never lies to the user.
+            if (transfer.chunks.some(c => !c || c.byteLength === 0)) {
+              diag('transfer.assembly_blocked', false, `${transferId.slice(0, 8)} has empty reservations at completion`);
+              return;
+            }
             diag('transfer.received_complete', true, transferId.slice(0, 8));
             const blob = new Blob(transfer.chunks);
             partialReceives.delete(transferId);
@@ -1040,6 +1059,8 @@ export class PeerManager {
             }
           }
         } catch (e) {
+          // Release the reservation so a retransmitted chunk can retry.
+          transfer.chunks[sequence] = null;
           console.error("Failed to decrypt binary chunk", e);
         }
       }

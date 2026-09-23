@@ -131,6 +131,11 @@ function ErrorFallback({ onReset }: { onReset: () => void }) {
 const ErrorBoundary = class extends (React.Component as any) {
   state = { error: null };
   static getDerivedStateFromError(error: Error) { return { error }; }
+  // Log every caught crash: a silent boundary turns "something broke" into an
+  // undiscoverable bug (the UI offers no clue what failed).
+  componentDidCatch(error: Error, info: unknown) {
+    console.error('[ShareTexts] render crash:', error, info);
+  }
   render() {
     if (this.state.error) {
       return <ErrorFallback onReset={() => { try { localStorage.removeItem('sharetext.session.v1'); } catch {} window.location.href = '/'; }} />;

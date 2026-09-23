@@ -445,8 +445,15 @@ export function SingleScreenApp() {
     if (!ok) setStayGone(true);
   }, [isRejoining, rejoinStayRoom]);
 
+  // Synchronous double-submit guard: the 6th-digit auto-submit and a user
+  // pressing Enter can both fire before the isJoining state re-render lands.
+  // Two joins = the server sees a churn of leave/join events (the "connection
+  // flickers" real-world symptom), so the ref closes that same-tick window.
+  const joiningRef = useRef(false);
   const handleCodeComplete = useCallback(async (code: string) => {
+    if (joiningRef.current) return;
     if (isJoining) return;
+    joiningRef.current = true;
     setIsJoining(true);
     setJoinError(null);
     try {
@@ -464,6 +471,8 @@ export function SingleScreenApp() {
       // Same honest classification as the Send path: no more generic
       // "check your internet" for what might be a dead service.
       setJoinError(friendlyConnectError(e).text);
+    } finally {
+      joiningRef.current = false;
     }
   }, [isJoining, joinWithCode, t, friendlyConnectError]);
 
@@ -526,7 +535,7 @@ export function SingleScreenApp() {
             gradient defs inside the display:none copy, which browsers refuse
             to paint — the desktop mark vanished). CSS overrides the intrinsic
             size for the responsive step. */}
-        <a href="/" className="flex items-center gap-[8px] shrink-0" aria-label="ShareTexts — home">
+        <a href="/" className="flex items-center gap-[8px] shrink-0 min-h-[40px] -my-2" aria-label="ShareTexts — home">
           <ShareTextsLogo size={30} className="w-7 sm:w-[30px] h-auto" />
           <span className="font-semibold tracking-tight text-[19px] sm:text-[21px] text-apple-ink dark:text-white">ShareTexts</span>
         </a>
@@ -544,7 +553,7 @@ export function SingleScreenApp() {
             href="/docs"
             aria-label="Docs"
             title="Docs"
-            className="flex items-center justify-center w-10 h-10 rounded-full text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.07] active:scale-95 transition-all"
+            className="flex items-center justify-center w-11 h-10 rounded-full text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.07] active:scale-95 transition-all"
           >
             <BookOpen className="w-[18px] h-[18px]" aria-hidden />
           </a>
@@ -1054,10 +1063,13 @@ export function SingleScreenApp() {
             content's left edge instead of drifting to the pane edge. */}
         <div className="max-w-md mx-auto flex items-center justify-between gap-x-5 gap-y-2 flex-wrap">
           <nav className="flex items-center gap-5 sm:gap-7 text-[13px] font-semibold text-apple-ink/75 dark:text-white/60">
-            <a href="/docs" className="hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.docs')}</a>
-            <a href="/about" className="hover:text-apple-ink dark:hover:text-white transition-colors">About</a>
-            <a href="/privacy" className="hover:text-apple-ink dark:hover:text-white transition-colors">Privacy</a>
-            <a href="/terms" className="hover:text-apple-ink dark:hover:text-white transition-colors">Terms</a>
+            {/* Each link gets a 40px hit box via symmetric padding + matching
+                negative margin — the visible rhythm is unchanged but the
+                touch target meets the app's 40px contract on phones. */}
+            <a href="/docs" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.docs')}</a>
+            <a href="/about" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">About</a>
+            <a href="/privacy" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">Privacy</a>
+            <a href="/terms" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">Terms</a>
           </nav>
           {/* X (Twitter) — logo only, no handle text. Crisp bold glyph,
               links to the author's X profile. */}

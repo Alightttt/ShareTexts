@@ -1304,7 +1304,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 onClick={handleSend}
                 disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
                 aria-label={t('composer.send')}
-                className="w-[38px] h-[38px] rounded-full flex items-center justify-center shrink-0 transition-all duration-200 active:scale-90 text-white bg-ember hover:bg-[#d9560e] disabled:bg-apple-hairline dark:disabled:bg-white/15 disabled:shadow-none shadow-[0_1px_3px_rgba(240,100,19,0.35)]"
+                className="w-[44px] h-[44px] rounded-full flex items-center justify-center shrink-0 transition-all duration-200 active:scale-90 text-white bg-ember hover:bg-[#d9560e] disabled:bg-apple-hairline dark:disabled:bg-white/15 disabled:shadow-none shadow-[0_1px_3px_rgba(240,100,19,0.35)]"
               >
                 {/* Arrow ↔ check morph: the arrow lifts away, a check springs
                     in — a real shape transition, not a crossfade. */}
