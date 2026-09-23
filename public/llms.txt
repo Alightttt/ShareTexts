@@ -2,7 +2,7 @@
 
 > ShareTexts is a free web app for moving text, links, photos, videos, and files between any two devices — phone to laptop, iPhone to Windows, Android to Mac — directly in the browser. No app, no account, no cable. Just open ShareTexts on both devices.
 
-Transfers run peer-to-peer over WebRTC: data moves encrypted between the two browsers and the server never sees file contents. Connect two ways: nearby device discovery (both devices on the same Wi-Fi, visible while ShareTexts is open) or, when the network blocks device-to-device traffic, a six-digit live code, a QR code, or a shareable link — those work over any internet connection. Rooms are temporary and close when you're done.
+Transfers run peer-to-peer over WebRTC: data moves encrypted between the two browsers and the server never sees file contents. Connect two ways: nearby device discovery (your other device appears in the Nearby list while ShareTexts is open on it with Nearby visibility on) or, when it doesn't appear, a six-digit live code, a QR code, or a shareable link — those work over any internet connection. Rooms are temporary and close when you're done.
 
 ## How to use
 
@@ -13,7 +13,7 @@ Transfers run peer-to-peer over WebRTC: data moves encrypted between the two bro
 ## Common questions
 
 ### Why can't I see my other device in the Nearby list?
-Both devices must be on the same Wi-Fi with ShareTexts open. Office, guest, hotel, and campus networks often block device-to-device connections. Use a personal hotspot, or connect with a 6-digit code, QR code, or link instead — these work over any connection.
+Your other device appears in the Nearby list when ShareTexts is open on it with Nearby visibility turned on. If it doesn't appear, connect with a 6-digit code, QR code, or link instead — these work over any connection.
 
 ### Do I need to install an app or create an account?
 No. ShareTexts runs entirely in the browser on any device with a modern browser: iPhone, iPad, Android, Windows, macOS, Linux, Chromebook.

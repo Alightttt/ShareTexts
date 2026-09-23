@@ -29,7 +29,7 @@ const pillGhost = cn(
  * guest networks, AP isolation, VPNs — so the honest states are):
  *
  *   SEARCHING  "Looking for nearby devices…" + the one fix that matters:
- *              "both devices on the same Wi-Fi".
+ *              "both devices have ShareTexts open".
  *   FOUND      tappable rows for live devices; trusted ones show ✓ and a
  *              one-tap Send button (auto-accept is pairwise on both sides).
  *   FALLBACK   after the search grace, "Can't see your device?" + the
