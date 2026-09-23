@@ -5,7 +5,7 @@ import { AttachmentPanel } from '../components/AttachmentPanel';
 import { TransferFlight } from '../components/TransferFlight';
 import {
   X, Plus, Copy, Check, Play, AlertCircle, ChevronDown, ArrowUp, ShieldCheck,
-  Smartphone, Monitor, Pencil, ArrowRightLeft, Info
+  Smartphone, Monitor, Pencil, ArrowRightLeft, Info, RefreshCw
 } from 'lucide-react';
 import { FileTypeIcon } from '../components/FileTypeIcon';
 import { DraggableImage } from '../components/DraggableImage';
@@ -562,6 +562,22 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   // beat (peak-end: the completion moment gets the reward animation), then
   // settles back to the arrow.
   const [sentPulse, setSentPulse] = useState(false);
+  // Reconnect button feedback: true while the reconnect handshake is
+  // running, so the button spins and relabels instead of going dead silent.
+  // Bounded by a safety timer — requestReconnect's ack has no timeout, and a
+  // hung promise must never leave the button permanently disabled.
+  const [reconnecting, setReconnecting] = useState(false);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startReconnectFeedback = () => {
+    setReconnecting(true);
+    if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+    reconnectTimerRef.current = setTimeout(() => setReconnecting(false), 8000);
+    void requestReconnect().finally(() => {
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      setReconnecting(false);
+    });
+  };
+  useEffect(() => () => { if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current); }, []);
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!inputText.trim() && attachments.length === 0) return;
@@ -967,10 +983,18 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
               )}
               <button
                 data-testid="reconnect"
-                onPointerDown={() => void requestReconnect()}
-                className="min-h-[40px] px-3 py-1.5 rounded-full text-[13px] font-semibold bg-status-warning/15 hover:bg-status-warning/25 transition-colors active:scale-95 shrink-0"
+                onPointerDown={startReconnectFeedback}
+                disabled={reconnecting}
+                className="min-h-[40px] px-3 py-1.5 rounded-full text-[13px] font-semibold bg-status-warning/15 hover:bg-status-warning/25 disabled:opacity-60 transition-colors active:scale-95 shrink-0 flex items-center gap-1.5"
               >
-                {t('banner.reconnect')}
+                {/* In-flight acknowledgment: the arrow spins while the
+                    handshake runs and the label says so — a tap always
+                    answers within one beat. */}
+                <RefreshCw
+                  className={cn("w-3.5 h-3.5", reconnecting && "animate-spin")}
+                  aria-hidden="true"
+                />
+                {reconnecting ? t('pair.reconnecting') : t('banner.reconnect')}
               </button>
             </div>
           </motion.div>

@@ -911,15 +911,36 @@ export function SingleScreenApp() {
                     )}
                   </div>
                   <div className="flex flex-col items-center">
-                    <motion.div
-                      animate={{ opacity: [0.4, 1, 0.4] }}
-                      transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                    {/* Payoff: the exact moment the peer confirms, the link
+                        glyphs flip to a green check with a spring pop — the
+                        reward for the wait, in the spot the eye is already
+                        on. Steady-state reverts to the breathing link. */}
+                    <motion.span
+                      key={session.partnerConnected ? 'linked' : 'linking'}
+                      initial={session.partnerConnected ? { scale: 0.4, opacity: 0 } : false}
+                      animate={{
+                        scale: 1,
+                        opacity: 1,
+                        ...(session.partnerConnected ? {} : { opacity: [0.4, 1, 0.4] }),
+                      }}
+                      transition={session.partnerConnected
+                        ? { type: 'spring', bounce: 0.4, duration: 0.45 }
+                        : { opacity: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } }
+                      }
                       className="flex items-center gap-1"
                     >
-                      <span className="w-1 h-1 rounded-full bg-[#f06413]/40 dark:bg-[#fb9243]/40" />
-                      <ArrowRightLeft className="w-4 h-4 text-[#f06413] dark:text-[#fb9243]" />
-                      <span className="w-1 h-1 rounded-full bg-[#f06413]/40 dark:bg-[#fb9243]/40" />
-                    </motion.div>
+                      {session.partnerConnected ? (
+                        <span className="w-5 h-5 rounded-full bg-status-success flex items-center justify-center shadow-[0_2px_8px_-2px_rgba(52,199,89,0.6)]">
+                          <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                        </span>
+                      ) : (
+                        <>
+                          <span className="w-1 h-1 rounded-full bg-[#f06413]/40 dark:bg-[#fb9243]/40" />
+                          <ArrowRightLeft className="w-4 h-4 text-[#f06413] dark:text-[#fb9243]" />
+                          <span className="w-1 h-1 rounded-full bg-[#f06413]/40 dark:bg-[#fb9243]/40" />
+                        </>
+                      )}
+                    </motion.span>
                     <span className={cn("text-[11px] font-medium mt-1", session.connectionType === 'disconnected' ? "text-status-warning" : "text-status-success")}>
                       {session.connectionType === 'disconnected' ? t('pair.reconnecting') : t('common.connected')}
                     </span>
