@@ -12,7 +12,6 @@ const de: Dict = {
   'app.ended.body.manual': 'Du hast diesen Raum geschlossen. Alles, was du gesendet hast, ist bereits auf dem anderen Gerät.',
   'app.ended.body.closed': 'Das andere Gerät hat diesen Raum geschlossen. Unvollständiges wurde nicht gespeichert.',
   'app.ended.sub': 'Kein Konto nötig – und nach dem Schließen des Raums wird nichts aufbewahrt.',
-  'app.ended.cta': 'Transfer starten',
   'app.ended.home': 'Zurück zur Startseite',
   'app.ended.share': 'Empfiehl ShareTexts jemandem, den du kennst',
   'app.ended.shareDone': 'Link kopiert',

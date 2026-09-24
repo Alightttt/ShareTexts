@@ -12,7 +12,6 @@ const es: Dict = {
   'app.ended.body.manual': 'Cerraste esta sala. Todo lo que enviaste ya está en el otro dispositivo.',
   'app.ended.body.closed': 'El otro dispositivo cerró esta sala. No se guardó nada incompleto.',
   'app.ended.sub': 'Sin cuenta necesaria, y nada se conserva al cerrar la sala.',
-  'app.ended.cta': 'Iniciar una transferencia',
   'app.ended.home': 'Volver al inicio',
   'app.ended.share': 'Envía ShareTexts a alguien que conozcas',
   'app.ended.shareDone': 'Enlace copiado',

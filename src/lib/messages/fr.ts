@@ -12,7 +12,6 @@ const fr: Dict = {
   'app.ended.body.manual': 'Vous avez fermé ce salon. Tout ce que vous avez envoyé est déjà sur l’autre appareil.',
   'app.ended.body.closed': 'L’autre appareil a fermé ce salon. Rien d’incomplet n’a été conservé.',
   'app.ended.sub': 'Aucun compte nécessaire, et rien n’est conservé après la fermeture du salon.',
-  'app.ended.cta': 'Démarrer un transfert',
   'app.ended.home': 'Retour à l’accueil',
   'app.ended.share': 'Envoyer ShareTexts à quelqu’un que vous connaissez',
   'app.ended.shareDone': 'Lien copié',

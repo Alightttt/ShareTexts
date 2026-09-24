@@ -11,7 +11,6 @@ const en = {
   'app.ended.body.manual': 'You closed this room. Everything you sent is already on the other device.',
   'app.ended.body.closed': 'The other device closed this room. Nothing incomplete was saved.',
   'app.ended.sub': 'No account needed, and nothing is kept after the room closes.',
-  'app.ended.cta': 'Start a transfer',
   'app.ended.home': 'Back to Home',
   'app.ended.share': 'Send ShareTexts to someone you know',
   'app.ended.shareDone': 'Link copied',
@@ -19,7 +18,7 @@ const en = {
   // ── brand / nav / landing ──────────────────────────────────────────
   'nav.docs': 'Docs',
   'home.title': 'Move anything\nbetween your devices.',
-  'home.subtitle': "Windows to IPhone, Mobile to PC, you can share Texts/Files/Images across any devices. thats why we call it AirDrop for any Device",
+  'home.subtitle': "Share text, links, photos and files between any devices — phone to PC, PC to phone. No app, no account, no wires.",
   'home.send': 'Send',
   'home.sendHint': 'Create a room',
   'home.receive': 'Receive',

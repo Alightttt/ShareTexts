@@ -483,12 +483,23 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
                       'disabled:opacity-50 disabled:pointer-events-none'
                     )}
                   >
-                    <span className="shrink-0 w-8 h-8 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/15 flex items-center justify-center text-[#f06413] dark:text-[#fb9243]">
+                    <span className={cn(
+                      'relative shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[#f06413] dark:text-[#fb9243]',
+                      busy
+                        ? 'bg-[#f06413] dark:bg-[#fb9243] text-white dark:text-[#1a1208]'
+                        : 'bg-[#f06413]/10 dark:bg-[#fb9243]/15'
+                    )}>
+                      {busy && <span aria-hidden className="absolute -inset-1 rounded-full border border-[#f06413]/40 dark:border-[#fb9243]/40 st-halo-ring" />}
                       <DeviceGlyph name={d.name} />
                     </span>
                     <span className="flex-1 flex flex-col min-w-0 leading-tight">
                       <span className="text-[13px] font-semibold text-apple-ink dark:text-white truncate">{d.name}</span>
-                      <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/45 flex items-center gap-1">
+                      <span className={cn(
+                        'text-[13px] font-medium flex items-center gap-1',
+                        busy
+                          ? 'text-[#f06413] dark:text-[#fb9243] font-semibold'
+                        : 'text-apple-ink-muted dark:text-white/45'
+                      )}>
                         {busy ? t('nearby.waiting') : trusted ? (
                           <><Check className="w-3 h-3 text-status-success" strokeWidth={2.5} /> {t('nearby.trusted')}</>
                         ) : t('nearby.nearby')}

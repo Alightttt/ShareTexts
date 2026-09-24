@@ -12,7 +12,6 @@ const ar: Dict = {
   'app.ended.body.manual': 'لقد أغلقت هذه الغرفة. كل ما أرسلته موجود بالفعل على الجهاز الآخر.',
   'app.ended.body.closed': 'أغلق الجهاز الآخر هذه الغرفة. لم يُحفظ أي شيء غير مكتمل.',
   'app.ended.sub': 'لا حاجة لحساب، ولا يُحتفظ بأي شيء بعد إغلاق الغرفة.',
-  'app.ended.cta': 'بدء نقل',
   'app.ended.home': 'العودة إلى الرئيسية',
   'app.ended.share': 'أرسل ShareTexts إلى شخص تعرفه',
   'app.ended.shareDone': 'تم نسخ الرابط',

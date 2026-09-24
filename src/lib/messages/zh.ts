@@ -12,7 +12,6 @@ const zh: Dict = {
   'app.ended.body.manual': '你关闭了这个房间。你发送的内容都已经在另一台设备上。',
   'app.ended.body.closed': '另一台设备关闭了房间。未完成的内容没有被保存。',
   'app.ended.sub': '无需账号，房间关闭后不会保留任何内容。',
-  'app.ended.cta': '开始传输',
   'app.ended.home': '返回首页',
   'app.ended.share': '把 ShareTexts 推荐给身边的人',
   'app.ended.shareDone': '链接已复制',

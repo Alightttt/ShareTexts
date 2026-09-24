@@ -453,6 +453,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setSession(s => ({
           ...s,
           connectionType: 'disconnected',
+          // The peer is really gone: clear the pairing flag so ChatView's
+          // offline banner + state mirror tell the truth. Without this the
+          // mirror kept reporting CONNECTED for a dead room.
+          partnerConnected: false,
           messages: s.messages.map(m => {
             const st = m.attachment?.status;
             if (m.attachment && (st === 'sending' || st === 'receiving')) {
@@ -475,6 +479,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setSession(s => ({
         ...s,
         connectionType: 'disconnected',
+        // Server-confirmed leave: same honesty as the grace-expiry path —
+        // the offline banner and empty state must be reachable.
+        partnerConnected: false,
         messages: s.messages.map(m => {
           const st = m.attachment?.status;
           if (m.attachment && (st === 'sending' || st === 'receiving')) {
@@ -873,19 +880,25 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     if (!res.success) return;
     diag('seat.reseat', true, why);
     if (channelHealthy()) return; // everything fine — the ack was the whole point
-    // Dead channel: rebuild the peer so the partner's peer_joined trigger
-    // and our fresh ICE restart the link. UI shows 'connecting' until open.
-    if (peerManagerRef.current) peerManagerRef.current.destroy();
-    const gen = ++pmGenerationRef.current;
-    void createPeerManager(s.roomId, s.secret, false).then(pm => {
-      if (gen !== pmGenerationRef.current) { pm.destroy(); return; } // superseded
-      peerManagerRef.current = pm;
-      setupPeerManager(pm);
-    });
-    setSession(prev => ({
-      ...prev,
-      connectionType: prev.connectionType === 'direct' || prev.connectionType === 'relay' || prev.connectionType === 'local' ? 'connecting' : prev.connectionType,
-    }));
+    // Dead channel. Rebuild the peer so the partner's peer_joined trigger
+    // and our fresh ICE restart the link — UNLESS the peer is CONFIRMED
+    // gone (its grace elapsed / server confirmed the leave). Rebuilding
+    // then would flip the honest 'disconnected' state to 'connecting' and
+    // the header back to "Connected" for a dead room; the peer_joined
+    // handler rebuilds anyway when the partner actually returns.
+    if (sessionRef.current.connectionType !== 'disconnected') {
+      if (peerManagerRef.current) peerManagerRef.current.destroy();
+      const gen = ++pmGenerationRef.current;
+      void createPeerManager(s.roomId, s.secret, false).then(pm => {
+        if (gen !== pmGenerationRef.current) { pm.destroy(); return; } // superseded
+        peerManagerRef.current = pm;
+        setupPeerManager(pm);
+      });
+      setSession(prev => ({
+        ...prev,
+        connectionType: prev.connectionType === 'direct' || prev.connectionType === 'relay' || prev.connectionType === 'local' ? 'connecting' : prev.connectionType,
+      }));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const startSeatKeepalive = useCallback(() => {

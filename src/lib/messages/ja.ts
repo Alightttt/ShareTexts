@@ -12,7 +12,6 @@ const ja: Dict = {
   'app.ended.body.manual': 'このルームを閉じました。送信した内容はすべて相手のデバイスに届いています。',
   'app.ended.body.closed': '相手のデバイスがこのルームを閉じました。未完了のデータは保存されていません。',
   'app.ended.sub': 'アカウントは不要。ルームが閉じると何も残りません。',
-  'app.ended.cta': '転送を開始',
   'app.ended.home': 'ホームへ戻る',
   'app.ended.share': 'ShareTexts を誰かに教える',
   'app.ended.shareDone': 'リンクをコピーしました',
