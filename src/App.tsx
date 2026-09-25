@@ -8,6 +8,7 @@ import { SessionProvider, useSession } from './lib/SessionContext';
 import { I18nProvider, useI18n } from './lib/i18n';
 import { X, DoorOpen } from 'lucide-react';
 import { ShareTextsLogo } from './components/ShareTextsLogo';
+import { SkeletonScreen } from './components/SkeletonScreen';
 
 // SingleScreenApp (the landing IS the app) loads eagerly — one less network
 // round-trip before the hero is interactive. Docs/Legal stay lazy: they are
@@ -65,23 +66,44 @@ function DisconnectToast({ reason, onDone }: { reason: string, onDone: () => voi
 }
 
 /**
- * AppSkeleton — the boot/loading screen. Calm and simple: the brand mark
- * shimmers in the exact center, a quiet spinner turns beneath it. No fake
- * page geometry — nothing to mis-align against the real layout on swap.
+ * Boot skeleton for lazy ROUTES (Docs/Legal). Mirrors each page's real
+ * geometry — a header bar and a centered reading column — so the swap
+ * from skeleton to content moves nothing. (The main app itself loads
+ * eagerly and never shows this.)
  */
-function AppSkeleton() {
+function RouteSkeleton({ wide }: { wide?: boolean }) {
   return (
-    <div className="min-h-screen bg-apple-canvas dark:bg-[#131315] flex flex-col items-center justify-center gap-7">
-      <div className="st-boot-logo" aria-hidden>
-        <ShareTextsLogo size={52} mono />
+    <div className="min-h-screen bg-apple-canvas dark:bg-[#131315] font-sans">
+      <div className="max-w-6xl mx-auto px-6 h-14 flex items-center gap-2" aria-hidden>
+        <div className="st-skeleton h-6 w-6 !rounded-[8px] bg-apple-ink/[0.07] dark:bg-white/[0.08]" />
+        <div className="st-skeleton h-3.5 w-24 rounded-full bg-apple-ink/[0.07] dark:bg-white/[0.08]" />
       </div>
-      <span
-        className="st-boot-spinner"
+      <div
         role="status"
-        aria-label="Loading ShareTexts"
-      />
+        aria-live="polite"
+        aria-label="Loading"
+        className={cnRoute(wide)}
+      >
+        <div className="st-skeleton h-8 w-[55%] rounded-full bg-apple-ink/[0.07] dark:bg-white/[0.08]" />
+        <div className="st-skeleton mt-4 h-3 w-[35%] rounded-full bg-apple-ink/[0.07] dark:bg-white/[0.08]" />
+        <div className="mt-9 space-y-3">
+          {[92, 100, 96, 88, 100, 74].map((w, i) => (
+            <div key={i} className="st-skeleton h-3 rounded-full bg-apple-ink/[0.07] dark:bg-white/[0.08]" style={{ width: `${w}%` }} />
+          ))}
+        </div>
+        <div className="mt-8 space-y-3">
+          {[100, 94, 82].map((w, i) => (
+            <div key={i} className="st-skeleton h-3 rounded-full bg-apple-ink/[0.07] dark:bg-white/[0.08]" style={{ width: `${w}%` }} />
+          ))}
+        </div>
+      </div>
     </div>
   );
+}
+function cnRoute(wide?: boolean) {
+  return wide
+    ? 'max-w-6xl mx-auto px-6 py-10 flex gap-8'
+    : 'max-w-2xl mx-auto px-6 py-10 sm:py-14';
 }
 
 /**
@@ -190,15 +212,15 @@ function AppContent() {
   }, [session.closedReason, leaveView]);
 
   if (typeof window !== 'undefined' && window.location.pathname === '/docs') {
-    return <Suspense fallback={<AppSkeleton />}><Docs /></Suspense>;
+    return <Suspense fallback={<RouteSkeleton wide />}><Docs /></Suspense>;
   }
 
   if (typeof window !== 'undefined' && window.location.pathname === '/privacy') {
-    return <Suspense fallback={<AppSkeleton />}><Legal page="privacy" /></Suspense>;
+    return <Suspense fallback={<RouteSkeleton />}><Legal page="privacy" /></Suspense>;
   }
 
   if (typeof window !== 'undefined' && window.location.pathname === '/terms') {
-    return <Suspense fallback={<AppSkeleton />}><Legal page="terms" /></Suspense>;
+    return <Suspense fallback={<RouteSkeleton />}><Legal page="terms" /></Suspense>;
   }
 
   if (typeof window !== 'undefined' && window.location.pathname !== '/' && !window.location.pathname.startsWith('/s/')) {
@@ -214,10 +236,10 @@ function AppContent() {
   }
 
   return (
-    <Suspense fallback={<AppSkeleton />}>
+    <>
       <SingleScreenApp />
       {disconnectToast && <DisconnectToast reason={disconnectToast} onDone={() => setDisconnectToast(null)} />}
-    </Suspense>
+    </>
   );
 }
 

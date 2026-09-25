@@ -30,6 +30,7 @@ import { BookOpen } from '@gravity-ui/icons';
 import { ConnectHandshake } from '../components/ConnectHandshake';
 import { CommandBar, CommandBarChip } from '../components/CommandBar';
 import { signalingConfigIssue, prewarmSignaling } from '../lib/socket';
+import { loadStoredSession } from '../lib/session/persistence';
 import { ConnectError, describeConnectFailure } from '../lib/errors';
 import { HeroTransferScene } from '../components/HeroTransferScene';
 import { useLiveStats } from '../lib/useLiveStats';
@@ -37,6 +38,7 @@ import { hapticTap } from '../lib/haptics';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { StayConnectedToggle, StayBadge } from '../components/StayConnectedToggle';
 import { NearbyDevices } from '../components/NearbyDevices';
+import { SkeletonScreen } from '../components/SkeletonScreen';
 import { productEvent } from '../lib/telemetry';
 import { useI18n } from '../lib/i18n';
 import { LanguageMenu } from '../components/LanguageMenu';
@@ -104,7 +106,19 @@ export function SingleScreenApp() {
   // Live activity tracker — real aggregate numbers from the signaling
   // service: devices seated right now + rooms ever created.
   const { roomsCreated } = useLiveStats();
-  const [panelMode, setPanelMode] = useState<PanelMode>('idle');
+  const [panelMode, setPanelMode] = useState<PanelMode>(() => {
+    // REFRESH HONESTY: the stored session is the truth about where this
+    // device was. Deriving the first panel from it (instead of always
+    // starting on 'idle' and letting the sync effect cascade
+    // idle → sending/connecting → connected a beat later) removes the
+    // multi-screen flash a refresh used to paint. The creator resumes
+    // onto their pairing screen (code intact from storage); the joiner
+    // resumes onto the connecting screen, which the sync effect holds
+    // until the channel reopens — no state argues with the initial one.
+    const stored = loadStoredSession();
+    if (!stored?.roomId) return 'idle';
+    return stored.isCreator ? 'sending' : 'connecting';
+  });
   const [isCreating, setIsCreating] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [createError, setCreateError] = useState<{ text: string; icon: 'offline' | 'server' | 'time' | 'info' } | null>(null);
@@ -1253,51 +1267,74 @@ export function SingleScreenApp() {
       data-testid="room-panel"
     >
       {panelMode === 'idle' && <div aria-hidden className="st-ambient" />}
-      {/* Room header */}
-      <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-[#f4f2ec]/80 dark:bg-[#0f0f11]/80 backdrop-blur-xl z-10">
-        <div className="flex items-center gap-2.5">
-          <ShareTextsLogo size={16} />
-          <span className="text-[13px] font-semibold text-apple-ink dark:text-white">
-            {panelMode === 'connected' ? t('room.transfer') : t('room.title')}
-          </span>
-          {panelMode === 'connected' && <StayBadge />}
-          {panelMode === 'connected' && (
+      {/* Room header — the pair IS the identity, so the header leads with
+          the two real devices (this ⇄ partner + live-status dot) instead of
+          a generic wordmark, and the brand stays present at the right
+          weight. Disconnect gets a calm two-press confirm, never a modal. */}
+      <div className="shrink-0 flex items-center justify-between gap-3 px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-[#f4f2ec]/80 dark:bg-[#0f0f11]/80 backdrop-blur-xl z-10">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {panelMode === 'connected' ? (
             <>
-              <span className="w-px h-3 bg-apple-divider dark:bg-white/10" />
-              {/* Two physical devices — the mental model in the header. The
-                  dot turns amber when the link drops so the room header
-                  matches the in-room reconnect banner. */}
-              <span className="flex items-center gap-1.5 text-apple-ink-muted dark:text-white/50" title={session.connectionType === 'disconnected' ? t('chat.peerDisconnected') : t('toast.connected')}>
-                <ThisDeviceIcon className="w-3.5 h-3.5" />
-                <ArrowRightLeft className="w-3 h-3 opacity-50" />
-                <PartnerDeviceIcon className="w-3.5 h-3.5" />
-                <span className={cn(
-                  "w-1.5 h-1.5 rounded-full ml-0.5",
-                  session.connectionType === 'disconnected' ? "bg-status-warning" : "bg-status-success animate-pulse"
-                )} />
+              <span className="flex items-center justify-center w-7 h-7 rounded-[9px] bg-ember/10 border border-ember/20 text-ember shrink-0" aria-hidden>
+                <ThisDeviceIcon className="w-4 h-4" />
               </span>
+              <span className="text-[13px] font-semibold text-apple-ink dark:text-white truncate max-w-[110px]">{session.deviceName}</span>
+              <ArrowRightLeft className="w-3.5 h-3.5 shrink-0 text-apple-ink-muted/50 dark:text-white/30" />
+              <span className={cn(
+                "relative flex items-center justify-center w-7 h-7 rounded-[9px] shrink-0 transition-colors",
+                session.connectionType === 'disconnected'
+                  ? "bg-black/[0.05] dark:bg-white/[0.06] border border-apple-divider/40 dark:border-white/[0.08] text-apple-ink-muted/50 dark:text-white/30"
+                  : "bg-status-success/10 border border-status-success/20 text-status-success"
+              )}>
+                {session.connectionType !== 'disconnected' && <span aria-hidden className="absolute inset-0 rounded-[9px] bg-status-success/20 st-halo-ring" />}
+                <PartnerDeviceIcon className="relative w-4 h-4" />
+              </span>
+              <span className="hidden md:flex flex-col leading-tight min-w-0">
+                <span className="text-[12.5px] font-semibold text-apple-ink dark:text-white truncate max-w-[130px]">{session.partnerName || t('chat.pairedDevice')}</span>
+                <span className={cn("text-[10.5px] font-medium", session.connectionType === 'disconnected' ? "text-status-warning" : "text-status-success")}>
+                  {session.connectionType === 'disconnected'
+                    ? t('chat.offline')
+                    : session.connectionType === 'direct' || session.connectionType === 'local'
+                      ? t('chat.directBadge')
+                      : session.connectionType === 'relay'
+                        ? t('conn.relay')
+                        : t('common.connected')}
+                </span>
+              </span>
+              <span className="md:hidden w-1.5 h-1.5 rounded-full shrink-0 ml-0.5" aria-hidden>
+                <span className={cn("block w-1.5 h-1.5 rounded-full", session.connectionType === 'disconnected' ? "bg-status-warning" : "bg-status-success animate-pulse")} />
+              </span>
+              <StayBadge />
+            </>
+          ) : (
+            <>
+              <ShareTextsLogo size={16} />
+              <span className="text-[13px] font-semibold text-apple-ink dark:text-white">{t('room.title')}</span>
             </>
           )}
         </div>
-        <button
-          onClick={() => setConfirmDisconnect(true)}
-          className={cn(
-            "flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg transition-all duration-150",
-            panelMode === 'connected'
-              ? "text-apple-ink-muted dark:text-white/60 hover:text-status-danger hover:bg-status-danger/10"
-              : "text-apple-ink-muted/40 dark:text-white/20"
-          )}
-          disabled={panelMode !== 'connected'}
-          aria-label={t('common.disconnectAria')}
-        >
-          <DisconnectGlyph size={18} />
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <ShareTextsLogo size={15} mono className="opacity-70 hidden sm:block" />
+          <button
+            onClick={() => setConfirmDisconnect(true)}
+            className={cn(
+              "flex items-center justify-center min-w-[44px] min-h-[44px] rounded-full transition-all duration-150 active:scale-95",
+              panelMode === 'connected'
+                ? "text-apple-ink-muted/70 dark:text-white/50 hover:text-status-danger hover:bg-status-danger/10"
+                : "text-apple-ink-muted/40 dark:text-white/20"
+            )}
+            disabled={panelMode !== 'connected'}
+            aria-label={t('common.disconnectAria')}
+          >
+            <DisconnectGlyph size={18} />
+          </button>
+        </div>
       </div>
 
       {/* Room content */}
       <div className="flex-1 min-h-0 flex flex-col">
         {panelMode === 'connected' ? (
-          <Suspense fallback={<div className="h-full flex items-center justify-center"><ShareTextsLogo size={24} motion="connecting" /></div>}>
+          <Suspense fallback={<SkeletonScreen variant="room" />}>
             {/* Definite-height flex wrapper: keeps ChatView's h-full resolved on
                 the desktop two-pane layout (Suspense itself is not a flex item). */}
             <div className="flex-1 min-h-0 flex flex-col">
@@ -1395,11 +1432,7 @@ export function SingleScreenApp() {
               full-bleed ChatView with its own device bar and composer. No
               stacked summary card above the chat, no second scroll surface. */
         panelMode === 'connected' ? (
-          <Suspense fallback={
-            <div className="h-full flex items-center justify-center bg-[#f4f2ec] dark:bg-[#0f0f11]">
-              <ShareTextsLogo size={26} motion="connecting" />
-            </div>
-          }>
+          <Suspense fallback={<SkeletonScreen variant="room" />}>
             <motion.div
               key="room-fullscreen"
               initial={{ opacity: 0, y: 14 }}

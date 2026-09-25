@@ -888,8 +888,15 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           <button
             type="button"
             data-testid="end-session"
+            disabled={disconnected}
             onClick={() => setConfirmDisconnect(true)}
-            className="flex items-center gap-1.5 rounded-full font-semibold min-h-[40px] px-3 text-[12.5px] text-apple-ink-muted hover:text-status-danger hover:bg-status-danger/10 active:scale-[0.96] transition-colors"
+            aria-label={t('common.disconnectAria')}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full font-semibold min-h-[40px] px-3 text-[12.5px] transition-colors active:scale-[0.96]",
+              disconnected
+                ? "opacity-40 cursor-not-allowed text-apple-ink-muted"
+                : "text-apple-ink-muted hover:text-status-danger hover:bg-status-danger/10"
+            )}
           >
             <DisconnectGlyph size={16} />
             <span className="hidden sm:inline">{t('common.disconnect')}</span>

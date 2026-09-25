@@ -521,13 +521,28 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
     let cancelled = false;
     const socket = getSocket();
+    let resumeAttempts = 0;
     const tryResume = async (attempt = 0): Promise<void> => {
       try {
         await ensureSocketConnected();
       } catch {
+        // The socket didn't come up (offline, dead network). That is NOT a
+        // verdict on the room — wiping the stored session here destroyed a
+        // perfectly good room just because the user refreshed on a train.
+        // Keep the credential and retry with backoff; only a REAL server
+        // rejection (expired, full) below clears it.
         if (cancelled) return;
-        saveStoredSession(null);
-        setSession(s => ({ ...s, roomId: null, secret: null, isCreator: false }));
+        resumeAttempts++;
+        if (resumeAttempts <= 3) {
+          diag('room.resume_wait', true, `socket down, retry ${resumeAttempts}/3`);
+          setTimeout(() => { if (!cancelled) void tryResume(0); }, 4000 * resumeAttempts);
+        } else {
+          // Still nothing after 4s+8s+12s: go idle but KEEP the stored
+          // session — the next reload (or the visibility re-seat) tries
+          // again, and the room may still be alive on the server.
+          diag('room.resume_offline', true, 'giving up for now, credential kept');
+          setSession(s => ({ ...s, roomId: null, secret: null, isCreator: false }));
+        }
         return;
       }
       if (cancelled) return;
@@ -568,13 +583,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setSession(s => ({ ...s, roomId: null, secret: null, isCreator: false, closedReason: 'expired' }));
       }
     };
-    // Defer session restore until after first paint — don't block UI on networking.
-    // requestIdleCallback (with setTimeout fallback) ensures the shell renders first,
-    // then we attempt to resume any stored session in the background.
-    const scheduleRestore = typeof requestIdleCallback !== 'undefined'
-      ? (cb: () => void) => requestIdleCallback(cb, { timeout: 2000 })
-      : (cb: () => void) => setTimeout(cb, 0);
-    scheduleRestore(() => { if (!cancelled) void tryResume(); });
+    // Start the resume on the NEXT tick, not "whenever the browser is idle"
+    // (requestIdleCallback could legally wait its full 2s timeout on a busy
+    // main thread — two dead seconds staring at the connecting screen after
+    // every refresh). tryResume is fully async — awaiting the socket and the
+    // resume ack — so nothing here blocks first paint; the shell renders
+    // this tick regardless. One macro-task of deferral just lets React
+    // commit the initial state first.
+    setTimeout(() => { if (!cancelled) void tryResume(); }, 0);
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

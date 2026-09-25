@@ -364,69 +364,6 @@ html.dark .st-dotfield::after {
   .st-dotfield::before, .st-dotfield::after { animation: none; }
 }
 
-/* Boot screen — shimmering centered logo + quiet spinner below. The shimmer
-   is a masked gradient sweep over the mark itself; the spinner is a border
-   arc (GPU-composited transform, no layout work). */
-.st-boot-logo {
-  position: relative;
-  color: var(--color-ember);
-  filter: drop-shadow(0 2px 10px rgba(240, 100, 19, 0.18));
-}
-.st-boot-logo::after {
-  content: '';
-  position: absolute;
-  inset: -6%;
-  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.75) 48%, rgba(255, 255, 255, 0.75) 52%, transparent 70%);
-  background-size: 240% 100%;
-  -webkit-mask: url('/favicon.svg') center / contain no-repeat;
-  mask: url('/favicon.svg') center / contain no-repeat;
-  animation: st-boot-shine 1.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  pointer-events: none;
-}
-html.dark .st-boot-logo::after {
-  background-image: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.4) 48%, rgba(255, 255, 255, 0.4) 52%, transparent 70%);
-}
-@keyframes st-boot-shine {
-  from { background-position: 130% 0; }
-  to { background-position: -130% 0; }
-}
-.st-boot-spinner {
-  width: 22px;
-  height: 22px;
-  border-radius: 9999px;
-  border: 2.5px solid rgba(240, 100, 19, 0.18);
-  border-top-color: var(--color-ember);
-  animation: st-boot-spin 0.85s linear infinite;
-}
-@keyframes st-boot-spin {
-  to { transform: rotate(360deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .st-boot-logo::after { animation: none; }
-  .st-boot-spinner { animation-duration: 1.6s; }
-}
-
-/* Skeleton shimmer — one soft light band sweeps down the frame. Cheap:
-   a single animated gradient over opacity-only blocks. */
-.st-skeleton-sweep::after {
-  content: '';
-  position: absolute;
-  inset: -20% 0;
-  pointer-events: none;
-  background: linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.35) 45%, rgba(255,255,255,0.35) 55%, transparent 100%);
-  animation: st-sweep 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-html.dark .st-skeleton-sweep::after {
-  background: linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.06) 45%, rgba(255,255,255,0.06) 55%, transparent 100%);
-}
-@keyframes st-sweep {
-  from { transform: translateY(-30%); }
-  to { transform: translateY(30%); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .st-skeleton-sweep::after { animation: none; }
-}
-
 /* Hero image — a quiet fade-settle when it loads (never pops in). */
 .st-img-fade {
   opacity: 0;
@@ -477,6 +414,53 @@ html.dark .st-skeleton-sweep::after {
 @media (prefers-reduced-motion: reduce) {
   .st-halo-ring { animation: none; opacity: 0; }
 }
+}
+
+/* ── Skeleton shimmer ────────────────────────────────────────────────────
+   One soft light band sweeps each bar; transform-only (compositor-safe).
+   Under prefers-reduced-motion the bars hold still — the shape alone
+   still communicates the screen's structure. */
+.st-skeleton {
+  position: relative;
+  overflow: hidden;
+}
+.st-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 100%
+  );
+  animation: st-shimmer 1.6s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+}
+.dark .st-skeleton::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.07) 50%,
+    transparent 100%
+  );
+}
+@keyframes st-shimmer {
+  to { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-skeleton::after { animation: none; content: none; }
+}
+/* The brand mark's one beat of life while the shell assembles. */
+.st-skeleton-brand {
+  animation: st-brand-breathe 1.6s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+}
+@keyframes st-brand-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.75; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-skeleton-brand { animation: none; opacity: 1; }
 }
 
 
