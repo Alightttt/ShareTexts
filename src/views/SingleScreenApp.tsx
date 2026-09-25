@@ -569,14 +569,17 @@ export function SingleScreenApp() {
         {/* Brand lockup — ONE svg (two responsive copies would put the shared
             gradient defs inside the display:none copy, which browsers refuse
             to paint — the desktop mark vanished). CSS overrides the intrinsic
-            size for the responsive step. */}
-        <a href="/" className="group flex items-center gap-[8px] shrink-0 min-h-[40px] -my-2" aria-label="ShareTexts — home">
+            size for the responsive step. gap-[7px] reads optically even —
+            the mark's right side carries more air than its left, so one px
+            tighter than a plain 8 balances the pair; baseline-nudged name
+            aligns the wordmark's x-height with the mark's optical center. */}
+        <a href="/" className="group flex items-center gap-[7px] shrink-0 min-h-[40px] -my-2" aria-label="ShareTexts — home">
           {/* The mark gets a whisper of scale on hover (transform only, no
               layout shift) — the brand invites you in without shouting. */}
           <span className="transition-transform duration-200 ease-out group-hover:scale-105 group-active:scale-95 motion-reduce:transition-none flex">
             <ShareTextsLogo size={30} className="w-7 sm:w-[30px] h-auto" />
           </span>
-          <span className="font-semibold tracking-tight text-[19px] sm:text-[21px] text-apple-ink dark:text-white">ShareTexts</span>
+          <span className="font-semibold tracking-tight text-[19px] sm:text-[21px] text-apple-ink dark:text-white translate-y-px">ShareTexts</span>
         </a>
         {/* One rhythm for every header control — desktop AND mobile. Each
             item is a 40px-tall slot on a tight gap grid; icons are uniform
@@ -620,16 +623,6 @@ export function SingleScreenApp() {
               <p className="order-2 mt-4 text-[16.5px] sm:text-[18px] lg:text-[20px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[40ch] text-center sm:text-left whitespace-pre-line">
                 {t('home.subtitle')}
               </p>
-              {/* DISCOVERY IS THE PRIMARY PATH: nearby devices sit directly
-                  under the promise — a real device row answers "what do I
-                  do?" more concretely than any button. Code/QR/link (the
-                  Send/Receive buttons) remain right below as the secondary,
-                  always-available way. */}
-              <div className="order-3 mt-5 w-full flex flex-col items-center lg:items-start">
-                <div className="w-full max-w-md lg:max-w-none">
-                  <NearbyDevices onStatus={setNearbyStatus} />
-                </div>
-              </div>
               {/* Live activity tracker — bare (NO pill): a breathing dot, the
                   bold lifetime count, and the label. Always visible: the
                   count floors at 100 (rooms made before lifetime tracking
@@ -641,7 +634,7 @@ export function SingleScreenApp() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
-                className="order-4 mt-5 flex items-center justify-center lg:justify-start gap-2.5 whitespace-nowrap w-fit mx-auto lg:mx-0"
+                className="order-2 mt-4 flex items-center justify-center lg:justify-start gap-2.5 whitespace-nowrap w-fit mx-auto lg:mx-0"
               >
                 {/* Halo dot: two slow radar rings drift outward from a solid
                     glowing core — layered, staggered, so it reads as breath,
@@ -662,14 +655,14 @@ export function SingleScreenApp() {
                   (audit #12 — Receive rendered wider than Send), and each
                   hint sits directly beneath its own button so the
                   label↔action mapping is unambiguous (audit #11). */}
-              <div className="order-5 mt-5 grid grid-cols-2 gap-x-3 gap-y-1 max-w-[360px] mx-auto sm:mx-0">
+              <div className="order-3 mt-6 grid grid-cols-2 gap-x-3 gap-y-1 max-w-[360px] mx-auto sm:mx-0">
                 <div className="flex flex-col items-center gap-1.5 min-w-0">
                   <TactileButton onClick={handleSend} variant="primary" size="lg" className="w-full lg:text-[16px] lg:min-h-[56px]" icon={<SendCircleIcon size={18} />} disabled={isCreating}>{t('home.send')}</TactileButton>
-                  <span className="text-[13px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.sendHint')}</span>
+                  <span className="text-[13px] font-medium text-apple-ink-muted/80 dark:text-white/55">{t('home.sendHint')}</span>
                 </div>
                 <div className="flex flex-col items-center gap-1.5 min-w-0">
                   <TactileButton onClick={handleReceive} variant="soft" size="lg" className="w-full lg:text-[16px] lg:min-h-[56px]" icon={<ReceiveCircleIcon size={18} />}>{t('home.receive')}</TactileButton>
-                  <span className="text-[13px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.receiveHint')}</span>
+                  <span className="text-[13px] font-medium text-apple-ink-muted/80 dark:text-white/55">{t('home.receiveHint')}</span>
                 </div>
               </div>
               {/* Stay Connected re-entry: the room this device promised to
@@ -703,7 +696,7 @@ export function SingleScreenApp() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 4 }}
                       transition={{ type: 'spring', bounce: 0, duration: 0.32 }}
-                      className="order-6 mt-5 w-full"
+                      className="order-4 mt-5 w-full"
                     >
                       <button
                         type="button"
@@ -754,9 +747,22 @@ export function SingleScreenApp() {
                   bottom margin (not the old negative one) keeps clear air
                   between the image and the "Open ShareTexts in another
                   device" row that follows. */}
-              <div className="order-7 lg:hidden mt-4 sm:mt-8 mb-5 flex justify-center">
+              <div className="order-5 lg:hidden mt-4 sm:mt-8 mb-5 flex justify-center">
                 <div className="w-full max-w-[340px] px-1">
                   <HeroTransferScene />
+                </div>
+              </div>
+              {/* Nearby device discovery — an OPTIONAL extra path. The old
+                  standalone hint line is gone: the nearby block's own
+                  searching row says "Looking for nearby devices…" in the
+                  same words, right where the action is. One instruction on
+                  screen, never two. */}
+              {/* On mobile the hero image already carries mb-5 before this
+                  row — a second mt-10 stacked on top read as a dead gap.
+                  mt-2 keeps one breath of air, nothing more. */}
+              <div className="order-6 mt-10 w-full flex flex-col items-center lg:items-start">
+                <div className="w-full max-w-md lg:max-w-none">
+                  <NearbyDevices onStatus={setNearbyStatus} />
                 </div>
               </div>
               {createError && (
@@ -1175,13 +1181,14 @@ export function SingleScreenApp() {
 
   const footerNode = (
     <footer className="shrink-0 px-6 lg:px-10 pt-3 pb-[max(env(safe-area-inset-bottom),8px)] sm:pb-3 border-t border-apple-divider/60 dark:border-white/[0.06]">
-        {/* One line: links with real gaps, the handle as a compact chip so
-            the X glyph and name can never wrap or split. Links are a step
-            bolder than the classic muted footer so they read as navigation. */}
+        {/* One line: links with real gaps, the X mark at the right. Links
+            sit at muted weight (navigation, not shouting) and step up to
+            full ink on hover — quieter than the old always-bold row, and
+            the hover answer makes the affordance obvious. */}
         {/* Same measure as the hero column above — footer nav shares the
             content's left edge instead of drifting to the pane edge. */}
         <div className="max-w-md mx-auto flex items-center justify-between gap-x-5 gap-y-2 flex-wrap">
-          <nav className="flex items-center gap-5 sm:gap-7 text-[13px] font-semibold text-apple-ink/75 dark:text-white/60">
+          <nav className="flex items-center gap-5 sm:gap-7 text-[13px] font-medium text-apple-ink-muted dark:text-white/50">
             {/* Each link gets a 40px hit box via symmetric padding + matching
                 negative margin — the visible rhythm is unchanged but the
                 touch target meets the app's 40px contract on phones. */}
@@ -1198,9 +1205,9 @@ export function SingleScreenApp() {
             rel="noopener noreferrer"
             aria-label={t('footer.followAria')}
             title="x.com/0xalyt"
-            className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] -my-2.5 rounded-full text-apple-ink/80 dark:text-white/60 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
+            className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] -my-2.5 rounded-full text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
           >
-            <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+            <svg className="w-[17px] h-[17px] shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
           </a>
         </div>
     </footer>

@@ -1,5 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 
+/** Respect reduced motion: the veil cross-fade collapses to the instant
+ *  flip (which was already the behavior) with no overlay at all. */
+function prefersReducedMotion(): boolean {
+  try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
+}
+
 /**
  * Manual light/dark theme control.
  *
@@ -49,23 +55,50 @@ export function resolveTheme(choice: ThemeChoice): ResolvedTheme {
 export function applyTheme(choice: ThemeChoice) {
   const resolved = resolveTheme(choice);
   const root = document.documentElement;
-  // Kill EVERY color transition for one frame: the flip lands in a single
-  // paint (elements that carry `transition-colors`/`transition-motion` would
-  // otherwise sweep through their 160-250ms curves — the reported "laggy"
-  // feel). One rAF for the class change, a second to restore transitions.
-  const style = document.createElement('style');
-  style.id = 'st-theme-flip';
-  style.textContent = '*,*::before,*::after{transition:none!important;animation-duration:0s!important;animation-delay:0s!important}';
-  document.head.appendChild(style);
-  root.classList.toggle('dark', resolved === 'dark');
-  // Keep the browser chrome (address bar / status bar) in sync.
-  const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-  if (meta) {
-    meta.content = resolved === 'dark' ? '#131315' : '#f7f4ee';
+  // BUTTERY FLIP, zero jank: before the class lands, paint a full-screen
+  // veil in the DESTINATION background color (opacity 0 → 1 over ~140ms).
+  // Then kill every per-element color transition for one frame and flip
+  // the class — the veil hides the repaint in its own fade, so the swap
+  // reads as one smooth cross-fade instead of hundreds of elements each
+  // tweening at once (the old "laggy" feel) or a hard cut (the current
+  // instant flip). Two rAFs later the veil fades out over the now-correct
+  // page and removes itself.
+  const isDark = resolved === 'dark';
+  if (prefersReducedMotion()) {
+    // Reduced motion: single-paint flip, no veil, no fades.
+    root.classList.toggle('dark', isDark);
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (meta) meta.content = isDark ? '#131315' : '#f7f4ee';
+    return;
   }
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => style.remove());
-  });
+  const veil = document.createElement('div');
+  veil.setAttribute('aria-hidden', 'true');
+  veil.style.cssText = `position:fixed;inset:0;z-index:2147483646;pointer-events:none;background:${isDark ? '#131315' : '#f7f4ee'};opacity:0;transition:opacity 140ms cubic-bezier(0.23,1,0.32,1)`;
+  document.body.appendChild(veil);
+  requestAnimationFrame(() => { veil.style.opacity = '1'; });
+  const flip = () => {
+    const style = document.createElement('style');
+    style.id = 'st-theme-flip';
+    style.textContent = '*,*::before,*::after{transition:none!important;animation-duration:0s!important;animation-delay:0s!important}';
+    document.head.appendChild(style);
+    root.classList.toggle('dark', isDark);
+    // Keep the browser chrome (address bar / status bar) in sync.
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (meta) {
+      meta.content = isDark ? '#131315' : '#f7f4ee';
+    }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        style.remove();
+        // The page is now fully repainted in the destination theme; the
+        // veil fades out to reveal it (transform/opacity only).
+        veil.style.opacity = '0';
+        setTimeout(() => veil.remove(), 200);
+      });
+    });
+  };
+  // Let the veil's fade-in get one paint in before the flip.
+  requestAnimationFrame(() => requestAnimationFrame(flip));
 }
 
 /**

@@ -686,7 +686,7 @@ export function Docs() {
           <a href="/" className="flex items-center gap-2 shrink-0" aria-label="ShareTexts, back to home">
             <ArrowLeft className="w-4 h-4 text-apple-ink-muted dark:text-white/60" />
             <ShareTextsLogo size={21} />
-            <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white">ShareTexts</span>
+            <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white translate-y-px">ShareTexts</span>
           </a>
           <div className="flex items-center gap-3 sm:gap-4 ml-auto">
             <a href="/about" className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60 hover:text-apple-ink dark:hover:text-white transition-colors">About</a>

@@ -1480,7 +1480,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 placeholder={(textareaRef.current?.clientWidth ?? 400) < 300 ? t('composer.placeholderShort') : t('composer.placeholder')}
                 aria-label={t('composer.aria')}
                 title={t('composer.title')}
-                className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[9px] pl-2 pr-0.5 text-apple-ink dark:text-white placeholder:text-[#a89a80] dark:placeholder:text-white/25 focus:outline-none text-[16px] leading-[26px]"
+                className="flex-1 min-h-[44px] max-h-[30vh] resize-none bg-transparent py-[9px] pl-2 pr-0.5 text-apple-ink dark:text-white placeholder:text-apple-ink-muted/70 dark:placeholder:text-white/35 focus:outline-none text-[16px] leading-[26px]"
               />
               <button
                 type="button"
