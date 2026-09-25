@@ -5,7 +5,7 @@ import { AttachmentPanel } from '../components/AttachmentPanel';
 import { TransferFlight } from '../components/TransferFlight';
 import {
   X, Plus, Copy, Check, Play, AlertCircle, ChevronDown, ArrowUp, ShieldCheck,
-  Smartphone, Monitor, Pencil, ArrowRightLeft, Info, RefreshCw
+  Smartphone, Monitor, Pencil, ArrowRightLeft, Info, RefreshCw, Link2
 } from 'lucide-react';
 import { FileTypeIcon } from '../components/FileTypeIcon';
 import { DraggableImage } from '../components/DraggableImage';
@@ -15,7 +15,7 @@ import { ConfirmSheet } from '../components/ConfirmSheet';
 import { StayConnectedToggle, StayBadge } from '../components/StayConnectedToggle';
 import { cn, formatBytes, sanitizeDeviceName } from '../lib/utils';
 import { Attachment } from '../types';
-import { MessageCard } from '../components/MessageCard';
+import { MessageCard, pureLinkUrl } from '../components/MessageCard';
 import { DeviceLinkIllustration, PacketTrain } from '../components/DeviceLinkIllustration';
 import { ShareTextsLogo } from '../components/ShareTextsLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -610,6 +610,16 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   };
   const inputBytes = useMemo(() => new TextEncoder().encode(inputText).length, [inputText]);
   const isLargeInput = inputBytes > 50000;
+  // Pre-send recognition: when the composer holds exactly one URL (trimmed),
+  // the user sees the link chip BEFORE sending — "this will arrive as a
+  // tappable link, not a text bubble" is answered while typing, in the same
+  // visual vocabulary the receiver will see. Reuses pureLinkUrl so the
+  // recognition rule (and sanitization) are identical on both ends.
+  const composerLinkUrl = useMemo(() => {
+    const t = inputText.trim();
+    if (!t || t.length > 2048 || /\s/.test(t)) return null;
+    return pureLinkUrl(t);
+  }, [inputText]);
   // Copy the selected messages verbatim, in chronological order. Uses the
   // same execCommand fallback as per-message copy.
   const copySelected = async () => {
@@ -1238,8 +1248,12 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0, filter: 'blur(4px)' }}
                   transition={{ type: "spring", bounce: 0, duration: 0.35 }}
-                  className="px-3 pt-3 origin-bottom overflow-hidden"
+                  className="px-3 pt-5 origin-bottom overflow-hidden"
                 >
+                  {/* pt-5 on the strip gives the corner-X room: the button
+                      hangs ~10px past the chip's top edge, and without this
+                      headroom the outer overflow-hidden clips it (screenshot
+                      audit: X buttons sliced in half on staged files). */}
                   <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
                     <AnimatePresence initial={false}>
                       {attachments.map((a) => (
@@ -1288,6 +1302,28 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 single-line pill is a tight 44px, not a padded 51px. The send
                 button hugs the pill's right edge (5px optical margin, same as
                 iMessage) instead of floating mid-pill. */}
+            {/* Pre-send link recognition: when the text is exactly one URL,
+                a compact chip above the input mirrors the receiver's LinkCard
+                (same host identity, same sanitize rule). It says "this will
+                arrive as a link" — the question a user typing a URL used to
+                carry unanswered until the other screen lit up. */}
+            <AnimatePresence>
+              {composerLinkUrl && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                  className="overflow-hidden"
+                >
+                  <div aria-hidden="true" className="flex items-center gap-2 mx-3 mt-2.5 mb-1 rounded-[12px] px-2.5 py-1.5 bg-apple-blue/[0.07] dark:bg-apple-blue/[0.12] border border-apple-blue/15">
+                    <Link2 className="w-3.5 h-3.5 text-apple-blue shrink-0" />
+                    <span className="text-[12px] font-semibold text-apple-blue truncate">{(() => { try { return new URL(composerLinkUrl).host; } catch { return composerLinkUrl; } })()}</span>
+                    <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/40 truncate flex-1 min-w-0" dir="ltr">{composerLinkUrl}</span>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
             <div className="flex items-center gap-1.5 pl-2.5 pr-[5px] relative">
               <textarea
                 ref={textareaRef}

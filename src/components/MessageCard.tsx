@@ -60,7 +60,7 @@ const timeOf = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-di
  *  words stays a normal text bubble. No global flag: .test() must stay
  *  stateless. www. hosts get an https:// prefix so they open, not 404. */
 const PURE_URL_RE = /^(https?:\/\/\S+|www\.\S+)$/i;
-function pureLinkUrl(text: string): string | null {
+export function pureLinkUrl(text: string): string | null {
   const raw = text.trim();
   if (!PURE_URL_RE.test(raw)) return null;
   const candidate = /^www\./i.test(raw) ? `https://${raw}` : raw;
