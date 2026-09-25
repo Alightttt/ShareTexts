@@ -16,6 +16,7 @@ import { StayConnectedToggle, StayBadge } from '../components/StayConnectedToggl
 import { cn, formatBytes, sanitizeDeviceName } from '../lib/utils';
 import { Attachment } from '../types';
 import { MessageCard } from '../components/MessageCard';
+import { DeviceLinkIllustration, PacketTrain } from '../components/DeviceLinkIllustration';
 import { ShareTextsLogo } from '../components/ShareTextsLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
@@ -1037,23 +1038,29 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           {session.messages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center min-h-[40vh]">
               {disconnected ? (
-                <>
-                  <p className="text-[16px] font-semibold text-apple-ink dark:text-white">{t('chat.peerOffline.title')}</p>
+                /* Peer offline: the SAME two-device composition as the
+                    connected state, but the link is severed — the partner
+                    tile dims and the line frays. The visual continuity is
+                    the message: "your other device was here; the thread
+                    is cut", not "you are somewhere else now". */
+                <div className="flex flex-col items-center">
+                  <DeviceLinkIllustration state="broken" className="opacity-90" />
+                  <p className="text-[16px] font-semibold text-apple-ink dark:text-white mt-4">{t('chat.peerOffline.title')}</p>
                   <p className="text-[13px] text-apple-ink-muted max-w-[260px] leading-relaxed mt-3">
                     {t('chat.peerOffline.body')}
                   </p>
-                </>
+                </div>
               ) : (
                 /* Connected empty room: the two devices, linked, breathing
                     quietly. No headline — the room is obvious; the copy
                     under the illustration says the one true thing. */
                 <div className="flex flex-col items-center">
-                  {/* Illustration + the riding packet share one relative
-                      wrapper so the dot stays exactly on the drawn link. */}
+                  {/* Packet train rides between the two devices — the shared
+                      primitive positions itself on the same grid as the SVG. */}
                   <div className="relative">
-                    <EmptyRoomIllustration connected />
-                    <div className="absolute inset-0 pointer-events-none">
-                      <EmptyRoomPacket />
+                    <DeviceLinkIllustration state="linked" />
+                    <div className="absolute top-0 left-0 pointer-events-none">
+                      <PacketTrain direction="right" width={208} />
                     </div>
                   </div>
                   <p className="text-[13px] text-apple-ink-muted max-w-[280px] leading-relaxed mt-5">
@@ -1386,102 +1393,6 @@ function RemoveAttachmentButton({ onClick }: { onClick: () => void }) {
     >
       <X className="w-4 h-4" />
     </button>
-  );
-}
-/**
- * Empty-room illustration: a desktop and a phone, side by side, joined by a
- * level link with a soft packet dot crossing it. Drawn on a strict grid so
- * both devices share one visual centerline (the old version had a sloped,
- * lopsided composition) — the PC on the left, phone on the right, link
- * meeting each device at its screen center. The traveling dot is motion/react
- * driven, so it flattens under prefers-reduced-motion like every other
- * animation in the app.
- */
-function EmptyRoomIllustration({ connected = true }: { connected?: boolean }) {
-  return (
-    <svg
-      width="208"
-      height="104"
-      viewBox="0 0 208 104"
-      fill="none"
-      className="select-none pointer-events-none text-apple-ink-muted dark:text-white"
-      aria-hidden="true"
-    >
-      {/* ══ Desktop computer (left) ══ — screen centered on y=44 */}
-      <rect x="14" y="12" width="66" height="44" rx="6" fill="currentColor" fillOpacity="0.05" stroke="currentColor" strokeOpacity="0.18" strokeWidth="1.5" />
-      <rect x="20" y="18" width="54" height="32" rx="3" fill="currentColor" fillOpacity="0.04" />
-      {/* Stand: neck + base, centered under the screen (x-center 47) */}
-      <rect x="43" y="56" width="8" height="10" rx="2" fill="currentColor" fillOpacity="0.16" />
-      <rect x="31" y="66" width="32" height="4" rx="2" fill="currentColor" fillOpacity="0.16" />
-
-      {/* ══ Phone (right) ══ — screen centered on y=44, mirroring the PC */}
-      <rect x="156" y="12" width="38" height="64" rx="9" fill="currentColor" fillOpacity="0.05" stroke="currentColor" strokeOpacity="0.18" strokeWidth="1.5" />
-      <rect x="162" y="20" width="26" height="48" rx="3" fill="currentColor" fillOpacity="0.04" />
-      {/* Notch line, centered */}
-      <rect x="170" y="15.5" width="10" height="2" rx="1" fill="currentColor" fillOpacity="0.18" />
-
-      {/* ══ Link between them ══ — one level line at y=44, meeting each
-          device at its edge with a small terminal dot on both ends */}
-      {connected && (
-        <>
-          <line x1="82" y1="44" x2="154" y2="44" stroke="currentColor" strokeOpacity="0.28" strokeWidth="1.5" strokeDasharray="1.5 4" strokeLinecap="round" />
-          <circle cx="82" cy="44" r="2.5" fill="#f06413" fillOpacity="0.85" />
-          <circle cx="154" cy="44" r="2.5" fill="#34c759" fillOpacity="0.9" />
-        </>
-      )}
-    </svg>
-  );
-}
-
-/** The traveling packet train that rides the empty-room link (separated from
- *  the static SVG so it can be motion-driven and thus reduced-motion aware).
- *  Three staggered comets with fading trails read as a living stream — one
- *  lone dot read as a glitch; a train reads as data flowing. Each comet is
- *  a compositor-only transform/opacity loop; no layout, no paint per frame. */
-function EmptyRoomPacket() {
-  const comets = [
-    { size: 7, delay: 0, lead: true },
-    { size: 5, delay: 0.22, lead: false },
-    { size: 4, delay: 0.44, lead: false },
-  ] as const;
-  return (
-    <>
-      {comets.map((c, i) => (
-        <motion.span
-          key={i}
-          aria-hidden="true"
-          className="absolute left-1/2 top-1/2 rounded-full bg-[#f06413] dark:bg-[#fb9243]"
-          style={{
-            width: c.size,
-            height: c.size,
-            marginLeft: -c.size / 2,
-            marginTop: -c.size / 2,
-            boxShadow: c.lead
-              ? '0 0 10px rgba(240,100,19,0.55), 0 0 22px rgba(240,100,19,0.2)'
-              : 'none',
-            opacity: c.lead ? 1 : 0.55 - i * 0.15,
-          }}
-          initial={{ x: -22, opacity: 0 }}
-          animate={{ x: 50, opacity: [0, 1, 1, 0] }}
-          transition={{
-            duration: 2.2,
-            times: [0, 0.18, 0.82, 1],
-            repeat: Infinity,
-            ease: 'easeInOut',
-            delay: c.delay,
-          }}
-        />
-      ))}
-      {/* Soft arrival glow where packets land on the phone side */}
-      <motion.span
-        aria-hidden="true"
-        className="absolute right-[47px] top-1/2 -mt-[7px] block w-[14px] h-[14px] rounded-full"
-        style={{ background: 'radial-gradient(circle, rgba(52,199,89,0.35), transparent 70%)' }}
-        initial={{ opacity: 0, scale: 0.6 }}
-        animate={{ opacity: [0, 0.9, 0], scale: [0.6, 1.15, 0.9] }}
-        transition={{ duration: 2.2, times: [0, 0.2, 0.5], repeat: Infinity, ease: 'easeOut', delay: 0.1 }}
-      />
-    </>
   );
 }
 /** Live rejoin code for the disconnect banner — same TOTP the connect screen

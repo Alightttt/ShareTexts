@@ -10,6 +10,7 @@ import { ConfirmSheet } from './ConfirmSheet';
 import { hapticTap } from '../lib/haptics';
 import { productEvent } from '../lib/telemetry';
 import { cn } from '../lib/utils';
+import { DeviceLinkIllustration } from './DeviceLinkIllustration';
 
 /* ONE ghost-pill recipe (usability audit #2): Code / QR / Link fallbacks and
    the failure card's QR escape all share this exact style — hover, active,
@@ -657,32 +658,43 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
             data-testid="nearby-failure-card"
             className="mt-2.5 w-full px-3.5 py-3 rounded-[14px] bg-status-danger/[0.06] dark:bg-status-danger/[0.08] border border-status-danger/25"
           >
-            <p className="text-[13px] font-semibold text-status-danger">{phase.text}</p>
-            {failedDevice && (
-              <>
-                <p className="mt-1 text-[13px] font-medium text-apple-ink-muted dark:text-white/50 leading-snug">
-                  {t('nearby.failBody')}
-                </p>
-                <div className="mt-2.5 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    data-testid="nearby-fail-retry"
-                    onClick={() => { hapticTap(); void handleInvite(failedDevice); }}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[13px] font-semibold active:scale-[0.97] transition-all min-h-[36px]"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" /> {t('nearby.failRetry')}
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="nearby-fail-qr"
-                    onClick={() => { hapticTap(); (window as Window & { __stOpenSendQr?: () => void }).__stOpenSendQr?.(); }}
-                    className={pillGhost}
-                  >
-                    <QrCode className="w-3.5 h-3.5" /> {t('nearby.failUseQr')}
-                  </button>
-                </div>
-              </>
-            )}
+            {/* The two-device composition in its error state: the link is
+                cut, ember-tinted, partner dimmed. It explains "the two of
+                you didn't connect" faster than any adjective — and the
+                small scale keeps it subordinate to the copy and actions. */}
+            <div className="flex items-center gap-3">
+              <div className="shrink-0 hidden sm:block -my-1" aria-hidden>
+                <DeviceLinkIllustration state="error" width={120} className="text-apple-ink-muted dark:text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-semibold text-status-danger">{phase.text}</p>
+                {failedDevice && (
+                  <>
+                    <p className="mt-1 text-[13px] font-medium text-apple-ink-muted dark:text-white/50 leading-snug">
+                      {t('nearby.failBody')}
+                    </p>
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        data-testid="nearby-fail-retry"
+                        onClick={() => { hapticTap(); void handleInvite(failedDevice); }}
+                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[13px] font-semibold active:scale-[0.97] transition-all min-h-[36px]"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" /> {t('nearby.failRetry')}
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="nearby-fail-qr"
+                        onClick={() => { hapticTap(); (window as Window & { __stOpenSendQr?: () => void }).__stOpenSendQr?.(); }}
+                        className={pillGhost}
+                      >
+                        <QrCode className="w-3.5 h-3.5" /> {t('nearby.failUseQr')}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
