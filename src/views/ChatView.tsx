@@ -968,15 +968,20 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             className="overflow-hidden bg-status-warning/10 border-b border-status-warning/20"
           >
             <div data-testid="disconnect-banner" className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-2 text-[14px] font-medium text-status-warning-ink dark:text-status-warning-ink-dark">
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-2 min-w-0">
                 <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse shrink-0" />
-                {t('banner.peerGone')}
+                {/* min-w-0 lets the sentence wrap on narrow screens instead
+                    of pushing the code chip out of the row. */}
+                <span className="min-w-0">{t('banner.peerGone')}</span>
               </span>
+              {/* The code is the room's lifeline while waiting: shrink the
+                  sentence first, never let the digits wrap — a code broken
+                  across two lines is unreadable at a glance. */}
               {session.secret && (
                 <span
                   data-testid="banner-rejoin-code"
                   title={t('details.rejoinNote')}
-                  className="hidden sm:flex items-center gap-1.5 font-mono tnum text-[13px] font-bold tracking-widest text-status-warning-ink dark:text-status-warning-ink-dark bg-status-warning/15 rounded-full px-2.5 py-1"
+                  className="hidden sm:flex shrink-0 items-center gap-1.5 font-mono tnum text-[13px] font-bold tracking-widest whitespace-nowrap text-status-warning-ink dark:text-status-warning-ink-dark bg-status-warning/15 rounded-full px-2.5 py-1"
                 >
                   <LiveRejoinCode secret={session.secret} createdAt={session.createdAt} />
                 </span>

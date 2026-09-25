@@ -951,15 +951,23 @@ export function SingleScreenApp() {
                       )}
                     </motion.span>
                     <span className={cn("text-[11px] font-medium mt-1", session.connectionType === 'disconnected' ? "text-status-warning" : "text-status-success")}>
-                      {session.connectionType === 'disconnected' ? t('pair.reconnecting') : t('common.connected')}
+                      {/* Passive wait, not an active retry: after the peer
+                          drops, the room holds open — "Waiting…" is the truth;
+                          "Reconnecting…" promised a handshake that isn't running. */}
+                      {session.connectionType === 'disconnected' ? t('status.waiting') : t('common.connected')}
                     </span>
                   </div>
                   <div className="flex flex-col items-center gap-1.5">
+                    {/* Peer tile follows the real link state: success while
+                        connected, dimmed ghost while they're gone — it must
+                        never glow green next to a "Waiting…" label. */}
                     <div className={cn(
-                      "w-14 h-14 rounded-[16px] flex items-center justify-center",
-                      "bg-status-success/8 dark:bg-status-success/10 border border-status-success/15 dark:border-status-success/15"
+                      "w-14 h-14 rounded-[16px] flex items-center justify-center transition-colors",
+                      session.connectionType === 'disconnected'
+                        ? "bg-black/[0.04] dark:bg-white/[0.05] border border-apple-divider/40 dark:border-white/[0.08]"
+                        : "bg-status-success/8 dark:bg-status-success/10 border border-status-success/15 dark:border-status-success/15"
                     )}>
-                      <PartnerDeviceIcon className="w-6 h-6 text-status-success" />
+                      <PartnerDeviceIcon className={cn("w-6 h-6 transition-colors", session.connectionType === 'disconnected' ? "text-apple-ink-muted/50 dark:text-white/25" : "text-status-success")} />
                     </div>
                     <span className="max-w-[120px] text-[11px] font-medium text-apple-ink-muted dark:text-white/40 truncate">
                       {session.partnerName || t('pair.paired')}
@@ -1014,10 +1022,15 @@ export function SingleScreenApp() {
 
               {/* Connection type + disconnect */}
               <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-apple-parchment dark:bg-white/[0.05] border border-apple-divider/50 dark:border-white/[0.08]">
-                  <Wifi className="w-3 h-3 text-status-success" />
+                {/* The truth pill: shows HOW we're connected (relay/direct/
+                    same network) — and when the peer is gone it says Offline
+                    in warning color. It must never read "Connected" while the
+                    room is waiting; that contradiction broke trust in the
+                    disconnect state. */}
+                <div className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors", session.connectionType === 'disconnected' ? "bg-status-warning/10 border-status-warning/25" : "bg-apple-parchment dark:bg-white/[0.05] border-apple-divider/50 dark:border-white/[0.08]")}>
+                  <Wifi className={cn("w-3 h-3", session.connectionType === 'disconnected' ? "text-status-warning" : "text-status-success")} />
                   <span className="text-[12px] font-medium text-apple-ink-muted dark:text-white/50">
-                    {session.connectionType === 'relay' ? t('conn.relay') : session.connectionType === 'local' ? t('conn.local') : session.connectionType === 'direct' ? t('conn.direct') : t('common.connected')}
+                    {session.connectionType === 'disconnected' ? t('chat.offline') : session.connectionType === 'relay' ? t('conn.relay') : session.connectionType === 'local' ? t('conn.local') : session.connectionType === 'direct' ? t('conn.direct') : t('common.connected')}
                   </span>
                 </div>
                 <button
@@ -1350,7 +1363,10 @@ export function SingleScreenApp() {
       <AnimatePresence>
         {showQROverlay && session.roomId && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/50 dark:bg-black/70 flex items-center justify-center p-6" onClick={() => setShowQROverlay(false)}>
-            <motion.div ref={qrDisplayTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[340px] bg-apple-canvas dark:bg-[#1a1a1e] rounded-[24px] p-6 shadow-2xl text-center relative border border-apple-divider/50 dark:border-white/[0.08]" role="dialog" aria-modal="true" aria-label={t('qr.display.title')}>
+            <motion.div ref={qrDisplayTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[340px] bg-apple-canvas dark:bg-[#1a1a1e] rounded-[24px] p-6 pt-14 shadow-2xl text-center relative border border-apple-divider/50 dark:border-white/[0.08]" role="dialog" aria-modal="true" aria-label={t('qr.display.title')}>
+              {/* pt-14 reserves the top strip for the absolutely-positioned
+                  close/Esc controls — instruction text can never run under
+                  them again. */}
               <button onClick={() => setShowQROverlay(false)} className="absolute top-3 right-3 min-w-[44px] min-h-[44px] rounded-full bg-apple-parchment dark:bg-white/5 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors" aria-label={t('common.close')}><X className="w-4 h-4" /></button>
               <kbd aria-hidden="true" className="hidden sm:inline absolute top-5 right-16 px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-white/10 bg-white/60 dark:bg-white/5 text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">Esc</kbd>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/60 mb-4 leading-relaxed">
