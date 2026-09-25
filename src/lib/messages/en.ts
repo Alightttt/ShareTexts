@@ -167,6 +167,7 @@ const en = {
   'chat.couldNotSend': "Couldn't send the file.",
   'chat.transferCancelled': 'Transfer cancelled',
   'chat.messageReceived': 'Message received',
+  'chat.messageFrom': 'Message from {name}',
   'chat.peerDisconnected': 'Other device disconnected',
   'chat.peerOffline.title': 'Other device is offline',
   'chat.peerOffline.body': 'It will reconnect when the other device comes back.',
@@ -207,6 +208,7 @@ const en = {
 
   // ── message cards / media ──────────────────────────────────────────
   'msg.received': 'Received',
+  'msg.fromDevice': 'From {name}',
   'msg.sent': 'Sent',
   'msg.delivered': 'Delivered',
   'msg.seen': 'Seen',

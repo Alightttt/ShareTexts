@@ -232,7 +232,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // channel actually opens (onOpen) or the relay fallback confirms a
       // working path, so the UI never shows a green badge on a dead link.
       diag('peer.peer_joined', true, (peerId || '').slice(0, 8));
-      connMachine.to('SIGNALING');
+      // Only descend the pairing ladder when we're actually below it. The
+      // seat keepalive reseat makes the server re-announce the join to a
+      // room whose pair is ALREADY CONNECTED — demanding SIGNALING then
+      // is an illegal CONNECTED → SIGNALING transition (and would drag the
+      // state machine backwards on every keepalive beat).
+      const cm = connMachine.current();
+      if (cm === 'PAIRING' || cm === 'DISCOVERING' || cm === 'IDLE') connMachine.to('SIGNALING');
       setSession(s => ({
         ...s,
         partnerConnecting: true,

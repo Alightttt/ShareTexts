@@ -489,7 +489,9 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                       <Terminal className="w-3 h-3" /> {t('msg.fromPush')}
                     </span>
                   ) : (
-                    <span className="font-semibold">{t('msg.received')}</span>
+                    /* Attribution beats a bare "Received": the message came
+                        from a DEVICE — the name makes the bridge concrete. */
+                    <span className="font-semibold">{session.partnerName ? t('msg.fromDevice', { name: session.partnerName }) : t('msg.received')}</span>
                   )}
                   {' • '}{timeOf(msg.timestamp)}
                 </span>

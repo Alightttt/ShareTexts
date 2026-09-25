@@ -298,7 +298,10 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     } else if (st === 'cancelled') {
       setAnnouncement(tr('chat.transferCancelled'));
     } else if (!lastMessage.attachment) {
-      setAnnouncement(tr('chat.messageReceived'));
+      // Named attribution in the SR announcement too — "Message from
+      // Windows PC" tells the listener which device spoke, not just that
+      // *something* arrived.
+      setAnnouncement(session.partnerName ? tr('chat.messageFrom', { name: session.partnerName }) : tr('chat.messageReceived'));
     }
   }, [session.messages]);
   // "Connected" toast — fire ONCE per room, the moment the channel first
