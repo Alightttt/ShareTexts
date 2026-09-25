@@ -9,6 +9,7 @@ import { connMachine, mapToConnState } from './connectionState';
 import { startNetStats, stopNetStats } from './netStats';
 import { nearbyPresence } from './nearby';
 import { productEvent } from './telemetry';
+import { recordConnection, recordPartnerSeen } from './pairing';
 // Round 03 decomposition: focused session modules (behavior moved verbatim).
 import { loadStoredSession, saveStoredSession, loadLastStayRoom, saveLastStayRoom, saveLastStayCredentials, sanitizeStoredMessages, type StoredSession } from './session/persistence';
 import { DEVICE_NAME_KEY, platformDefaultName, guessDeviceName, ensureDeviceNameSeeded } from './session/deviceIdentity';
@@ -363,6 +364,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // The one true "two devices connected" moment — the tracker listens
       // here so it counts real connections, not room creations.
       emitRoomConnected();
+      // This device's own lifetime stats: one entry per real channel open.
+      // The partner's name isn't known yet — the hello handshake lands a
+      // beat later and feeds recordPartnerSeen.
+      recordConnection();
       connMachine.to('CONNECTED');
       handleChannelOpen(pm);
       // Catch-up SEEN for messages from a previous visit that are already
@@ -382,6 +387,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
     pm.onHello = (name) => {
       setSession(s => ({ ...s, partnerName: name || null }));
+      // The real display name just landed — this is when the distinct-
+      // partner count can honestly grow.
+      recordPartnerSeen(name || null);
       // Same-platform default collision: two unrenamed devices on the same
       // platform are indistinguishable ("Guest iPhone" on both sides). Only
       // the JOINER auto-disambiguates — the creator's name is the anchor, so

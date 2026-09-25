@@ -118,3 +118,90 @@ export function lastSeenParts(ts: number): { unit: 'now' | 'min' | 'hour' | 'day
   const days = Math.max(1, Math.round(hours / 24));
   return { unit: 'day', n: days };
 }
+
+/* ------------------------------------------------------------------ */
+/*  Lifetime device stats — this device's own transfer history.        */
+/*                                                                     */
+/*  The server counts global rooms; this counts YOUR device's real     */
+/*  activity: connections made, distinct partners met, bytes moved.    */
+/*  localStorage is the right home: it's per-device by definition,     */
+/*  survives refreshes/restarts like the session credentials do, and   */
+/*  dies with site data like every other memory here — no account,     */
+/*  no tracking.                                                       */
+/* ------------------------------------------------------------------ */
+
+const STATS_KEY = 'sharetext.deviceStats.v1';
+
+export interface DeviceStats {
+  /** Two-device connections completed from this device (creator OR joiner). */
+  connections: number;
+  /** Distinct partner device names ever paired with. */
+  partners: number;
+  /** Total completed transfer bytes in both directions. */
+  bytes: number;
+  updatedAt: number;
+}
+
+function readStats(): DeviceStats {
+  try {
+    const raw = localStorage.getItem(STATS_KEY);
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p && typeof p === 'object' &&
+        typeof p.connections === 'number' && typeof p.partners === 'number' && typeof p.bytes === 'number') {
+        return { connections: p.connections, partners: p.partners, bytes: p.bytes, updatedAt: p.updatedAt ?? 0 };
+      }
+    }
+  } catch { /* private mode / corrupt — start clean */ }
+  return { connections: 0, partners: 0, bytes: 0, updatedAt: 0 };
+}
+
+function writeStats(s: DeviceStats): void {
+  try { localStorage.setItem(STATS_KEY, JSON.stringify(s)); } catch { /* private mode */ }
+  try { window.dispatchEvent(new CustomEvent('sharetext:stats')); } catch { /* non-DOM */ }
+}
+
+export function getDeviceStats(): DeviceStats {
+  return readStats();
+}
+
+/** Called once per room when the peer link first opens (channel open).
+ *  The partner's name is NOT known yet (the hello handshake arrives right
+ *  after) — use recordPartnerSeen for that. */
+export function recordConnection(): void {
+  const s = readStats();
+  s.connections += 1;
+  s.updatedAt = Date.now();
+  writeStats(s);
+}
+
+/** Called when the peer's hello (its real display name) arrives. Feeds the
+ *  distinct-partner count — capped memory, names only, same privacy
+ *  contract as the recents list. Safe to call repeatedly: duplicates are
+ *  the point (same device re-connecting must not grow the count). */
+export function recordPartnerSeen(partnerName: string | null | undefined): void {
+  if (!partnerName) return;
+  let names: string[] = [];
+  try {
+    const seenRaw = localStorage.getItem('sharetext.partnerNames.v1');
+    const parsed = seenRaw ? JSON.parse(seenRaw) : [];
+    if (Array.isArray(parsed)) names = parsed.filter((n): n is string => typeof n === 'string');
+  } catch { /* corrupt — rebuild */ }
+  if (!names.includes(partnerName)) {
+    names.push(partnerName);
+    try { localStorage.setItem('sharetext.partnerNames.v1', JSON.stringify(names.slice(-32))); } catch { /* private mode */ }
+  }
+  const s = readStats();
+  s.partners = names.length;
+  s.updatedAt = Date.now();
+  writeStats(s);
+}
+
+/** Called when a transfer completes (either direction) with its byte size. */
+export function recordTransferBytes(size: number): void {
+  if (!Number.isFinite(size) || size <= 0) return;
+  const s = readStats();
+  s.bytes += size;
+  s.updatedAt = Date.now();
+  writeStats(s);
+}

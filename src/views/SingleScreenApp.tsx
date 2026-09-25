@@ -16,6 +16,7 @@
  */
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useSession } from '../lib/SessionContext';
+import { getDeviceStats } from '../lib/pairing';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { ShareTextsLogo } from '../components/ShareTextsLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -1016,6 +1017,28 @@ export function SingleScreenApp() {
                     {stat(t('conn.stats.files'), String(fileCount))}
                     <span className="w-px bg-apple-divider/50 dark:bg-white/[0.07]" aria-hidden />
                     {stat(t('conn.stats.data'), bytes > 0 ? formatBytes(bytes) : '0')}
+                  </div>
+                );
+              })()}
+
+              {/* Lifetime strip — this device's own transfer history from
+                  localStorage. Real numbers only: connections counted at the
+                  actual channel open, bytes at actual transfer completion.
+                  Hidden entirely until the first real connection exists —
+                  zeros teach nothing and claim nothing. */}
+              {(() => {
+                const stats = getDeviceStats();
+                if (stats.connections === 0 && stats.bytes === 0) return null;
+                return (
+                  <div className="mb-4 px-1 flex items-center justify-between gap-3 text-[11.5px] font-medium text-apple-ink-muted dark:text-white/40">
+                    <span className="shrink-0">{t('lifetime.title')}</span>
+                    <span className="flex items-center gap-3 tnum min-w-0">
+                      <span className="whitespace-nowrap"><strong className="text-apple-ink dark:text-white/70 font-semibold">{stats.connections}</strong> {t('lifetime.connections')}</span>
+                      <span className="w-px h-3 bg-apple-divider/60 dark:bg-white/[0.08]" aria-hidden />
+                      <span className="whitespace-nowrap"><strong className="text-apple-ink dark:text-white/70 font-semibold">{stats.partners}</strong> {t('lifetime.partners')}</span>
+                      <span className="w-px h-3 bg-apple-divider/60 dark:bg-white/[0.08]" aria-hidden />
+                      <span className="whitespace-nowrap"><strong className="text-apple-ink dark:text-white/70 font-semibold">{formatBytes(stats.bytes)}</strong></span>
+                    </span>
                   </div>
                 );
               })()}

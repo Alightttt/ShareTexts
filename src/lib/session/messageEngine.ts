@@ -28,6 +28,7 @@ import { beginTransferRecord, finishTransferRecord } from '../transferMetrics';
 import { productEvent } from '../telemetry';
 import { saveSendable, getSendable, deleteSendable, saveTransferState, deleteTransferState } from '../transferStore';
 import { sanitizeFilename } from '../utils';
+import { recordTransferBytes } from '../pairing';
 import { normalizePastedText } from '../textFidelity';
 import { sha256Hex } from './fileIntegrity';
 
@@ -352,6 +353,9 @@ export function useMessageEngine(deps: MessageEngineDeps): MessageEngine {
       // Mark that this user has completed at least one transfer, so the
       // install prompt can appear after meaningful use.
       try { localStorage.setItem('sharetext.hasTransfer', '1'); } catch { /* ignore */ }
+      // Lifetime device stats: only REAL completed bytes count — the same
+      // truth bar as the rooms counter.
+      recordTransferBytes(blob.size);
       // Metrics: bytes on disk, duration done. Outcome upgrades to
       // 'checksum-mismatch' later if verification fails.
       finishTransferRecord(transferId, 'received', blob.size, 'ok', { name: srcMsg?.attachment?.name, kind: 'file' });
