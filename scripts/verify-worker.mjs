@@ -569,6 +569,12 @@ async function runRegistry() {
  * lifetime tracking existed), on every increment AND on every read — so a
  * redeploy/eviction that wipes DO storage can't drop the public number from
  * 113+ to 0 and make the landing page look frozen.
+ *
+ * SEMANTICS (Round 04B honesty): rooms.created is fired by Room.recomputeState
+ * when a room FIRST holds two live peers — a real two-device connection —
+ * never at room creation. These tests exercise the Metrics DO contract
+ * directly; the Room-side "counted once per room" behavior is covered by
+ * the recomputeState flag, verified in the room-flow test.
  */
 async function runMetrics() {
   const metrics = new Metrics(new FakeCtx(), {});

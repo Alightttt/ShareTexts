@@ -102,7 +102,7 @@ export function SingleScreenApp() {
   const isDesktopLayout = useIsDesktopLayout();
   // Live activity tracker — real aggregate numbers from the signaling
   // service: devices seated right now + rooms ever created.
-  const { roomsCreated, bumpRoomsCreated } = useLiveStats();
+  const { roomsCreated } = useLiveStats();
   const [panelMode, setPanelMode] = useState<PanelMode>('idle');
   const [isCreating, setIsCreating] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
@@ -335,9 +335,9 @@ export function SingleScreenApp() {
       if (thisAttempt === createAbortRef.current) {
         setRetryCount(0);
         (window as Window & { __stRoomReady?: boolean }).__stRoomReady = true;
-        // The tracker moves the instant THIS room exists — the next /stats
-        // poll confirms with the server's lifetime total.
-        bumpRoomsCreated();
+        // The tracker no longer bumps at room creation — it counts real
+        // two-device connections (the data channel opening), matching the
+        // honest server-side increment.
       }
     } catch (e: unknown) {
       if (thisAttempt !== createAbortRef.current) return;

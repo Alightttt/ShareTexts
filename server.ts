@@ -376,6 +376,27 @@ interface Room {
    *  explicitly closes it. Exempts the room from every TTL sweep — it only
    *  dies when a seated device emits close_room. */
   stayConnected?: boolean;
+  /** Set once the room has EVER held two live peers — the honest "rooms
+   *  made" increment fires exactly then (see countConnectedIfFirst), never
+   *  at room creation. Creator-alone rooms, refreshes, and abandoned
+   *  pairings must not inflate the public tracker. */
+  countedConnected?: boolean;
+}
+
+/** Fire the lifetime "rooms made" increment exactly when THIS room first
+ *  holds two LIVE seats — a real two-device connection. A seat held only by
+ *  disconnect grace (its socket is gone) doesn't count: the two devices must
+ *  actually be connected at the same moment. Idempotent per room via
+ *  countedConnected; reseat/recovery paths that re-add a peer to an
+ *  already-counted room never re-increment. */
+function countConnectedIfFirst(room: Room) {
+  if (room.countedConnected || room.activePeers.size < 2) return;
+  for (const pid of room.activePeers) {
+    if (!io.sockets.sockets.has(pid)) return; // grace-held seat, device really gone
+  }
+  room.countedConnected = true;
+  count('rooms.created');
+  log('rooms-made incremented', room.id.slice(0, 8), 'two live peers seated');
 }
 
 const rooms = new Map<string, Room>();
@@ -631,7 +652,10 @@ io.on('connection', (socket) => {
 
     socket.join(roomId);
     log('room created', roomId.slice(0, 8), 'by', socket.id.slice(0, 8));
-    count('rooms.created');
+    // NOTE: rooms.created is NOT fired here. The tracker counts real
+    // two-device connections — countConnectedIfFirst fires it when a second
+    // live seat lands.
+    countConnectedIfFirst(rooms.get(roomId)!);
     // codeAnchor anchors the pairing-code window (90s from room creation,
     // re-anchored on refresh_code when the creator lands on the connect screen).
     cb({ success: true, roomId, secret, createdAt: rooms.get(roomId)!.codeAnchor, stayConnected: false });
@@ -683,6 +707,7 @@ io.on('connection', (socket) => {
       matchedRoom.lastActive = Date.now();
       matchedRoom.activePeers.add(socket.id);
       socket.join(matchedRoom.id);
+      countConnectedIfFirst(matchedRoom);
 
       log('peer joined room', matchedRoom.id.slice(0, 8));
       socket.to(matchedRoom.id).emit('peer_joined', { peerId: socket.id });
@@ -719,6 +744,7 @@ io.on('connection', (socket) => {
     room.lastActive = Date.now();
     room.activePeers.add(socket.id);
     socket.join(roomId);
+    countConnectedIfFirst(room);
 
     socket.to(roomId).emit('peer_joined', { peerId: socket.id });
     count('joins.succeeded');
@@ -793,6 +819,7 @@ io.on('connection', (socket) => {
     }
     room.lastActive = Date.now();
     socket.join(roomId);
+    countConnectedIfFirst(room);
 
     // Tell the other (live) peer to re-establish the connection with us.
     socket.to(roomId).emit('peer_joined', { peerId: socket.id });
@@ -1057,6 +1084,7 @@ io.on('connection', (socket) => {
         if (room) {
           room.activePeers.add(socket.id);
           room.lastActive = Date.now();
+          countConnectedIfFirst(room);
           socket.to(roomId).emit('peer_recovered', { peerId: socket.id });
         }
       }

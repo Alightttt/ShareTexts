@@ -75,6 +75,10 @@ interface RoomState {
   grace?: Record<string, number>;
   codeFails: number;
   codeFailReset: number;
+  /** Set once the room has EVER held two live peers — the honest "rooms
+   *  made" increment fired exactly then (see recomputeState). Persisted so
+   *  hibernation/redeploy can never re-increment the same pairing. */
+  countedConnected?: boolean;
   /** Stay Connected (server.ts parity): when either device opts in, the idle
    *  TTL no longer expires the room and the echo below keeps both badges
    *  honest. The promise is the USER's, so it survives their disconnect —
@@ -364,13 +368,25 @@ export class Room extends DurableObject<Env> {
     await this.ctx.storage.put('room', r);
   }
 
-  /** Derive the lifecycle state from live peer count (2/1/0). */
+  /** Derive the lifecycle state from live peer count (2/1/0). ALSO owns the
+   *  lifetime "rooms made" increment: the counter fires exactly when a room
+   *  FIRST holds two live peers — a real two-device connection, not a room
+   *  that was merely created (creator alone, refreshes, and failed pairings
+   *  must never inflate the public tracker). The once-per-room flag is
+   *  persisted with the room, so a hibernation wake or storage reload can
+   *  never double-count the same pairing. */
   private async recomputeState() {
     const r = this.room;
     if (!r) return;
     const live = await this.livePeers();
+    const wasConnected = r.state === 'CONNECTED';
     r.state = live.length >= 2 ? 'CONNECTED' : live.length === 1 ? 'WAITING' : 'DISCONNECTED';
     await this.ctx.storage.put('room', r);
+    if (r.state === 'CONNECTED' && !wasConnected && !r.countedConnected) {
+      r.countedConnected = true;
+      await this.ctx.storage.put('room', r);
+      await count(this.env, 'rooms.created');
+    }
   }
 
   /**
@@ -643,7 +659,9 @@ export class Room extends DurableObject<Env> {
     await this.ctx.storage.setAlarm(this.room.expiresAt);
     await this.registerInRegistry(this.room);
     log('room created', roomId.slice(0, 8), 'WAITING');
-    await count(this.env, 'rooms.created');
+    // NOTE: rooms.created is NOT fired here. The tracker counts real
+    // two-device connections — recomputeState fires it when the room first
+    // holds two live peers.
     await reportPresence(this.env, roomId, (await this.livePeers()).length);
     // createdAt anchors the pairing-code window (90s from room creation).
     this.ackOk(cid, id, { roomId, secret, createdAt: now });

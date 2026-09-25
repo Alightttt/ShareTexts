@@ -2,6 +2,30 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { signalingHttpBase, endpointSelectionSettled } from './socket';
 
 /**
+ * Room-connected hook — a module-level registry so ANY component can react
+ * to the moment a real two-device connection opens (the WebRTC data channel
+ * opening is the one true "two devices connected" event). Used by
+ * useLiveStats to fire the optimistic tracker bump from the connection, not
+ * from room creation — the tracker counts connected pairs, not rooms.
+ */
+type ConnectedListener = () => void;
+const connectedListeners = new Set<ConnectedListener>();
+export function emitRoomConnected() {
+  for (const l of connectedListeners) l();
+}
+export function onRoomConnected(listener: ConnectedListener): () => void {
+  connectedListeners.add(listener);
+  return () => { connectedListeners.delete(listener); };
+}
+
+/** Reset the once-per-connection bump latch — call when the session is
+ *  abandoned/left so a NEW pairing on this page bumps the tracker again. */
+export function resetRoomsBumpLatch() {
+  bumpLatchReset?.();
+}
+let bumpLatchReset: (() => void) | null = null;
+
+/**
  * Live landing-page stats from the ACTIVE signaling backend's aggregate
  * /stats endpoint. Polls every 10s; a hidden failure keeps the last known
  * values — a dead network must never show wrong numbers.
@@ -13,14 +37,12 @@ import { signalingHttpBase, endpointSelectionSettled } from './socket';
  * The tracker on the landing page renders only when `devices` is non-null
  * (i.e. the service has answered at least once) so it never shows a fake 0.
  *
- * bumpRoomsCreated(): the optimistic local increment. It fires the moment a
- * room is created on THIS device — before the next poll would see it — so
- * the counter visibly moves with the user's own action. The next /stats
- * response re-syncs to the server's lifetime total (higher or equal: every
- * other device's rooms arrive too). A fresh page load starts optimistic at 0
- * and is overwritten by the first successful fetch.
+ * The optimistic increment fires from a REAL two-device connection: the
+ * hook subscribes to onRoomConnected (fired by SessionContext when the
+ * data channel opens) — once per connected session, reset when the session
+ * is abandoned. Server truth wins on the next /stats poll.
  */
-export function useLiveStats(pollMs = 10_000): { devices: number | null; roomsCreated: number | null; bumpRoomsCreated: () => void } {
+export function useLiveStats(pollMs = 10_000): { devices: number | null; roomsCreated: number | null } {
   const [devices, setDevices] = useState<number | null>(null);
   const [roomsCreated, setRoomsCreated] = useState<number | null>(null);
   // Server-truth and the local optimistic bump travel separately: display =
@@ -68,12 +90,26 @@ export function useLiveStats(pollMs = 10_000): { devices: number | null; roomsCr
     return () => { cancelled = true; clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
   }, [pollMs, load]);
 
-  const bumpRoomsCreated = useCallback(() => {
+  // The optimistic bump now fires on a REAL two-device connection (the data
+  // channel opening), not on room creation — matching the server-side honest
+  // increment. One bump per connected session: the latch resets when the
+  // session is abandoned (resetRoomsBumpLatch, called by SessionContext), so
+  // a fresh pairing later on this page can bump again. Server truth still
+  // wins on the next poll either way.
+  const bumpedForThisConnectionRef = useRef(false);
+  // Register the latch-resetter so SessionContext can clear it on abandon.
+  useEffect(() => {
+    bumpLatchReset = () => { bumpedForThisConnectionRef.current = false; };
+    return () => { bumpLatchReset = null; };
+  }, []);
+  useEffect(() => onRoomConnected(() => {
+    if (bumpedForThisConnectionRef.current) return;
+    bumpedForThisConnectionRef.current = true;
     setLocalBump(b => b + 1);
     // Nudge the server poll right away too — if it answers fast, the very
     // next render already carries the authoritative total.
     void load();
-  }, [load]);
+  }), [load]);
 
   // Display = the best truth we have. The server's lifetime total wins as
   // soon as it's known AND at least the historical floor — it already counts
@@ -88,5 +124,5 @@ export function useLiveStats(pollMs = 10_000): { devices: number | null; roomsCr
       ? Math.max(roomsCreated, FLOOR + localBump)
       : Math.max(FLOOR + localBump, roomsCreated + localBump);
 
-  return { devices, roomsCreated: displayRooms, bumpRoomsCreated };
+  return { devices, roomsCreated: displayRooms };
 }

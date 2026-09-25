@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { SessionState, ChatMessage, ConnectionType } from '../types';
 import { getSocket, devLog, resolveShortCode, refreshCode as refreshCodeRPC } from './socket';
+import { emitRoomConnected, resetRoomsBumpLatch } from './useLiveStats';
 import { PeerManager, clearAllTransferState, getPartialInfo } from './webrtc';
 import { humanizeError, ConnectError, describeConnectFailure } from './errors';
 import { diag, roomCreateDiagStart, roomCreateDiagEnd } from './diag';
@@ -359,6 +360,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // timer so it can never fire a false "disconnected" after recovery.
       if (disconnectCalmTimerRef.current) { clearTimeout(disconnectCalmTimerRef.current); disconnectCalmTimerRef.current = null; }
       setSession(s => ({ ...s, partnerConnected: true, partnerConnecting: false }));
+      // The one true "two devices connected" moment — the tracker listens
+      // here so it counts real connections, not room creations.
+      emitRoomConnected();
       connMachine.to('CONNECTED');
       handleChannelOpen(pm);
       // Catch-up SEEN for messages from a previous visit that are already
@@ -969,6 +973,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // Set abandoned BEFORE close_room: the server echoes room_closed back
     // to this socket; suppress it so the user lands on the landing page.
     abandonedRef.current = true;
+    resetRoomsBumpLatch(); // a fresh pairing may count again on this page
     if (session.roomId) {
       getSocket().emit('close_room', { roomId: session.roomId });
     }
@@ -978,6 +983,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const resetSession = (reason?: string) => {
     // 1. Mark abandoned (must happen before room_closed echo can fire)
     if (reason) abandonedRef.current = false;
+    resetRoomsBumpLatch(); // room gone — a new pairing may bump again
     // 2. Destroy WebRTC connection
     if (peerManagerRef.current) {
       try { peerManagerRef.current.destroy(); } catch { /* noop — idempotent */ }
