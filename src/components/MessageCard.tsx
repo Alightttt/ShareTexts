@@ -710,6 +710,12 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                     </span>
                   )}
                   <span>{transferStatusText(a, isMe, t)}</span>
+                  {/* The number the eye hunts for while waiting: real byte
+                      progress, localized percent, mobile-inclusive (the
+                      LiveSpeed row hides it on phones). */}
+                  {(a.status === 'sending' || a.status === 'receiving') && typeof a.progress === 'number' && a.progress > 0 && (
+                    <span className="tnum">{t('xfer.pct', { n: Math.round(a.progress * 100) })}</span>
+                  )}
                 </span>
               )}
             </div>

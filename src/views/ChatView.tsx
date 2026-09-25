@@ -5,7 +5,8 @@ import { AttachmentPanel } from '../components/AttachmentPanel';
 import { TransferFlight } from '../components/TransferFlight';
 import {
   X, Plus, Copy, Check, Play, AlertCircle, ChevronDown, ArrowUp, ShieldCheck,
-  Smartphone, Monitor, Pencil, ArrowRightLeft, Info, RefreshCw, Link2
+  Smartphone, Monitor, Pencil, ArrowRightLeft, Info, RefreshCw, Link2,
+  FileText, ClipboardPaste, Download
 } from 'lucide-react';
 import { FileTypeIcon } from '../components/FileTypeIcon';
 import { DraggableImage } from '../components/DraggableImage';
@@ -130,6 +131,9 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   const [announcement, setAnnouncement] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const dragDepth = useRef(0);
+  // Composer teaching: once the user has interacted with the composer in any
+  // way (typed, pasted, dropped, attached), the hint row never returns.
+  const [composerTouched, setComposerTouched] = useState(false);
   // "Other device connected" toast — the alert both sides get when the
   // room opens, so the creator sees the joiner arrive even when the
   // handshake was too fast to catch on the pairing screen.
@@ -388,6 +392,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   const addFiles = (files: FileList | File[], type: 'image' | 'file' | 'video' | 'audio') => {
     const list = Array.from(files);
     if (list.length === 0) return;
+    setComposerTouched(true);
     const roomLeft = MAX_ATTACHMENTS - attachments.length;
     if (roomLeft <= 0) {
       setErrorMsg(t('attach.max', { max: MAX_ATTACHMENTS }));
@@ -582,10 +587,18 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     });
   };
   useEffect(() => () => { if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current); }, []);
+  // Double-submit guard: the send handler clears state synchronously, but
+  // Enter keydown + button click can land in the same tick before the
+  // textarea empties — a guard ref makes the second call a no-op. Content
+  // is preserved by the guard too: a rejected send never wipes the draft.
+  const sendingRef = useRef(false);
   const handleSend = (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (sendingRef.current) return;
     if (!inputText.trim() && attachments.length === 0) return;
     if (disconnected) return;
+    sendingRef.current = true;
+    try {
     if (attachments.length > 0) {
       // Each staged file goes as its own transfer (its own bubble + progress
       // + resume), so 20 files become 20 reliable transfers — not one giant
@@ -607,6 +620,12 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     // killing the type → click → type flow.
     const isTouch = window.matchMedia('(hover: none), (pointer: coarse)').matches;
     if (isTouch) textareaRef.current?.blur();
+    } finally {
+      // The messages are queued (real transfer state lives in the bubbles);
+      // the composer itself is free — the guard only blocks same-tick
+      // double-fires, not legitimate consecutive sends.
+      sendingRef.current = false;
+    }
   };
   const inputBytes = useMemo(() => new TextEncoder().encode(inputText).length, [inputText]);
   const isLargeInput = inputBytes > 50000;
@@ -795,13 +814,32 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             </span>
           </span>
           <ArrowRightLeft className="hidden sm:block w-3.5 h-3.5 shrink-0 text-apple-ink-muted/50 dark:text-white/30" />
-          <span className="shrink-0 flex items-center justify-center w-8 h-8 rounded-[10px] bg-status-success/10 border border-status-success/20 text-status-success">
-            <PartnerDeviceIcon className="w-4 h-4" />
+          {/* The partner tile breathes while the link is live — one slow
+              alpha ring, the same "alive" grammar as the tracker dot. It
+              halts with the link (dimmed, no ring when disconnected). */}
+          <span className={cn(
+            "relative shrink-0 flex items-center justify-center w-8 h-8 rounded-[10px] transition-colors",
+            disconnected
+              ? "bg-black/[0.05] dark:bg-white/[0.06] border border-apple-divider/40 dark:border-white/[0.08] text-apple-ink-muted/50 dark:text-white/30"
+              : "bg-status-success/10 border border-status-success/20 text-status-success"
+          )}>
+            {!disconnected && <span aria-hidden className="absolute inset-0 rounded-[10px] bg-status-success/20 st-halo-ring" />}
+            <PartnerDeviceIcon className="relative w-4 h-4" />
           </span>
           <span className="flex flex-col items-start min-w-0 leading-tight">
-            <span className="text-[12px] font-semibold text-apple-ink dark:text-white truncate max-w-[38vw] sm:max-w-[160px]">
+            {/* Name arrival: when the hello lands (partnerName appears), the
+                name slides up into place — the device "introduces itself"
+                instead of text silently mutating. key forces the spring on
+                the transition from placeholder to real name. */}
+            <motion.span
+              key={session.partnerName || 'paired'}
+              initial={session.partnerName ? { opacity: 0, y: 4 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className="text-[12px] font-semibold text-apple-ink dark:text-white truncate max-w-[38vw] sm:max-w-[160px]"
+            >
               {session.partnerName || t('chat.pairedDevice')}
-            </span>
+            </motion.span>
             <span className="flex items-center gap-1 text-[10.5px] font-medium text-apple-ink-muted dark:text-white/45">
               {disconnected ? (
                 <>
@@ -1239,6 +1277,33 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 textarea), and FLIP measurement per keystroke was real jank on
                 phones. Attachment previews keep their own small layout anims. */}
             <motion.div className="relative flex-1 min-w-0 rounded-[26px] bg-white dark:bg-[#232327] overflow-visible shadow-[0_1px_2px_rgba(0,0,0,0.05),0_10px_28px_-14px_rgba(0,0,0,0.16)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-14px_rgba(0,0,0,0.55)] border border-black/[0.04] dark:border-white/[0.06] focus-within:ring-2 focus-within:ring-ember/25 transition-shadow">
+            {/* Composer teaching row — visible only while the composer is
+                empty AND untouched, it names the four real input paths in
+                product vocabulary (Type · Paste · Drop · Pick a file) so the
+                empty composer teaches instead of waiting. It dissolves on
+                first interaction and never returns: by then the user knows. */}
+            <AnimatePresence>
+              {inputText.length === 0 && attachments.length === 0 && !composerTouched && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.25 }}
+                  aria-hidden="true"
+                  className="absolute left-3 right-12 -top-[26px] flex items-center gap-3 pointer-events-none select-none"
+                >
+                  {([
+                    [FileText, 'composer.teach.type'],
+                    [ClipboardPaste, 'composer.teach.paste'],
+                    [Download, 'composer.teach.drop'],
+                  ] as const).map(([Icon, key]) => (
+                    <span key={key} className="flex items-center gap-1 text-[11px] font-medium text-apple-ink-muted/60 dark:text-white/30 whitespace-nowrap">
+                      <Icon className="w-3 h-3" /> {t(key)}
+                    </span>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
             {/* Multi-attachment preview strip — up to 20 files, each with a
                 circular remove button that's always visible and tappable. */}
             <AnimatePresence>
@@ -1330,8 +1395,8 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 data-testid="composer"
                 value={inputText}
                 rows={1}
-                onChange={(e) => setInputText(e.target.value)}
-                onPaste={handlePaste}
+                onChange={(e) => { setComposerTouched(true); setInputText(e.target.value); }}
+                onPaste={(e) => { setComposerTouched(true); handlePaste(e); }}
                 onKeyDown={(e) => {
                   // Never send while an IME composition is active (Hindi,
                   // Chinese, Japanese, Korean…): Enter there commits the
