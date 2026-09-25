@@ -343,6 +343,12 @@ const zh: Dict = {
   'nearby.inviteAgain': '重新连接',
   'nearby.offline': '{when}连接过 — 现在不在附近',
   'nearby.forget': '忘记',
+  'chat.empty.dest': "这里放入的一切都会立即送达 {name}，保持原始画质。",
+  'chat.empty.kinds': "文本 · 链接 · 照片 · 文件",
+  'xfer.arrivedFrom': "来自 {name}",
+  'xfer.receivedInFrom': "已在 {time} 内从 {name} 接收 {size}",
+  'create.joiningNow': "另一台设备正在加入…",
+  'xfer.multi': "{n} 个传输进行中",
 
 };
 

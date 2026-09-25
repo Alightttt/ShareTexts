@@ -343,6 +343,12 @@ const ja: Dict = {
   'nearby.inviteAgain': '再接続',
   'nearby.offline': '{when}に接続 — 現在付近にいません',
   'nearby.forget': '削除',
+  'chat.empty.dest': "ここに置いたものはすべて、元の品質のまま {name} にすぐ届きます。",
+  'chat.empty.kinds': "テキスト・リンク・写真・ファイル",
+  'xfer.arrivedFrom': "{name} から",
+  'xfer.receivedInFrom': "{name} から {size} を {time} で受信",
+  'create.joiningNow': "もう一方のデバイスが接続しています…",
+  'xfer.multi': "転送が {n} 件進行中",
 
 };
 

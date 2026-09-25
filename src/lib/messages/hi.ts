@@ -343,6 +343,12 @@ const hi: Dict = {
   'nearby.inviteAgain': 'फिर से कनेक्ट करें',
   'nearby.offline': '{when} देखा गया — अभी आस-पास नहीं',
   'nearby.forget': 'भूलें',
+  'chat.empty.dest': "यहाँ रखी हर चीज़ {name} पर तुरंत पहुँचती है — असली क्वालिटी में।",
+  'chat.empty.kinds': "टेक्स्ट · लिंक · फ़ोटो · फ़ाइलें",
+  'xfer.arrivedFrom': "{name} से",
+  'xfer.receivedInFrom': "{name} से {size} {time} में प्राप्त हुआ",
+  'create.joiningNow': "दूसरा डिवाइस जुड़ रहा है…",
+  'xfer.multi': "{n} ट्रांसफ़र चल रहे हैं",
 
 };
 

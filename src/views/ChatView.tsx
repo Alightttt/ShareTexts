@@ -744,6 +744,24 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     return null;
   }, [session.messages]);
 
+  // Glanceable transfer state: the newest genuinely-in-motion transfer,
+  // plus the honest count of everything still moving. "Is it actually
+  // sending?" is answered from real attachment status — never a timer.
+  const { stripTransfer, activeCount } = useMemo(() => {
+    let latest: { name: string; progress?: number; isMe: boolean } | null = null;
+    let count = 0;
+    for (let i = session.messages.length - 1; i >= 0; i--) {
+      const a = session.messages[i].attachment;
+      if (!a) continue;
+      const st = a.status;
+      if (st === 'sending' || st === 'receiving' || st === 'resuming') {
+        count++;
+        if (!latest) latest = { name: a.name || 'file', progress: a.progress, isMe: session.messages[i].sender === 'me' };
+      }
+    }
+    return { stripTransfer: latest, activeCount: count };
+  }, [session.messages]);
+
   return (
     <div
       data-app-state="connected"
@@ -1075,6 +1093,38 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           )}
         </AnimatePresence>
       </div>
+      {/* Active transfer strip — pinned between header and messages so
+          "is it actually sending?" never scrolls away. One line, newest
+          real transfer: what → where · live percent (and a count chip when
+          several move at once). Stable single-line height; vanishes
+          entirely when the room is quiet. */}
+      <AnimatePresence initial={false}>
+        {stripTransfer && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden shrink-0"
+          >
+            <div data-testid="active-transfer-strip" className="mx-3 sm:mx-6 mt-2 px-3.5 py-2 rounded-[12px] bg-apple-parchment/80 dark:bg-white/[0.05] border border-apple-divider/50 dark:border-white/[0.07] flex items-center gap-2.5 min-w-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-apple-blue animate-pulse shrink-0" aria-hidden />
+              <span className="text-[12.5px] font-semibold text-apple-ink dark:text-white truncate min-w-0">{stripTransfer.name}</span>
+              <span className="text-[12px] font-medium text-apple-ink-muted dark:text-white/50 truncate min-w-0 flex-1">
+                {t(stripTransfer.isMe ? 'xfer.to' : 'xfer.from', { name: stripTransfer.isMe ? (session.partnerName || t('chat.pairedDevice')) : session.deviceName })}
+                {typeof stripTransfer.progress === 'number' && stripTransfer.progress > 0 && (
+                  <span className="tnum"> · {t('xfer.pct', { n: Math.round(stripTransfer.progress * 100) })}</span>
+                )}
+              </span>
+              {activeCount > 1 && (
+                <span data-testid="transfer-count" className="shrink-0 px-2 py-0.5 rounded-full bg-apple-blue/10 text-apple-blue text-[11px] font-semibold tnum whitespace-nowrap">
+                  {t('xfer.multi', { n: activeCount })}
+                </span>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Messages */}
       <div
         ref={scrollRef}
@@ -1102,9 +1152,10 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                   </p>
                 </div>
               ) : (
-                /* Connected empty room: the two devices, linked, breathing
-                    quietly. No headline — the room is obvious; the copy
-                    under the illustration says the one true thing. */
+                /* Connected empty room: the two linked devices, the
+                    destination named by its real name, and the four kinds
+                    of things that travel. Real product facts — the only
+                    illustration is the actual device pair. */
                 <div className="flex flex-col items-center">
                   {/* Packet train rides between the two devices — the shared
                       primitive positions itself on the same grid as the SVG. */}
@@ -1114,8 +1165,18 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                       <PacketTrain direction="right" width={208} />
                     </div>
                   </div>
-                  <p className="text-[13px] text-apple-ink-muted max-w-[280px] leading-relaxed mt-5">
+                  {session.partnerName && (
+                    <p className="text-[14px] font-semibold text-apple-ink dark:text-white mt-5 text-center max-w-[300px] leading-relaxed">
+                      {t('chat.empty.dest', { name: session.partnerName })}
+                    </p>
+                  )}
+                  <p className="text-[13px] text-apple-ink-muted max-w-[280px] leading-relaxed mt-2 text-center">
                     {t('chat.empty.body')}
+                  </p>
+                  {/* The four real object kinds — quiet caps, a promise the
+                      composer is about to keep. */}
+                  <p className="mt-4 text-[10.5px] font-semibold tracking-[0.14em] text-apple-ink-muted/70 dark:text-white/35">
+                    {t('chat.empty.kinds')}
                   </p>
                 </div>
               )}

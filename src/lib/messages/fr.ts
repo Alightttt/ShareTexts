@@ -344,6 +344,12 @@ const fr: Dict = {
   'nearby.inviteAgain': 'Se reconnecter',
   'nearby.offline': 'Vu {when} — pas à proximité actuellement',
   'nearby.forget': 'Oublier',
+  'chat.empty.dest': "Tout ce que vous déposez ici arrive sur {name} — instantanément, en qualité d’origine.",
+  'chat.empty.kinds': "TEXTE · LIENS · PHOTOS · FICHIERS",
+  'xfer.arrivedFrom': "De {name}",
+  'xfer.receivedInFrom': "Reçu {size} de {name} en {time}",
+  'create.joiningNow': "L’autre appareil arrive…",
+  'xfer.multi': "{n} transferts en cours",
 
 };
 

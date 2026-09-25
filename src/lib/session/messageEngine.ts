@@ -631,7 +631,7 @@ export function useMessageEngine(deps: MessageEngineDeps): MessageEngine {
       // queue, and onLocalQueueStart flips the bubble the moment a slot
       // frees. Only files that own a slot right now move to 'sending'.
       if (msg.attachment?.status !== 'waiting') {
-        updateMessageAttachment(msg.id, { status: 'sending' });
+        updateMessageAttachment(msg.id, { status: 'sending', startedAt: Date.now() });
       }
 
       // The peer's bubble must mirror ours: a queued file arrives as
@@ -649,7 +649,7 @@ export function useMessageEngine(deps: MessageEngineDeps): MessageEngine {
 
       try {
         await pm.sendFile(file, attachment.id);
-        updateMessageAttachment(msg.id, { status: 'complete', progress: 1 });
+        updateMessageAttachment(msg.id, { status: 'complete', progress: 1, completedAt: Date.now() });
         // Transfer done — the durable copies are no longer needed.
         void deleteSendable(attachment.id);
         void deleteTransferState(attachment.id);

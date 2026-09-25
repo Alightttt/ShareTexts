@@ -142,6 +142,14 @@ export function SingleScreenApp() {
   // The QR overlay closes itself once this room links — one dismissal per
   // room id, so a transient reconnect blip never re-opens it.
   const qrDismissedForRoomRef = useRef<string | null>(null);
+  // The completed-handshake beat: when the channel first opens for the
+  // CREATOR, the finished two-device scene (searching → connecting →
+  // linked) holds for a moment BEFORE the room takes over — the payoff of
+  // the pairing story is actually seen, not swapped away mid-breath. The
+  // joiner already watched the handshake complete on their connecting
+  // screen, so only the creator gets the beat.
+  const [celebrateConnected, setCelebrateConnected] = useState(false);
+  const celebratedRoomRef = useRef<string | null>(null);
   // Perceived speed: prewarm the lazily-loaded surfaces while the landing
   // page is idle, so tapping Receive (scanner), Show QR (renderer), or
   // completing a pairing (room) never waits on a network round-trip for
@@ -270,6 +278,18 @@ export function SingleScreenApp() {
       setShowQROverlay(false);
     }
   }, [session.partnerConnected, session.roomId]);
+  // One celebration per room, at the true channel-open moment. Once it has
+  // played, reconnects and drops never replay it — the room's own banner
+  // owns those stories.
+  useEffect(() => {
+    if (!session.partnerConnected || !session.roomId) return;
+    if (celebratedRoomRef.current === session.roomId) return;
+    celebratedRoomRef.current = session.roomId;
+    if (!session.isCreator) return;
+    setCelebrateConnected(true);
+    const timer = setTimeout(() => setCelebrateConnected(false), 1600);
+    return () => clearTimeout(timer);
+  }, [session.partnerConnected, session.roomId, session.isCreator]);
 
   // Keep panelMode honest when session flags move without a panel action:
   //  · creator: peer starts joining → handshake replaces the code screen
@@ -586,6 +606,16 @@ export function SingleScreenApp() {
               <p className="order-2 mt-4 text-[16.5px] sm:text-[18px] lg:text-[20px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[40ch] text-center sm:text-left whitespace-pre-line">
                 {t('home.subtitle')}
               </p>
+              {/* DISCOVERY IS THE PRIMARY PATH: nearby devices sit directly
+                  under the promise — a real device row answers "what do I
+                  do?" more concretely than any button. Code/QR/link (the
+                  Send/Receive buttons) remain right below as the secondary,
+                  always-available way. */}
+              <div className="order-3 mt-5 w-full flex flex-col items-center lg:items-start">
+                <div className="w-full max-w-md lg:max-w-none">
+                  <NearbyDevices onStatus={setNearbyStatus} />
+                </div>
+              </div>
               {/* Live activity tracker — bare (NO pill): a breathing dot, the
                   bold lifetime count, and the label. Always visible: the
                   count floors at 100 (rooms made before lifetime tracking
@@ -597,7 +627,7 @@ export function SingleScreenApp() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
-                className="order-2 mt-4 flex items-center justify-center lg:justify-start gap-2.5 whitespace-nowrap w-fit mx-auto lg:mx-0"
+                className="order-4 mt-5 flex items-center justify-center lg:justify-start gap-2.5 whitespace-nowrap w-fit mx-auto lg:mx-0"
               >
                 {/* Halo dot: two slow radar rings drift outward from a solid
                     glowing core — layered, staggered, so it reads as breath,
@@ -618,7 +648,7 @@ export function SingleScreenApp() {
                   (audit #12 — Receive rendered wider than Send), and each
                   hint sits directly beneath its own button so the
                   label↔action mapping is unambiguous (audit #11). */}
-              <div className="order-3 mt-6 grid grid-cols-2 gap-x-3 gap-y-1 max-w-[360px] mx-auto sm:mx-0">
+              <div className="order-5 mt-5 grid grid-cols-2 gap-x-3 gap-y-1 max-w-[360px] mx-auto sm:mx-0">
                 <div className="flex flex-col items-center gap-1.5 min-w-0">
                   <TactileButton onClick={handleSend} variant="primary" size="lg" className="w-full lg:text-[16px] lg:min-h-[56px]" icon={<SendCircleIcon size={18} />} disabled={isCreating}>{t('home.send')}</TactileButton>
                   <span className="text-[13px] font-medium text-apple-ink-muted/70 dark:text-white/40">{t('home.sendHint')}</span>
@@ -659,7 +689,7 @@ export function SingleScreenApp() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 4 }}
                       transition={{ type: 'spring', bounce: 0, duration: 0.32 }}
-                      className="order-4 mt-5 w-full"
+                      className="order-6 mt-5 w-full"
                     >
                       <button
                         type="button"
@@ -700,19 +730,6 @@ export function SingleScreenApp() {
                   );
                 })()}
               </AnimatePresence>
-              {/* Nearby device discovery — an OPTIONAL extra path. The old
-                  standalone hint line is gone: the nearby block's own
-                  searching row says "Looking for nearby devices…" in the
-                  same words, right where the action is. One instruction on
-                  screen, never two. */}
-              {/* On mobile the hero image already carries mb-5 before this
-                  row — a second mt-10 stacked on top read as a dead gap.
-                  mt-2 keeps one breath of air, nothing more. */}
-              <div className="order-6 mt-10 w-full flex flex-col items-center lg:items-start">
-                <div className="w-full max-w-md lg:max-w-none">
-                  <NearbyDevices onStatus={setNearbyStatus} />
-                </div>
-              </div>
               {/* The product, as it actually looks — laptop + phone running
                   the real connected UI. Scales itself; breaks out of the
                   hero column to use the full half-pane width. Desktop shows
@@ -723,7 +740,7 @@ export function SingleScreenApp() {
                   bottom margin (not the old negative one) keeps clear air
                   between the image and the "Open ShareTexts in another
                   device" row that follows. */}
-              <div className="order-5 lg:hidden mt-4 sm:mt-8 mb-5 flex justify-center">
+              <div className="order-7 lg:hidden mt-4 sm:mt-8 mb-5 flex justify-center">
                 <div className="w-full max-w-[340px] px-1">
                   <HeroTransferScene />
                 </div>
@@ -769,17 +786,28 @@ export function SingleScreenApp() {
               ) : (
                 <>
                   <p className="text-[13px] text-apple-ink-muted dark:text-white/50 font-medium mb-5">{t('create.hint')}</p>
-                  {/* The pairing tools (live code + QR/link/copy) make way for
-                      the handshake the moment the other device starts joining:
-                      the story changes from "share this code" to "we're
-                      linking up". They return if the peer drops away. */}
+                  {/* The pairing screen keeps ONE two-device scene for its
+                      whole life: the same tiles the user will see in the
+                      room. Before a peer arrives it quietly searches; the
+                      moment the peer joins it starts the handshake — no
+                      component swap, no context switch — and when the
+                      channel opens it draws the link and check. The code
+                      stays below as the tool, never the story. */}
                   <AnimatePresence mode="wait" initial={false}>
                     {session.partnerConnecting && !session.partnerConnected ? (
                       <motion.div key="handshake" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} transition={{ duration: 0.25, ease: EASE }} className="py-3">
-                        <ConnectHandshake phase="connecting" localIcon={isMobileDevice ? 'phone' : 'monitor'} />
+                        <ConnectHandshake phase="connecting" localIcon={isMobileDevice ? 'phone' : 'monitor'} partnerName={session.partnerName} />
                       </motion.div>
                     ) : (
                       <motion.div key="code" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+                        {/* Searching state — the pair visual holds the screen
+                            (spatial continuity with the room that follows);
+                            the copy says the one true thing. */}
+                        {!session.partnerConnecting && (
+                          <div className="mb-4">
+                            <ConnectHandshake phase="searching" localIcon={isMobileDevice ? 'phone' : 'monitor'} />
+                          </div>
+                        )}
                         {session.secret && <LiveCodeDisplay secret={session.secret} createdAt={session.createdAt} onRefresh={refreshCode} />}
                       </motion.div>
                     )}
@@ -852,10 +880,15 @@ export function SingleScreenApp() {
           {panelMode === 'connecting' && (
             <motion.div key="connecting" data-testid="connecting-panel" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto text-center">
               <div className="flex flex-col items-center py-6">
-                {/* The handshake IS the connecting screen: radar → convergence
-                    → locked link, staged exactly like the transfer that
-                    follows. Works identically on mobile and desktop. */}
-                <ConnectHandshake phase="connecting" localIcon={isMobileDevice ? 'phone' : 'monitor'} />
+                {/* The handshake IS the connecting screen — and the first
+                    beat of it is watched here on the joiner side, including
+                    the moment the tiles settle into the room's own pair
+                    visual (same tiles, same gap, same story). */}
+                <ConnectHandshake
+                  phase={session.partnerConnected ? 'connected' : 'connecting'}
+                  localIcon={isMobileDevice ? 'phone' : 'monitor'}
+                  partnerName={session.partnerName}
+                />
                 {/* Honest escalation, never an infinite spinner: at 15s the
                     link is slow (say so + offer retry); at 40s the other
                     device most likely left (say THAT, and hand back cleanly).
@@ -887,7 +920,7 @@ export function SingleScreenApp() {
           )}
 
           {/* ── CONNECTED: device pair + ready to transfer ───────── */}
-          {panelMode === 'connected' && (
+          {panelMode === 'connected' && !celebrateConnected && (
             <motion.div key="connected" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25, ease: EASE }} className="max-w-md 2xl:max-w-lg mx-auto">
               {/* Device pair visual */}
               <div className="flex flex-col items-center sm:items-start mb-6">
@@ -1089,6 +1122,38 @@ export function SingleScreenApp() {
                 </span>
                 <Link2 className="w-4 h-4 shrink-0 text-apple-ink-muted dark:text-white/50" />
               </button>
+            </motion.div>
+          )}
+          {/* ── CONNECTED: the payoff beat — the handshake the user just
+              watched completes, visibly, before the room takes over. Same
+              scene, same tiles: the relationship finishes, THEN the
+              workspace arrives. Reduced-motion users skip the wait (the
+              beat is a reveal, not information). */}
+          {panelMode === 'connected' && celebrateConnected && (
+            <motion.div
+              key="connected-celebrate"
+              data-testid="connected-celebration"
+              initial={{ opacity: 1 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="max-w-md mx-auto text-center"
+            >
+              <div className="flex flex-col items-center py-6">
+                <ConnectHandshake
+                  phase="connected"
+                  localIcon={isMobileDevice ? 'phone' : 'monitor'}
+                  partnerName={session.partnerName}
+                />
+                <motion.p
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.35, duration: 0.3, ease: EASE }}
+                  className="mt-3 text-[13px] font-medium text-apple-ink-muted dark:text-white/50"
+                >
+                  {t('conn.ready')}
+                </motion.p>
+              </div>
             </motion.div>
           )}
     </AnimatePresence>

@@ -343,6 +343,12 @@ const ar: Dict = {
   'nearby.inviteAgain': 'إعادة الاتصال',
   'nearby.offline': 'آخر اتصال {when} — ليس قريبًا الآن',
   'nearby.forget': 'نسيان',
+  'chat.empty.dest': "كل ما تضعه هنا يصل إلى {name} فورًا وبالجودة الأصلية.",
+  'chat.empty.kinds': "نص · روابط · صور · ملفات",
+  'xfer.arrivedFrom': "من {name}",
+  'xfer.receivedInFrom': "تم استلام {size} من {name} في {time}",
+  'create.joiningNow': "الجهاز الآخر ينضم الآن…",
+  'xfer.multi': "{n} عمليات نقل جارية",
 
 };
 

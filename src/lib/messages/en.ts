@@ -365,6 +365,12 @@ const en = {
   'nearby.inviteAgain': 'Connect again',
   'nearby.offline': 'Last seen {when} — not nearby right now',
   'nearby.forget': 'Forget',
+  'chat.empty.dest': "Everything here lands on {name} — instantly, in original quality.",
+  'chat.empty.kinds': "TEXT · LINKS · PHOTOS · FILES",
+  'xfer.arrivedFrom': "From {name}",
+  'xfer.receivedInFrom': "Received {size} from {name} in {time}",
+  'create.joiningNow': "The other device is joining…",
+  'xfer.multi': "{n} transfers in flight",
 
 };
 

@@ -682,7 +682,15 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                       tick line. */}
                   {a.startedAt && a.completedAt && a.completedAt > a.startedAt ? (
                     <span className="font-semibold flex items-center gap-1 text-status-success">
-                      <Check className="w-3 h-3" /> {t(isMe ? 'xfer.doneIn' : 'xfer.receivedIn', { size: formatBytes(a.size), time: formatElapsed(a.completedAt - a.startedAt) })}
+                      <Check className="w-3 h-3" /> {isMe
+                        ? t('xfer.doneIn', { size: formatBytes(a.size), time: formatElapsed(a.completedAt - a.startedAt) })
+                        // Receivers get the full story in one line: the object
+                        // arrived FROM a named device, at real size, in real
+                        // time — the completion moment answers "from where?"
+                        // without opening any details panel.
+                        : session.partnerName
+                          ? t('xfer.receivedInFrom', { size: formatBytes(a.size), name: session.partnerName, time: formatElapsed(a.completedAt - a.startedAt) })
+                          : t('xfer.receivedIn', { size: formatBytes(a.size), time: formatElapsed(a.completedAt - a.startedAt) })}
                     </span>
                   ) : isMe ? <DeliveryTick delivered={msg.delivered} seen={msg.seen} onBlue /> : msg.source === 'push' ? (
                     <span className="font-semibold flex items-center gap-1"><Terminal className="w-3 h-3" /> Sent from your computer</span>
