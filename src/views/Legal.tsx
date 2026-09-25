@@ -190,7 +190,7 @@ export function Legal({ page }: { page: LegalPage }) {
 
         <div className="mt-12 pt-6 border-t border-apple-divider/60 dark:border-white/[0.08] flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
           <p className="text-[13px] font-medium text-apple-ink-muted dark:text-white/50">
-            {isPrivacy ? 'Read also our ' : 'Read also our '}
+            Read also our 
             <a href={isPrivacy ? '/terms' : '/privacy'} className="text-apple-blue dark:text-azure-400 hover:underline">
               {isPrivacy ? 'Terms of Use' : 'Privacy Policy'}
             </a>

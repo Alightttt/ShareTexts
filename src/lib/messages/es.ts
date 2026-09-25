@@ -8,6 +8,8 @@ const es: Dict = {
   'app.ended.heading.expired': 'Se acabó el tiempo.',
   'app.ended.heading.manual': 'Eso es todo.',
   'app.ended.heading.closed': 'Sala cerrada.',
+  'compat.title': 'Tu navegador no puede hacer conexiones entre dispositivos',
+  'compat.body': 'ShareTexts necesita WebRTC, que este navegador bloquea o no admite. El modo más seguro de Tor y la mayoría de los bloqueadores lo desactivan. Prueba Firefox, Chrome, Edge o Brave, o permite WebRTC en la configuración.',
   'app.ended.body.expired': 'La conexión expiró. Por privacidad, la sala no puede reabrirse. Inicia una nueva conexión para continuar.',
   'app.ended.body.manual': 'Cerraste esta sala. Todo lo que enviaste ya está en el otro dispositivo.',
   'app.ended.body.closed': 'El otro dispositivo cerró esta sala. No se guardó nada incompleto.',

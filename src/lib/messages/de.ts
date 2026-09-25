@@ -8,6 +8,8 @@ const de: Dict = {
   'app.ended.heading.expired': 'Zeit abgelaufen.',
   'app.ended.heading.manual': 'Das war’s.',
   'app.ended.heading.closed': 'Raum geschlossen.',
+  'compat.title': 'Ihr Browser kann keine Geräte-zu-Gerät-Verbindungen aufbauen',
+  'compat.body': 'ShareTexts benötigt WebRTC, das dieser Browser blockiert oder nicht unterstützt. Der sicherste Tor-Modus und die meisten Blocker deaktivieren es. Versuchen Sie Firefox, Chrome, Edge oder Brave – oder erlauben Sie WebRTC in den Einstellungen.',
   'app.ended.body.expired': 'Die Verbindung ist abgelaufen. Aus Datenschutzgründen kann der Raum nicht wieder geöffnet werden. Starte eine neue Verbindung, um fortzufahren.',
   'app.ended.body.manual': 'Du hast diesen Raum geschlossen. Alles, was du gesendet hast, ist bereits auf dem anderen Gerät.',
   'app.ended.body.closed': 'Das andere Gerät hat diesen Raum geschlossen. Unvollständiges wurde nicht gespeichert.',

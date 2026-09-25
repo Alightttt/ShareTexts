@@ -8,6 +8,8 @@ const zh: Dict = {
   'app.ended.heading.expired': '时间到。',
   'app.ended.heading.manual': '就到这里。',
   'app.ended.heading.closed': '房间已关闭。',
+  'compat.title': '此浏览器无法进行设备间连接',
+  'compat.body': 'ShareTexts 需要 WebRTC，而此浏览器屏蔽或不支持它。Tor 的最安全模式和大多数隐私拦截器都会禁用它。请尝试 Firefox、Chrome、Edge 或 Brave，或在浏览器设置中允许 WebRTC。',
   'app.ended.body.expired': '连接已过期。出于隐私保护，房间无法重新打开。请新建连接以继续。',
   'app.ended.body.manual': '你关闭了这个房间。你发送的内容都已经在另一台设备上。',
   'app.ended.body.closed': '另一台设备关闭了房间。未完成的内容没有被保存。',

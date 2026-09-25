@@ -417,6 +417,16 @@ li strong { color: var(--text); }
   .vs-card { grid-template-columns: 1fr; }
   .related-links { grid-template-columns: 1fr; }
   article { padding: 40px 0 72px; }
+  /* A real <table> can't shrink below its content min-width, so on phones
+     the widest compatibility tables would push the page wider than the
+     viewport. Making the table itself the scroll container keeps every
+     guide page at exactly 100vw; desktop tables are unchanged. */
+  table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* ── Focus ───────────────────────────────────────────────────────────── */

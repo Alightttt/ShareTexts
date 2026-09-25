@@ -1019,7 +1019,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             role="status"
             className="overflow-hidden bg-status-warning/10 border-b border-status-warning/20"
           >
-            <div data-testid="disconnect-banner" className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-2 text-[14px] font-medium text-status-warning-ink dark:text-status-warning-ink-dark">
+            <div data-testid="disconnect-banner" className="max-w-3xl 2xl:max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-2 text-[14px] font-medium text-status-warning-ink dark:text-status-warning-ink-dark">
               <span className="flex items-center gap-2 min-w-0">
                 <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse shrink-0" />
                 {/* min-w-0 lets the sentence wrap on narrow screens instead
@@ -1085,7 +1085,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <div className="max-w-3xl mx-auto flex flex-col h-full">
+        <div className="max-w-3xl 2xl:max-w-4xl mx-auto flex flex-col h-full">
           {session.messages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center min-h-[40vh]">
               {disconnected ? (
@@ -1222,7 +1222,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           edge (breathing room + safe area) instead of gluing to it, where
           thumbs and browser chrome crowd it. */}
       <div className="p-3 sm:p-5 bg-white/80 dark:bg-[#131315]/80 border-t border-black/[0.06] dark:border-white/[0.04] z-10 pb-[max(env(safe-area-inset-bottom),10px)] sm:pb-5 relative">
-        <form onSubmit={handleSend} className="max-w-3xl mx-auto flex flex-col gap-2">
+        <form onSubmit={handleSend} className="max-w-3xl 2xl:max-w-4xl mx-auto flex flex-col gap-2">
           <div className="hidden sm:flex items-center justify-end gap-1.5 text-[11px] font-medium text-apple-ink-muted/70 dark:text-white/40 px-1">
             <kbd className="px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">{t('composer.enter')}</kbd>
             <span>{t('composer.toSend')}</span>

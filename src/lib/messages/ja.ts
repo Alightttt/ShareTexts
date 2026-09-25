@@ -8,6 +8,8 @@ const ja: Dict = {
   'app.ended.heading.expired': '時間切れです。',
   'app.ended.heading.manual': '完了しました。',
   'app.ended.heading.closed': 'ルームが閉じられました。',
+  'compat.title': 'このブラウザはデバイス間接続を行えません',
+  'compat.body': 'ShareTextsにはWebRTCが必要ですが、このブラウザはブロックしているか非対応です。Torの最も安全なモードや多くのブロッカーは無効にします。Firefox、Chrome、Edge、Braveを試すか、ブラウザ設定でWebRTCを許可してください。',
   'app.ended.body.expired': '接続の有効期限が切れました。プライバシー保護のため、ルームを再度開くことはできません。続けるには新しい接続を開始してください。',
   'app.ended.body.manual': 'このルームを閉じました。送信した内容はすべて相手のデバイスに届いています。',
   'app.ended.body.closed': '相手のデバイスがこのルームを閉じました。未完了のデータは保存されていません。',

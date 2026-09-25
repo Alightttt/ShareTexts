@@ -536,8 +536,12 @@ export function SingleScreenApp() {
             gradient defs inside the display:none copy, which browsers refuse
             to paint — the desktop mark vanished). CSS overrides the intrinsic
             size for the responsive step. */}
-        <a href="/" className="flex items-center gap-[8px] shrink-0 min-h-[40px] -my-2" aria-label="ShareTexts — home">
-          <ShareTextsLogo size={30} className="w-7 sm:w-[30px] h-auto" />
+        <a href="/" className="group flex items-center gap-[8px] shrink-0 min-h-[40px] -my-2" aria-label="ShareTexts — home">
+          {/* The mark gets a whisper of scale on hover (transform only, no
+              layout shift) — the brand invites you in without shouting. */}
+          <span className="transition-transform duration-200 ease-out group-hover:scale-105 group-active:scale-95 motion-reduce:transition-none flex">
+            <ShareTextsLogo size={30} className="w-7 sm:w-[30px] h-auto" />
+          </span>
           <span className="font-semibold tracking-tight text-[19px] sm:text-[21px] text-apple-ink dark:text-white">ShareTexts</span>
         </a>
         {/* One rhythm for every header control — desktop AND mobile. Each
@@ -569,7 +573,7 @@ export function SingleScreenApp() {
           {panelMode === 'idle' && (
             // Deterministic first paint: the hero renders visible immediately;
             // only the swap-out fades. Never gate first paint on animation.
-            <motion.div key="idle" exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="max-w-md mx-auto flex flex-col">
+            <motion.div key="idle" exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="w-full max-w-md mx-auto flex flex-col">
               {/* Flex + order: H1 → subtitle → live tracker → actions. The
                   tracker is passive status, so it lives ABOVE the action
                   cluster — status never interrupts the Send/Receive flow
@@ -884,7 +888,7 @@ export function SingleScreenApp() {
 
           {/* ── CONNECTED: device pair + ready to transfer ───────── */}
           {panelMode === 'connected' && (
-            <motion.div key="connected" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25, ease: EASE }} className="max-w-md mx-auto">
+            <motion.div key="connected" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25, ease: EASE }} className="max-w-md 2xl:max-w-lg mx-auto">
               {/* Device pair visual */}
               <div className="flex flex-col items-center sm:items-start mb-6">
                 <div className="flex items-center gap-4 mb-4">

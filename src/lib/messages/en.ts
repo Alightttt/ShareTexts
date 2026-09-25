@@ -7,6 +7,8 @@ const en = {
   'app.ended.heading.expired': "Time's up.",
   'app.ended.heading.manual': "That's it.",
   'app.ended.heading.closed': 'Room closed.',
+  "compat.title": "Your browser can't make device-to-device connections",
+  "compat.body": "ShareTexts needs WebRTC, which this browser blocks or doesn't support. Tor's safest mode and most private blockers do this. Try Firefox, Chrome, Edge, or Brave — or allow WebRTC in your browser's settings.",
   'app.ended.body.expired': 'The connection expired. For privacy, the room cannot be reopened. Start a new connection to continue.',
   'app.ended.body.manual': 'You closed this room. Everything you sent is already on the other device.',
   'app.ended.body.closed': 'The other device closed this room. Nothing incomplete was saved.',

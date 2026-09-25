@@ -8,6 +8,8 @@ const fr: Dict = {
   'app.ended.heading.expired': 'Temps écoulé.',
   'app.ended.heading.manual': 'Voilà, c’est fait.',
   'app.ended.heading.closed': 'Salon fermé.',
+  'compat.title': 'Votre navigateur ne peut pas créer de connexions entre appareils',
+  'compat.body': 'ShareTexts a besoin de WebRTC, que ce navigateur bloque ou ne prend pas en charge. Le mode le plus sûr de Tor et la plupart des bloqueurs le désactivent. Essayez Firefox, Chrome, Edge ou Brave, ou autorisez WebRTC dans les paramètres.',
   'app.ended.body.expired': 'La connexion a expiré. Pour protéger votre vie privée, le salon ne peut pas être rouvert. Démarrez une nouvelle connexion pour continuer.',
   'app.ended.body.manual': 'Vous avez fermé ce salon. Tout ce que vous avez envoyé est déjà sur l’autre appareil.',
   'app.ended.body.closed': 'L’autre appareil a fermé ce salon. Rien d’incomplet n’a été conservé.',

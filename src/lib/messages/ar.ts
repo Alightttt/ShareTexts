@@ -8,6 +8,8 @@ const ar: Dict = {
   'app.ended.heading.expired': 'انتهى الوقت.',
   'app.ended.heading.manual': 'هذا كل شيء.',
   'app.ended.heading.closed': 'تم إغلاق الغرفة.',
+  'compat.title': 'متصفحك لا يستطيع إنشاء اتصالات بين الأجهزة',
+  'compat.body': 'يحتاج ShareTexts إلى WebRTC، وهذا المتصفح يحظره أو لا يدعمه. الوضع الأكثر أماناً في Tor ومعظم أدوات الحجب تعطّله. جرّب Firefox أو Chrome أو Edge أو Brave — أو اسمح بـ WebRTC في إعدادات المتصفح.',
   'app.ended.body.expired': 'انتهت صلاحية الاتصال. للحفاظ على الخصوصية، لا يمكن إعادة فتح الغرفة. ابدأ اتصالًا جديدًا للمتابعة.',
   'app.ended.body.manual': 'لقد أغلقت هذه الغرفة. كل ما أرسلته موجود بالفعل على الجهاز الآخر.',
   'app.ended.body.closed': 'أغلق الجهاز الآخر هذه الغرفة. لم يُحفظ أي شيء غير مكتمل.',

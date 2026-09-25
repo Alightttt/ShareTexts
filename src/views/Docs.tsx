@@ -287,12 +287,15 @@ function DevicesSection() {
         <div className="p-5 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3">
           <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-3">Browsers</h3>
           <div className="grid grid-cols-2 gap-3">
-            {['Chrome', 'Safari', 'Firefox', 'Edge'].map((b) => (
+            {['Chrome', 'Safari', 'Firefox', 'Edge', 'Brave', 'Arc', 'Samsung Internet', 'Opera / Vivaldi'].map((b) => (
               <div key={b} className="flex items-center gap-2 text-[14px] text-apple-ink-muted dark:text-white/60">
                 <Check className="w-4 h-4 text-status-success" />{b}
               </div>
             ))}
           </div>
+          <p className="text-[13px] text-apple-ink-muted dark:text-white/50 leading-relaxed mt-3">
+            Tor Browser works when WebRTC is enabled. If a browser can't run ShareTexts, you'll see a clear explanation instead of a broken page.
+          </p>
         </div>
         <div className="p-5 rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/50 dark:border-apple-tile-3">
           <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-3">Operating Systems</h3>

@@ -84,6 +84,36 @@ function AppSkeleton() {
   );
 }
 
+/**
+ * CapabilityGate — an honest screen for browsers that cannot run ShareTexts.
+ * The app's core is RTCPeerConnection; without it (Tor Safest, hard-blocked
+ * WebRTC, ancient engines) nothing can work, and a dead UI that looks alive
+ * is worse than a clear explanation. Everything short of this degrades
+ * gracefully — this gate only fires when transfer is truly impossible.
+ */
+function CapabilityGate({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n();
+  const [ok] = useState(() => {
+    try {
+      const RTC = (window as unknown as { RTCPeerConnection?: unknown; webkitRTCPeerConnection?: unknown }).RTCPeerConnection
+        ?? (window as unknown as { webkitRTCPeerConnection?: unknown }).webkitRTCPeerConnection;
+      if (typeof RTC === 'undefined') return false;
+      // Feature-detect the language surface the bundle assumes. IE11 and
+      // other pre-ES2015 engines never reach a working app anyway.
+      if (typeof window.Promise === 'undefined' || typeof window.Map === 'undefined' || typeof window.Symbol === 'undefined') return false;
+      return true;
+    } catch { return false; }
+  });
+  if (ok) return <>{children}</>;
+  return (
+    <div className="min-h-dvh flex flex-col items-center justify-center text-center px-6 bg-apple-canvas dark:bg-[#131315]">
+      <ShareTextsLogo size={44} mono />
+      <h1 className="mt-5 text-[19px] font-semibold text-apple-ink dark:text-white max-w-[420px]">{t('compat.title')}</h1>
+      <p className="mt-3 text-[14px] text-apple-ink-muted dark:text-white/55 leading-relaxed max-w-[440px]">{t('compat.body')}</p>
+    </div>
+  );
+}
+
 function ErrorFallback({ onReset }: { onReset: () => void }) {
   // Rendered by the class boundary, which sits above the providers — static
   // English is intentional (recovery copy must never depend on a broken tree).
@@ -203,13 +233,15 @@ function SkipLink() {
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <I18nProvider>
-        <SessionProvider>
-          <SkipLink />
-          <AppContent />
-        </SessionProvider>
-      </I18nProvider>
-    </ErrorBoundary>
+    <CapabilityGate>
+      <ErrorBoundary>
+        <I18nProvider>
+          <SessionProvider>
+            <SkipLink />
+            <AppContent />
+          </SessionProvider>
+        </I18nProvider>
+      </ErrorBoundary>
+    </CapabilityGate>
   );
 }
