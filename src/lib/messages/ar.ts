@@ -315,7 +315,7 @@ const ar: Dict = {
   'nearby.nothingFound': 'لا ترى جهازك؟',
   'nearby.useAnotherWay': 'استخدم طريقة أخرى',
   'nearby.fallbackCode': 'أدخل الرمز',
-  'chat.directBadge': 'اتصال مباشر',
+  'chat.directBadge': 'نفس الشبكة',
   'xfer.to': 'إرسال إلى {name}',
   'xfer.from': 'استقبال من {name}',
   'xfer.pct': '{n}%',

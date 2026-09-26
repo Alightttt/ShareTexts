@@ -87,7 +87,7 @@ export function ConfirmSheet({
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="w-full min-h-[46px] rounded-[13px] bg-black/[0.045] dark:bg-white/[0.07] hover:bg-black/[0.08] dark:hover:bg-white/[0.11] text-[15px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.98]"
+                  className="w-full min-h-[44px] rounded-[14px] bg-black/[0.045] dark:bg-white/[0.07] hover:bg-black/[0.08] dark:hover:bg-white/[0.11] text-[15px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.98]"
                 >
                   {cancelLabel}
                 </button>
@@ -97,8 +97,8 @@ export function ConfirmSheet({
                   onClick={onConfirm}
                   className={
                     destructive
-                      ? 'w-full min-h-[46px] rounded-[13px] bg-status-danger hover:bg-[#e5352a] text-[15px] font-semibold text-white transition-colors active:scale-[0.98]'
-                      : 'w-full min-h-[46px] rounded-[13px] bg-ember hover:bg-brand-strong text-[15px] font-semibold text-white transition-colors active:scale-[0.98]'
+                      ? 'w-full min-h-[44px] rounded-[14px] bg-status-danger hover:bg-[#e5352a] text-[15px] font-semibold text-white transition-colors active:scale-[0.98]'
+                      : 'w-full min-h-[44px] rounded-[14px] bg-ember hover:bg-brand-strong text-[15px] font-semibold text-white transition-colors active:scale-[0.98]'
                   }
                 >
                   {confirmLabel}

@@ -315,7 +315,7 @@ const hi: Dict = {
   'nearby.nothingFound': 'आपका डिवाइस नहीं दिख रहा?',
   'nearby.useAnotherWay': 'दूसरा तरीका अपनाएँ',
   'nearby.fallbackCode': 'कोड डालें',
-  'chat.directBadge': 'सीधा कनेक्शन',
+  'chat.directBadge': 'वही नेटवर्क',
   'xfer.to': '{name} को भेज रहे हैं',
   'xfer.from': '{name} से प्राप्त हो रहा है',
   'xfer.pct': '{n}%',

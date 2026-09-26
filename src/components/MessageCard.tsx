@@ -534,6 +534,10 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
   // other device holds the file — "Sent" is truthful), partner files we
   // received become 'restoring' (re-requested from the peer on reconnect).
   const lost = a.status === 'complete' && !a.url;
+  // Media cards render the live status INSIDE the image/video placeholder;
+  // the footer must not say it a second time on the same card.
+  const mediaPlaceholderVisible = !complete
+    && ((a.type === 'image' && !unsafePreview && !decodeFailed && !lost) || (a.type === 'video' && !lost));
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -656,7 +660,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                 <span className="text-[12.5px] font-medium text-apple-ink-muted">
                   {formatBytes(a.size)}
                   {a.type === 'image' && decodeFailed && (
-                    <span className="hidden sm:inline"> · Original file kept — preview not supported by this browser</span>
+                    <span className="hidden sm:inline"> · File kept — no preview available</span>
                   )}
                 </span>
               </div>
@@ -671,7 +675,11 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
           {/* Footer: status info on row 1, actions on row 2 */}
           <div className={cn(
             "px-3 py-2.5 border-t",
-            "border-apple-divider/30 dark:border-white/[0.06] bg-apple-canvas/30 dark:bg-black/5"
+            "border-apple-divider/30 dark:border-white/[0.06] bg-apple-canvas/30 dark:bg-black/5",
+            // A card whose status lives in the media placeholder and that has
+            // no actions yet (mid-restore) renders a bare border band — hide
+            // the footer entirely until it has something to say.
+            mediaPlaceholderVisible && a.status !== 'complete' && "hidden"
           )}>
             {/* Row 1: status / time — full width, no competing for space */}
             <div className="min-w-0">
@@ -704,9 +712,11 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                     {a.type === 'image' && fmtShort && !decodeFailed ? ` • ${fmtShort}` : ''}
                     {' • '}{timeOf(msg.timestamp)}
                   </span>
+                  {/* Mobile keeps time only — size already sits under the
+                      filename above, and the orphaned “• 3 MB” fragment this
+                      used to render wrapped onto its own line. */}
                   <span className="sm:hidden">
-                    {' • '}{formatBytes(a.size)}
-                    {dimsTxt ? ` • ${dimsTxt}` : ''}
+                    {' • '}{timeOf(msg.timestamp)}
                   </span>
                 </span>
               ) : (
@@ -717,7 +727,10 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                       {t(isMe ? 'xfer.to' : 'xfer.from', { name: isMe ? session.partnerName : session.deviceName })} ·
                     </span>
                   )}
-                  <span>{transferStatusText(a, isMe, t)}</span>
+                  {/* Media cards already show this status inside the image/
+                      video placeholder — repeating it in the footer doubled
+                      the words ("Restoring file…" twice on one card). */}
+                  {!mediaPlaceholderVisible && <span>{transferStatusText(a, isMe, t)}</span>}
                   {/* The number the eye hunts for while waiting: real byte
                       progress, localized percent, mobile-inclusive (the
                       LiveSpeed row hides it on phones). */}

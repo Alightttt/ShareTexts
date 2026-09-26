@@ -315,7 +315,7 @@ const ja: Dict = {
   'nearby.nothingFound': 'デバイスが見つかりませんか？',
   'nearby.useAnotherWay': '別の方法を使う',
   'nearby.fallbackCode': 'コードを入力',
-  'chat.directBadge': '直接接続',
+  'chat.directBadge': '同じネットワーク',
   'xfer.to': '{name} に送信中',
   'xfer.from': '{name} から受信中',
   'xfer.pct': '{n}%',

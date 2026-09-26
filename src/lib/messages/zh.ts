@@ -315,7 +315,7 @@ const zh: Dict = {
   'nearby.nothingFound': '看不到你的设备？',
   'nearby.useAnotherWay': '换一种方式',
   'nearby.fallbackCode': '输入配对码',
-  'chat.directBadge': '直连',
+  'chat.directBadge': '同一网络',
   'xfer.to': '正在发送给 {name}',
   'xfer.from': '正在从 {name} 接收',
   'xfer.pct': '{n}%',

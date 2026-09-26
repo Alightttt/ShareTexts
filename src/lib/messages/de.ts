@@ -316,7 +316,7 @@ const de: Dict = {
   'nearby.nothingFound': 'Dein Gerät wird nicht angezeigt?',
   'nearby.useAnotherWay': 'Anderen Weg nutzen',
   'nearby.fallbackCode': 'Code eingeben',
-  'chat.directBadge': 'Direkte Verbindung',
+  'chat.directBadge': 'Gleiches Netzwerk',
   'xfer.to': 'Wird an {name} gesendet',
   'xfer.from': 'Empfangen von {name}',
   'xfer.pct': '{n} %',
