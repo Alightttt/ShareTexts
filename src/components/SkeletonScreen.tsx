@@ -32,8 +32,22 @@ function Bar({ className }: { className?: string }) {
   );
 }
 
-/** The brand + shell shared by every variant: quiet, centered, honest. */
-function Shell({ children, label }: { children: React.ReactNode; label: string }) {
+/** The brand + shell shared by the centered variants: quiet, honest.
+ *  `full` variants (room) skip the centered column and fill the surface —
+ *  their skeleton must mirror the real screen's full-bleed geometry. */
+function Shell({ children, label, full = false }: { children: React.ReactNode; label: string; full?: boolean }) {
+  if (full) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        aria-label={label}
+        className="h-full w-full flex flex-col select-none"
+      >
+        {children}
+      </div>
+    );
+  }
   return (
     <div
       role="status"
@@ -159,9 +173,11 @@ export function SkeletonScreen({ variant = 'home' }: { variant?: SkeletonVariant
   }
 
   // variant === 'room' — mirrors the transfer room: device bar, the
-  // message column, and the composer pill at the bottom.
+  // message column, and the composer pill at the bottom. FULL-BLEED:
+  // the real room fills its pane edge to edge, so the skeleton must
+  // too (the centered Shell would render it as a 340px island).
   return (
-    <Shell label="Opening your room">
+    <Shell label="Opening your room" full>
       <div className="h-full w-full flex flex-col">
         {/* Device bar */}
         <div className="flex items-center gap-2.5 px-4 py-3">

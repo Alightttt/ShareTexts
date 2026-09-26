@@ -1014,9 +1014,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // 1. Mark abandoned (must happen before room_closed echo can fire)
     if (reason) abandonedRef.current = false;
     resetRoomsBumpLatch(); // room gone — a new pairing may bump again
-    // 2. Destroy WebRTC connection
+    // 2. Destroy WebRTC connection. The lifecycle callbacks are detached
+    // BEFORE destroy(): closing the channel/PC fires the manager's own
+    // disconnect path, which would otherwise run the fresh session's
+    // machine back into RECONNECTING on a room that no longer exists
+    // (observed as an IDLE → RECONNECTING rejection in the diag log).
     if (peerManagerRef.current) {
-      try { peerManagerRef.current.destroy(); } catch { /* noop — idempotent */ }
+      try {
+        peerManagerRef.current.onDisconnect = null;
+        peerManagerRef.current.onDisconnectImmediate = null;
+        peerManagerRef.current.destroy();
+      } catch { /* noop — idempotent */ }
       peerManagerRef.current = null;
     }
     // 3. Clear in-flight state (owned by the message engine)
@@ -1034,6 +1042,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // cleared by closeSession (explicit close) or the re-entry itself.
     saveStoredSession(null);
     stopSeatKeepalive();
+    // A pending disconnect-calm timer is part of the DEAD session: if it
+    // fired after the reset it would flip the fresh session's state (the
+    // IDLE → RECONNECTING rejection in the logs). Cancel it here where
+    // every teardown path converges.
+    if (disconnectCalmTimerRef.current) { clearTimeout(disconnectCalmTimerRef.current); disconnectCalmTimerRef.current = null; }
     // 6. Clear the URL bar (remove /s/<code> or ?join= params)
     try {
       if (window.location.pathname !== '/' && window.location.pathname !== '/docs') {
@@ -1060,6 +1073,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       stayConnected: false,
       lastStayRoom: loadLastStayRoom()
     }));
+    // The session lifecycle is over — the machine starts clean too. Without
+    // this, a room that ended while RECONNECTING (peer gone → room closed)
+    // left the machine wedged there: every later derivation to IDLE or
+    // DISCOVERING was rejected as illegal, and the diagnostics panel kept
+    // reporting a reconnect that could never happen.
+    connMachine.reset();
   };
 
   /**
