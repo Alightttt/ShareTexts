@@ -33,6 +33,8 @@ import { signalingConfigIssue, prewarmSignaling } from '../lib/socket';
 import { loadStoredSession } from '../lib/session/persistence';
 import { ConnectError, describeConnectFailure } from '../lib/errors';
 import { HeroTransferScene } from '../components/HeroTransferScene';
+import { LandingDemo } from '../components/LandingDemo';
+import { LandingStory } from '../components/LandingStory';
 import { useLiveStats } from '../lib/useLiveStats';
 import { hapticTap } from '../lib/haptics';
 import { ConfirmSheet } from '../components/ConfirmSheet';
@@ -737,19 +739,14 @@ export function SingleScreenApp() {
                   );
                 })()}
               </AnimatePresence>
-              {/* The product, as it actually looks — laptop + phone running
-                  the real connected UI. Scales itself; breaks out of the
-                  hero column to use the full half-pane width. Desktop shows
-                  the same scene in the room pane, so hide it here. */}
-              {/* Mobile: sized to sit INSIDE the column borders — slightly
-                  narrower than the text above so nothing touches the edges.
-                  order-5 keeps it last inside this ordered flex column. The
-                  bottom margin (not the old negative one) keeps clear air
-                  between the image and the "Open ShareTexts in another
-                  device" row that follows. */}
-              <div className="order-5 lg:hidden mt-4 sm:mt-8 mb-5 flex justify-center">
-                <div className="w-full max-w-[340px] px-1">
-                  <HeroTransferScene />
+              {/* The hero's product visual — now an honest INTERACTIVE demo:
+                  pick a kind, send, watch it arrive. Real object shapes, a
+                  persistent Demo chip, and a one-line honesty note. Replaces
+                  the static composition image, which lives on in the desktop
+                  story pane where there is room to appreciate it. */}
+              <div className="order-5 mt-4 sm:mt-8 mb-5 flex justify-center">
+                <div className="w-full max-w-[380px] px-1">
+                  <LandingDemo />
                 </div>
               </div>
               {/* Nearby device discovery — an OPTIONAL extra path. The old
@@ -765,6 +762,15 @@ export function SingleScreenApp() {
                   <NearbyDevices onStatus={setNearbyStatus} />
                 </div>
               </div>
+              {/* F7 landing story — mobile only (the desktop story pane
+                  renders it with more room). Conditional on the same 1024px
+                  breakpoint as the layout so the DOM carries it exactly
+                  once. */}
+              {!isDesktopLayout && (
+                <div className="order-7 mt-4 w-full">
+                  <LandingStory onCta={handleSend} />
+                </div>
+              )}
               {createError && (
                 <motion.div
                   role="alert"
@@ -1364,7 +1370,7 @@ export function SingleScreenApp() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.2, ease: EASE }}
-              className="h-full flex flex-col items-center justify-center text-center px-8 flex-1"
+              className="h-full flex flex-col items-center text-center px-8 flex-1"
             >
               {/* Connecting shows the same handshake scene as the left half —
                   one story on both panes. */}
@@ -1373,27 +1379,21 @@ export function SingleScreenApp() {
                   <ConnectHandshake phase="connecting" localIcon={isMobileDevice ? 'phone' : 'monitor'} />
                 </div>
               ) : panelMode === 'idle' ? (
-                /* Desktop idle: the three steps AND the product scene form
-                   ONE centered group — center the combined block, never the
-                   steps alone, so nothing ever clips at the fold. On short
-                   viewports the scene steps aside and the steps keep center. */
-                <div className="w-full max-w-[640px] mx-auto flex flex-col items-center justify-center gap-7 py-6">
-                  {/* The three steps — numbered, quiet. Left-aligned text so
-                      the rows read like a list, not a poem. */}
-                  <div className="w-full max-w-[420px] space-y-3.5">
-                    {[t('room.step.1'), t('room.step.2'), t('room.step.3')].map((step, i) => (
-                      <div key={i} className="flex items-center gap-3">
-                        <span className="shrink-0 w-7 h-7 rounded-full bg-ember/[0.1] dark:bg-ember/[0.16] text-ember dark:text-[#fb9243] text-[13px] font-bold flex items-center justify-center">{i + 1}</span>
-                        <span className="text-[14px] font-medium text-apple-ink/85 dark:text-white/65 leading-snug">{step}</span>
-                      </div>
-                    ))}
-                  </div>
-                  {/* The product itself, beneath the steps in the same
-                      centered group. Hidden on short viewports so the group
-                      never overflows. */}
+                /* Desktop idle: the F7 story pane. The shipped composition
+                   artwork opens the stage (there's room to appreciate it
+                   here), then the scroll story answers each next question —
+                   what you can send, how it works, both ways, trust — and
+                   ends in a CTA that drives the real hero flow. On short
+                   viewports the artwork steps aside so the story leads. */
+                /* my-auto centers the block when it fits and collapses to
+                   top-anchored when it overflows — justify-center would
+                   push the story's opening artwork above the scroll origin
+                   and make it unreachable. */
+                <div className="w-full max-w-[560px] mx-auto my-auto flex flex-col items-center gap-7 py-6">
                   <div className="w-full max-w-[520px] hidden [@media(min-height:700px)]:block">
                     <HeroTransferScene />
                   </div>
+                  <LandingStory onCta={handleSend} />
                 </div>
               ) : (
                 /* sending / receiving: quiet state messaging */
