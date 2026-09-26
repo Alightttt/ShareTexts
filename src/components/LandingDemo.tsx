@@ -11,20 +11,25 @@ import { cn } from '../lib/utils';
  * LandingDemo — the hero's interactive demonstration.
  *
  * Two device tiles (this ⇄ other), one obvious action: pick a kind of
- * object, tap Send, and watch it cross the same gap the real product
- * crosses — find → connect → send → received. The objects are the real
- * ShareTexts shapes (text bubble, LinkCard, photo card, file card) and the
- * timing mirrors real handshakes.
+ * object — it stages on THIS DEVICE immediately — then Send, and watch it
+ * cross the same gap the real product crosses: find → connect → send →
+ * received. The objects are the real ShareTexts shapes (text bubble,
+ * LinkCard, photo card, file card) and the timing mirrors real handshakes.
+ *
+ * F8 spatial language: a connection line joins the two tiles. It is a
+ * faint dashed trace before the devices find each other, turns solid
+ * ember the moment they connect, and goes green when the object lands —
+ * the relationship forms in front of the visitor.
  *
  * Honesty: it never implies a real transfer. A persistent "Demo" chip and
  * a one-line note beneath the stage say exactly what this is. The demo
- * cycle re-runs forever (staged → arrived), so the object visibly lands
- * and can be re-sent — like the product, not like a looping GIF.
+ * re-runs forever (staged → arrived), so the object visibly lands and can
+ * be re-sent — like the product, not like a looping GIF.
  *
- * Accessible: the four pickers are real buttons; Send is a real button;
- * status changes are announced via aria-live; the whole stage is
- * reachable and legible without motion (reduced-motion renders the
- * states as clean cross-fades with no travel).
+ * Accessible: the four pickers are real radios (disabled while a transfer
+ * is in flight — a mid-flight payload swap would lie about the state);
+ * Send is a real button; status changes are announced via aria-live;
+ * reduced motion renders the states as clean cross-fades with no travel.
  */
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -49,12 +54,27 @@ const PhotoPreview = () => (
 
 type Phase = 'idle' | 'finding' | 'connected' | 'sending' | 'arrived';
 
+const IN_FLIGHT: Phase[] = ['finding', 'connected', 'sending'];
+
+/** Reactive phone-shaped check (matchMedia, not a one-shot read). */
+function useIsPhoneLike(): boolean {
+  const [phone, setPhone] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 640px)');
+    const on = () => setPhone(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return phone;
+}
+
 export function LandingDemo({ className }: { className?: string }) {
   const { t } = useI18n();
+  const isPhone = useIsPhoneLike();
   const [kind, setKind] = useState<Kind>('text');
   const [phase, setPhase] = useState<Phase>('idle');
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const liveRef = useRef<HTMLParagraphElement>(null);
 
   const clearTimers = useCallback(() => {
     timers.current.forEach(clearTimeout);
@@ -68,22 +88,24 @@ export function LandingDemo({ className }: { className?: string }) {
   }, []);
 
   const send = useCallback(() => {
-    if (phase === 'finding' || phase === 'sending') return;
+    if (IN_FLIGHT.includes(phase)) return;
     clearTimers();
     setPhase('finding');
-    // Real-feeling handshake timing: discovery ~0.9s, then the room
-    // settles in connected, the object crosses, it arrives — and the
-    // stage holds the received object so people can look at it.
+    // Real-feeling handshake timing: discovery ~0.9s, the room settles in
+    // connected, the object crosses, it arrives — and the stage holds the
+    // received state so people can look at it before re-sending.
     after(900, () => setPhase('connected'));
     after(1800, () => setPhase('sending'));
     after(3300, () => setPhase('arrived'));
   }, [phase, clearTimers, after]);
 
   const pick = useCallback((k: Kind) => {
+    // Mid-flight payload swaps are locked out — the traveler must be the
+    // object that left. After arrival (or while idle), picking restages.
+    if (IN_FLIGHT.includes(phase)) return;
     setKind(k);
-    // Switching the payload resets a completed demo to its resting state.
-    setPhase((p) => (p === 'arrived' ? 'idle' : p));
-  }, []);
+    setPhase('idle');
+  }, [phase]);
 
   const statusLine = phase === 'idle' ? t('land.demo.pick')
     : phase === 'finding' ? t('land.demo.finding') + '…'
@@ -125,33 +147,33 @@ export function LandingDemo({ className }: { className?: string }) {
                   ? 'bg-black/[0.05] dark:bg-white/[0.07] text-apple-ink-muted dark:text-white/45'
                   : 'bg-ember/10 text-ember dark:text-[#fb9243]'
               )} aria-hidden>
-                {isPhoneLike() ? <Smartphone className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
+                {isPhone ? <Smartphone className="w-4 h-4" /> : <Monitor className="w-4 h-4" />}
               </span>
               <span className="text-[10.5px] font-semibold text-apple-ink dark:text-white/90 text-center leading-tight">{t('land.demo.a')}</span>
             </div>
 
-            {/* The staged object — appears the moment a kind is picked */}
+            {/* The staged object — picking a kind stages it here at once;
+                selection IS the first act of sending. */}
             <div className="flex-1 flex items-center justify-center min-h-[96px]">
               <AnimatePresence mode="wait" initial={false}>
-                {phase !== 'idle' && (
-                  <motion.div
-                    key={`a-${kind}`}
-                    initial={{ opacity: 0, scale: 0.92 }}
-                    animate={{ opacity: phase === 'sending' ? 0.55 : 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.92 }}
-                    transition={{ duration: 0.25, ease: EASE }}
-                    className="w-full"
-                  >
-                    <ObjectCard kind={kind} sample={sample} ghost={phase === 'sending'} />
-                  </motion.div>
-                )}
+                <motion.div
+                  key={`a-${kind}`}
+                  initial={{ opacity: 0, scale: 0.92 }}
+                  animate={{ opacity: phase === 'sending' ? 0.5 : 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.92 }}
+                  transition={{ duration: 0.25, ease: EASE }}
+                  className="w-full"
+                >
+                  <ObjectCard kind={kind} sample={sample} ghost={phase === 'sending'} />
+                </motion.div>
               </AnimatePresence>
             </div>
           </div>
 
-          {/* The gap — status line lives here, above the link line */}
-          <div className="shrink-0 w-[76px] sm:w-[96px] flex flex-col items-center justify-center gap-2 py-1">
-            <StatusDot phase={phase} />
+          {/* The gap — the connection forms here. The line bridges tile A's
+              edge to tile B's edge: dashed while searching, solid ember when
+              connected, green when the object lands. */}
+          <div className="shrink-0 w-[68px] sm:w-[96px] flex flex-col items-center justify-center py-1">
             <AnimatePresence mode="wait" initial={false}>
               <motion.span
                 key={statusLine}
@@ -160,27 +182,49 @@ export function LandingDemo({ className }: { className?: string }) {
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.18, ease: EASE }}
                 className={cn(
-                  'text-[10.5px] sm:text-[11px] font-semibold text-center leading-tight',
+                  'text-[10px] sm:text-[11px] font-semibold text-center leading-tight mb-2',
                   phase === 'arrived' ? 'text-status-success' : 'text-apple-ink-muted dark:text-white/50'
                 )}
               >
                 {statusLine}
               </motion.span>
             </AnimatePresence>
-            {/* The traveling object: crosses the gap during 'sending' */}
-            <div className="relative w-full h-6 flex items-center justify-center overflow-visible">
+            {/* The line + status dot, on one axis */}
+            <div className="relative w-full flex items-center justify-center" style={{ height: 24 }}>
+              {/* The path: exactly the span between the two tiles — dashed
+                  trace while idle, solid while connected. */}
+              {phase === 'idle' ? (
+                <span
+                  aria-hidden
+                  className="absolute left-[-14px] right-[-14px] top-1/2 border-t border-dashed border-apple-divider dark:border-white/[0.12]"
+                />
+              ) : (
+                <span
+                  aria-hidden
+                  className={cn(
+                    'absolute left-[-14px] right-[-14px] top-1/2 -translate-y-1/2 h-[2px] rounded-full transition-colors duration-500',
+                    phase === 'finding' && 'bg-apple-divider/70 dark:bg-white/[0.14]',
+                    (phase === 'connected' || phase === 'sending') && 'bg-ember dark:bg-[#fb9243]',
+                    phase === 'arrived' && 'bg-status-success'
+                  )}
+                />
+              )}
+              <StatusDot phase={phase} />
+            </div>
+            {/* The traveling object: the real object chip crosses the line */}
+            <div className="relative w-full flex items-center justify-center mt-2" style={{ height: 36 }}>
               <AnimatePresence>
                 {phase === 'sending' && (
                   <motion.span
                     key="travel"
-                    initial={{ x: -34, opacity: 0 }}
-                    animate={{ x: 34, opacity: 1 }}
-                    exit={{ opacity: 0, x: 44 }}
+                    initial={{ x: -30, opacity: 0, scale: 0.7 }}
+                    animate={{ x: 30, opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, x: 40, scale: 0.7 }}
                     transition={{ duration: 1.2, ease: EASE }}
                     className="absolute"
                     aria-hidden
                   >
-                    <span className="flex items-center justify-center w-8 h-8 rounded-[10px] bg-ember text-white shadow-lg shadow-ember/30">
+                    <span className="flex items-center justify-center w-9 h-9 rounded-[11px] bg-white dark:bg-[#2a2a30] border border-apple-divider/70 dark:border-white/[0.1] text-ember dark:text-[#fb9243] shadow-[0_4px_14px_-4px_rgba(31,26,20,0.3)] dark:shadow-[0_4px_14px_-4px_rgba(0,0,0,0.6)]">
                       {kind === 'image' ? <ImageIcon className="w-4 h-4" /> : kindMeta.icon}
                     </span>
                   </motion.span>
@@ -198,7 +242,7 @@ export function LandingDemo({ className }: { className?: string }) {
                   ? 'bg-status-success/12 text-status-success'
                   : 'bg-black/[0.05] dark:bg-white/[0.07] text-apple-ink-muted dark:text-white/45'
               )} aria-hidden>
-                {isPhoneLike() ? <Monitor className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
+                {isPhone ? <Monitor className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
               </span>
               <span className="text-[10.5px] font-semibold text-apple-ink dark:text-white/90 text-center leading-tight">{t('land.demo.b')}</span>
             </div>
@@ -236,18 +280,22 @@ export function LandingDemo({ className }: { className?: string }) {
             {KINDS.map(({ kind: k, icon }) => {
               const label = t(k === 'text' ? 'land.send.text' : k === 'url' ? 'land.send.url' : k === 'image' ? 'land.send.image' : 'land.send.file');
               const active = kind === k;
+              const locked = IN_FLIGHT.includes(phase);
               return (
                 <button
                   key={k}
                   type="button"
                   role="radio"
                   aria-checked={active}
+                  disabled={locked}
                   onClick={() => pick(k)}
                   className={cn(
-                    'flex flex-col items-center justify-center gap-1 rounded-[12px] py-2 text-[11px] font-semibold border transition-all duration-150 active:scale-[0.95] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember/60',
+                    'flex flex-col items-center justify-center gap-1 rounded-[12px] py-2 text-[11px] font-semibold border transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember/60',
+                    !locked && 'active:scale-[0.95]',
                     active
                       ? 'bg-ember/[0.09] dark:bg-ember/[0.14] border-ember/35 text-ember dark:text-[#fb9243]'
-                      : 'bg-black/[0.025] dark:bg-white/[0.04] border-transparent text-apple-ink-muted dark:text-white/50 hover:bg-black/[0.05] dark:hover:bg-white/[0.07]'
+                      : 'bg-black/[0.025] dark:bg-white/[0.04] border-transparent text-apple-ink-muted dark:text-white/50 hover:bg-black/[0.05] dark:hover:bg-white/[0.07]',
+                    locked && 'opacity-50 cursor-default'
                   )}
                 >
                   {icon}
@@ -266,13 +314,13 @@ export function LandingDemo({ className }: { className?: string }) {
                 ? 'bg-status-success hover:bg-[#2ea04e]'
                 : phase === 'connected' || phase === 'finding'
                   ? 'bg-[#3a3a40] dark:bg-white/15 cursor-default'
-                  : 'bg-ember hover:bg-[#d9560e] shadow-[0_1px_3px_rgba(240,100,19,0.35)]'
+                  : 'bg-ember hover:bg-[#d9560e] hover:shadow-[0_4px_14px_-4px_rgba(240,100,19,0.5)] shadow-[0_1px_3px_rgba(240,100,19,0.35)]'
             )}
           >
             <span className="inline-flex items-center gap-1.5">
               {phase === 'arrived' ? (
                 <><Check className="w-4 h-4" aria-hidden /> {t('land.demo.again')}</>
-              ) : phase === 'finding' || phase === 'connected' || phase === 'sending' ? (
+              ) : IN_FLIGHT.includes(phase) ? (
                 <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
               ) : (
                 t('land.demo.send')
@@ -282,7 +330,7 @@ export function LandingDemo({ className }: { className?: string }) {
         </div>
 
         {/* Screen-reader status */}
-        <p ref={liveRef} role="status" aria-live="polite" className="sr-only">{statusLine}</p>
+        <p role="status" aria-live="polite" className="sr-only">{statusLine}</p>
       </div>
 
       {/* Honesty line — outside the stage, quiet */}
@@ -361,15 +409,18 @@ function StatusDot({ phase }: { phase: Phase }) {
   if (phase === 'idle' || phase === 'finding') {
     return (
       <span className="relative flex items-center justify-center w-6 h-6" aria-hidden>
-        <span className="st-halo-ring absolute inset-0 rounded-full bg-status-success/30" />
-        <span className="relative w-2.5 h-2.5 rounded-full bg-status-success/70" />
+        <span className="st-halo-ring absolute inset-0 rounded-full bg-status-success/30 motion-reduce:animate-none" />
+        <span className={cn(
+          'relative rounded-full transition-all duration-300',
+          phase === 'idle' ? 'w-2.5 h-2.5 bg-status-success/50' : 'w-2.5 h-2.5 bg-status-success/80'
+        )} />
       </span>
     );
   }
   if (phase === 'connected' || phase === 'sending') {
     return (
-      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-status-success/12" aria-hidden>
-        <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
+      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-ember/15 dark:bg-[#fb9243]/20 transition-colors duration-300" aria-hidden>
+        <span className="w-2 h-2 rounded-full bg-ember dark:bg-[#fb9243]" />
       </span>
     );
   }
@@ -381,8 +432,3 @@ function StatusDot({ phase }: { phase: Phase }) {
 }
 
 export type LandingDemoKind = Kind;
-
-function isPhoneLike(): boolean {
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia('(max-width: 640px)').matches;
-}

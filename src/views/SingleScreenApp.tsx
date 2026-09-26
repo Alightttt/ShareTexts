@@ -1370,10 +1370,18 @@ export function SingleScreenApp() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.2, ease: EASE }}
-              className="h-full flex flex-col items-center text-center px-8 flex-1"
+              /* The SCROLLER is a plain block (no items-center): centering on
+                 a scroll container splits overflow above AND below with no
+                 scrollable region — Chrome simply refuses to scroll it, and
+                 the story below the fold was unreachable. The inner block's
+                 my-auto does the centering: real margins scroll normally
+                 and collapse to top-anchored when content overflows. */
+              className="h-full flex-1 overflow-y-auto overscroll-contain room-scroll"
             >
+              <div className="min-h-full h-fit flex flex-col items-center text-center px-8">
               {/* Connecting shows the same handshake scene as the left half —
                   one story on both panes. */}
+              <div className="w-full flex flex-col items-center my-auto">
               {panelMode === 'connecting' ? (
                 <div className="mb-4">
                   <ConnectHandshake phase="connecting" localIcon={isMobileDevice ? 'phone' : 'monitor'} />
@@ -1385,11 +1393,7 @@ export function SingleScreenApp() {
                    what you can send, how it works, both ways, trust — and
                    ends in a CTA that drives the real hero flow. On short
                    viewports the artwork steps aside so the story leads. */
-                /* my-auto centers the block when it fits and collapses to
-                   top-anchored when it overflows — justify-center would
-                   push the story's opening artwork above the scroll origin
-                   and make it unreachable. */
-                <div className="w-full max-w-[560px] mx-auto my-auto flex flex-col items-center gap-7 py-6">
+                <div className="w-full max-w-[560px] mx-auto flex flex-col items-center gap-7 py-6">
                   <div className="w-full max-w-[520px] hidden [@media(min-height:700px)]:block">
                     <HeroTransferScene />
                   </div>
@@ -1408,6 +1412,8 @@ export function SingleScreenApp() {
                   </p>
                 </>
               )}
+              </div>
+              </div>
             </motion.div>
           </AnimatePresence>
         )}
