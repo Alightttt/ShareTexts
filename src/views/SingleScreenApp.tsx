@@ -615,12 +615,12 @@ export function SingleScreenApp() {
                   tracker is passive status, so it lives ABOVE the action
                   cluster — status never interrupts the Send/Receive flow
                   (usability audit #6). */}
-              <h1 className="order-1 text-[34px] sm:text-[42px] lg:text-[56px] font-bold tracking-[-0.035em] leading-[1.08] text-apple-ink dark:text-white text-center sm:text-left" style={{ fontFamily: 'var(--font-display)' }}>
+              <h1 className="order-1 text-[34px] sm:text-[42px] lg:text-[52px] font-bold tracking-[-0.035em] leading-[1.06] text-apple-ink dark:text-white text-center sm:text-left" style={{ fontFamily: 'var(--font-display)' }}>
                 {(() => { const [a, b] = t('home.title').split('\n'); return (<>{a}{b ? <><br />{b}</> : null}</>); })()}
               </h1>
               {/* whitespace-pre-line honors the subtitle's deliberate line
                   break ("No app. No account. No cable." / "Just open …"). */}
-              <p className="order-2 mt-4 text-[16.5px] sm:text-[18px] lg:text-[20px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[40ch] text-center sm:text-left whitespace-pre-line">
+              <p className="order-2 mt-3.5 text-[16.5px] sm:text-[18px] lg:text-[19px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[40ch] text-center sm:text-left whitespace-pre-line">
                 {t('home.subtitle')}
               </p>
               {/* Live activity tracker — bare (NO pill): a breathing dot, the
@@ -658,11 +658,11 @@ export function SingleScreenApp() {
               <div className="order-3 mt-6 grid grid-cols-2 gap-x-3 gap-y-1 max-w-[360px] mx-auto sm:mx-0">
                 <div className="flex flex-col items-center gap-1.5 min-w-0">
                   <TactileButton onClick={handleSend} variant="primary" size="lg" className="w-full lg:text-[16px] lg:min-h-[56px]" icon={<SendCircleIcon size={18} />} disabled={isCreating}>{t('home.send')}</TactileButton>
-                  <span className="text-[13px] font-medium text-apple-ink-muted/80 dark:text-white/55">{t('home.sendHint')}</span>
+                  <span className="text-[12.5px] font-medium text-apple-ink-muted/70 dark:text-white/45">{t('home.sendHint')}</span>
                 </div>
                 <div className="flex flex-col items-center gap-1.5 min-w-0">
                   <TactileButton onClick={handleReceive} variant="soft" size="lg" className="w-full lg:text-[16px] lg:min-h-[56px]" icon={<ReceiveCircleIcon size={18} />}>{t('home.receive')}</TactileButton>
-                  <span className="text-[13px] font-medium text-apple-ink-muted/80 dark:text-white/55">{t('home.receiveHint')}</span>
+                  <span className="text-[12.5px] font-medium text-apple-ink-muted/70 dark:text-white/45">{t('home.receiveHint')}</span>
                 </div>
               </div>
               {/* Stay Connected re-entry: the room this device promised to
@@ -760,7 +760,7 @@ export function SingleScreenApp() {
               {/* On mobile the hero image already carries mb-5 before this
                   row — a second mt-10 stacked on top read as a dead gap.
                   mt-2 keeps one breath of air, nothing more. */}
-              <div className="order-6 mt-10 w-full flex flex-col items-center lg:items-start">
+              <div className="order-6 mt-8 w-full flex flex-col items-center lg:items-start">
                 <div className="w-full max-w-md lg:max-w-none">
                   <NearbyDevices onStatus={setNearbyStatus} />
                 </div>

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Monitor, Smartphone, ArrowRight, Zap, Eye, EyeOff, RefreshCw, Search, Check, X, Wifi, QrCode, Link2 } from 'lucide-react';
+import { Monitor, Smartphone, ArrowRight, Zap, Eye, EyeOff, RefreshCw, Search, Check, X, Wifi, QrCode, Link2, Loader2 } from 'lucide-react';
 import { getSocket } from '../lib/socket';
 import { nearbyPresence, isPresenceHidden, setPresenceHidden, type NearbyDevice } from '../lib/nearby';
 import { getRecentDevices, recordRecentDevice, isTrustedToken, forgetRecentDevice, resolveLiveToken, lastSeenParts } from '../lib/pairing';
@@ -478,14 +478,16 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
                     disabled={phase.kind !== 'idle'}
                     aria-label={t('nearby.connectAria', { name: d.name })}
                     className={cn(
-                      'group flex items-center gap-3 px-3.5 py-2.5 rounded-[14px] text-left',
+                      'group flex items-center gap-3 px-3.5 py-3 min-h-[52px] rounded-[14px] text-left',
                       'bg-white dark:bg-apple-tile-1 border border-apple-divider/50 dark:border-apple-tile-3',
-                      'hover:border-[#f06413]/40 dark:hover:border-[#fb9243]/45 active:scale-[0.985] transition-all',
-                      'disabled:opacity-50 disabled:pointer-events-none'
+                      'hover:border-[#f06413]/40 dark:hover:border-[#fb9243]/45 hover:shadow-[0_2px_10px_-4px_rgba(31,26,20,0.12)] dark:hover:shadow-[0_2px_10px_-4px_rgba(0,0,0,0.5)]',
+                      'active:scale-[0.985] transition-all',
+                      'disabled:opacity-50 disabled:pointer-events-none',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember/60'
                     )}
                   >
                     <span className={cn(
-                      'relative shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[#f06413] dark:text-[#fb9243]',
+                      'relative shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-[#f06413] dark:text-[#fb9243]',
                       busy
                         ? 'bg-[#f06413] dark:bg-[#fb9243] text-white dark:text-[#1a1208]'
                         : 'bg-[#f06413]/10 dark:bg-[#fb9243]/15'
@@ -494,9 +496,9 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
                       <DeviceGlyph name={d.name} />
                     </span>
                     <span className="flex-1 flex flex-col min-w-0 leading-tight">
-                      <span className="text-[13px] font-semibold text-apple-ink dark:text-white truncate">{d.name}</span>
+                      <span className="text-[13.5px] font-semibold text-apple-ink dark:text-white truncate">{d.name}</span>
                       <span className={cn(
-                        'text-[13px] font-medium flex items-center gap-1',
+                        'text-[12.5px] font-medium flex items-center gap-1',
                         busy
                           ? 'text-[#f06413] dark:text-[#fb9243] font-semibold'
                         : 'text-apple-ink-muted dark:text-white/45'
@@ -506,10 +508,20 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
                         ) : t('nearby.nearby')}
                       </span>
                     </span>
-                    {trusted && !busy && (
-                      <span className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[12px] font-semibold text-[#f06413] dark:text-[#fb9243] group-hover:bg-[#f06413] group-hover:text-white dark:group-hover:bg-[#fb9243] dark:group-hover:text-[#1a1208] transition-colors">
-                        <ArrowRight className="w-3 h-3" /> {t('nearby.send')}
+                    {busy ? (
+                      <Loader2 className="shrink-0 w-4 h-4 animate-spin text-[#f06413] dark:text-[#fb9243]" aria-hidden />
+                    ) : trusted ? (
+                      <span
+                        className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[12px] font-semibold text-[#f06413] dark:text-[#fb9243] group-hover:bg-[#f06413] group-hover:text-white dark:group-hover:bg-[#fb9243] dark:group-hover:text-[#1a1208] transition-colors"
+                        aria-hidden
+                      >
+                        <ArrowRight className="w-3 h-3 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none" />
                       </span>
+                    ) : (
+                      <ArrowRight
+                        className="shrink-0 w-4 h-4 text-apple-ink-muted/40 dark:text-white/25 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#f06413] dark:group-hover:text-[#fb9243] motion-reduce:transition-none"
+                        aria-hidden
+                      />
                     )}
                   </motion.button>
                 );
@@ -544,9 +556,9 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.15 } }}
                   transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
-                  className="group flex items-center gap-3 px-3.5 py-2.5 rounded-[14px] text-left border bg-apple-parchment/50 dark:bg-white/[0.02] border-apple-divider/30 dark:border-white/[0.04] transition-all"
+                  className="group flex items-center gap-3 px-3.5 py-3 min-h-[52px] rounded-[14px] text-left border bg-apple-parchment/50 dark:bg-white/[0.02] border-apple-divider/30 dark:border-white/[0.04] transition-all"
                 >
-                  <span className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-apple-divider/40 dark:bg-white/[0.06] text-apple-ink-muted dark:text-white/40">
+                  <span className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center bg-apple-divider/40 dark:bg-white/[0.06] text-apple-ink-muted dark:text-white/40">
                     <DeviceGlyph name={r.name} />
                   </span>
                   <span className="flex-1 flex flex-col min-w-0 leading-tight">
