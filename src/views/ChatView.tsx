@@ -15,6 +15,7 @@ import { DisconnectGlyph } from '../components/TransferIcons';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { StayConnectedToggle, StayBadge } from '../components/StayConnectedToggle';
 import { cn, formatBytes, sanitizeDeviceName } from '../lib/utils';
+import { hapticSuccess } from '../lib/haptics';
 import { Attachment } from '../types';
 import { MessageCard, pureLinkUrl } from '../components/MessageCard';
 import { DeviceLinkIllustration, PacketTrain } from '../components/DeviceLinkIllustration';
@@ -325,6 +326,9 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
       if (connectedToastRoomRef.current !== session.roomId) {
         connectedToastRoomRef.current = session.roomId;
         setShowConnected(true);
+        // The physical "someone's here" moment — fires once per room,
+        // alongside the toast. No-op where vibrate doesn't exist.
+        hapticSuccess();
         // No cleanup-return here: connectionType keeps settling for a few
         // seconds after connect ('connecting' → 'local' → 'direct'), and an
         // effect cleanup would cancel the dismissal mid-flight — leaving the
