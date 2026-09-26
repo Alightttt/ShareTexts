@@ -708,6 +708,15 @@ export class PeerManager {
       case 'seen':
         if (typeof inner.messageId === 'string' && this.onSeen) this.onSeen(inner.messageId);
         return;
+      case 'bye':
+        // The peer is leaving ON PURPOSE (closed the tab, hit Disconnect).
+        // Arrives ~instantly over the still-open channel — far ahead of the
+        // server's 60s seat-grace peer_disconnected — so the UI skips the
+        // calm "Reconnecting…" window entirely: an intentional goodbye is
+        // not a stall, there is nothing to wait for.
+        diag('peer.bye', true);
+        if (this.onDisconnectImmediate) this.onDisconnectImmediate();
+        return;
       case 'hello':
         if (typeof inner.name === 'string' && this.onHello) this.onHello(inner.name);
         if (this.onPeerCapabilities) {
@@ -1194,6 +1203,20 @@ export class PeerManager {
         if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
         getSocket().emit('relay_message', { roomId: this.roomId, data: serialized });
       }
+    }
+  }
+
+  /**
+   * Announce an INTENTIONAL leave over the data channel before it closes.
+   * Fire-and-forget: best-effort delivery while the channel is still open,
+   * so the peer can skip its 60s "maybe they'll come back" window and show
+   * the true disconnected state immediately. Called on pagehide and on an
+   * explicit Disconnect — never on mere tab blurs (a background tab is not
+   * a goodbye).
+   */
+  public notifyLeaving() {
+    if (this.dc?.readyState === 'open' || this.ccOpen) {
+      void this.sendControl({ type: 'bye' });
     }
   }
 

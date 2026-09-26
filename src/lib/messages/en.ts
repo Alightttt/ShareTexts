@@ -116,6 +116,7 @@ const en = {
   'room.ready': 'Ready to start',
   'room.created': 'Room created',
   'room.waiting': 'Waiting for connection',
+  'room.idleTitle': "How it works",
   'room.idleHint': 'Pick Send on this device, Receive on the other. They pair in seconds.',
   'room.setup': 'Setting up your transfer room.',
   'room.sendHint': 'Connect the other device: enter the code shown on this one.',
@@ -138,6 +139,7 @@ const en = {
 
   // ── transfer room (chat) ───────────────────────────────────────────
   'chat.online': 'Online',
+  'chat.reconnecting': 'Reconnecting…',
   'chat.offline': 'Offline',
   'chat.disconnected': 'Disconnected',
   'chat.pairedDevice': 'Paired device',

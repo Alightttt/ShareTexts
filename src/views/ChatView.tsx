@@ -170,6 +170,11 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     return () => { previewUrls.forEach((u) => URL.revokeObjectURL(u)); };
   }, [previewUrls]);
   const disconnected = !session.partnerConnected && session.connectionType === 'disconnected';
+  // "Is the link actually usable right now?" — one honest predicate the whole
+  // view shares. During a stall (channel dead, calm window running) the room
+  // settles into 'connecting' while partnerConnected stays true; every green
+  // "Connected" treatment must key off this, not the flag alone.
+  const partnerLinkHealthy = session.partnerConnected && session.connectionType !== 'disconnected' && session.connectionType !== 'connecting';
   // The session's start, as people say it: "7:24 PM" today, else "Sep 19, 7:24
   // PM". Computed once per room — createdAt never changes mid-room.
   const startedAtLabel = useMemo(() => {
@@ -315,7 +320,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   const connectedToastRoomRef = useRef<string | null>(null);
   useEffect(() => {
     const tr = tRef.current;
-    if (session.partnerConnected && session.connectionType !== 'disconnected') {
+    if (partnerLinkHealthy) {
       setAnnouncement(tr('common.connected'));
       if (connectedToastRoomRef.current !== session.roomId) {
         connectedToastRoomRef.current = session.roomId;
@@ -327,10 +332,14 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
         // it runs once per room, then the toast goes away on its own.
         setTimeout(() => setShowConnected(false), 2800);
       }
+    } else if (session.connectionType === 'connecting' && session.partnerConnected) {
+      // Stall/calm window: the channel is re-negotiating (or waiting to).
+      // Announce it — never "Connected" while the link is not usable.
+      setAnnouncement(tr('chat.reconnecting'));
     } else if (session.connectionType === 'disconnected') {
       setAnnouncement(tr('chat.peerDisconnected'));
     }
-  }, [session.partnerConnected, session.connectionType, session.roomId]);
+  }, [partnerLinkHealthy, session.connectionType, session.roomId]);
   // Post-transfer moment: after the very first transfer, a quiet "That's it."
   // appears once, then the app gets out of the way. Direction-aware: sending
   // and receiving tell different truths ("it's on the other device" vs "it
@@ -839,9 +848,12 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             "relative shrink-0 flex items-center justify-center w-8 h-8 rounded-[10px] transition-colors",
             disconnected
               ? "bg-black/[0.05] dark:bg-white/[0.06] border border-apple-divider/40 dark:border-white/[0.08] text-apple-ink-muted/50 dark:text-white/30"
-              : "bg-status-success/10 border border-status-success/20 text-status-success"
+              : session.connectionType === 'connecting'
+                ? "bg-status-warning/10 border border-status-warning/25 text-status-warning"
+                : "bg-status-success/10 border border-status-success/20 text-status-success"
           )}>
-            {!disconnected && <span aria-hidden className="absolute inset-0 rounded-[10px] bg-status-success/20 st-halo-ring" />}
+            {session.connectionType === 'connecting' && <span aria-hidden className="absolute inset-0 rounded-[10px] bg-status-warning/20 st-halo-ring" />}
+            {!disconnected && session.connectionType !== 'connecting' && <span aria-hidden className="absolute inset-0 rounded-[10px] bg-status-success/20 st-halo-ring" />}
             <PartnerDeviceIcon className="relative w-4 h-4" />
           </span>
           <span className="flex flex-col items-start min-w-0 leading-tight">
@@ -858,11 +870,21 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             >
               {session.partnerName || t('chat.pairedDevice')}
             </motion.span>
-            <span className="flex items-center gap-1 text-[10.5px] font-medium text-apple-ink-muted dark:text-white/45">
+            <span className={cn(
+              "flex items-center gap-1 text-[10.5px] font-medium",
+              disconnected || session.connectionType === 'connecting'
+                ? "text-status-warning"
+                : "text-apple-ink-muted dark:text-white/45"
+            )}>
               {disconnected ? (
                 <>
                   <span className="sm:hidden w-1.5 h-1.5 rounded-full bg-status-warning" />
                   {t('chat.disconnected')}
+                </>
+              ) : session.connectionType === 'connecting' ? (
+                <>
+                  <span className="sm:hidden w-1.5 h-1.5 rounded-full bg-status-warning animate-pulse" />
+                  {t('chat.reconnecting')}
                 </>
               ) : session.connectionType === 'direct' || session.connectionType === 'local' ? (
                 <>

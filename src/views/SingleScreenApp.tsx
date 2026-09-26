@@ -103,6 +103,10 @@ export function SingleScreenApp() {
   const { t } = useI18n();
   const { session, createSession, abandonSession, joinWithCode, joinWithShortCode, setDeviceName, rejoinStayRoom, requestReconnect, refreshCode } = useSession();
   const isDesktopLayout = useIsDesktopLayout();
+  // "Is the link actually usable right now?" — during a stall the room
+  // settles into 'connecting' while partnerConnected stays true; every green
+  // "Connected" treatment must key off this, not the flag alone.
+  const partnerLinkHealthy = session.partnerConnected && session.connectionType !== 'disconnected' && session.connectionType !== 'connecting';
   // Live activity tracker — real aggregate numbers from the signaling
   // service: devices seated right now + rooms ever created.
   const { roomsCreated } = useLiveStats();
@@ -983,20 +987,20 @@ export function SingleScreenApp() {
                         reward for the wait, in the spot the eye is already
                         on. Steady-state reverts to the breathing link. */}
                     <motion.span
-                      key={session.partnerConnected ? 'linked' : 'linking'}
-                      initial={session.partnerConnected ? { scale: 0.4, opacity: 0 } : false}
+                      key={partnerLinkHealthy ? 'linked' : 'linking'}
+                      initial={partnerLinkHealthy ? { scale: 0.4, opacity: 0 } : false}
                       animate={{
                         scale: 1,
                         opacity: 1,
-                        ...(session.partnerConnected ? {} : { opacity: [0.4, 1, 0.4] }),
+                        ...(partnerLinkHealthy ? {} : { opacity: [0.4, 1, 0.4] }),
                       }}
-                      transition={session.partnerConnected
+                      transition={partnerLinkHealthy
                         ? { type: 'spring', bounce: 0.4, duration: 0.45 }
                         : { opacity: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } }
                       }
                       className="flex items-center gap-1"
                     >
-                      {session.partnerConnected ? (
+                      {partnerLinkHealthy ? (
                         <span className="w-5 h-5 rounded-full bg-status-success flex items-center justify-center shadow-[0_2px_8px_-2px_rgba(52,199,89,0.6)]">
                           <Check className="w-3 h-3 text-white" strokeWidth={3} />
                         </span>
@@ -1008,11 +1012,11 @@ export function SingleScreenApp() {
                         </>
                       )}
                     </motion.span>
-                    <span className={cn("text-[11px] font-medium mt-1", session.connectionType === 'disconnected' ? "text-status-warning" : "text-status-success")}>
+                    <span className={cn("text-[11px] font-medium mt-1", partnerLinkHealthy ? "text-status-success" : "text-status-warning")}>
                       {/* Passive wait, not an active retry: after the peer
                           drops, the room holds open — "Waiting…" is the truth;
                           "Reconnecting…" promised a handshake that isn't running. */}
-                      {session.connectionType === 'disconnected' ? t('status.waiting') : t('common.connected')}
+                      {session.connectionType === 'disconnected' ? t('status.waiting') : partnerLinkHealthy ? t('common.connected') : t('chat.reconnecting')}
                     </span>
                   </div>
                   <div className="flex flex-col items-center gap-1.5">
@@ -1021,11 +1025,11 @@ export function SingleScreenApp() {
                         never glow green next to a "Waiting…" label. */}
                     <div className={cn(
                       "w-14 h-14 rounded-[16px] flex items-center justify-center transition-colors",
-                      session.connectionType === 'disconnected'
-                        ? "bg-black/[0.04] dark:bg-white/[0.05] border border-apple-divider/40 dark:border-white/[0.08]"
-                        : "bg-status-success/8 dark:bg-status-success/10 border border-status-success/15 dark:border-status-success/15"
+                      partnerLinkHealthy
+                        ? "bg-status-success/8 dark:bg-status-success/10 border border-status-success/15 dark:border-status-success/15"
+                        : "bg-black/[0.04] dark:bg-white/[0.05] border border-apple-divider/40 dark:border-white/[0.08]"
                     )}>
-                      <PartnerDeviceIcon className={cn("w-6 h-6 transition-colors", session.connectionType === 'disconnected' ? "text-apple-ink-muted/50 dark:text-white/25" : "text-status-success")} />
+                      <PartnerDeviceIcon className={cn("w-6 h-6 transition-colors", partnerLinkHealthy ? "text-status-success" : "text-apple-ink-muted/50 dark:text-white/25")} />
                     </div>
                     <span className="max-w-[120px] text-[11px] font-medium text-apple-ink-muted dark:text-white/40 truncate">
                       {session.partnerName || t('pair.paired')}
@@ -1107,10 +1111,10 @@ export function SingleScreenApp() {
                     in warning color. It must never read "Connected" while the
                     room is waiting; that contradiction broke trust in the
                     disconnect state. */}
-                <div className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors", session.connectionType === 'disconnected' ? "bg-status-warning/10 border-status-warning/25" : "bg-apple-parchment dark:bg-white/[0.05] border-apple-divider/50 dark:border-white/[0.08]")}>
-                  <Wifi className={cn("w-3 h-3", session.connectionType === 'disconnected' ? "text-status-warning" : "text-status-success")} />
+                <div className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors", session.connectionType === 'disconnected' || session.connectionType === 'connecting' ? "bg-status-warning/10 border-status-warning/25" : "bg-apple-parchment dark:bg-white/[0.05] border-apple-divider/50 dark:border-white/[0.08]")}>
+                  <Wifi className={cn("w-3 h-3", session.connectionType === 'disconnected' || session.connectionType === 'connecting' ? "text-status-warning" : "text-status-success")} />
                   <span className="text-[12px] font-medium text-apple-ink-muted dark:text-white/50">
-                    {session.connectionType === 'disconnected' ? t('chat.offline') : session.connectionType === 'relay' ? t('conn.relay') : session.connectionType === 'local' ? t('conn.local') : session.connectionType === 'direct' ? t('conn.direct') : t('common.connected')}
+                    {session.connectionType === 'disconnected' ? t('chat.offline') : session.connectionType === 'connecting' ? t('chat.reconnecting') : session.connectionType === 'relay' ? t('conn.relay') : session.connectionType === 'local' ? t('conn.local') : session.connectionType === 'direct' ? t('conn.direct') : t('common.connected')}
                   </span>
                 </div>
                 <button
@@ -1291,50 +1295,58 @@ export function SingleScreenApp() {
                 "relative flex items-center justify-center w-7 h-7 rounded-[9px] shrink-0 transition-colors",
                 session.connectionType === 'disconnected'
                   ? "bg-black/[0.05] dark:bg-white/[0.06] border border-apple-divider/40 dark:border-white/[0.08] text-apple-ink-muted/50 dark:text-white/30"
-                  : "bg-status-success/10 border border-status-success/20 text-status-success"
+                  : session.connectionType === 'connecting'
+                    ? "bg-status-warning/10 border border-status-warning/25 text-status-warning"
+                    : "bg-status-success/10 border border-status-success/20 text-status-success"
               )}>
-                {session.connectionType !== 'disconnected' && <span aria-hidden className="absolute inset-0 rounded-[9px] bg-status-success/20 st-halo-ring" />}
+                {session.connectionType === 'connecting' && <span aria-hidden className="absolute inset-0 rounded-[9px] bg-status-warning/20 st-halo-ring" />}
+                {session.connectionType !== 'disconnected' && session.connectionType !== 'connecting' && <span aria-hidden className="absolute inset-0 rounded-[9px] bg-status-success/20 st-halo-ring" />}
                 <PartnerDeviceIcon className="relative w-4 h-4" />
               </span>
               <span className="hidden md:flex flex-col leading-tight min-w-0">
                 <span className="text-[12.5px] font-semibold text-apple-ink dark:text-white truncate max-w-[130px]">{session.partnerName || t('chat.pairedDevice')}</span>
-                <span className={cn("text-[10.5px] font-medium", session.connectionType === 'disconnected' ? "text-status-warning" : "text-status-success")}>
+                <span className={cn("text-[10.5px] font-medium", session.connectionType === 'disconnected' ? "text-status-warning" : session.connectionType === 'connecting' ? "text-status-warning" : "text-status-success")}>
                   {session.connectionType === 'disconnected'
                     ? t('chat.offline')
-                    : session.connectionType === 'direct' || session.connectionType === 'local'
-                      ? t('chat.directBadge')
-                      : session.connectionType === 'relay'
-                        ? t('conn.relay')
-                        : t('common.connected')}
+                    : session.connectionType === 'connecting'
+                      ? t('chat.reconnecting')
+                      : session.connectionType === 'direct' || session.connectionType === 'local'
+                        ? t('chat.directBadge')
+                        : session.connectionType === 'relay'
+                          ? t('conn.relay')
+                          : t('common.connected')}
                 </span>
               </span>
               <span className="md:hidden w-1.5 h-1.5 rounded-full shrink-0 ml-0.5" aria-hidden>
-                <span className={cn("block w-1.5 h-1.5 rounded-full", session.connectionType === 'disconnected' ? "bg-status-warning" : "bg-status-success animate-pulse")} />
+                <span className={cn("block w-1.5 h-1.5 rounded-full", session.connectionType === 'disconnected' || session.connectionType === 'connecting' ? "bg-status-warning" : "bg-status-success animate-pulse")} />
               </span>
               <StayBadge />
             </>
           ) : (
             <>
               <ShareTextsLogo size={16} />
-              <span className="text-[13px] font-semibold text-apple-ink dark:text-white">{t('room.title')}</span>
+              {/* Label follows the pane's actual job: the three-step guide
+                  while idle, "Room" once a session exists (pairing, connect,
+                  live). One header, no mixed messages. */}
+              <span className="text-[13px] font-semibold text-apple-ink dark:text-white">{panelMode === 'idle' ? t('room.idleTitle') : t('room.title')}</span>
             </>
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <ShareTextsLogo size={15} mono className="opacity-70 hidden sm:block" />
-          <button
-            onClick={() => setConfirmDisconnect(true)}
-            className={cn(
-              "flex items-center justify-center min-w-[44px] min-h-[44px] rounded-full transition-all duration-150 active:scale-95",
-              panelMode === 'connected'
-                ? "text-apple-ink-muted/70 dark:text-white/50 hover:text-status-danger hover:bg-status-danger/10"
-                : "text-apple-ink-muted/40 dark:text-white/20"
-            )}
-            disabled={panelMode !== 'connected'}
-            aria-label={t('common.disconnectAria')}
-          >
-            <DisconnectGlyph size={18} />
-          </button>
+          {/* Leave control only exists when there is a session to leave —
+              a permanently-disabled hang-up on the idle pane is noise. */}
+          {panelMode === 'connected' && (
+            <>
+              <ShareTextsLogo size={15} mono className="opacity-70 hidden sm:block" />
+              <button
+                onClick={() => setConfirmDisconnect(true)}
+                className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-full transition-all duration-150 active:scale-95 text-apple-ink-muted/70 dark:text-white/50 hover:text-status-danger hover:bg-status-danger/10"
+                aria-label={t('common.disconnectAria')}
+              >
+                <DisconnectGlyph size={18} />
+              </button>
+            </>
+          )}
         </div>
       </div>
 

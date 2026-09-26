@@ -957,6 +957,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener('visibilitychange', onVis);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Goodbye on real departure: pagehide fires for tab closes AND navigations
+  // (unlike beforeunload) and does not block teardown. Backgrounding a tab is
+  // NOT a goodbye — visibilitychange handles recovery for that case above.
+  useEffect(() => {
+    const onLeave = () => { peerManagerRef.current?.notifyLeaving(); };
+    window.addEventListener('pagehide', onLeave);
+    return () => window.removeEventListener('pagehide', onLeave);
+  }, []);
   useEffect(() => stopSeatKeepalive, [stopSeatKeepalive]);
 
   /**
@@ -981,6 +989,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   };
 
   const closeSession = () => {
+    // Say goodbye over the still-open channel: the peer sees the true
+    // disconnected state immediately instead of a 60s "maybe they're coming
+    // back" window. Must run BEFORE the channel is destroyed.
+    peerManagerRef.current?.notifyLeaving();
     if (session.roomId) {
       getSocket().emit('close_room', { roomId: session.roomId });
     }
