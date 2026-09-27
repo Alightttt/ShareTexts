@@ -66,7 +66,9 @@ export function chunkCountForSize(size: number): number {
 // Private File System (disk-backed) chunk by chunk, so a multi-GB movie lands
 // on a phone without ever filling its memory. Where OPFS isn't available the
 // in-memory path still works up to ~2 GB on a desktop.
-const MAX_TRANSFER_SIZE = 4 * 1024 * 1024 * 1024; // 4 GB max total
+// 1 TB ceiling: well beyond any real file, and cheap to reason about —
+// 32-bit sequence numbers allow ~549 TB, so this is a guard, not a bottleneck.
+const MAX_TRANSFER_SIZE = 1024 ** 4; // 1 TB max total
 const MAX_CHUNKS = Math.ceil(MAX_TRANSFER_SIZE / CHUNK_SIZE);
 const OFFER_RETRY_DELAY = 2500;
 const OFFER_RETRY_MAX = 3;

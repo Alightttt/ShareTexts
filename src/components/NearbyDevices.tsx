@@ -7,7 +7,6 @@ import { getRecentDevices, recordRecentDevice, isTrustedToken, forgetRecentDevic
 import { useI18n } from '../lib/i18n';
 import { useSession } from '../lib/SessionContext';
 import { ConfirmSheet } from './ConfirmSheet';
-import { hapticTap } from '../lib/haptics';
 import { productEvent } from '../lib/telemetry';
 import { cn } from '../lib/utils';
 import { DeviceLinkIllustration } from './DeviceLinkIllustration';
@@ -340,7 +339,6 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
   /* --- outgoing invite --------------------------------------------------- */
   const handleInvite = useCallback(async (device: NearbyDevice): Promise<boolean> => {
     productEvent('product.method_nearby');
-    hapticTap();
     setPhase({ kind: 'inviting', device });
     setFailedDevice(null);
     invitingRef.current = true;
@@ -640,7 +638,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
               title={presenceHidden ? t('nearby.hiddenTitle') : t('nearby.visibleWhileOpen')}
               hint={presenceHidden ? t('nearby.hiddenHint') : t('nearby.visibleWhileOpenHint')}
               ariaLabel={t('nearby.visibleTitle')}
-              onClick={() => { hapticTap(); setPresenceHiddenState(h => { setPresenceHidden(!h); return !h; }); }}
+              onClick={() => { setPresenceHiddenState(h => { setPresenceHidden(!h); return !h; }); }}
             />
             <ToggleRow
               testId="auto-connect-toggle"
@@ -650,7 +648,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
               title={t('nearby.autoTitle')}
               hint={t('nearby.autoHint')}
               ariaLabel={t('nearby.autoTitle')}
-              onClick={() => { hapticTap(); setAutoOn(v => { setAutoConnectEnabled(!v); return !v; }); }}
+              onClick={() => { setAutoOn(v => { setAutoConnectEnabled(!v); return !v; }); }}
             />
           </motion.div>
         )}
@@ -663,9 +661,13 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
           <motion.div
             key={`error:${phase.text}`}
             initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
+            /* Visual haptic: the card answers a failed invite with the same
+               horizontal head-shake the code input uses for a wrong code —
+               one denial language across the app. Stripped under
+               reduced-motion by the global MotionConfig. */
+            animate={{ opacity: 1, y: 0, x: [0, -7, 7, -5, 5, 0] }}
             exit={{ opacity: 0, y: 4 }}
-            transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.3, x: { duration: 0.45, ease: 'easeInOut' } }}
             role="alert"
             data-testid="nearby-failure-card"
             className="mt-2.5 w-full px-3.5 py-3 rounded-[14px] bg-status-danger/[0.06] dark:bg-status-danger/[0.08] border border-status-danger/25"
@@ -689,7 +691,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
                       <button
                         type="button"
                         data-testid="nearby-fail-retry"
-                        onClick={() => { hapticTap(); void handleInvite(failedDevice); }}
+                        onClick={() => { void handleInvite(failedDevice); }}
                         className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[13px] font-semibold active:scale-[0.97] transition-all min-h-[36px]"
                       >
                         <RefreshCw className="w-3.5 h-3.5" /> {t('nearby.failRetry')}
@@ -697,7 +699,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
                       <button
                         type="button"
                         data-testid="nearby-fail-qr"
-                        onClick={() => { hapticTap(); (window as Window & { __stOpenSendQr?: () => void }).__stOpenSendQr?.(); }}
+                        onClick={() => { (window as Window & { __stOpenSendQr?: () => void }).__stOpenSendQr?.(); }}
                         className={pillGhost}
                       >
                         <QrCode className="w-3.5 h-3.5" /> {t('nearby.failUseQr')}
@@ -720,7 +722,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
             type="button"
             data-testid="nearby-why-toggle"
             aria-expanded={whyOpen}
-            onClick={() => { hapticTap(); setWhyOpen(o => !o); }}
+            onClick={() => { setWhyOpen(o => !o); }}
             className="flex items-center gap-1.5 px-1 py-1 text-[13px] font-semibold text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors"
           >
             {t('nearby.whyTitle')}

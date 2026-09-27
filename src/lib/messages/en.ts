@@ -187,8 +187,8 @@ const en = {
   // ── composer / attachments ─────────────────────────────────────────
   'attach.max': 'You can attach up to {max} files in one message. Send this batch first.',
   'attach.overflow': 'Not added: you can send up to {max} files at once.',
-  'attach.largeImage': '{name} is larger than 100 MB. Photos above 100 MB still transfer full quality. They arrive as a file you can open, with no preview.',
-  'attach.tooLarge': '{name} is too large. ShareTexts works best with files under a few hundred MB.',
+  'attach.largeImage': '{name} is larger than 100 MB, so it arrives as a file without an inline preview. Original quality, byte-for-byte.',
+  'attach.tooLarge': 'This file is beyond even ShareTexts (the limit is 1 TB). Split it and send the parts — they arrive one after the other.',
   'attach.count': '{count} of {max} attached',
   'attach.add': 'Add attachment',
   'attach.remove': 'Remove attachment',

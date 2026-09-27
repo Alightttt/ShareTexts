@@ -1,7 +1,6 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { motion, useSpring, useMotionValue, useTransform } from 'motion/react';
 import { cn } from '../lib/utils';
-import { hapticTap } from '../lib/haptics';
 
 // ---------------------------------------------------------------------------
 // TactileButton — physically dimensional button
@@ -166,10 +165,7 @@ export function TactileButton({
     y.set(1);
     shadowY.set(0);
     shadowOpacity.set(0.5);
-    // Physical "press" texture on every commit-style button. Android-only
-    // in practice (iOS Safari ignores vibrate); guarded no-op elsewhere.
-    if (!disabled) hapticTap();
-  }, [y, shadowY, shadowOpacity, disabled]);
+  }, [y, shadowY, shadowOpacity]);
 
   const handlePointerUp = useCallback(() => {
     setIsPressed(false);

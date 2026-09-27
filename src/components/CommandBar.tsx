@@ -4,7 +4,6 @@ import { useSession } from '../lib/SessionContext';
 import { useTheme } from '../lib/theme';
 import { LANGS, useI18n } from '../lib/i18n';
 import { cn, shortCodeOf } from '../lib/utils';
-import { hapticTap } from '../lib/haptics';
 import {
   Send, Download, QrCode, Link2, Copy, RefreshCw, LogOut,
   Sun, Moon, Languages, FileText, ChevronLeft, Check, Search, Info, Gauge, Activity
@@ -249,7 +248,6 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
 
   const runCmd = (cmd: Cmd) => {
     if (cmd.opensSub) { if (cmd.id === 'stats') setStatsOpen(true); else if (cmd.id === 'diagnostics') setDiagOpen(true); else setSubOpen(true); return; }
-    hapticTap();
     // Close FIRST (synchronously), then run — the action targets state that
     // assumes the palette is gone, and focus restoration happens before the
     // command's own focus changes. The run lands on the NEXT frame so the

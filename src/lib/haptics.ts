@@ -1,10 +1,15 @@
 /**
- * Haptics — the physical "pop" iOS apps have and web apps forget.
+ * Haptics — reserved for the moments that matter.
  *
- * navigator.vibrate is Android-only in practice (iOS Safari ignores it),
- * so this is a progressive enhancement: a 10ms tick on commit-style taps
- * and a short rise on success moments. Guarded, never throws, no-ops on
- * unsupported devices — zero risk, real texture where it works.
+ * Restraint is the design: vibration is NOT a texture on every tap —
+ * it is reserved for rare, meaningful events (a device connected —
+ * the AirDrop "someone's here" moment). Ordinary taps answer through
+ * the visual language instead: TactileButton's press anatomy, state
+ * transitions, toasts, and the horizontal shake for denials (LiveCodeInput's
+ * wrong-code shake, the nearby failure card) — visual haptics, not vibration.
+ *
+ * navigator.vibrate is Android-only in practice (iOS Safari ignores it);
+ * everything here is a guarded, no-throw progressive enhancement.
  */
 
 function vibrate(pattern: number | number[]) {
@@ -15,8 +20,5 @@ function vibrate(pattern: number | number[]) {
   } catch { /* never let feedback break an action */ }
 }
 
-/** Light tick — taps that commit something (Send, Receive, copy). */
-export const hapticTap = () => vibrate(10);
-
-/** Short rising pulse — something landed (paired, file arrived). */
+/** Rising pulse — a device connected (the AirDrop moment). Once per room. */
 export const hapticSuccess = () => vibrate([12, 40, 18]);

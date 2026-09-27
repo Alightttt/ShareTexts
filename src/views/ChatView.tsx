@@ -98,7 +98,6 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [selectionCopied, setSelectionCopied] = useState(false);
   const enterSelectMode = (firstId?: string) => {
-    haptic(12);
     setSelectMode(true);
     setSelection(firstId ? new Set([firstId]) : new Set());
   };
@@ -108,7 +107,6 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     setSelectionCopied(false);
   };
   const toggleSelected = (id: string) => {
-    haptic(8);
     setSelection(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
@@ -271,12 +269,13 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     if (count <= prev) return;
     const last = session.messages[count - 1];
     if (last?.sender === 'partner') {
+      // The one receive moment that earns a pulse: something arrived.
       haptic([10, 40, 12]);
       if (!atBottomRef.current && !disconnected) setShowJump(true);
-    } else if (last?.sender === 'me') {
-      haptic(8);
     }
-    // Autoscroll only when the reader is already at the bottom — never yank
+    // (Own sends stay visually confirmed by the card appearing — no extra
+    // pulse needed.) Autoscroll only when the reader is already at the bottom
+    // — never yank
     // the scroll position out from under them.
     if (!disconnected && atBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -425,9 +424,12 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
       if (kind === 'file' && file.type.startsWith('video/')) kind = 'video';
       else if (kind === 'file' && file.type.startsWith('audio/')) kind = 'audio';
       else if (kind === 'file' && file.type.startsWith('image/')) kind = 'image';
+      // Oversized images transfer too — they just skip the inline preview
+      // (a 400MB RAW decode attempt would freeze the card anyway). The copy
+      // below is a heads-up, not a rejection: quality is never compromised.
       if (kind === 'image' && file.size > 100 * 1024 * 1024) {
+        kind = 'file';
         setErrorMsg(t('attach.largeImage', { name: file.name }));
-        continue;
       }
       if (file.size > 4 * 1024 * 1024 * 1024) {
         setErrorMsg(t('attach.tooLarge', { name: file.name }));
@@ -470,7 +472,6 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
       }
       if (files.length > 0) {
         e.preventDefault();
-        haptic(8);
         // Classification happens per file inside addFiles (type 'file' promotes
         // each media file to its right card), so mixed pastes just work.
         addFiles(files, 'file');
@@ -550,7 +551,6 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     const text = dt.getData('text/plain').trim();
     const dropped = uri || text;
     if (!dropped) return;
-    haptic(8);
     const sep = inputText && !/\s$/.test(inputText) ? '\n' : '';
     const next = inputText + sep + dropped;
     setInputText(next);

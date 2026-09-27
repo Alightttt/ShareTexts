@@ -236,7 +236,7 @@ async function main() {
         dims: (txt.match(/(\d{2,5})\s*×\s*(\d{2,5})/) || [])[0] || null,
         verified: txt.includes('Verified'),
         fmt: (txt.match(/\b(PNG|JPEG|HEIC|HEIF|WebP|AVIF|GIF)\b/) || [])[0] || null,
-        fallbackNote: txt.includes('Original file kept'),
+        fallbackNote: txt.includes('File kept — no preview'),
         hasImg: !!(best && best.querySelector('img')),
       };
     });
@@ -263,7 +263,7 @@ async function main() {
 
   const heicCard = cards.find(c => c.text.includes('proof-broken'));
   ok(!!heicCard, 'heic: card present on B');
-  ok(!!heicCard && heicCard.fallbackNote, 'heic: decode-fallback note shown ("Original file kept — preview not supported")');
+  ok(!!heicCard && heicCard.fallbackNote, 'heic: decode-fallback note shown ("File kept — no preview available")');
   ok(!!heicCard && !heicCard.hasImg, 'heic: NOT rendered as a broken image (file row instead)');
   ok(!!heicCard && heicCard.verified, 'heic: Verified shield shown');
   const binCard = cards.find(c => c.text.includes('proof-binary'));

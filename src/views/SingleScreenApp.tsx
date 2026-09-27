@@ -34,7 +34,6 @@ import { loadStoredSession } from '../lib/session/persistence';
 import { ConnectError, describeConnectFailure } from '../lib/errors';
 import { HeroTransferScene } from '../components/HeroTransferScene';
 import { useLiveStats } from '../lib/useLiveStats';
-import { hapticTap } from '../lib/haptics';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { StayConnectedToggle, StayBadge } from '../components/StayConnectedToggle';
 import { NearbyDevices } from '../components/NearbyDevices';
@@ -359,7 +358,6 @@ export function SingleScreenApp() {
 
   const handleSend = useCallback(async () => {
     if (isCreating) return;
-    hapticTap();
     productEvent('product.first_interaction');
     productEvent('product.method_code'); // Send = create room → the code/QR/link path
     setPanelMode('sending');
@@ -387,7 +385,7 @@ export function SingleScreenApp() {
     }
   }, [isCreating, createSession, t, friendlyConnectError]);
 
-  const handleReceive = useCallback(() => { hapticTap(); productEvent('product.first_interaction'); setPanelMode('receiving'); setCreateError(null); setJoinError(null); }, []);
+  const handleReceive = useCallback(() => { productEvent('product.first_interaction'); setPanelMode('receiving'); setCreateError(null); setJoinError(null); }, []);
 
   // Fallback-chip actions: "Show QR" / "Share link" create the room first
   // (if none exists), then surface the exact QR/link modal the normal send
@@ -403,7 +401,6 @@ export function SingleScreenApp() {
     }, 120);
   };
   const handleSendThenQr = useCallback(async () => {
-    hapticTap();
     if (session.roomId) { setShowQROverlay(true); return; }
     await handleSend();
     // createSession may still be in flight; open the overlay once the room
@@ -411,7 +408,6 @@ export function SingleScreenApp() {
     waitForRoom(() => setShowQROverlay(true));
   }, [session.roomId, handleSend]);
   const handleSendThenLink = useCallback(async () => {
-    hapticTap();
     if (session.roomId) { void copyLink(); return; }
     await handleSend();
     waitForRoom(() => { void copyLink(); });
@@ -477,7 +473,6 @@ export function SingleScreenApp() {
   // is really gone (close/expiry) — say so instead of blinking the button.
   const handleStayRejoin = useCallback(async () => {
     if (isRejoining) return;
-    hapticTap();
     setIsRejoining(true);
     const ok = await rejoinStayRoom();
     setIsRejoining(false);
