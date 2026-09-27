@@ -539,11 +539,18 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
   // the footer must not say it a second time on the same card.
   const mediaPlaceholderVisible = !complete
     && ((a.type === 'image' && !unsafePreview && !decodeFailed && !lost) || (a.type === 'video' && !lost));
+  // Quiet-delight settle: a message RECEIVED from the partner lands with a
+  // tiny scale-settle (1.02 → 1) — the physical "it's here" beat — while own
+  // sends just fade up (the send button already acknowledged the action).
+  // Plays once per mount; reduced-motion flattens the transform globally.
+  const settled = msg.sender === 'partner';
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
+      initial={{ opacity: 0, y: 6, scale: settled ? 1.015 : 1 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={settled
+        ? { type: 'spring', stiffness: 380, damping: 26, mass: 0.9 }
+        : { type: 'spring', stiffness: 420, damping: 34, mass: 0.9 }}
       className={cn(
         "flex w-full items-center gap-2",
         isMe ? "flex-row-reverse justify-start" : "justify-start",

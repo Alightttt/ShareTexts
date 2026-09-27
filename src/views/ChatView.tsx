@@ -169,6 +169,18 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     return () => { previewUrls.forEach((u) => URL.revokeObjectURL(u)); };
   }, [previewUrls]);
   const disconnected = !session.partnerConnected && session.connectionType === 'disconnected';
+  // Truthful attribution for the disconnect banner: when THIS device loses
+  // its network, the honest sentence is "your device is offline" — not the
+  // false claim that the peer left. navigator.onLine + live events, so the
+  // banner flips correctly the moment Wi-Fi returns.
+  const [deviceOnline, setDeviceOnline] = useState(typeof navigator === 'undefined' ? true : navigator.onLine);
+  useEffect(() => {
+    const up = () => setDeviceOnline(true);
+    const down = () => setDeviceOnline(false);
+    window.addEventListener('online', up);
+    window.addEventListener('offline', down);
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down); };
+  }, []);
   // "Is the link actually usable right now?" — one honest predicate the whole
   // view shares. During a stall (channel dead, calm window running) the room
   // settles into 'connecting' while partnerConnected stays true; every green
@@ -1069,7 +1081,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 <span className="w-2 h-2 rounded-full bg-status-warning animate-pulse shrink-0" />
                 {/* min-w-0 lets the sentence wrap on narrow screens instead
                     of pushing the code chip out of the row. */}
-                <span className="min-w-0">{t('banner.peerGone')}</span>
+                <span className="min-w-0">{!deviceOnline ? t('banner.deviceOffline') : t('banner.peerGone')}</span>
               </span>
               {/* The code is the room's lifeline while waiting: shrink the
                   sentence first, never let the digits wrap — a code broken

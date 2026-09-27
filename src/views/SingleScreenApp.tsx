@@ -767,6 +767,28 @@ export function SingleScreenApp() {
                   );
                 })()}
               </AnimatePresence>
+              {/* Three-glyph teaching strip — mobile only (desktop's right
+                  pane already carries the numbered steps). Duolingo's
+                  "you always know what's next" in three glyphs and the
+                  app's own step copy, which all 9 locales already ship.
+                  Pure typography + existing icons; no illustration, no
+                  card — it teaches, it doesn't decorate. */}
+              <div className="order-4 lg:hidden mt-5 mb-1 w-full max-w-[360px] mx-auto" aria-hidden>
+                <div className="flex items-center justify-center gap-2">
+                  {[ThisDeviceIcon, ArrowRightLeft, PartnerDeviceIcon].map((Glyph, i) => (
+                    <React.Fragment key={i}>
+                      {i > 0 && <span className="w-4 h-px bg-apple-divider dark:bg-white/15" />}
+                      <span className="flex items-center justify-center w-8 h-8 rounded-[10px] bg-black/[0.04] dark:bg-white/[0.06] text-apple-ink-muted dark:text-white/50">
+                        <Glyph className="w-4 h-4" strokeWidth={2} />
+                      </span>
+                    </React.Fragment>
+                  ))}
+                  <span className="w-4 h-px bg-apple-divider dark:bg-white/15" />
+                  <span className="text-[12.5px] font-medium text-apple-ink-muted dark:text-white/45 whitespace-nowrap">
+                    {t('home.journey')}
+                  </span>
+                </div>
+              </div>
               {/* The product, as it actually looks — laptop + phone running
                   the real connected UI. Scales itself; breaks out of the
                   hero column to use the full half-pane width. Desktop shows

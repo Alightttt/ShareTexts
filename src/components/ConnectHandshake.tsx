@@ -85,10 +85,13 @@ export function ConnectHandshake({ phase, localIcon = 'phone', partnerName }: Co
     <div className="flex flex-col items-center w-full select-none" data-testid="connect-handshake" data-phase={phase}>
       {/* The scene: local tile — link — partner tile */}
       <div className="relative flex items-center" style={{ minHeight: TILE + 40 }}>
-        {/* Local tile */}
+        {/* Local tile — as the link draws, both tiles lean 4px toward each
+            other: the connection reads as two devices reaching one another,
+            not a line appearing between bystanders. */}
         <motion.div
           className="relative z-10 flex flex-col items-center gap-2"
-          animate={{ marginRight: 0 }}
+          animate={{ x: connected ? 4 : 0 }}
+          transition={{ duration: 0.4, ease: EASE }}
         >
           <DeviceTile kindIcon={localIcon} accent={accent} lifted={connecting || connected} />
           <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/45">{t('connect.thisDevice')}</span>
@@ -174,8 +177,13 @@ export function ConnectHandshake({ phase, localIcon = 'phone', partnerName }: Co
 
         {/* Partner tile — its accent ring pulses gently while linking
             (a soft breath, alpha-only, never a scale change), wrapped in
-            the radar sweep ring that says "finding this device…". */}
-        <motion.div className="relative z-10 flex flex-col items-center gap-2">
+            the radar sweep ring that says "finding this device…". It meets
+            the local tile halfway as the link draws. */}
+        <motion.div
+          className="relative z-10 flex flex-col items-center gap-2"
+          animate={{ x: connected ? -4 : 0 }}
+          transition={{ duration: 0.4, ease: EASE }}
+        >
           <motion.div
             className="relative"
             animate={connecting ? { boxShadow: [
