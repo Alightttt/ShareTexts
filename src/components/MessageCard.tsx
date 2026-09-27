@@ -22,6 +22,7 @@ import { useI18n } from '../lib/i18n';
 import type { I18nApi } from '../lib/i18n';
 import { ChatMessage, Attachment } from '../types';
 import { looksLikeStructuredText, maxLineLength, sliceAtGraphemeBoundary, hasStrongRtl } from '../lib/textFidelity';
+import { fetchLinkPreview, type LinkPreviewData } from '../lib/linkPreview';
 
 const LARGE_TEXT_THRESHOLD = 8000; // chars
 const LARGE_TEXT_PREVIEW = 1400;
@@ -952,12 +953,27 @@ function ImageViewer({ src, name, onClose }: { src: string; name: string; onClos
 }
 
 /** Universal composer — LINK card: a pasted URL stops being a wall of text
- *  and becomes a tappable chip ("paste URL → LINK"). The chip shows the
- *  host (the identity you recognize) with the full URL as one line below.
- *  The href came from sanitizeUrl — http(s) only, no javascript:/data:. */
+ *  and becomes a tappable card. When preview metadata is reachable (server-
+ *  side OG fetch, see /api/preview) it grows into a rich card: thumbnail,
+ *  page title, site name — the YouTube-video / article identity people
+ *  recognize at a glance. When it isn't, it stays the honest plain chip:
+ *  host + full URL. The href came from sanitizeUrl — http(s) only. */
 function LinkCard({ url, onBlue }: { url: string; onBlue: boolean }) {
   let host = url;
   try { host = new URL(url).host; } catch { /* unreachable — sanitizeUrl validated */ }
+  const [preview, setPreview] = useState<LinkPreviewData | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void fetchLinkPreview(url).then(data => {
+      if (alive && data && !data.unavailable) setPreview(data);
+    });
+    return () => { alive = false; };
+  }, [url]);
+
+  const title = preview?.title || host;
+  const siteName = preview?.siteName || host;
+  const showPreview = !!preview && (preview.title || preview.image);
+
   return (
     <a
       href={url}
@@ -966,18 +982,38 @@ function LinkCard({ url, onBlue }: { url: string; onBlue: boolean }) {
       dir="ltr"
       onClick={(e) => e.stopPropagation()} // never toggle selection underneath
       className={cn(
-        'group/link mt-0.5 flex items-center gap-2.5 w-full min-w-0 rounded-[12px] px-3 py-2.5 border transition-colors',
+        'group/link mt-0.5 block w-full min-w-0 rounded-[12px] border overflow-hidden transition-colors',
         onBlue
           ? 'border-black/[0.08] bg-white/60 hover:bg-white/85 dark:border-white/10 dark:bg-white/[0.07] dark:hover:bg-white/[0.12]'
           : 'border-apple-divider/60 bg-apple-parchment/70 hover:bg-apple-parchment dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.08]'
       )}
     >
-      <span className="shrink-0 w-8 h-8 rounded-[10px] bg-apple-blue/10 text-apple-blue flex items-center justify-center" aria-hidden>
-        <Link2 className="w-4 h-4" />
-      </span>
-      <span className="flex-1 min-w-0 flex flex-col leading-tight">
-        <span className="text-[13.5px] font-semibold text-apple-blue truncate">{host}</span>
-        <span className="text-[11.5px] font-medium text-apple-ink-muted dark:text-white/45 truncate">{url}</span>
+      {showPreview && preview?.image && (
+        // Thumbnail: 16:9 band, letterboxed like YouTube renders it. The img
+        // is lazy + async-decoded so a room full of links stays scroll-smooth;
+        // onError collapses the band (broken hosts must not leave holes).
+        <span className="block w-full aspect-video bg-black/[0.04] dark:bg-white/[0.05]">
+          <img
+            src={preview.image}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="w-full h-full object-cover"
+            onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }}
+          />
+        </span>
+      )}
+      <span className="flex items-start gap-2.5 px-3 py-2.5">
+        <span className="shrink-0 w-8 h-8 rounded-[10px] bg-apple-blue/10 text-apple-blue flex items-center justify-center" aria-hidden>
+          <Link2 className="w-4 h-4" />
+        </span>
+        <span className="flex-1 min-w-0 flex flex-col leading-tight">
+          <span className="text-[13.5px] font-semibold text-apple-blue truncate" dir="auto">{title}</span>
+          {showPreview && preview?.description && (
+            <span className="mt-0.5 text-[11.5px] font-medium text-apple-ink-muted dark:text-white/45 line-clamp-2" dir="auto">{preview.description}</span>
+          )}
+          <span className="text-[11px] font-medium text-apple-ink-muted/70 dark:text-white/35 truncate">{siteName} · {host}</span>
+        </span>
       </span>
     </a>
   );

@@ -607,6 +607,197 @@ function limited(ip: string, map: Map<string, { count: number, resetAt: number }
   return entry.count > max;
 }
 
+// --- Link previews (OG metadata for URLs shared in a room) ------------------
+//
+// The receiving browser cannot fetch a shared page's HTML itself: cross-origin
+// reads are blocked by CORS, and most sites don't send permissive headers.
+// This endpoint does the fetch server-side and returns ONLY the metadata a
+// preview needs (og:title / og:image / og:description, with plain <title> as
+// fallback) — never the page body.
+//
+// Safety model:
+//   • http(s) only; hostnames resolve to public addresses (no localhost /
+//     private ranges / link-local metadata endpoints — DNS-rebinding guard);
+//   • response capped at 256 KB, content-type must be HTML, 6s timeout;
+//   • no cookies/credentials forwarded; redirects re-validated;
+//   • 30 requests/min per IP (shared limiter), plus a small URL cache.
+
+const previewAttempts = new Map<string, { count: number, resetAt: number }>();
+const previewCache = new Map<string, { data: PreviewData | null, expires: number }>();
+const PREVIEW_CACHE_TTL = 10 * 60 * 1000;
+// 1 MB read cap: some big sites (YouTube) put their og: tags ~700 KB deep,
+// past the old 256 KB truncation. The parse still slices at </head> — the
+// cap only bounds how much of a runaway page we'll download.
+const PREVIEW_MAX_BYTES = 1024 * 1024;
+const PREVIEW_TIMEOUT_MS = 6000;
+
+interface PreviewData {
+  url: string;
+  title: string | null;
+  description: string | null;
+  image: string | null;
+  siteName: string | null;
+}
+
+function previewRateLimited(ip: string): boolean {
+  return limited(ip, previewAttempts, 30, 60 * 1000);
+}
+
+/** True when a hostname/IP must never be fetched from the server. */
+function isPrivateTarget(url: URL): boolean {
+  const host = url.hostname.toLowerCase();
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal')) return true;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+    // Dotted quad: check the ranges directly.
+    const o = host.split('.').map(Number);
+    if (o[0] === 10 || o[0] === 127 || o[0] === 0) return true;
+    if (o[0] === 192 && o[1] === 168) return true;
+    if (o[0] === 172 && o[1] >= 16 && o[1] <= 31) return true;
+    if (o[0] === 169 && o[1] === 254) return true; // link-local incl. cloud metadata
+    if (o[0] >= 224) return true; // multicast + reserved
+    return false;
+  }
+  if (host === '[' || host.includes('[')) {
+    // IPv6 literal: block loopback, link-local (fe80::/10), unique-local (fc00::/7).
+    const h = host.replace(/[[\]]/g, '');
+    const low = h.toLowerCase();
+    if (low === '::1' || low === '::') return true;
+    if (/^f[cd]/.test(low)) return true;
+    if (/^fe[89ab]/.test(low)) return true;
+    return false;
+  }
+  return false;
+}
+
+function metaContent(html: string, names: string[]): string | null {
+  for (const name of names) {
+    // Property/name attribute, case-insensitive, both attribute orders.
+    const re = new RegExp(
+      `<meta[^>]*?(?:property|name)=["']${name}["'][^>]*?content=["']([^"']*)["']`, 'i');
+    const re2 = new RegExp(
+      `<meta[^>]*?content=["']([^"']*)["'][^>]*?(?:property|name)=["']${name}["']`, 'i');
+    const m = html.match(re) || html.match(re2);
+    if (m && m[1].trim()) return decodeEntities(m[1].trim());
+  }
+  return null;
+}
+
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => { try { return String.fromCodePoint(parseInt(h, 16)); } catch { return ''; } })
+    .replace(/&#(\d+);/g, (_, d) => { try { return String.fromCodePoint(parseInt(d, 10)); } catch { return ''; } });
+}
+
+async function fetchPreview(target: string): Promise<PreviewData | null> {
+  let url: URL;
+  try { url = new URL(target); } catch { return null; }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+  if (isPrivateTarget(url)) return null;
+
+  // Follow up to 3 redirects, re-validating every hop against the private-
+  // target blocklist (a public shortener must not bounce us at 169.254.x.x).
+  let current = url;
+  for (let hop = 0; hop < 4; hop++) {
+    if (isPrivateTarget(current)) return null;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), PREVIEW_TIMEOUT_MS);
+    try {
+      const res = await fetch(current.href, {
+        signal: controller.signal,
+        redirect: 'manual',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; ShareTextsBot/1.0; +https://sharetexts.online)',
+          'Accept': 'text/html,application/xhtml+xml',
+          'Accept-Language': '*'
+        }
+      });
+      if (res.status >= 300 && res.status < 400) {
+        const loc = res.headers.get('location');
+        if (!loc) return null;
+        try { current = new URL(loc, current); } catch { return null; }
+        continue; // next hop, re-validated
+      }
+      if (!res.ok) return null;
+      const type = res.headers.get('content-type') || '';
+      if (!type.includes('text/html') && !type.includes('application/xhtml')) return null;
+      const reader = res.body?.getReader();
+      if (!reader) return null;
+      // Read at most PREVIEW_MAX_BYTES — a huge page is truncated, not downloaded.
+      const chunks: Uint8Array[] = [];
+      let total = 0;
+      while (total < PREVIEW_MAX_BYTES) {
+        const { done, value } = await reader.read();
+        if (done || !value) break;
+        chunks.push(value); total += value.byteLength;
+      }
+      try { await reader.cancel(); } catch { /* stream already closed */ }
+      const html = new TextDecoder('utf-8', { fatal: false }).decode(
+        concatChunks(chunks, total));
+      const head = html.slice(0, html.indexOf('</head>') + 7 || html.length);
+      const title = metaContent(head, ['og:title', 'twitter:title'])
+        ?? (head.match(/<title[^>]*>([\s\S]{0,300}?)<\/title>/i)?.[1]?.trim() ?? null);
+      const description = metaContent(head, ['og:description', 'twitter:description', 'description']);
+      let image = metaContent(head, ['og:image:secure_url', 'og:image', 'twitter:image', 'twitter:image:src']);
+      if (image) { try { image = new URL(image, current).href; } catch { image = null; } }
+      const siteName = metaContent(head, ['og:site_name']) ?? current.hostname.replace(/^www\./, '');
+      const clean = (s: string | null) => (s ? s.replace(/\s+/g, ' ').slice(0, 300) : null);
+      return { url: current.href, title: clean(title), description: clean(description), image, siteName: clean(siteName) };
+    } catch {
+      return null; // timeout, DNS failure, abort — no preview is honest
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return null;
+}
+
+function concatChunks(chunks: Uint8Array[], total: number): Uint8Array {
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const c of chunks) { out.set(c, off); off += c.byteLength; }
+  return out;
+}
+
+app.get('/api/preview', async (req, res) => {
+  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+  if (previewRateLimited(ip)) {
+    return res.status(429).json({ error: 'Too many preview requests. Try again shortly.' });
+  }
+  const raw = req.query.url;
+  if (typeof raw !== 'string' || raw.length > 2048) {
+    return res.status(400).json({ error: 'Bad request. Pass ?url=https://…' });
+  }
+  let target: URL;
+  try { target = new URL(raw); } catch {
+    return res.status(400).json({ error: 'Invalid URL.' });
+  }
+  if (target.protocol !== 'http:' && target.protocol !== 'https:') {
+    return res.status(400).json({ error: 'Only http(s) URLs can be previewed.' });
+  }
+
+  const cacheKey = target.href;
+  const cached = previewCache.get(cacheKey);
+  if (cached && Date.now() < cached.expires) {
+    return res.json(cached.data ?? { url: cacheKey, unavailable: true });
+  }
+
+  const data = await fetchPreview(target.href);
+  previewCache.set(cacheKey, { data, expires: Date.now() + PREVIEW_CACHE_TTL });
+  if (previewCache.size > 300) {
+    // Trim oldest entries — the cache is a courtesy, not a store.
+    const oldest = [...previewCache.entries()].sort((a, b) => a[1].expires - b[1].expires)[0];
+    if (oldest) previewCache.delete(oldest[0]);
+  }
+  if (!data) {
+    // Honest empty: the client falls back to the plain link card.
+    return res.json({ url: cacheKey, unavailable: true });
+  }
+  res.json(data);
+});
+
 // --- Socket handlers -------------------------------------------------------
 
 io.on('connection', (socket) => {

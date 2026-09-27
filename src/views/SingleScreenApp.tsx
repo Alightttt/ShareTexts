@@ -16,6 +16,7 @@
  */
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useSession } from '../lib/SessionContext';
+import { updateRoomBadge, setRoomBadgeActive } from '../lib/roomBadge';
 import { getDeviceStats } from '../lib/pairing';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { ShareTextsLogo } from '../components/ShareTextsLogo';
@@ -286,6 +287,26 @@ export function SingleScreenApp() {
     else if (!session.roomId) setPanelMode('idle');
   }, [session.roomId, session.isCreator, session.partnerConnected, session.partnerConnecting, session.connectionType]);
 
+  /* --- tab status light (pill favicon + live title, room UI only) ---
+     `connected` panel = the room UI is on screen. Landing, pairing and
+     connecting screens keep the pristine tab identity. */
+  const roomViewMounted = panelMode === 'connected';
+  useEffect(() => {
+    setRoomBadgeActive(roomViewMounted);
+    return () => setRoomBadgeActive(false); // unmount → exact landing restore
+  }, [roomViewMounted]);
+  useEffect(() => {
+    updateRoomBadge({
+      inRoomView: roomViewMounted,
+      connected: partnerLinkHealthy,
+      // Amber covers both first handshake and stall/recovery — neither is
+      // the user's fault, and neither is a red "problem".
+      connecting: session.connectionType === 'connecting' || session.connectionType === 'establishing' || (session.roomId !== null && !partnerLinkHealthy && session.connectionType !== 'disconnected'),
+      partnerName: session.partnerName,
+      unread: 0, // future: unread count when the tab is hidden
+    });
+  }, [roomViewMounted, partnerLinkHealthy, session.connectionType, session.partnerName, session.roomId]);
+
   // The QR overlay is a pairing tool — the moment the partner is actually
   // connected it has done its job. Close it automatically so the user never
   // has to dismiss it themselves while the room is already taking over.
@@ -468,6 +489,16 @@ export function SingleScreenApp() {
     w.__stOpenSendLink = () => { void handleSendThenLink(); };
     return () => { delete w.__stOpenSendQr; delete w.__stOpenSendLink; };
   }, [panelMode, handleSendThenQr, handleSendThenLink]);
+
+  // Command bar wiring — REAL callbacks, not DOM scraping: the palette's
+  // Send/Receive entries invoke the same handlers as the hero buttons, on
+  // the same panel-mode state machine.
+  useEffect(() => {
+    const w = window as Window & { __stCommandSend?: () => void; __stCommandReceive?: () => void };
+    w.__stCommandSend = () => { void handleSend(); };
+    w.__stCommandReceive = () => handleReceive();
+    return () => { delete w.__stCommandSend; delete w.__stCommandReceive; };
+  }, [handleSend, handleReceive]);
 
   // One-tap re-entry into the last Stay Connected room. False = the room
   // is really gone (close/expiry) — say so instead of blinking the button.

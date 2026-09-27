@@ -285,6 +285,12 @@ const en = {
   'command.group.settings': 'Settings',
   'command.darkMode': 'Switch to dark theme',
   'command.lightMode': 'Switch to light theme',
+  'command.deviceName': 'Device name',
+  'command.deviceNameHint': 'What other devices see',
+  'command.copyCode': 'Copy pairing code',
+  'command.codeCopied': 'Pairing code copied',
+  'command.linkCopied': 'Room link copied',
+  'command.textCopied': 'Copied to clipboard',
 
   // ── date separators / composer size hint ──────────────────────────
   'time.today': 'Today',

@@ -2,7 +2,7 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import { MotionConfig } from 'motion/react';
 import App from './App.tsx';
-import { installDiagGlobal } from './lib/diag';
+import { installDiagGlobal, diag } from './lib/diag';
 import { prewarmSignaling, signalingHttpBaseForTelemetry } from './lib/socket';
 import { productEvent } from './lib/telemetry';
 import './index.css';
@@ -15,6 +15,18 @@ productEvent('product.page_view');
 // Lifecycle diagnostics for the signaling/transfer journey — read them via
 // window.__sharetextDiag.snapshot() when a connect or transfer fails.
 installDiagGlobal();
+
+// Toughness net: unhandled promise rejections and window errors are logged
+// into the same diag ring the diagnostics panel reads. The app keeps working
+// (React boundaries cover render crashes); this makes the failure visible
+// and debuggable instead of silently swallowed — zero-error means SEEING
+// every error, not pretending none happen.
+window.addEventListener('unhandledrejection', (e) => {
+  diag('ui.unhandled_rejection', false, String(e.reason).slice(0, 300));
+});
+window.addEventListener('error', (e) => {
+  diag('ui.window_error', false, `${e.message?.slice(0, 200) ?? 'error'} @ ${e.filename?.split('/').pop() ?? '?'}:${e.lineno ?? '?'}`);
+});
 
 // Prewarm the signaling transport in the background so creating a room (or
 // joining with a code) skips the cold TLS/upgrade handshake when the user

@@ -5,9 +5,10 @@ import { useTheme } from '../lib/theme';
 import { LANGS, useI18n } from '../lib/i18n';
 import { cn, shortCodeOf } from '../lib/utils';
 import {
-  Send, Download, QrCode, Link2, Copy, RefreshCw, LogOut,
+  Send, Download, QrCode, Link2, Copy, RefreshCw, LogOut, Smartphone,
   Sun, Moon, Languages, FileText, ChevronLeft, Check, Search, Info, Gauge, Activity
 } from 'lucide-react';
+import { generateTOTP } from '../lib/totp';
 import { metricsSnapshot, clearTransferMetrics, type TransferRecord } from '../lib/transferMetrics';
 import { formatBytes } from '../lib/utils';
 import { connMachine } from '../lib/connectionState';
@@ -122,6 +123,7 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
 
   const commands = useMemo<Cmd[]>(() => {
     const list: Cmd[] = [];
+    const w = window as Window & { __stCommandSend?: () => void; __stCommandReceive?: () => void };
     if (!inRoom) {
       list.push(
         {
@@ -129,14 +131,12 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
           hint: t('home.sendHint'),
           icon: <Send className="w-4 h-4" />, keywords: 'create room start new session host share',
           run: () => {
-            // Same surface as the hero button: panel-mode flips to 'sending'
+            // Same handler as the hero button (panel-mode flips to 'sending'
             // immediately, so the "Creating room…" state is visible the
-            // instant ⌘K closes (the palette used to vanish with NO visible
-            // reaction until the room arrived — that read as "did it work?").
-            const btn = Array.from(document.querySelectorAll('button'))
-              .find(b => b.textContent?.trim() === t('home.send'));
-            btn?.click();
-            void createSession();
+            // instant ⌘K closes). The hook is registered by SingleScreenApp;
+            // createSession is the direct fallback when it isn't mounted.
+            if (w.__stCommandSend) w.__stCommandSend();
+            else void createSession();
           },
         },
         {
@@ -144,11 +144,19 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
           hint: t('home.receiveHint'),
           icon: <Download className="w-4 h-4" />, keywords: 'join enter code pair',
           run: () => {
-            // The receive flow is a panel-mode switch owned by the hero —
-            // route through the same button a user would press.
-            const btn = Array.from(document.querySelectorAll('button'))
-              .find(b => b.textContent?.trim() === t('home.receive'));
-            btn?.click();
+            // Same handler as the hero Receive button — one panel-mode path.
+            w.__stCommandReceive?.();
+          },
+        },
+        {
+          id: 'qr', label: t('create.showQr'), group: t('command.group.actions'),
+          icon: <QrCode className="w-4 h-4" />, keywords: 'scan camera pair invite',
+          run: () => {
+            // Owned by SingleScreenApp's registered hook (same one the
+            // fallback chips use). Rooms hold two devices, so QR lives on
+            // the pairing surface only — never listed while seated.
+            const w2 = window as Window & { __stOpenSendQr?: () => void };
+            w2.__stOpenSendQr?.();
           },
         },
       );
@@ -161,15 +169,6 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
         });
       }
       list.push(
-        {
-          id: 'qr', label: t('create.showQr'), group: t('command.group.room'),
-          icon: <QrCode className="w-4 h-4" />, keywords: 'scan camera pair',
-          run: () => {
-            const btn = Array.from(document.querySelectorAll('button'))
-              .find(b => b.getAttribute('aria-label')?.includes(t('create.showQr')) || b.textContent?.includes(t('create.showQr')));
-            btn?.click();
-          },
-        },
         {
           id: 'link', label: t('create.shareLink'), group: t('command.group.room'),
           icon: <Link2 className="w-4 h-4" />, keywords: 'copy url invite',
@@ -191,6 +190,17 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
           },
         },
         {
+          id: 'copycode', label: t('command.copyCode'), group: t('command.group.room'),
+          icon: <Copy className="w-4 h-4" />, keywords: 'totp digits code share invite pair',
+          // The LIVE code (same generator the pairing screen renders) —
+          // stale digits are the #1 pairing frustration; this always reads
+          // the current window.
+          run: () => {
+            if (!session.secret) return;
+            void navigator.clipboard.writeText(generateTOTP(session.secret, session.createdAt)).catch(() => {});
+          },
+        },
+        {
           id: 'disconnect', label: t('common.disconnect'), group: t('command.group.room'),
           icon: <LogOut className="w-4 h-4" />, keywords: 'close end leave session',
           run: () => { abandonSession(); },
@@ -198,6 +208,14 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
       );
     }
     list.push(
+      {
+        id: 'devicename', label: t('command.deviceName'), group: t('command.group.settings'),
+        hint: session.deviceName,
+        icon: <Smartphone className="w-4 h-4" />, keywords: 'identity rename device name visible',
+        // The honest quick-path: copy the current identity. (Renaming UI
+        // lives in the details sheet — a prompt here would fight its flow.)
+        run: () => { void navigator.clipboard.writeText(session.deviceName).catch(() => {}); },
+      },
       {
         id: 'theme', label: resolved === 'dark' ? t('command.lightMode') : t('command.darkMode'),
         group: t('command.group.settings'),

@@ -33,8 +33,16 @@ Text, links, photos, videos, audio, documents — any file type. Links render as
 
 - Free, no sign-up; runs in any modern browser with WebRTC (Chrome, Safari, Firefox, Edge).
 - Works across platforms: iPhone ↔ Windows, Android ↔ Mac, iPhone ↔ Android, any combination.
-- Transfer types: text, links, photos, videos, audio, documents, any file.
+- Transfer types: text, links, photos, videos, audio, documents, any file. Files up to 1 TB stream to disk; quality and bytes are never altered. Links render as rich preview cards (server-side Open Graph fetch, SSRF-guarded).
 - End-to-end encrypted via WebRTC (DTLS) with an additional AES-GCM layer; the signaling server relays connection metadata only and never sees content.
 - Nearby discovery shows a device only while ShareTexts is open on it, and you can set yourself Hidden; it is never a global user list.
 - Stay Connected keeps a room alive until you disconnect it yourself; rejoining is one tap from the landing page, and refreshes/network drops recover automatically.
 - Operated at https://sharetexts.online.
+
+## UI reference (for agents driving the app)
+
+- Command palette: Ctrl/⌘+K on every screen. Actions: Send (create room), Receive (join), Show QR, Reconnect, Copy link, Copy All, Copy pairing code, Disconnect, theme, language, transfer stats, connection diagnostics, Docs/About.
+- Connection states shown in the room header: Connected (green), Reconnecting… (amber), Disconnected + Reconnect button (red). The browser tab mirrors this while the room is open: pill favicon green/amber/red + "● Connected — <device> · ShareTexts" title; the landing tab identity is untouched.
+- Room creation: POST /api/push with Authorization: Bearer <roomSecret> and JSON { roomId, text } pushes a text message into the room from scripts/agents (see the connect screen's curl command).
+- Link previews: GET /api/preview?url=<https-url> returns { url, title, description, image, siteName } or { url, unavailable: true }. SSRF-guarded (public hosts only), cached 10 min, 30 req/min per IP.
+- Diagnostics ring for debugging: window.__sharetextDiag.snapshot() in the browser console records the full connect/transfer journey, including unhandled errors.
