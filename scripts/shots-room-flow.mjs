@@ -39,7 +39,7 @@ try {
   await pa.waitForTimeout(300);
 
   // Dark mode (toggle in header)
-  await pa.locator('[role="switch"]').click();
+  await pa.locator('header [role="switch"]').click();
   await pa.waitForTimeout(600);
   await pa.screenshot({ path: `${OUT}/composer-dark.png` });
   await pa.getByTestId('add-attachment').click();
@@ -47,7 +47,7 @@ try {
   await pa.screenshot({ path: `${OUT}/attach-menu-dark.png` });
 
   // Joiner side (received bubble) dark
-  await pb.locator('[role="switch"]').click();
+  await pb.locator('header [role="switch"]').click();
   await pb.waitForTimeout(600);
   await pb.screenshot({ path: `${OUT}/room-receiver-dark.png` });
 

@@ -24,7 +24,7 @@ const PROTOCOL_VERSION = 1;
 
 type Handler = (...args: any[]) => void;
 
-const WS_OPEN_TIMEOUT = 8000;
+const WS_OPEN_TIMEOUT = 5000;
 
 function uuid(): string {
   return crypto.randomUUID();
@@ -236,6 +236,12 @@ export class CloudflareSocket implements SignalingSocket {
       const fail = () => {
         if (failed) return;
         failed = true;
+        // A room dial that cannot even open is the transport's health signal:
+        // a stale/redirecting baked worker fails EVERY WebSocket handshake
+        // ("Unexpected response code: 200"), so retrying against it is futile.
+        // Ask socket.ts to re-probe the known endpoints and retarget — the
+        // 30s throttle there keeps a flaky network from looping.
+        try { this.onRepeatedLobbyFailure?.(); } catch { /* noop */ }
         void this.classifyFailure().then((msg) => {
           this.emitLocal('connect_error', { message: msg });
           reject(new Error(msg));
@@ -389,8 +395,22 @@ export class CloudflareSocket implements SignalingSocket {
 
   // ---- command handlers --------------------------------------------------
 
+  /**
+   * Gate for every HTTP/direct command: never let a command touch the network
+   * before the boot probe has decided which worker is current. The room and
+   * lobby sockets await the probe inside their open paths; a code JOIN's
+   * `/lookup` used to skip it — on a fresh page load it could query a stale,
+   * redirecting worker (which 404s the room) and tell the user "Invalid or
+   * expired code" for a perfectly fresh code. That was the production
+   * "pairing sometimes just fails" bug.
+   */
+  private async settleProbe(): Promise<void> {
+    if (this.bootProbe) { try { await this.bootProbe; } catch { /* probe failure must not block commands */ } }
+  }
+
   private async createRoom(cb?: (r: any) => void) {
     try {
+      await this.settleProbe();
       const roomId = uuid();
       const res = await this.request(roomId, 'create_room', undefined);
       if (res.success) this.lastSecret = res.secret;
@@ -402,6 +422,7 @@ export class CloudflareSocket implements SignalingSocket {
 
   private async joinWithCode(payload: { code?: string } | undefined, cb?: (r: any) => void) {
     try {
+      await this.settleProbe();
       const code = payload?.code;
       if (typeof code !== 'string') return cb?.({ success: false, error: 'Invalid or expired code' });
       const res = await fetch(`${this.httpBase}/lookup`, {
@@ -424,6 +445,7 @@ export class CloudflareSocket implements SignalingSocket {
 
   private async joinWithLink(payload: { roomId?: string } | undefined, cb?: (r: any) => void) {
     try {
+      await this.settleProbe();
       const roomId = payload?.roomId;
       if (!roomId) return cb?.({ success: false, error: 'Invalid session' });
       const res = await this.request(roomId, 'join_with_link', { roomId });
@@ -436,6 +458,7 @@ export class CloudflareSocket implements SignalingSocket {
 
   private async resumeRoom(payload: { roomId?: string; secret?: string } | undefined, cb?: (r: any) => void) {
     try {
+      await this.settleProbe();
       const roomId = payload?.roomId;
       const secret = payload?.secret;
       if (!roomId || !secret) return cb?.({ success: false, error: 'Session expired' });
@@ -453,6 +476,7 @@ export class CloudflareSocket implements SignalingSocket {
    */
   async refreshCode(roomId: string, secret: string): Promise<{ success: boolean; createdAt?: number }> {
     try {
+      await this.settleProbe();
       const res = await this.request(roomId, 'refresh_code', { roomId, secret });
       return { success: !!res?.success, createdAt: res?.createdAt };
     } catch {

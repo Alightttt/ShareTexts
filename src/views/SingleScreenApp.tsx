@@ -17,7 +17,6 @@
 import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useSession } from '../lib/SessionContext';
 import { updateRoomBadge, setRoomBadgeActive } from '../lib/roomBadge';
-import { getDeviceStats } from '../lib/pairing';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { ShareTextsLogo } from '../components/ShareTextsLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -994,98 +993,49 @@ export function SingleScreenApp() {
           {/* ── CONNECTED: device pair + ready to transfer ───────── */}
           {panelMode === 'connected' && !celebrateConnected && (
             <motion.div key="connected" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25, ease: EASE }} className="max-w-md 2xl:max-w-lg mx-auto">
-              {/* Device pair visual */}
-              <div className="flex flex-col items-center sm:items-start mb-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div className={cn(
-                      "w-14 h-14 rounded-[16px] flex items-center justify-center",
-                      "bg-[#f06413]/10 dark:bg-[#fb9243]/10 border border-[#f06413]/15 dark:border-[#fb9243]/15"
-                    )}>
-                      <ThisDeviceIcon className="w-6 h-6 text-[#f06413] dark:text-[#fb9243]" />
-                    </div>
-                    {editingName ? (
-                      <input
-                        autoFocus
-                        value={draftName}
-                        onChange={e => setDraftName(e.target.value)}
-                        onBlur={saveName}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') saveName();
-                          else if (e.key === 'Escape') { setDraftName(session.deviceName); setEditingName(false); }
-                        }}
-                        aria-label={t('pair.renameField')}
-                        maxLength={32}
-                        className="w-[120px] text-center text-[11px] font-medium text-apple-ink dark:text-white bg-transparent border-b border-[#f06413]/50 dark:border-[#fb9243]/50 outline-none px-0.5"
-                      />
-                    ) : (                        <button
-                          onClick={startEditName}
-                          title={t('pair.renameTitle')}
-                          aria-label={t('pair.renameAria', { name: session.deviceName })}
-                          className="group max-w-[120px] min-h-[40px] -my-[11.5px] flex items-center gap-1 text-[11px] font-medium text-apple-ink-muted dark:text-white/40 hover:text-apple-ink dark:hover:text-white transition-colors"
-                        >
-                        <span className="truncate">{session.deviceName}</span>
-                        <Pencil className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity shrink-0" />
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-center">
-                    {/* Payoff: the exact moment the peer confirms, the link
-                        glyphs flip to a green check with a spring pop — the
-                        reward for the wait, in the spot the eye is already
-                        on. Steady-state reverts to the breathing link. */}
-                    <motion.span
-                      key={partnerLinkHealthy ? 'linked' : 'linking'}
-                      initial={partnerLinkHealthy ? { scale: 0.4, opacity: 0 } : false}
-                      animate={{
-                        scale: 1,
-                        opacity: 1,
-                        ...(partnerLinkHealthy ? {} : { opacity: [0.4, 1, 0.4] }),
-                      }}
-                      transition={partnerLinkHealthy
-                        ? { type: 'spring', bounce: 0.4, duration: 0.45 }
-                        : { opacity: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' } }
-                      }
-                      className="flex items-center gap-1"
-                    >
-                      {partnerLinkHealthy ? (
-                        <span className="w-5 h-5 rounded-full bg-status-success flex items-center justify-center shadow-[0_2px_8px_-2px_rgba(52,199,89,0.6)]">
-                          <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                        </span>
-                      ) : (
-                        <>
-                          <span className="w-1 h-1 rounded-full bg-[#f06413]/40 dark:bg-[#fb9243]/40" />
-                          <ArrowRightLeft className="w-4 h-4 text-[#f06413] dark:text-[#fb9243]" />
-                          <span className="w-1 h-1 rounded-full bg-[#f06413]/40 dark:bg-[#fb9243]/40" />
-                        </>
-                      )}
-                    </motion.span>
-                    <span className={cn("text-[11px] font-medium mt-1", partnerLinkHealthy ? "text-status-success" : "text-status-warning")}>
-                      {/* Passive wait, not an active retry: after the peer
-                          drops, the room holds open — "Waiting…" is the truth;
-                          "Reconnecting…" promised a handshake that isn't running. */}
-                      {session.connectionType === 'disconnected' ? t('status.waiting') : partnerLinkHealthy ? t('common.connected') : t('chat.reconnecting')}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-center gap-1.5">
-                    {/* Peer tile follows the real link state: success while
-                        connected, dimmed ghost while they're gone — it must
-                        never glow green next to a "Waiting…" label. */}
-                    <div className={cn(
-                      "w-14 h-14 rounded-[16px] flex items-center justify-center transition-colors",
-                      partnerLinkHealthy
-                        ? "bg-status-success/8 dark:bg-status-success/10 border border-status-success/15 dark:border-status-success/15"
-                        : "bg-black/[0.04] dark:bg-white/[0.05] border border-apple-divider/40 dark:border-white/[0.08]"
-                    )}>
-                      <PartnerDeviceIcon className={cn("w-6 h-6 transition-colors", partnerLinkHealthy ? "text-status-success" : "text-apple-ink-muted/50 dark:text-white/25")} />
-                    </div>
-                    <span className="max-w-[120px] text-[11px] font-medium text-apple-ink-muted dark:text-white/40 truncate">
-                      {session.partnerName || t('pair.paired')}
-                    </span>
-                  </div>
-                </div>
+              {/* Desktop connected rail — decluttered. The room header already
+                  carries identity (this ⇄ partner + live status) and the room
+                  itself is the product; this rail keeps only what the header
+                  can't say: your device's NAME (editable), the live session
+                  stats, and the room controls. Everything else — the big tile
+                  trio, the "ready to transfer" pitch, the lifetime strip, the
+                  status pill — repeated the header or the stats card and
+                  competed for attention. One column, one voice, room to
+                  breathe. */}
+              {/* Your device: name row (tap to rename) — the only identity
+                  element here; the pair visual lives in the room header. */}
+              <div className="flex items-center gap-2.5 mb-5">
+                <span className="flex items-center justify-center w-9 h-9 rounded-[11px] bg-[#f06413]/10 dark:bg-[#fb9243]/10 border border-[#f06413]/15 dark:border-[#fb9243]/15 shrink-0" aria-hidden>
+                  <ThisDeviceIcon className="w-4.5 h-4.5 text-[#f06413] dark:text-[#fb9243]" />
+                </span>
+                {editingName ? (
+                  <input
+                    autoFocus
+                    value={draftName}
+                    onChange={e => setDraftName(e.target.value)}
+                    onBlur={saveName}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') saveName();
+                      else if (e.key === 'Escape') { setDraftName(session.deviceName); setEditingName(false); }
+                    }}
+                    aria-label={t('pair.renameField')}
+                    maxLength={32}
+                    className="min-w-0 flex-1 text-[14px] font-semibold text-apple-ink dark:text-white bg-transparent border-b border-[#f06413]/50 dark:border-[#fb9243]/50 outline-none px-0.5 py-1"
+                  />
+                ) : (
+                  <button
+                    onClick={startEditName}
+                    title={t('pair.renameTitle')}
+                    aria-label={t('pair.renameAria', { name: session.deviceName })}
+                    className="group min-w-0 flex-1 min-h-[44px] flex items-center gap-1.5 text-left text-[14px] font-semibold text-apple-ink dark:text-white hover:text-apple-ink dark:hover:text-white transition-colors"
+                  >
+                    <span className="truncate">{session.deviceName}</span>
+                    <Pencil className="w-3 h-3 shrink-0 text-apple-ink-muted/50 dark:text-white/35 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity" />
+                  </button>
+                )}
+              </div>
 
-                {/* One-time notice when the auto-disambiguation renamed us. */}
+              {/* One-time notice when the auto-disambiguation renamed us. */}
                 {session.nameAutoAdjusted && !dismissedNameNotice && (
                   <div role="status" className="w-full sm:max-w-[340px] flex items-start gap-2 px-3 py-2 rounded-[12px] bg-[#f06413]/8 dark:bg-[#fb9243]/10 border border-[#f06413]/15 dark:border-[#fb9243]/15 text-[12px] text-apple-ink-muted dark:text-white/60 leading-snug">
                     <Info className="w-3.5 h-3.5 text-[#f06413] dark:text-[#fb9243] shrink-0 mt-px" />
@@ -1097,15 +1047,6 @@ export function SingleScreenApp() {
                     </button>
                   </div>
                 )}
-              </div>
-
-              {/* Ready message */}
-              <div className="mb-5">
-                <p className="text-[18px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em] mb-1">{t('conn.ready')}</p>
-                <p className="text-[14px] text-apple-ink-muted dark:text-white/50 leading-relaxed">
-                  {t('conn.readyBody')}
-                </p>
-              </div>
 
               {/* Live session stats — the left pane earns its place by
                   reporting the room it's hosting: real counts, not copy. */}
@@ -1121,79 +1062,47 @@ export function SingleScreenApp() {
                 );
                 return (
                   <div className="mb-4 rounded-[16px] border border-apple-divider/50 dark:border-white/[0.07] bg-white/60 dark:bg-white/[0.04] p-1.5 flex items-stretch">
-                    {stat(t('conn.stats.messages'), String(msgs.length))}
+                    {stat(msgs.length === 1 ? t('conn.stats.message') : t('conn.stats.messages'), String(msgs.length))}
                     <span className="w-px bg-apple-divider/50 dark:bg-white/[0.07]" aria-hidden />
-                    {stat(t('conn.stats.files'), String(fileCount))}
+                    {stat(fileCount === 1 ? t('conn.stats.file') : t('conn.stats.files'), String(fileCount))}
                     <span className="w-px bg-apple-divider/50 dark:bg-white/[0.07]" aria-hidden />
                     {stat(t('conn.stats.data'), bytes > 0 ? formatBytes(bytes) : '0')}
                   </div>
                 );
               })()}
 
-              {/* Lifetime strip — this device's own transfer history from
-                  localStorage. Real numbers only: connections counted at the
-                  actual channel open, bytes at actual transfer completion.
-                  Hidden entirely until the first real connection exists —
-                  zeros teach nothing and claim nothing. */}
-              {(() => {
-                const stats = getDeviceStats();
-                if (stats.connections === 0 && stats.bytes === 0) return null;
-                return (
-                  <div className="mb-4 px-1 flex items-center justify-between gap-3 text-[11.5px] font-medium text-apple-ink-muted dark:text-white/40">
-                    <span className="shrink-0">{t('lifetime.title')}</span>
-                    <span className="flex items-center gap-3 tnum min-w-0">
-                      <span className="whitespace-nowrap"><strong className="text-apple-ink dark:text-white/70 font-semibold">{stats.connections}</strong> {t('lifetime.connections')}</span>
-                      <span className="w-px h-3 bg-apple-divider/60 dark:bg-white/[0.08]" aria-hidden />
-                      <span className="whitespace-nowrap"><strong className="text-apple-ink dark:text-white/70 font-semibold">{stats.partners}</strong> {t('lifetime.partners')}</span>
-                      <span className="w-px h-3 bg-apple-divider/60 dark:bg-white/[0.08]" aria-hidden />
-                      <span className="whitespace-nowrap"><strong className="text-apple-ink dark:text-white/70 font-semibold">{formatBytes(stats.bytes)}</strong></span>
-                    </span>
-                  </div>
-                );
-              })()}
-
-              {/* Connection type + disconnect */}
-              <div className="flex items-center gap-3 flex-wrap">
-                {/* The truth pill: shows HOW we're connected (relay/direct/
-                    same network) — and when the peer is gone it says Offline
-                    in warning color. It must never read "Connected" while the
-                    room is waiting; that contradiction broke trust in the
-                    disconnect state. */}
-                <div className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors", session.connectionType === 'disconnected' || session.connectionType === 'connecting' ? "bg-status-warning/10 border-status-warning/25" : "bg-apple-parchment dark:bg-white/[0.05] border-apple-divider/50 dark:border-white/[0.08]")}>
-                  <Wifi className={cn("w-3 h-3", session.connectionType === 'disconnected' || session.connectionType === 'connecting' ? "text-status-warning" : "text-status-success")} />
-                  <span className="text-[12px] font-medium text-apple-ink-muted dark:text-white/50">
-                    {session.connectionType === 'disconnected' ? t('chat.offline') : session.connectionType === 'connecting' ? t('chat.reconnecting') : session.connectionType === 'relay' ? t('conn.relay') : session.connectionType === 'local' ? t('conn.local') : session.connectionType === 'direct' ? t('conn.direct') : t('common.connected')}
+              {/* Room controls — one grouped card, the rail's only action
+                  surface. Stay Connected and Copy join link are equal-weight
+                  room settings; Disconnect is the single destructive action,
+                  separated at the bottom so it can't be tapped by accident.
+                  The connection-type pill died in this pass: the room header
+                  already shows live link state, and the rail doesn't need a
+                  second voice saying it. */}
+              <div className="rounded-[16px] border border-apple-divider/50 dark:border-white/[0.07] bg-white/60 dark:bg-white/[0.04] overflow-hidden">
+                <StayConnectedToggle className="rounded-none" />
+                <div className="h-px bg-apple-divider/50 dark:bg-white/[0.07]" aria-hidden />
+                <button
+                  type="button"
+                  onClick={copyLink}
+                  className="w-full flex items-center justify-between gap-2 px-4 py-3 hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors text-left"
+                >
+                  <span className="flex flex-col min-w-0">
+                    <span className="text-[13px] font-semibold text-apple-ink dark:text-white">{copiedLink ? t('conn.inviteCopied') : t('conn.invite')}</span>
+                    <span className="text-[11.5px] text-apple-ink-muted dark:text-white/45 truncate">{t('conn.inviteHint')}</span>
                   </span>
-                </div>
+                  <Link2 className="w-4 h-4 shrink-0 text-apple-ink-muted dark:text-white/50" />
+                </button>
+                <div className="h-px bg-apple-divider/50 dark:bg-white/[0.07]" aria-hidden />
                 <button
                   type="button"
                   data-testid="end-session"
                   onClick={() => setConfirmDisconnect(true)}
-                  className="flex items-center gap-1.5 rounded-full font-semibold min-h-[40px] px-3 text-[12.5px] text-status-danger/80 hover:text-status-danger hover:bg-status-danger/10 active:scale-[0.96] transition-colors"
+                  className="w-full flex items-center gap-2 px-4 py-3 text-[13px] font-semibold text-status-danger/85 hover:text-status-danger hover:bg-status-danger/[0.06] active:scale-[0.99] transition-colors text-left"
                 >
                   <DisconnectGlyph size={16} />
                   {t('common.disconnect')}
                 </button>
               </div>
-
-              {/* Stay Connected: same control as the details sheet — flipping
-                  it here follows both devices via the server echo. */}
-              <StayConnectedToggle className="mt-3" />
-
-              {/* The right pane (desktop) or the room itself (mobile) is
-                  self-explanatory — the old bullet list here repeated what
-                  the UI already shows. Quiet beats busy. */}
-              <button
-                type="button"
-                onClick={copyLink}
-                className="mt-4 w-full flex items-center justify-between gap-2 px-4 py-3 rounded-[14px] bg-apple-parchment dark:bg-white/[0.05] border border-apple-divider/50 dark:border-white/[0.08] hover:border-apple-divider dark:hover:border-white/[0.14] transition-colors text-left"
-              >
-                <span className="flex flex-col min-w-0">
-                  <span className="text-[13px] font-semibold text-apple-ink dark:text-white">{copiedLink ? t('conn.inviteCopied') : t('conn.invite')}</span>
-                  <span className="text-[11.5px] text-apple-ink-muted dark:text-white/45 truncate">{t('conn.inviteHint')}</span>
-                </span>
-                <Link2 className="w-4 h-4 shrink-0 text-apple-ink-muted dark:text-white/50" />
-              </button>
             </motion.div>
           )}
           {/* ── CONNECTED: the payoff beat — the handshake the user just

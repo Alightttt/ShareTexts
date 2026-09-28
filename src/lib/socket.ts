@@ -104,10 +104,14 @@ async function selectBestCloudflareBase(): Promise<void> {
 
 /** Kick the boot probe once, from the first getSocket() call. Idempotent. */
 let bootProbeDone = false;
+/** True while an endpoint selection round is in flight (boot probe or a
+ *  failure-triggered re-probe). kickEndpointProbe must not stack rounds. */
+let probeInFlight = false;
 function ensureEndpointSelected(): void {
   if (mode !== 'cloudflare' || bootProbeDone) return;
   bootProbeDone = true;
-  redirectPromise = selectBestCloudflareBase();
+  probeInFlight = true;
+  redirectPromise = selectBestCloudflareBase().finally(() => { probeInFlight = false; });
 }
 
 /**
@@ -130,13 +134,18 @@ let lastProbeKick = 0;
  * unhealthy (repeated lobby/room dial failures). The boot probe can lose a
  * slow network; the failures are the evidence, so listen to them. Throttled
  * to one kick per 30s so a flaky network can't loop.
+ *
+ * (The original version early-returned while `redirectPromise` was non-null,
+ * but the boot probe leaves that promise set forever — so this re-probe was
+ * unreachable dead code and repeated failures never re-selected an endpoint.)
  */
 export function kickEndpointProbe(): void {
-  if (mode !== 'cloudflare' || !url || redirectPromise) return;
+  if (mode !== 'cloudflare' || !url || probeInFlight) return;
   const now = Date.now();
   if (now - lastProbeKick < 30_000) return;
   lastProbeKick = now;
-  redirectPromise = selectBestCloudflareBase().finally(() => { redirectPromise = null; });
+  probeInFlight = true;
+  redirectPromise = selectBestCloudflareBase().finally(() => { probeInFlight = false; });
 }
 
 /**

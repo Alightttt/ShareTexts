@@ -237,67 +237,56 @@
           </div>
         </div>
       </noscript>
-      <div id="loading-shell" style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,sans-serif;transition:opacity 0.24s cubic-bezier(0.22,1,0.36,1)">
+      <!-- Boot skeleton: the app holding the user's place, not an animation.
+           Mirrors the real home screen's centered hero column (headline →
+           subline → two action buttons) so the swap to live content moves
+           nothing: same tones, same radii, same rhythm. One CSS shimmer
+           sweep, still under prefers-reduced-motion. -->
+      <div id="loading-shell" aria-hidden="true">
         <style>
-          #loading-shell { opacity: 1; }
+          #loading-shell {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #f7f4ee;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            transition: opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+          }
           #loading-shell.fade-out { opacity: 0; }
-          /* One synchronized liquid cycle: the mark breathes while a single
-             soft highlight slides across mark and wordmark together. Slow
-             enough to read as calm, fast enough to never feel like waiting. */
-          .st-logo-breathe { animation: st-breathe 2.6s cubic-bezier(0.4,0,0.2,1) infinite; }
-          @keyframes st-breathe { 0%,100%{transform:scale(1)} 50%{transform:scale(1.035)} }
-          @keyframes st-shine { 0% { background-position: 135% 0; } 55%,100% { background-position: -135% 0; } }
-          html.dark #loading-shell .st-boot-mark { color: #fb9243; }
-          /* Liquid shimmer: wide soft-edged highlight, masked to the mark,
-             with a rest phase (55%,100%) so the sweep breathes rather than
-             strobes. */
-          #loading-shell .st-boot-mark::after {
-            content: ''; position: absolute; inset: -8%;
-            background: linear-gradient(115deg,transparent 32%,rgba(255,255,255,0.55) 46%,rgba(255,255,255,0.75) 50%,rgba(255,255,255,0.55) 54%,transparent 68%);
-            background-size: 260% 100%;
-            -webkit-mask: url('/favicon.svg') center/contain no-repeat; mask: url('/favicon.svg') center/contain no-repeat;
-            animation: st-shine 2.6s cubic-bezier(0.4,0,0.2,1) infinite;
-          }
-          html.dark #loading-shell .st-boot-mark::after {
-            background-image: linear-gradient(115deg,transparent 32%,rgba(255,255,255,0.35) 46%,rgba(255,255,255,0.5) 50%,rgba(255,255,255,0.35) 54%,transparent 68%);
-          }
-          /* The wordmark carries the SAME sweep, clipped to the text — one
-             motion, two surfaces, unmistakably branded. */
-          .st-boot-word {
-            font-size: 17px; font-weight: 600; letter-spacing: -0.01em;
-            background-image: linear-gradient(110deg, currentColor 38%, #f06413 49%, currentColor 60%);
-            background-size: 260% 100%;
-            background-position: 135% 0;
-            -webkit-background-clip: text; background-clip: text;
-            -webkit-text-fill-color: transparent; color: transparent;
-            animation: st-shine 2.6s cubic-bezier(0.4,0,0.2,1) infinite;
-          }
-          html.dark #loading-shell .st-boot-word {
-            background-image: linear-gradient(110deg, currentColor 38%, #fb9243 49%, currentColor 60%);
-          }
-          @media (prefers-reduced-motion: reduce) {
-            .st-logo-breathe, .st-boot-word { animation: none; }
-            #loading-shell .st-boot-mark::after { animation: none; opacity: 0; }
-          }
-          /* Class-driven, not media-driven: the theme script above already
-             set html.dark for a manual choice, so the shell matches the
-             saved theme instantly — no light flash in dark mode. */
-          #loading-shell { background: #f7f4ee; }
-          #loading-shell svg { color: #f06413; }
-          #loading-shell p { color: #635f57; }
-          #loading-shell .st-brand { color: #1e1c18; }
           html.dark #loading-shell { background: #131315; }
-          html.dark #loading-shell svg { color: #fb9243; }
-          html.dark #loading-shell p { color: #a5a19a; }
-          html.dark #loading-shell .st-brand { color: #f2f0eb; }
+          #loading-shell .st-bar {
+            border-radius: 999px;
+            background: rgba(30, 28, 24, 0.07);
+            position: relative;
+            overflow: hidden;
+          }
+          html.dark #loading-shell .st-bar { background: rgba(255, 255, 255, 0.08); }
+          #loading-shell .st-bar::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            transform: translateX(-101%);
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55) 50%, transparent);
+            animation: st-sweep 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+          }
+          html.dark #loading-shell .st-bar::after {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.09) 50%, transparent);
+          }
+          @keyframes st-sweep { to { transform: translateX(101%); } }
+          @media (prefers-reduced-motion: reduce) {
+            #loading-shell .st-bar::after { animation: none; content: none; }
+          }
         </style>
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px">
-          <div style="position:relative" class="st-logo-breathe st-boot-mark">
-            <svg width="54" height="54" viewBox="0 0 256 256" fill="none" aria-hidden="true">
-              <rect x="40" y="36" width="84" height="84" rx="24" fill="currentColor"/><rect x="132" y="136" width="84" height="84" rx="24" fill="currentColor"/><path d="M110 106 L146 142" stroke="currentColor" stroke-width="28" stroke-linecap="round"/>
-            </svg>
+        <div style="display:flex;flex-direction:column;align-items:center;width:100%;max-width:560px;padding:0 24px">
+          <div class="st-bar" style="width:78%;max-width:430px;height:34px;border-radius:18px;margin-bottom:16px"></div>
+          <div class="st-bar" style="width:64%;max-width:360px;height:34px;border-radius:18px;margin-bottom:22px"></div>
+          <div class="st-bar" style="width:56%;max-width:300px;height:18px;margin-bottom:34px"></div>
+          <div style="display:flex;gap:14px;justify-content:center;width:100%">
+            <div class="st-bar" style="width:150px;height:56px;border-radius:16px"></div>
+            <div class="st-bar" style="width:150px;height:56px;border-radius:16px"></div>
           </div>
-          <span aria-hidden="true" class="st-boot-word">ShareTexts</span>
         </div>
       </div>
     </div>

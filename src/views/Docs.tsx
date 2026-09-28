@@ -653,8 +653,18 @@ function FAQSection() {
   );
 }
 
+const SECTION_IDS = NAV_ITEMS.map(i => i.id) as string[];
+
+function sectionFromHash(): Section {
+  // Deep links like /docs#faq land on the right section; anything unknown
+  // (or absent) falls back to the overview. Guards for SSR-safety.
+  if (typeof window === 'undefined') return 'overview';
+  const h = window.location.hash.replace('#', '');
+  return (SECTION_IDS as string[]).includes(h) ? (h as Section) : 'overview';
+}
+
 export function Docs() {
-  const [activeSection, setActiveSection] = useState<Section>('overview');
+  const [activeSection, setActiveSection] = useState<Section>(sectionFromHash);
 
   // Per-route document title — the home shell has its own static <title>.
   useEffect(() => {
@@ -662,6 +672,37 @@ export function Docs() {
     document.title = 'ShareTexts Docs | transfer text, photos & files between devices';
     return () => { document.title = previous; };
   }, []);
+
+  // Browser back/forward moves between sections, same as clicking.
+  useEffect(() => {
+    const onHash = () => {
+      const id = sectionFromHash();
+      setActiveSection(id);
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      requestAnimationFrame(() => {
+        document.querySelector(`[data-section-pill="${id}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      });
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  const showSection = (id: Section) => {
+    setActiveSection(id);
+    // Keep the URL honest: shareable section links, no history spam.
+    if (typeof window !== 'undefined' && window.location.hash !== `#${id}`) {
+      history.replaceState(null, '', `#${id}`);
+    }
+    // A new section means new reading context — start at the top. Smooth
+    // for pointer users; instant when reduced motion is requested.
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+    // Keep the active mobile pill visible — without this it sits wherever
+    // the gesture left the strip, often half-clipped past the edge.
+    requestAnimationFrame(() => {
+      document.querySelector(`[data-section-pill="${id}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
+  };
 
   const renderSection = () => {
     switch (activeSection) {
@@ -707,7 +748,7 @@ export function Docs() {
                 {NAV_ITEMS.filter(i => i.group === 'user').map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => setActiveSection(item.id)}
+                    onClick={() => showSection(item.id)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-[14px] font-medium transition-colors ${
                       activeSection === item.id
                         ? 'bg-azure-600/10 text-[#f06413] dark:text-[#fb9243]'
@@ -727,7 +768,7 @@ export function Docs() {
                 {NAV_ITEMS.filter(i => i.group === 'developer').map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => setActiveSection(item.id)}
+                    onClick={() => showSection(item.id)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-[14px] font-medium transition-colors ${
                       activeSection === item.id
                         ? 'bg-azure-600/10 text-[#f06413] dark:text-[#fb9243]'
@@ -751,7 +792,8 @@ export function Docs() {
               {NAV_ITEMS.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => setActiveSection(item.id)}
+                  data-section-pill={item.id}
+                  onClick={() => showSection(item.id)}
                   className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors ${
                     activeSection === item.id
                       ? 'bg-[#f06413] text-white shadow-sm'
@@ -767,6 +809,18 @@ export function Docs() {
           {renderSection()}
         </main>
       </div>
+
+      {/* Footer — same quiet links as the app's own footer, so every page
+          speaks the same navigation language. */}
+      <footer className="border-t border-apple-divider dark:border-white/[0.06]">
+        <div className="max-w-6xl mx-auto px-6 py-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px] font-medium text-apple-ink-muted dark:text-white/50">
+          <a href="/" className="hover:text-apple-ink dark:hover:text-white transition-colors">ShareTexts</a>
+          <a href="/about" className="hover:text-apple-ink dark:hover:text-white transition-colors">About</a>
+          <a href="/privacy" className="hover:text-apple-ink dark:hover:text-white transition-colors">Privacy</a>
+          <a href="/terms" className="hover:text-apple-ink dark:hover:text-white transition-colors">Terms</a>
+          <span className="ml-auto text-apple-ink-muted/50 dark:text-white/30">© {new Date().getFullYear()} ShareTexts</span>
+        </div>
+      </footer>
     </div>
   );
 }
