@@ -6,6 +6,16 @@ export interface Env {
   STATS: DurableObjectNamespace;
   /** Landing-page presence pool (nearby-device discovery). */
   LOBBY: DurableObjectNamespace;
+  /** Temporary Space content storage (F14). Bound when the feature deploys;
+   *  space.ts degrades honestly (503) when the binding is absent. */
+  SPACE_BUCKET?: R2Bucket;
+  /** Web Push (VAPID) for space-closure reminders. Absent → the Space DO
+   *  skips push quietly and clients keep their in-app countdown. */
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
+  VAPID_SUBJECT?: string;
+  /** Test-only injectable clock switch (never set in production). */
+  SPACE_TEST_CLOCK?: string;
   /** Comma-separated extra frontend origins allowed to connect. */
   ALLOWED_ORIGINS?: string;
   /** If set, GET /metrics requires `Authorization: Bearer <token>`. */

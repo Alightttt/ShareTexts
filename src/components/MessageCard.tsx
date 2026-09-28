@@ -869,9 +869,14 @@ function ImageViewer({ src, name, onClose }: { src: string; name: string; onClos
       if (e.key === 'Escape') onClose();
       if (e.key === 'r' || e.key === 'R') { setScale(1); setPos({ x: 0, y: 0 }); }
     };
+    // A window-level flag so global Esc handlers (ChatView's disconnect
+    // guard) know a fullscreen viewer owns this Escape — the first press
+    // closes the photo, never the room.
+    (window as Window & { __stImageViewerOpen?: boolean }).__stImageViewerOpen = true;
     window.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
     return () => {
+      (window as Window & { __stImageViewerOpen?: boolean }).__stImageViewerOpen = false;
       window.removeEventListener('keydown', onKey);
       document.body.style.overflow = '';
     };

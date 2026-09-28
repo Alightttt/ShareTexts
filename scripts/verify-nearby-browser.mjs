@@ -53,17 +53,17 @@ try {
   const nameA = seenA ? (await rowOnA.first().innerText()).replace(/\s+/g, ' ').trim() : '';
   out('row shows a device label + Nearby badge', /Nearby/.test(nameA) && nameA.length > 8, nameA);
 
-  /* ---- 2. invite → accept sheet on B ---- */
+  /* ---- 2. invite → detection overlay on B (mutual confirmed flow) ---- */
   await rowOnA.first().click();
   let sheetOnB = false;
   try { await B.getByRole('dialog').waitFor({ timeout: 10000 }); sheetOnB = true; } catch {}
-  out('B receives the accept sheet', sheetOnB);
+  out('B receives the confirm overlay', sheetOnB);
   const sheetText = sheetOnB ? (await B.getByRole('dialog').innerText()).replace(/\s+/g, ' ') : '';
-  out('sheet names the inviting device', /wants to connect/.test(sheetText), sheetText.slice(0, 90));
+  out('overlay names the inviting device', /wants to connect/i.test(sheetText), sheetText.slice(0, 90));
 
-  /* ---- 3. accept → both land in the normal room ---- */
+  /* ---- 3. B confirms Yes → both land in the normal room ---- */
   if (sheetOnB) {
-    await B.getByRole('button', { name: 'Accept' }).click();
+    await B.getByRole('button', { name: 'Yes', exact: true }).click();
     // B (invitee) created the room; A joins through the normal link path.
     const bInRoom = await B.waitForFunction(
       () => !!localStorage.getItem('sharetext.session.v1'), null, { timeout: 20000 }

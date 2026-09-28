@@ -21,6 +21,8 @@ import { MessageCard, pureLinkUrl } from '../components/MessageCard';
 import { DeviceLinkIllustration, PacketTrain } from '../components/DeviceLinkIllustration';
 import { ShareTextsLogo } from '../components/ShareTextsLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { SettingsOverlay } from '../components/SettingsOverlay';
+import { Settings as SettingsIcon } from 'lucide-react';
 import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
 import { saveDraft, loadDraft, clearDraft, ComposerDraft } from '../lib/draftStore';
 import { useFocusTrap } from '../lib/useFocusTrap';
@@ -53,6 +55,13 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   const [draftName, setDraftName] = useState('');
   // Bottom-sheet confirmation before really ending the session.
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  // Android back-guard bookkeeping (see the guard effect below): which
+  // generation of the guard is live, and how many synthetic entries it owns.
+  const backGuardGenRef = useRef(0);
+  const backGuardDepthRef = useRef(0);
+  // The settings overlay — one surface for theme, language, stay connected,
+  // and reconnection, on desktop and mobile alike.
+  const [showSettings, setShowSettings] = useState(false);
   const startEditName = () => { setDraftName(session.deviceName); setEditingName(true); };
   const saveName = () => {
     const clean = sanitizeDeviceName(draftName);
@@ -380,14 +389,71 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        // Layered exits: image viewer, then menus, then the room itself.
+        // Select-mode images keep the FIRST Escape (closes the viewer);
+        // the disconnect guard below only fires when nothing else is open.
         setShowAttachmentMenu(false);
         setShowConnectionDetails(false);
+        setShowSettings(false);
         if (selectMode) exitSelectMode();
+        if (confirmDisconnect || showSettings) return;
+        if (!(window as Window & { __stImageViewerOpen?: boolean }).__stImageViewerOpen) setConfirmDisconnect(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectMode]);
+  }, [selectMode, confirmDisconnect, showSettings]);
+
+  /* --- mobile back button = Esc -------------------------------
+     While seated in a room, the Android back gesture/gesture-bar pops a
+     synthetic history entry instead of leaving ShareTexts: the FIRST back
+     press opens the same disconnect confirmation Esc opens, and the
+     SECOND leaves (system default) if the user still wants out. */
+  useEffect(() => {
+    if (!session.roomId) return;
+    const w = window as Window & { __stEscDisconnect?: boolean };
+    // Room generation tag: only a popstate that unwinds OUR OWN pushed
+    // entries re-arms the guard. StrictMode's dev double-mount, a re-render
+    // effect cycle, or the dismissal path each push a fresh entry — without
+    // the tag, a replayed/stray popstate re-opens the disconnect sheet
+    // (the self-healing dialog bug seen in e2e). Matches the depth the
+    // effect pushed; entries beyond it belong to other surfaces.
+    const gen = ++backGuardGenRef.current;
+    const depth = backGuardDepthRef.current;
+    w.__stEscDisconnect = false; // re-arm per room
+    history.pushState({ stRoom: gen }, '');
+    backGuardDepthRef.current = depth + 1;
+    const onPop = (e: PopStateEvent) => {
+      const st = (e.state ?? null) as { stRoom?: number } | null;
+      // Not our own entry (initial load, external navigation): ignore, and
+      // leave the stack alone — the room keeps its guard entry on top.
+      if (!st || typeof st.stRoom !== 'number' || st.stRoom > gen) return;
+      if (st.stRoom < gen) { history.go(backGuardDepthRef.current); return; }
+      if (!w.__stEscDisconnect) {
+        w.__stEscDisconnect = true; // consume the press
+        setConfirmDisconnect(true);
+        // Push the guard back so the NEXT back still lands here, not off-page.
+        history.pushState({ stRoom: gen }, '');
+        return;
+      }
+      w.__stEscDisconnect = false;
+      // Second back within the confirmation → let the system navigation
+      // happen (real departure); the sheet's Cancel re-arms instead.
+      setConfirmDisconnect(false);
+      history.back();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => {
+      window.removeEventListener('popstate', onPop);
+    };
+  }, [session.roomId]);
+  // Cancel in the back-triggered sheet re-arms the guard (the user chose
+  // to stay) — a plain state write, no history surgery, no popstate races.
+  useEffect(() => {
+    if (!confirmDisconnect) {
+      (window as Window & { __stEscDisconnect?: boolean }).__stEscDisconnect = false;
+    }
+  }, [confirmDisconnect]);
   const MAX_ATTACHMENTS = 20;
   // Stage one or more files (menu pick or drag-drop) into the composer strip.
   // Per-file limits with honest messages: images above 100 MB can't preview
@@ -920,6 +986,18 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           {/* Stay badge — tap it to open the details sheet where the toggle
               lives, so mobile can manage Stay Connected from the room bar. */}
           <StayBadge onOpenDetails={() => setShowConnectionDetails(true)} />
+          {/* Settings — theme, language, stay connected, reconnection, all in
+              one overlay; identical on desktop and mobile. */}
+          <button
+            type="button"
+            data-testid="open-settings"
+            onClick={() => setShowSettings(true)}
+            aria-label={t('settings.title')}
+            title={t('settings.title')}
+            className="flex items-center justify-center w-10 h-10 rounded-full text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:scale-95 transition-all"
+          >
+            <SettingsIcon className="w-[18px] h-[18px]" aria-hidden />
+          </button>
           <ThemeToggle />
           {/* Two-press inline confirm replaces the old modal: arm fills the
               pill with a danger countdown, second press disconnects. */}
@@ -1572,6 +1650,8 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           </div>
         </form>
       </div>
+      {/* Settings — theme, language, stay connected, reconnection. */}
+      <SettingsOverlay open={showSettings} onClose={() => setShowSettings(false)} />
       {/* Apple-style bottom-sheet confirmation before really ending the session. */}
       <ConfirmSheet
         open={confirmDisconnect}

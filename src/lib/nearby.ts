@@ -59,15 +59,46 @@ export function getOrCreateDeviceId(): string {
 }
 
 /** What the UI is allowed to know about a nearby device. `id` is the server's
- *  rotating token — opaque, untraceable, per-process. */
+ *  rotating token — opaque, untraceable, per-process. `kind` and `browser`
+ *  come from the announce payload; they are DISPLAY hints only (never used
+ *  for pairing identity) and are validated on both server hops. */
 export interface NearbyDevice {
   id: string;
   name: string;
+  /** Coarse device kind: drives the tile glyph. */
+  kind: 'phone' | 'tablet' | 'desktop';
+  /** Short browser label for the overlay ("Chrome", "Safari", "Firefox"…). */
+  browser: string;
 }
 
 const TOKEN_RE = /^[0-9a-f]{32}$/;
 const NAME_MAX = 32;
+const BROWSER_MAX = 20;
 const MAX_DEVICES = 24;
+
+const KINDS = new Set(['phone', 'tablet', 'desktop']);
+
+/** Coarse device kind from the user agent — display hint only. */
+export function detectDeviceKind(ua: string): 'phone' | 'tablet' | 'desktop' {
+  if (/iPad|Tablet/i.test(ua)) return 'tablet';
+  if (/Android.*Mobile|iPhone|iPod|Windows Phone/i.test(ua)) return 'phone';
+  if (/Android/i.test(ua)) return 'tablet';
+  return 'desktop';
+}
+
+/** Short browser label from the user agent — display hint only. */
+export function detectBrowser(ua: string): string {
+  // First match wins; each branch already produces the display label.
+  if (/Edg\//.test(ua)) return 'Edge';
+  if (/OPR\//.test(ua)) return 'Opera';
+  if (/SamsungBrowser\//.test(ua)) return 'Samsung Internet';
+  if (/Firefox\//.test(ua)) return 'Firefox';
+  if (/CriOS\//.test(ua)) return 'Chrome';
+  if (/FxiOS\//.test(ua)) return 'Firefox';
+  if (/Chrome\//.test(ua)) return 'Chrome';
+  if (/Safari\//.test(ua)) return 'Safari';
+  return '';
+}
 
 /** Server → UI validation. Strips control characters, caps lengths, drops
  *  malformed entries. Device names render as React text (never HTML), so this
@@ -85,8 +116,14 @@ export function parsePresenceList(payload: unknown): NearbyDevice[] {
     if (typeof name !== 'string') continue;
     const clean = name.replace(/[\x00-\x1F\x7F]/g, '').trim().replace(/\s+/g, ' ').slice(0, NAME_MAX);
     if (!clean) continue;
+    const kindRaw = (item as { kind?: unknown }).kind;
+    const browserRaw = (item as { browser?: unknown }).browser;
+    const kind = typeof kindRaw === 'string' && KINDS.has(kindRaw) ? (kindRaw as NearbyDevice['kind']) : 'desktop';
+    const browser = typeof browserRaw === 'string'
+      ? browserRaw.replace(/[\x00-\x1F\x7F]/g, '').trim().slice(0, BROWSER_MAX)
+      : '';
     seen.add(id);
-    out.push({ id, name: clean });
+    out.push({ id, name: clean, kind, browser });
   }
   return out;
 }
@@ -95,7 +132,7 @@ const ANNOUNCE_INTERVAL_MS = 45_000; // comfortably inside the server's 90s TTL
 const ACK_TIMEOUT_MS = 8000;
 
 type ChangeListener = (devices: NearbyDevice[], selfToken: string | null) => void;
-export interface IncomingInvitation { from: string; name: string }
+export interface IncomingInvitation { from: string; name: string; kind: NearbyDevice['kind']; browser: string }
 export interface InviteResult { accepted: boolean; roomId?: string; secret?: string }
 type InvitationListener = (inv: IncomingInvitation) => void;
 type InviteResultListener = (r: InviteResult) => void;
@@ -227,11 +264,13 @@ export class NearbyPresence {
   }
 
   private handleIncoming = (payload: unknown): void => {
-    const p = payload as { from?: unknown; name?: unknown } | null;
+    const p = payload as { from?: unknown; name?: unknown; kind?: unknown; browser?: unknown } | null;
     if (!p || typeof p.from !== 'string' || !TOKEN_RE.test(p.from) || typeof p.name !== 'string') return;
     const name = p.name.replace(/[\x00-\x1F\x7F]/g, '').trim().replace(/\s+/g, ' ').slice(0, NAME_MAX);
     if (!name) return;
-    for (const fn of this.invitationListeners) fn({ from: p.from, name });
+    const kind = typeof p.kind === 'string' && KINDS.has(p.kind) ? (p.kind as NearbyDevice['kind']) : 'desktop';
+    const browser = typeof p.browser === 'string' ? p.browser.replace(/[\x00-\x1F\x7F]/g, '').trim().slice(0, BROWSER_MAX) : '';
+    for (const fn of this.invitationListeners) fn({ from: p.from, name, kind, browser });
   };
 
   private handleResult = (payload: unknown): void => {
@@ -314,7 +353,13 @@ export class NearbyPresence {
     await new Promise<void>((resolve) => {
       const timer = setTimeout(resolve, ACK_TIMEOUT_MS);
       try {
-        socket.emit('presence_announce', { deviceId: getOrCreateDeviceId(), name: this.name }, (res: { success?: boolean; ok?: boolean; token?: string; error?: string; code?: string }) => {
+        socket.emit('presence_announce', {
+          deviceId: getOrCreateDeviceId(),
+          name: this.name,
+          // Display hints for the detection overlay — servers validate+strip.
+          kind: detectDeviceKind(typeof navigator !== 'undefined' ? navigator.userAgent : ''),
+          browser: detectBrowser(typeof navigator !== 'undefined' ? navigator.userAgent : ''),
+        }, (res: { success?: boolean; ok?: boolean; token?: string; error?: string; code?: string }) => {
           clearTimeout(timer);
           if (res?.success && res.token) {
             if (!this.announcedOnce) {

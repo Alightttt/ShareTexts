@@ -2,11 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react';
 import { Monitor, Smartphone, ArrowRight, Zap, Eye, EyeOff, RefreshCw, Search, Check, X, Wifi, QrCode, Link2, Loader2 } from 'lucide-react';
 import { getSocket } from '../lib/socket';
-import { nearbyPresence, isPresenceHidden, setPresenceHidden, type NearbyDevice } from '../lib/nearby';
+import { nearbyPresence, isPresenceHidden, setPresenceHidden, type NearbyDevice, type IncomingInvitation } from '../lib/nearby';
 import { getRecentDevices, recordRecentDevice, isTrustedToken, forgetRecentDevice, resolveLiveToken, lastSeenParts } from '../lib/pairing';
 import { useI18n } from '../lib/i18n';
 import { useSession } from '../lib/SessionContext';
-import { ConfirmSheet } from './ConfirmSheet';
+import { NearbyDetectOverlay } from './NearbyDetectOverlay';
+import { StandardSwitch } from './StandardSwitch';
 import { productEvent } from '../lib/telemetry';
 import { cn } from '../lib/utils';
 import { DeviceLinkIllustration } from './DeviceLinkIllustration';
@@ -47,12 +48,15 @@ const pillGhost = cn(
  */
 
 /**
- * Auto-connect — PairDrop-style one-tap pairing. A device with autoConnect on
- * accepts incoming invitations from nearby devices without the sheet, so two
- * people who both opted in can tap each other and land in the room. OFF by
- * default, remembered per device, and two-loop-safe: while an invite we sent
- * is still in flight we never also auto-accept, and each invitation carries a
- * nonce so an echo can't bounce back and forth forever.
+ * Auto-connect — the MUTUAL CONFIRMED flow. A device with autoConnect on
+ * doesn't connect silently: when another device appears nearby, BOTH landing
+ * pages pop the detection overlay (NearbyDetectOverlay) — glyph, name,
+ * browser, "a nearby device detected" — and the connect only happens after
+ * the two-step in-button confirmation ("Connect with this device?" → "Yes").
+ * Incoming invitations from TRUSTED (previously paired) devices still skip
+ * the overlay on the receiving side — the sender confirmed twice already —
+ * and auto-connect ON auto-accepts incoming invites on the receiving side
+ * for the same reason. OFF by default, remembered per device.
  */
 const AUTO_KEY = 'sharetext.autoConnect.v1';
 export function isAutoConnectEnabled(): boolean {
@@ -105,26 +109,14 @@ function ToggleRow({ icon, active, title, hint, onClick, ariaLabel, testId, rowT
         <span className="text-[13px] font-semibold text-apple-ink dark:text-white">{title}</span>
         <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/45">{hint}</span>
       </span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={active}
-        data-testid={testId}
-        aria-label={ariaLabel}
-        onClick={onClick}
-        className={cn(
-          'relative shrink-0 w-[44px] h-[28px] rounded-full transition-colors duration-200 outline-none',
-          'focus-visible:ring-2 focus-visible:ring-[#f06413]/40',
-          active ? 'bg-[#f06413] dark:bg-[#fb9243]' : 'bg-apple-divider dark:bg-white/20'
-        )}
-      >
-        <motion.span
-          initial={false}
-          animate={{ x: active ? 18 : 0 }}
-          transition={{ type: 'spring', stiffness: 550, damping: 38 }}
-          className="absolute top-[2px] left-[2px] w-6 h-6 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.25)]"
-        />
-      </button>
+      {/* THE standard switch of this app — ThemeToggle's exact geometry
+          (56×26 track, 34×22 thumb), one silhouette everywhere. */}
+      <StandardSwitch
+        checked={active}
+        onChange={onClick}
+        ariaLabel={ariaLabel}
+        testId={testId}
+      />
     </div>
   );
 }
@@ -136,8 +128,14 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
 
   const [devices, setDevices] = useState<NearbyDevice[]>([]);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
-  const [invitation, setInvitation] = useState<{ from: string; name: string } | null>(null);
   const [autoOn, setAutoOn] = useState<boolean>(() => isAutoConnectEnabled());
+  /* --- the mutual-confirm detection overlay -------------------------------
+     target: the device BOTH overlays are about (detected mode on the leader
+     side, incoming mode on the receiving side). busy: the handshake is in
+     flight — the overlay shows a spinner and swallows double taps. */
+  const [overlayTarget, setOverlayTarget] = useState<NearbyDevice | null>(null);
+  const [overlayMode, setOverlayMode] = useState<'detected' | 'incoming'>('detected');
+  const [overlayBusy, setOverlayBusy] = useState(false);
   // Nearby visibility: who can find THIS device. Default is the simple,
   // privacy-friendly default — visible only while ShareTexts is open.
   const [presenceHidden, setPresenceHiddenState] = useState<boolean>(() => isPresenceHidden());
@@ -151,36 +149,6 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
   const [failedDevice, setFailedDevice] = useState<NearbyDevice | null>(null);
   // The expandable "Why isn't my device showing?" helper.
   const [whyOpen, setWhyOpen] = useState(false);
-  // True while OUR invite is awaiting an answer — suppresses auto-accept on
-  // the inviter side so a mutual tap can't race into two rooms.
-  const invitingRef = useRef(false);
-  // Bounded wait for the auto-connect tiebreak loser (see the auto-invite
-  // effect): after this long with no incoming invitation, the loser leads.
-  // 4s comfortably outlasts a lobby round-trip in both directions (invite
-  // + answer ride the same open socket), so a healthy winner still beats
-  // the failover — but a silent loser wait no longer costs a third of a
-  // minute of "staring at each other".
-  const AUTO_YIELD_MS = 4_000;
-  const yieldDeadlineRef = useRef<number | null>(null);
-  const yieldTickRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [yieldTick, setYieldTick] = useState(0);
-  // ONE live timer for the deadline, armed here — the auto-invite effect
-  // re-runs on every presence broadcast, and a cleanup-based timer would be
-  // cleared and never re-armed (the wait would silently never fire).
-  useEffect(() => {
-    if (yieldDeadlineRef.current == null) return;
-    if (yieldTickRef.current) return;
-    const remaining = Math.max(0, yieldDeadlineRef.current - Date.now()) + 250;
-    yieldTickRef.current = setTimeout(() => {
-      yieldTickRef.current = null;
-      setYieldTick(n => n + 1);
-    }, remaining);
-    return () => { if (yieldTickRef.current) { clearTimeout(yieldTickRef.current); yieldTickRef.current = null; } };
-  }, [yieldTick]);
-  const cancelYieldWait = useCallback(() => {
-    yieldDeadlineRef.current = null;
-    if (yieldTickRef.current) { clearTimeout(yieldTickRef.current); yieldTickRef.current = null; }
-  }, []);
 
   /* --- recents subscription -------------------------------------------- */
   useEffect(() => {
@@ -214,11 +182,14 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
   }), []);
 
   // The search grace: fallback copy appears only after we've genuinely
-  // waited — and the timer resets whenever the first devices arrive.
+  // waited — and the timer resets whenever the first devices arrive. The
+  // detection overlay PAUSES the grace (the user is looking at a popup,
+  // not at the search row) so "Can't see your device?" never fights it.
   useEffect(() => {
+    if (overlayTarget) return;
     const timer = setTimeout(() => setSearchExpired(true), SEARCH_GRACE_MS);
     return () => clearTimeout(timer);
-  }, []);
+  }, [overlayTarget]);
   useEffect(() => {
     if (devices.length > 0) setSearchExpired(true);
   }, [devices.length]);
@@ -236,114 +207,126 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
     }
   }, [phase, onStatus, t]);
 
-  /* --- outgoing AUTO-INVITE ----------------------------------------------
-     Auto-connect is two-way: with the toggle ON, this device (a) auto-accepts
-     incoming invites (see the incoming handler) and (b) auto-INVITES devices
-     that appear nearby — otherwise two idle opted-in devices would stare at
-     each other forever, each waiting for the other to tap. Any nearby device
-     qualifies (both sides opted in, so consent holds), not just previously
-     paired ones. Guards: one invite at a time, a per-device cooldown so a
-     declined/expired target isn't spammed, and 'once' marks stop repeats
-     after a failure. The loser of a mutual auto-invite race just gets
-     'declined' (the winner seated us) and stops. */
-  const autoInvitedRef = useRef<Set<string>>(new Set());
+  /* --- the MUTUAL CONFIRMED overlay ---------------------------------------
+     Auto-connect ON: when a nearby device appears, BOTH landing pages pop
+     the SAME detection overlay ("a nearby device detected" + glyph + name +
+     browser), each with the two-step confirm — "Connect with this device?"
+     arms, "Yes" commits. Whichever side commits first invites; the other
+     side's popup flips to its incoming form ("{name} wants to connect" + a
+     single Yes). Nothing connects silently, ever — the confirmations ARE
+     the flow. If both sides confirm into the crossing, the pending invite
+     wins and the crossed one times out harmlessly. */
+  // Per-device cooldown so a cancelled/failed target isn't instantly
+  // re-popped (45s — long enough to breathe, short enough to retry).
   const autoCooldownRef = useRef<Map<string, number>>(new Map());
   const AUTO_COOLDOWN_MS = 45_000;
-  // handleInvite is defined below this effect; the ref keeps the auto-invite
-  // effect dependency-clean while always calling the freshest version.
-  const handleInviteRef = useRef<(device: NearbyDevice) => Promise<void>>(async () => {});
   useEffect(() => {
-    if (!autoOn || phase.kind !== 'idle' || invitation || devices.length === 0) return;
-    // Mutual-invite tiebreak: if the other opted-in device would invite us
-    // too, both sides compare tokens and only the deterministic winner
-    // actually invites (the loser waits to be invited). Without this, both
-    // sides create rooms and the invitees end up in crossed rooms.
-    //
-    // "Wait to be invited" has a real failure mode, though: the winning
-    // device's auto-invite can silently fail (stale lobby, invite cooldown
-    // on its side, user toggle just flipped). A loser that waits FOREVER
-    // turns "auto-connect" into "never connects" — the intermittent bug
-    // this whole toggle kept catching. So the wait is bounded: after a full
-    // invite window with no incoming invitation, the loser leads anyway.
-    // At that point a race is the lesser harm (both sides' answerInvite /
-    // invite-result handlers are one-shot and idle-phase-guarded).
-    const self = nearbyPresence.getSelfToken();
-    const iShouldLead = (theirToken: string) => !self || self < theirToken;
+    // Trigger: auto-connect ON — or this device still holds a Stay Connected
+    // room (a stay pair opening ShareTexts on both devices gets the SAME
+    // confirmed overlay, with the ∞ badge riding next to the name).
+    if ((!autoOn && !session.lastStayRoom) || phase.kind !== 'idle' || overlayTarget || devices.length === 0) return;
     const now = Date.now();
-    const target = devices.find(d =>
-      !autoInvitedRef.current.has(d.id) &&
-      (autoCooldownRef.current.get(d.id) ?? 0) < now &&
-      iShouldLead(d.id)
-    );
-    if (target) {
-      autoInvitedRef.current.add(target.id);
-      void handleInviteRef.current(target).then((ok) => {
-        if (ok) {
-          // Seated (or connecting) — no retry needed.
-          autoCooldownRef.current.delete(target.id);
-        } else {
-          // Declined/expired/gone: allow a later retry, but not a flurry.
-          autoInvitedRef.current.delete(target.id);
-          autoCooldownRef.current.set(target.id, Date.now() + AUTO_COOLDOWN_MS);
-        }
-      });
-      return;
-    }
-    // Everyone here outranks us in the tiebreak — arm the bounded wait.
-    if (yieldDeadlineRef.current == null) {
-      yieldDeadlineRef.current = Date.now() + AUTO_YIELD_MS;
-      setYieldTick(n => n + 1); // arm the deadline timer (see its effect)
-      return;
-    }
-    if (Date.now() >= yieldDeadlineRef.current) {
-      // Waited a full window with no incoming invite: lead after all.
-      const fallback = devices.find(d =>
-        !autoInvitedRef.current.has(d.id) &&
-        (autoCooldownRef.current.get(d.id) ?? 0) < now
-      );
-      if (fallback) {
-        cancelYieldWait();
-        autoInvitedRef.current.add(fallback.id);
-        void handleInviteRef.current(fallback).then((ok) => {
-          if (ok) autoCooldownRef.current.delete(fallback.id);
-          else {
-            autoInvitedRef.current.delete(fallback.id);
-            autoCooldownRef.current.set(fallback.id, Date.now() + AUTO_COOLDOWN_MS);
-          }
-        });
-      }
-    }
-  }, [autoOn, phase.kind, invitation, devices, yieldTick, cancelYieldWait]);
+    const target = devices.find(d => (autoCooldownRef.current.get(d.id) ?? 0) < now);
+    if (!target) return;
+    setOverlayMode('detected');
+    setOverlayTarget(target);
+    productEvent('product.method_nearby');
+  }, [autoOn, session.lastStayRoom, phase.kind, overlayTarget, devices]);
 
-  /* --- incoming invitation ---------------------------------------------- */
-  useEffect(() => nearbyPresence.onInvitation(inv => {
-    // An invite arrived — the tiebreak wait is over, whoever yielded can
-    // stop planning a fallback lead.
-    cancelYieldWait();
-    // Trust ladder: (1) a previously PAIRED device always skips the sheet —
-    // auto-connect ON or OFF. (2) Auto-connect ON accepts ANY nearby device
-    // without the sheet — that is precisely what the toggle promises
-    // ("connect automatically when a nearby device taps you"), and it's
-    // what makes two opted-in devices find each other with zero taps.
-    // (3) Otherwise the consent sheet shows.
-    // (Presence tokens rotate with the worker; after a rotation the sheet
-    // returns for unpaired devices — the conservative outcome.)
-    if (!invitingRef.current && (isTrustedToken(inv.from) || autoOn)) {
+  // The device the overlay is about went away (tab closed, withdrew): the
+  // overlay follows reality instead of pointing at a ghost.
+  useEffect(() => {
+    if (!overlayTarget) return;
+    if (devices.some(d => d.id === overlayTarget.id)) return;
+    setOverlayTarget(null);
+    setOverlayBusy(false);
+  }, [devices, overlayTarget]);
+
+  // The invitation currently on the table (if any) — the overlay's Yes
+  // accepts it instead of sending a crossing invite of our own.
+  const pendingInviteRef = useRef<IncomingInvitation | null>(null);
+
+  /* --- incoming invitation ------------------------------------------------ */
+  useEffect(() => nearbyPresence.onInvitation((inv: IncomingInvitation) => {
+    // Trust ladder: (1) a previously PAIRED device always skips the popup —
+    // auto-connect ON or OFF: the sender already confirmed twice.
+    // (2) Otherwise the overlay answers it — 'incoming' mode if the popup
+    // is already up, opened fresh if not. Never a silent accept.
+    // (Presence tokens rotate with the worker; after a rotation trust
+    // downgrades to the confirmed popup — the conservative outcome.)
+    if (isTrustedToken(inv.from)) {
       const timer = setTimeout(() => { void answerInviteRef.current(true, inv); }, 0);
       return () => clearTimeout(timer);
     }
-    // Ignore while busy with another connection flow.
-    setInvitation(prev => (prev ? prev : inv));
-  }), [autoOn, invitation]);
-
-  /* --- outgoing invite --------------------------------------------------- */
-  const handleInvite = useCallback(async (device: NearbyDevice): Promise<boolean> => {
+    // Mutual confirm: OUR invite to this same device is in flight — both
+    // sides said "Yes" within the crossing window. That IS mutual consent:
+    // accepting creates the room here and seats the inviter via the result.
+    if (phase.kind === 'inviting' && phase.device.id === inv.from) {
+      const timer = setTimeout(() => { void answerInviteRef.current(true, inv); }, 0);
+      return () => clearTimeout(timer);
+    }
+    pendingInviteRef.current = inv;
+    if (phase.kind !== 'idle') return; // busy elsewhere — result will decline it
+    if (overlayTarget && overlayTarget.id === inv.from) {
+      setOverlayMode('incoming'); // same device — flip the popup in place
+      return;
+    }
+    if (overlayTarget) return; // a different popup is up — leave it
+    setOverlayMode('incoming');
+    setOverlayTarget({ id: inv.from, name: inv.name, kind: inv.kind, browser: inv.browser });
     productEvent('product.method_nearby');
+  }), [phase.kind, overlayTarget]);
+
+  /* --- overlay actions ----------------------------------------------------- */
+  /** "Yes" — the commit step. With a real invitation pending (the other
+   *  side confirmed first) it accepts and creates the room; otherwise it
+   *  sends OUR invite, and the other side's popup flips to incoming. */
+  const handleOverlayConnect = useCallback(async (device: NearbyDevice) => {
+    setOverlayBusy(true);
+    const pending = pendingInviteRef.current;
+    if (pending && pending.from === device.id) {
+      pendingInviteRef.current = null;
+      await answerInviteRef.current(true, { from: pending.from, name: pending.name, kind: pending.kind, browser: pending.browser });
+      setOverlayBusy(false);
+      setOverlayTarget(null);
+      return;
+    }
     setPhase({ kind: 'inviting', device });
     setFailedDevice(null);
-    invitingRef.current = true;
     const delivered = await nearbyPresence.invite(device.id);
-    invitingRef.current = false;
+    if (!delivered) {
+      setOverlayBusy(false);
+      setOverlayTarget(null);
+      setFailedDevice(device);
+      setPhase({ kind: 'error', text: t('nearby.failTitle', { name: device.name }) });
+      return;
+    }
+    // Delivered: the receiver's popup flips to its incoming form and its
+    // single "Yes" completes the pairing. The overlay closes when the
+    // invite result / connection takes over (or the user cancels).
+    setOverlayBusy(false);
+  }, [t]);
+
+  /** Cancel / ✕ / backdrop: close without deciding. A cooldown keeps the
+   *  dismissed target from instantly re-popping the popup. */
+  const closeOverlay = useCallback(() => {
+    if (overlayTarget) {
+      if (pendingInviteRef.current?.from === overlayTarget.id) pendingInviteRef.current = null;
+      autoCooldownRef.current.set(overlayTarget.id, Date.now() + AUTO_COOLDOWN_MS);
+    }
+    setOverlayTarget(null);
+    setOverlayBusy(false);
+  }, [overlayTarget]);
+
+  /* --- outgoing invite (rows / recents) ----------------------------------- */
+  const handleInvite = useCallback(async (device: NearbyDevice): Promise<boolean> => {
+    productEvent('product.method_nearby');
+    // A direct row tap supersedes whatever the popup was showing.
+    setOverlayTarget(null);
+    setOverlayBusy(false);
+    setPhase({ kind: 'inviting', device });
+    setFailedDevice(null);
+    const delivered = await nearbyPresence.invite(device.id);
     if (!delivered) {
       // Named failure + the two honest ways out (retry / QR).
       setFailedDevice(device);
@@ -354,12 +337,13 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
     // presence_invite_result listener below resolves the phase to an error.
     return true;
   }, [t]);
-  handleInviteRef.current = handleInvite;
 
   /* --- the invitee side: accept creates the room ------------------------- */
-  const answerInvite = useCallback(async (accepted: boolean, override?: { from: string; name: string }) => {
-    const inv = override ?? invitation;
-    setInvitation(null);
+  const answerInvite = useCallback(async (
+    accepted: boolean,
+    override?: { from: string; name: string; kind?: 'phone' | 'tablet' | 'desktop'; browser?: string },
+  ) => {
+    const inv = override;
     if (!inv) return;
     if (!accepted) {
       nearbyPresence.answerInvite(inv.from, false);
@@ -379,7 +363,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
       nearbyPresence.answerInvite(inv.from, false);
       setPhase({ kind: 'error', text: t('err.connectFailed') });
     }
-  }, [invitation, createSession, t]);
+  }, [createSession, t]);
   const answerInviteRef = useRef(answerInvite);
   answerInviteRef.current = answerInvite;
 
@@ -395,6 +379,9 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
         void joinWithLink(result.roomId);
         return { kind: 'connecting', device: prev.device };
       }
+      // Declined or gone — the popup (if still open) says so, then closes.
+      setOverlayBusy(false);
+      setOverlayTarget(null);
       return { kind: 'error', text: t('nearby.declined') };
     });
   }), [joinWithLink, t]);
@@ -428,6 +415,9 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
   const busyId = phase.kind === 'inviting' ? phase.device.id : null;
   const busyName = phase.kind === 'inviting' ? phase.device.name : null;
   const waiting = devices.length === 0;
+  // The Stay Connected promise rides with the device: when this device still
+  // holds a stay room, the detection overlay says so with the ∞ badge.
+  const stayBadgeForOverlay = !!session.lastStayRoom;
 
   // The section hides while seated in a room; the connecting phase keeps it
   // mounted so the status line stays honest until the room takes over.
@@ -760,16 +750,16 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
         </div>
       )}
 
-      {/* Incoming invitation — Apple-style sheet, reused from the app. */}
-      <ConfirmSheet
-        open={!!invitation}
-        title={t('nearby.inviteTitle', { name: invitation?.name ?? '' })}
-        body={t('nearby.inviteBody')}
-        confirmLabel={t('nearby.accept')}
-        cancelLabel={t('nearby.decline')}
-        destructive={false}
-        onConfirm={() => void answerInvite(true)}
-        onCancel={() => void answerInvite(false)}
+      {/* THE mutual-confirm detection overlay — auto-connect ON pops it on
+          both devices; incoming invites flip it to their incoming form. */}
+      <NearbyDetectOverlay
+        mode={overlayMode}
+        device={overlayTarget ? { name: overlayTarget.name, kind: overlayTarget.kind, browser: overlayTarget.browser } : null}
+        busy={overlayBusy || phase.kind === 'inviting'}
+        stayBadge={stayBadgeForOverlay}
+        onConnect={() => { if (overlayTarget) void handleOverlayConnect(overlayTarget); }}
+        onCancel={closeOverlay}
+        onFindMore={closeOverlay}
       />
     </div>
   );

@@ -649,7 +649,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             const code = res.code || res.error || '';
             roomCreateDiagEnd(createDiagRequestRef.current, 'failure', 'ROOM_CREATE_REJECTED', code);
             if (/too many attempts|rate/i.test(code)) reject(new ConnectError('RATE_LIMITED'));
-            else reject(new ConnectError('REJECTED', humanizeError(res.code, res.error || "Couldn't start a session.")));
+            else reject(new ConnectError('REJECTED', humanizeError(res.code, res.error || "Couldn't start a session."), res.code));
           }
         });
       } catch (e) {

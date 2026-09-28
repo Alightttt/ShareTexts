@@ -5,7 +5,29 @@
  *
  * Codes come from the Cloudflare worker (worker/src/room.ts) and the Node
  * server (server.ts). Unknown codes fall back to a generic message.
+ *
+ * NOTE: these strings are English fallbacks only. The UI translates REJECTED
+ * failures by code via errCodeToKey() — see SingleScreenApp.friendlyConnectError.
  */
+import type { MsgKey } from './messages/types';
+
+/** Server error code → locale key for the REJECTED path. Returns null for
+ *  codes the UI phrases its own way. */
+export function errCodeToKey(code: string | undefined): MsgKey | null {
+  switch (code) {
+    case 'SESSION_EXPIRED':
+    case 'INVALID_SESSION':
+    case 'ROOM_NOT_FOUND': return 'err.roomGone';
+    case 'ROOM_FULL': return 'err.roomFull';
+    case 'UNSUPPORTED_VERSION': return 'err.outdated';
+    case 'ICE_FAILED':
+    case 'WEBRTC_FAILED':
+    case 'DATA_CHANNEL_FAILED': return 'err.p2p';
+    case 'PEER_UNAVAILABLE': return 'err.peerUnavailable';
+    case 'QUOTA_EXCEEDED': return 'err.quota';
+    default: return null;
+  }
+}
 const ERROR_COPY: Record<string, string> = {
   ROOM_FULL: 'This ShareTexts room is already full.',
   INVALID_CODE: "That code isn't valid or has expired. Ask for a fresh one.",
@@ -65,10 +87,15 @@ export type ConnectFailureCode =
 
 export class ConnectError extends Error {
   readonly code: ConnectFailureCode;
-  constructor(code: ConnectFailureCode, message?: string) {
+  /** Machine-readable server error code (ROOM_FULL, INVALID_CODE, …) when
+   *  the failure was a server rejection — lets the UI pick a locale key
+   *  instead of showing untranslated English backend copy. */
+  readonly serverCode?: string;
+  constructor(code: ConnectFailureCode, message?: string, serverCode?: string) {
     super(message || code);
     this.name = 'ConnectError';
     this.code = code;
+    this.serverCode = serverCode;
   }
 }
 

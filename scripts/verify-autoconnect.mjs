@@ -1,9 +1,12 @@
 /**
- * Auto-connect E2E (REAL server + two real browsers).
+ * Auto-connect E2E (REAL server + two real browsers) — the MUTUAL CONFIRMED
+ * flow. Auto-connect ON means: never connect silently — confirm on both.
  *  1. Both pages enable auto-connect (localStorage) BEFORE app scripts run.
- *  2. Both announce to the presence pool; each sees the other's row.
- *  3. A taps B → B must auto-accept with NO sheet flash → both land in chat.
- *  4. Text A→B works (existing transfer path took over).
+ *  2. Both announce; each lands in the presence pool.
+ *  3. Each side pops the detection overlay ("a nearby device detected").
+ *  4. A arms ("Connect with this device?") then commits ("Yes") → an invite
+ *     is sent; B's overlay shows "{name} wants to connect" → B taps "Yes".
+ *  5. Both land in chat; text A→B works over the existing engine.
  */
 import { chromium } from 'playwright';
 import { resolveChrome } from './lib.mjs';
@@ -20,44 +23,51 @@ const mkPage = async () => {
 const A = await mkPage();
 const B = await mkPage();
 let errors = 0;
+const fails = [];
+const check = (name, ok) => { console.log(`${ok ? 'PASS' : 'FAIL'} ${name}`); if (!ok) fails.push(name); };
 for (const p of [A, B]) p.on('pageerror', () => errors++);
 
 await A.goto('http://localhost:3010', { waitUntil: 'domcontentloaded' });
 await B.goto('http://localhost:3010', { waitUntil: 'domcontentloaded' });
-await A.waitForTimeout(2200);
+await A.waitForTimeout(2500);
 
-// 1. Each side may see the other's nearby row — but with auto-connect ON on
-//    BOTH sides, the auto-invite/accept can complete before this assertion
-//    runs (that is the feature working). So the row count is informational:
-//    the REAL assertions are below (no sheet flash + both reach the chat).
-const nA = await A.locator('button:has-text("Nearby")').count();
-console.log('A sees nearby rows:', nA, '(0 ok if auto-connect already completed)');
+// 1. The detection overlay pops on BOTH sides (mutual detection).
+const overlayOnA = await A.getByTestId('nearby-detect-overlay').count() > 0;
+const overlayOnB = await B.getByTestId('nearby-detect-overlay').count() > 0;
+check('detection overlay on A', overlayOnA);
+check('detection overlay on B', overlayOnB);
 
-// 2. Wait out the zero-tap connection. B must auto-accept — assert the
-//    invitation sheet never becomes visible, then both reach the composer.
-const t0 = Date.now();
-await A.waitForTimeout(600);
-// Sheet probe: any visible "decline/accept" affordance on B would fail the run.
-const sheetVisible = await B.evaluate(() => {
-  const el = document.querySelector('[role="dialog"], [data-testid="invite-sheet"]');
-  return !!el && el.offsetParent !== null;
-});
-console.log('B showed manual sheet:', sheetVisible, '(need false)');
+// 2. Overlay shows the two-step primary: first press arms, second commits.
+const primaryA = A.getByTestId('nearby-detect-primary');
+const labelBefore = (await primaryA.innerText()).trim();
+await primaryA.click(); // arm
+const labelArmed = (await primaryA.innerText()).trim();
+check('two-step confirm arms in place', labelBefore !== labelArmed, `"${labelBefore}" → "${labelArmed}"`);
 
-await A.locator('[data-testid="composer"]').first().waitFor({ timeout: 20000 }).catch(() => {});
-await B.locator('[data-testid="composer"]').first().waitFor({ timeout: 20000 }).catch(() => {});
-const aChat = (await A.locator('[data-testid="composer"]').count()) > 0;
-const bChat = (await B.locator('[data-testid="composer"]').count()) > 0;
-console.log('auto-connect: A in chat =', aChat, ' B in chat =', bChat, ` (${Date.now() - t0}ms)`);
+// 3. A commits → invite is sent → B's overlay flips to incoming, B confirms.
+await primaryA.click(); // Yes
+await A.waitForTimeout(1200);
+const bDialogText = (await B.getByRole('dialog').innerText().catch(() => '')).replace(/\s+/g, ' ');
+check('B overlay shows incoming invite', /wants to connect/i.test(bDialogText), bDialogText.slice(0, 80));
+await B.getByRole('button', { name: 'Yes', exact: true }).click().catch(() => {});
+await A.waitForTimeout(500);
 
-// 3. Text A → B over the existing transfer engine.
+// 4. Zero-extra-tap fallback: either the confirmations above completed the
+//    pairing, or (timing skew) trusted re-invites connect on their own.
+await A.locator('textarea').first().waitFor({ timeout: 20000 }).catch(() => {});
+await B.locator('textarea').first().waitFor({ timeout: 20000 }).catch(() => {});
+const aChat = (await A.locator('textarea').count()) > 0;
+const bChat = (await B.locator('textarea').count()) > 0;
+check('A in chat', aChat);
+check('B in chat', bChat);
+
+// 5. Text A → B over the existing transfer engine.
 if (aChat && bChat) {
-  await A.locator('[data-testid="composer"]').first().fill('auto-connect hello');
-  await A.locator('[data-testid="composer"]').first().press('Enter');
+  await A.locator('textarea').first().fill('auto-connect hello');
+  await A.locator('textarea').first().press('Enter');
   await A.waitForTimeout(2500);
-  const got = (await B.locator('body').innerText()).includes('auto-connect hello');
-  console.log('A→B text arrived:', got);
+  check('A→B text arrived', (await B.locator('body').innerText()).includes('auto-connect hello'));
 }
-console.log('page errors:', errors);
+check('no page errors', errors === 0);
 await browser.close();
-process.exit(errors > 0 ? 1 : 0);
+process.exit(fails.length === 0 && errors === 0 ? 0 : 1);

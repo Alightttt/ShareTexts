@@ -31,10 +31,11 @@ import { ConnectHandshake } from '../components/ConnectHandshake';
 import { CommandBar, CommandBarChip } from '../components/CommandBar';
 import { signalingConfigIssue, prewarmSignaling } from '../lib/socket';
 import { loadStoredSession } from '../lib/session/persistence';
-import { ConnectError, describeConnectFailure } from '../lib/errors';
+import { ConnectError, describeConnectFailure, errCodeToKey } from '../lib/errors';
 import { HeroTransferScene } from '../components/HeroTransferScene';
 import { useLiveStats } from '../lib/useLiveStats';
 import { ConfirmSheet } from '../components/ConfirmSheet';
+import { SettingsOverlay } from '../components/SettingsOverlay';
 import { StayConnectedToggle, StayBadge } from '../components/StayConnectedToggle';
 import { NearbyDevices } from '../components/NearbyDevices';
 import { SkeletonScreen } from '../components/SkeletonScreen';
@@ -45,7 +46,7 @@ import { cn, shortCodeOf, sanitizeDeviceName, formatBytes } from '../lib/utils';
 import {
   LogOut, QrCode, Link2, Copy, Check,
   Smartphone, Monitor, X, Wifi, ArrowRightLeft, ArrowLeft, Info, Pencil, WifiOff, ServerOff,
-  Infinity as InfinityIcon, Upload, RotateCcw
+  Infinity as InfinityIcon, Upload, RotateCcw, Settings as SettingsIcon
 } from 'lucide-react';
 import { generateTOTP } from '../lib/totp';
 import { useFocusTrap } from '../lib/useFocusTrap';
@@ -124,6 +125,8 @@ export function SingleScreenApp() {
   });
   const [isCreating, setIsCreating] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  // Settings — one overlay for theme / language / stay connected / reconnect.
+  const [showSettings, setShowSettings] = useState(false);
   const [createError, setCreateError] = useState<{ text: string; icon: 'offline' | 'server' | 'time' | 'info' } | null>(null);
   const [showQROverlay, setShowQROverlay] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -368,8 +371,12 @@ export function SingleScreenApp() {
     if (code === 'CONFIG') return { text: (e instanceof Error && e.message) || t('err.config'), icon: 'server' };
     if (code === 'RATE_LIMITED') return { text: t('err.ratelimited'), icon: 'time' };
     if (code === 'TIMEOUT') return { text: t('err.timeout2'), icon: 'time' };
-    // REJECTED carries server copy already localized by humanizeError.
-    if (e instanceof ConnectError && e.code === 'REJECTED') return { text: e.message, icon: 'info' };
+    // REJECTED: the server named the real cause — translate it here by code
+    // so every locale gets native copy (never raw English from the backend).
+    if (e instanceof ConnectError && e.code === 'REJECTED') {
+      const msgKey = errCodeToKey(e.serverCode);
+      if (msgKey) return { text: t(msgKey), icon: 'info' };
+    }
     if (e instanceof Error && e.message && !/^CONNECT|^[A-Z_]+$/.test(e.message) && signalingConfigIssue()) {
       return { text: e.message, icon: 'info' };
     }
@@ -508,6 +515,28 @@ export function SingleScreenApp() {
     setIsRejoining(false);
     if (!ok) setStayGone(true);
   }, [isRejoining, rejoinStayRoom]);
+
+  /* --- Esc on desktop opens the disconnect confirmation -------------------
+     Only when a room is live and nothing else is open — otherwise Esc
+     does its own job (closing menus, sheets, the image viewer). Mobile
+     back is handled in ChatView (history guard) — this is the desktop half. */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const w = window as Window & { __stImageViewerOpen?: boolean };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (panelMode !== 'connected') return; // rooms only
+      if (w.__stImageViewerOpen) return;     // photo owns this Escape
+      // Menus/sheets/overlays close themselves first (their own handlers);
+      // the guard only ADDS the disconnect confirmation when nothing else
+      // is open — any dialog mounting its own Esc handling must win.
+      if (confirmDisconnect || showSettings) return;
+      if (document.querySelector('[role="dialog"], [aria-modal="true"]')) return;
+      setConfirmDisconnect(true);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [panelMode, confirmDisconnect, showSettings]);
 
   // Synchronous double-submit guard: the 6th-digit auto-submit and a user
   // pressing Enter can both fire before the isJoining state re-render lands.
@@ -1295,6 +1324,17 @@ export function SingleScreenApp() {
           {panelMode === 'connected' && (
             <>
               <ShareTextsLogo size={15} mono className="opacity-70 hidden sm:block" />
+              {/* Settings — same overlay as the mobile room header. */}
+              <button
+                type="button"
+                data-testid="open-settings"
+                onClick={() => setShowSettings(true)}
+                aria-label={t('settings.title')}
+                title={t('settings.title')}
+                className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-full transition-all duration-150 active:scale-95 text-apple-ink-muted/70 dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.07]"
+              >
+                <SettingsIcon className="w-[18px] h-[18px]" aria-hidden />
+              </button>
               <button
                 onClick={() => setConfirmDisconnect(true)}
                 className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-full transition-all duration-150 active:scale-95 text-apple-ink-muted/70 dark:text-white/50 hover:text-status-danger hover:bg-status-danger/10"
@@ -1487,6 +1527,8 @@ export function SingleScreenApp() {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Settings — theme, language, stay connected, reconnection. */}
+      <SettingsOverlay open={showSettings} onClose={() => setShowSettings(false)} />
       {/* Apple-style bottom-sheet confirmation before really ending the session. */}
       <ConfirmSheet
         open={confirmDisconnect}

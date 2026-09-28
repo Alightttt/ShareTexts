@@ -1,8 +1,8 @@
 import React from 'react';
 import { Infinity as InfinityIcon } from 'lucide-react';
-import { motion } from 'motion/react';
 import { useSession } from '../lib/SessionContext';
 import { useI18n } from '../lib/i18n';
+import { StandardSwitch } from './StandardSwitch';
 import { cn } from '../lib/utils';
 
 /**
@@ -43,28 +43,13 @@ export function StayConnectedToggle({ className }: { className?: string }) {
         <span className="text-[13px] font-semibold text-apple-ink dark:text-white">{t('stay.title')}</span>
         <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/45">{t('stay.hint')}</span>
       </span>
-      {/* iOS-style switch: 44×28 track, 24px thumb, 2px inset, 18px travel.
-          role=switch + aria-checked; Enter/Space toggle natively via button. */}
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on}
-        data-testid="stay-connected-toggle"
-        aria-label={t('stay.title')}
-        onClick={() => setStayConnected(!on)}
-        className={cn(
-          'relative shrink-0 w-[44px] h-[28px] rounded-full transition-colors duration-200 outline-none',
-          'focus-visible:ring-2 focus-visible:ring-[#f06413]/40',
-          on ? 'bg-[#f06413] dark:bg-[#fb9243]' : 'bg-apple-divider dark:bg-white/20'
-        )}
-      >
-        <motion.span
-          initial={false}
-          animate={{ x: on ? 18 : 0 }}
-          transition={{ type: 'spring', stiffness: 550, damping: 38 }}
-          className="absolute top-[2px] left-[2px] w-6 h-6 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.25)]"
-        />
-      </button>
+      {/* THE standard switch — ThemeToggle's geometry, one silhouette app-wide. */}
+      <StandardSwitch
+        checked={on}
+        onChange={(next) => setStayConnected(next)}
+        ariaLabel={t('stay.title')}
+        testId="stay-connected-toggle"
+      />
     </div>
   );
 }
