@@ -1559,6 +1559,7 @@ export function SingleScreenApp() {
                   them again. */}
               <button onClick={() => setShowQROverlay(false)} className="absolute top-3 right-3 min-w-[44px] min-h-[44px] rounded-full bg-apple-parchment dark:bg-white/5 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors" aria-label={t('common.close')}><X className="w-4 h-4" /></button>
               <kbd aria-hidden="true" className="hidden sm:inline absolute top-5 right-16 px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-white/10 bg-white/60 dark:bg-white/5 text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">Esc</kbd>
+              <p className="text-[15px] font-semibold text-apple-ink dark:text-white mb-2">{t('qr.display.title')}</p>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/60 mb-4 leading-relaxed">
                 {(() => { const parts = t('qr.display.body', { receive: '\u0000' }).split('\u0000'); return (<>{parts[0]}<strong className="text-apple-ink dark:text-white">{t('qr.display.receive')}</strong>{parts[1]}</>); })()}
               </p>
@@ -1595,15 +1596,16 @@ export function SingleScreenApp() {
 /* ------------------------------------------------------------------ */
 /*  Sub-components                                                    */
 /* ------------------------------------------------------------------ */
-/** Localized loading label for the lazily-imported QR renderer. */
-function QrLoadingLabel() {
-  const { t } = useI18n();
-  return <>{t('common.loading')}</>;
-}
-
 function QROverlayInner({ value }: { value: string }) {
   const [Comp, setComp] = useState<React.ComponentType<any> | null>(null);
   useEffect(() => { import('qrcode.react').then(m => setComp(() => m.QRCodeSVG)); }, []);
-  if (!Comp) return <div className="w-[220px] h-[220px] flex items-center justify-center text-[13px] text-apple-ink-muted"><QrLoadingLabel /></div>;
+  // Skeleton, not a sentence: the lazy chunk fills the QR's exact 220px
+  // stage (one shimmer) — the same loading language as the scan overlay's
+  // viewfinder shell, so both QR surfaces speak identically.
+  if (!Comp) return (
+    <div className="w-[220px] h-[220px] rounded-[10px] relative overflow-hidden" aria-hidden>
+      <span className="st-skeleton absolute inset-0 bg-apple-ink/[0.05]" />
+    </div>
+  );
   return <Comp value={value} size={220} level="M" />;
 }
