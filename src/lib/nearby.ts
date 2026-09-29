@@ -69,14 +69,21 @@ export interface NearbyDevice {
   kind: 'phone' | 'tablet' | 'desktop';
   /** Short browser label for the overlay ("Chrome", "Safari", "Firefox"…). */
   browser: string;
+  /** Exact model when the platform exposes one (Android builds); otherwise
+   *  empty — the UI renders platform art and never invents a model. */
+  model?: string;
+  /** GPU vendor hint (desktops only): NVIDIA / AMD / Intel / Apple. */
+  gpu?: string;
 }
 
 const TOKEN_RE = /^[0-9a-f]{32}$/;
 const NAME_MAX = 32;
 const BROWSER_MAX = 20;
+const MODEL_MAX = 40;
 const MAX_DEVICES = 24;
 
 const KINDS = new Set(['phone', 'tablet', 'desktop']);
+const GPU_VENDORS = new Set(['NVIDIA', 'AMD', 'Intel', 'Apple']);
 
 /** Coarse device kind from the user agent — display hint only. */
 export function detectDeviceKind(ua: string): 'phone' | 'tablet' | 'desktop' {
@@ -98,6 +105,49 @@ export function detectBrowser(ua: string): string {
   if (/Chrome\//.test(ua)) return 'Chrome';
   if (/Safari\//.test(ua)) return 'Safari';
   return '';
+}
+
+/**
+ * Exact device MODEL where the web platform exposes one — display hint only.
+ * Android build UAs carry the real model ("SM-S918B", "Pixel 7", "CPH2451");
+ * iOS ships none (Apple strips it), and desktop UAs never had one. Honest
+ * rule: empty string means "the web cannot know" — the UI falls back to
+ * platform art instead of pretending.
+ */
+export function detectDeviceModel(ua: string): string {
+  if (!/Android/i.test(ua)) return '';
+  // "…; Android 13; SM-S918B Build/TP1A…" → "SM-S918B" (newer UAs append Build)
+  // "…; Android 13; SM-S918B)" → "SM-S918B" (older form ends the UA)
+  const m = ua.match(/Android[^;)]*;\s*([^;)]+?)\s+Build\//i)
+    || ua.match(/Android[^;)]*;\s*([^;)]+?)\)(?:\s|$)/);
+  let model = (m?.[1] ?? '').trim();
+  // WebView markers and generic placeholders are not models ("wv", "K").
+  if (!model || /^(wv|k)$/i.test(model)) return '';
+  model = model.replace(/[\x00-\x1F\x7F<>]/g, '').slice(0, 40);
+  return model.length >= 2 ? model : '';
+}
+
+/**
+ * GPU vendor via WebGL's renderer string — the one honest hardware hint a
+ * desktop browser exposes ("NVIDIA GeForce RTX 4070", "Apple M2", Intel
+ * iGPU…). Powers the desktop-tile vendor badge; empty when the browser
+ * withholds it (Firefox Phase-2/3 privacy hardening returns a generic
+ * "Mozilla" string that matches nothing, which correctly yields '').
+ */
+export function detectGpuVendor(): string {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')) as WebGLRenderingContext | null;
+    if (!gl) return '';
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    const renderer = ext ? (gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) as string | null) : null;
+    if (!renderer) return '';
+    if (/nvidia|geforce|\brtx\b|\bgtx\b/i.test(renderer)) return 'NVIDIA';
+    if (/radeon|\brx\b|\bamd\b/i.test(renderer)) return 'AMD';
+    if (/apple (m\d|gpu)/i.test(renderer)) return 'Apple';
+    if (/intel|iris|uhd|hd graphics/i.test(renderer)) return 'Intel';
+    return '';
+  } catch { return ''; }
 }
 
 /** Server → UI validation. Strips control characters, caps lengths, drops
@@ -122,8 +172,14 @@ export function parsePresenceList(payload: unknown): NearbyDevice[] {
     const browser = typeof browserRaw === 'string'
       ? browserRaw.replace(/[\x00-\x1F\x7F]/g, '').trim().slice(0, BROWSER_MAX)
       : '';
+    const modelRaw = (item as { model?: unknown }).model;
+    const model = typeof modelRaw === 'string'
+      ? modelRaw.replace(/[\x00-\x1F\x7F<>]/g, '').trim().slice(0, MODEL_MAX)
+      : '';
+    const gpuRaw = (item as { gpu?: unknown }).gpu;
+    const gpu = typeof gpuRaw === 'string' && GPU_VENDORS.has(gpuRaw) ? gpuRaw : '';
     seen.add(id);
-    out.push({ id, name: clean, kind, browser });
+    out.push({ id, name: clean, kind, browser, model: model || undefined, gpu: gpu || undefined });
   }
   return out;
 }
@@ -132,7 +188,7 @@ const ANNOUNCE_INTERVAL_MS = 45_000; // comfortably inside the server's 90s TTL
 const ACK_TIMEOUT_MS = 8000;
 
 type ChangeListener = (devices: NearbyDevice[], selfToken: string | null) => void;
-export interface IncomingInvitation { from: string; name: string; kind: NearbyDevice['kind']; browser: string }
+export interface IncomingInvitation { from: string; name: string; kind: NearbyDevice['kind']; browser: string; model?: string; gpu?: string }
 export interface InviteResult { accepted: boolean; roomId?: string; secret?: string }
 type InvitationListener = (inv: IncomingInvitation) => void;
 type InviteResultListener = (r: InviteResult) => void;
@@ -264,13 +320,15 @@ export class NearbyPresence {
   }
 
   private handleIncoming = (payload: unknown): void => {
-    const p = payload as { from?: unknown; name?: unknown; kind?: unknown; browser?: unknown } | null;
+    const p = payload as { from?: unknown; name?: unknown; kind?: unknown; browser?: unknown; model?: unknown; gpu?: unknown } | null;
     if (!p || typeof p.from !== 'string' || !TOKEN_RE.test(p.from) || typeof p.name !== 'string') return;
     const name = p.name.replace(/[\x00-\x1F\x7F]/g, '').trim().replace(/\s+/g, ' ').slice(0, NAME_MAX);
     if (!name) return;
     const kind = typeof p.kind === 'string' && KINDS.has(p.kind) ? (p.kind as NearbyDevice['kind']) : 'desktop';
     const browser = typeof p.browser === 'string' ? p.browser.replace(/[\x00-\x1F\x7F]/g, '').trim().slice(0, BROWSER_MAX) : '';
-    for (const fn of this.invitationListeners) fn({ from: p.from, name, kind, browser });
+    const model = typeof p.model === 'string' ? p.model.replace(/[\x00-\x1F\x7F<>]/g, '').trim().slice(0, MODEL_MAX) : '';
+    const gpu = typeof p.gpu === 'string' && GPU_VENDORS.has(p.gpu) ? p.gpu : '';
+    for (const fn of this.invitationListeners) fn({ from: p.from, name, kind, browser, model: model || undefined, gpu: gpu || undefined });
   };
 
   private handleResult = (payload: unknown): void => {
@@ -359,6 +417,8 @@ export class NearbyPresence {
           // Display hints for the detection overlay — servers validate+strip.
           kind: detectDeviceKind(typeof navigator !== 'undefined' ? navigator.userAgent : ''),
           browser: detectBrowser(typeof navigator !== 'undefined' ? navigator.userAgent : ''),
+          model: detectDeviceModel(typeof navigator !== 'undefined' ? navigator.userAgent : ''),
+          gpu: detectDeviceKind(typeof navigator !== 'undefined' ? navigator.userAgent : '') === 'desktop' ? detectGpuVendor() : '',
         }, (res: { success?: boolean; ok?: boolean; token?: string; error?: string; code?: string }) => {
           clearTimeout(timer);
           if (res?.success && res.token) {

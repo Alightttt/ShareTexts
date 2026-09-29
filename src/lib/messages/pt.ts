@@ -121,6 +121,7 @@ const pt: Dict = {
   'room.setup': 'Preparando sua sala de transferência.',
   'room.sendHint': 'Conecte o outro dispositivo: digite o código mostrado aqui.',
   'room.receiveHint': 'Digite o código do outro dispositivo.',
+  'room.previewTitle': 'O que chega aqui',
   'room.step.1': 'Abra o ShareTexts nos dois dispositivos.',
   'room.step.2': 'Toque em Enviar em um e Receber no outro.',
   'room.step.3': 'Digite, cole ou solte. Chega na hora — e as fotos continuam originais.',

@@ -121,6 +121,7 @@ const de: Dict = {
   'room.setup': 'Dein Transferraum wird eingerichtet.',
   'room.sendHint': 'Verbinde das andere Gerät: Gib den Code ein, der hier angezeigt wird.',
   'room.receiveHint': 'Gib den Code vom anderen Gerät ein.',
+  'room.previewTitle': 'Was hier ankommt',
   'room.step.1': 'Öffne ShareTexts auf beiden Geräten.',
   'room.step.2': 'Tippe auf Senden bei dem einen, Empfangen bei dem anderen.',
   'room.step.3': 'Tippen, einfügen oder ablegen. Es landet sofort – Fotos bleiben original.',

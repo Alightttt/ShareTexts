@@ -397,6 +397,18 @@ html.dark .st-dotfield::after {
   .st-caret { animation: none; }
 }
 
+/* Status dot: the quiet "alive" beat on device tiles (DeviceArt pulse). */
+.st-status-dot {
+  animation: st-status-dot 2.2s ease-in-out infinite;
+}
+@keyframes st-status-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.8); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-status-dot { animation: none; }
+}
+
 /* Live-status halo — two radar rings drift outward from a solid, softly
    glowing core. Slow, staggered, opacity-faded: it should read as a calm
    breath (the service is alive), never an alarm. */

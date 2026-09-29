@@ -531,7 +531,10 @@ export function SingleScreenApp() {
       // the guard only ADDS the disconnect confirmation when nothing else
       // is open — any dialog mounting its own Esc handling must win.
       if (confirmDisconnect || showSettings) return;
-      if (document.querySelector('[role="dialog"], [aria-modal="true"]')) return;
+      // Any open layer owns this Escape — including non-dialog popovers
+      // (role=menu/listbox). Missing them here opened the destructive
+      // disconnect sheet while a user was merely dismissing a menu.
+      if (document.querySelector('[role="dialog"], [aria-modal="true"], [role="menu"], [role="listbox"]')) return;
       setConfirmDisconnect(true);
     };
     window.addEventListener('keydown', onKey);
@@ -1323,8 +1326,12 @@ export function SingleScreenApp() {
               a permanently-disabled hang-up on the idle pane is noise. */}
           {panelMode === 'connected' && (
             <>
-              <ShareTextsLogo size={15} mono className="opacity-70 hidden sm:block" />
-              {/* Settings — same overlay as the mobile room header. */}
+              {/* Settings — same overlay as the mobile room header. The brand
+                  glyph that used to sit here repeated the left header's
+                  lockup one pane over; the disconnect that sat next to it
+                  ALSO existed in the left rail. One screen, one authoritative
+                  place for each: brand lives left, disconnect lives in the
+                  rail's grouped card (with its confirm), settings here. */}
               <button
                 type="button"
                 data-testid="open-settings"
@@ -1334,13 +1341,6 @@ export function SingleScreenApp() {
                 className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-full transition-all duration-150 active:scale-95 text-apple-ink-muted/70 dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.07]"
               >
                 <SettingsIcon className="w-[18px] h-[18px]" aria-hidden />
-              </button>
-              <button
-                onClick={() => setConfirmDisconnect(true)}
-                className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-full transition-all duration-150 active:scale-95 text-apple-ink-muted/70 dark:text-white/50 hover:text-status-danger hover:bg-status-danger/10"
-                aria-label={t('common.disconnectAria')}
-              >
-                <DisconnectGlyph size={18} />
               </button>
             </>
           )}
@@ -1405,17 +1405,55 @@ export function SingleScreenApp() {
                   </div>
                 </div>
               ) : (
-                /* sending / receiving: quiet state messaging */
-                <>
-                  <p className="text-[15px] font-semibold text-apple-ink/70 dark:text-white/50 mb-1.5">
+                /* sending / receiving: the DESIGNED waiting state. Not a bare
+                   sentence floating in a void — the same handshake scene the
+                   connect moment uses (one visual story), a truthful status
+                   line, and a preview of what lands here the moment the peer
+                   arrives (anticipate the next need; empty states carry an
+                   action, never dead space). */
+                <div className="w-full max-w-[340px] flex flex-col items-center">
+                  <div className="mb-5">
+                    <ConnectHandshake
+                      phase={panelMode === 'receiving' ? 'searching' : 'connecting'}
+                      localIcon={isMobileDevice ? 'phone' : 'monitor'}
+                      quiet
+                    />
+                  </div>
+                  <p className="text-[15px] font-semibold text-apple-ink dark:text-white mb-1.5">
                     {panelMode === 'sending' && (isCreating && !session.secret ? t('create.creating') : t('room.created'))}
                     {panelMode === 'receiving' && t('room.waiting')}
                   </p>
-                  <p className="text-[13px] text-apple-ink-muted/50 dark:text-white/25 max-w-[260px] leading-relaxed">
+                  <p className="text-[13px] text-apple-ink-muted/70 dark:text-white/40 max-w-[260px] leading-relaxed mb-6">
                     {panelMode === 'sending' && (isCreating && !session.secret ? t('room.setup') : t('room.sendHint'))}
                     {panelMode === 'receiving' && t('room.receiveHint')}
                   </p>
-                </>
+                  <div
+                    aria-hidden
+                    className="w-full rounded-[18px] border border-dashed border-black/[0.12] dark:border-white/[0.12] bg-white/[0.55] dark:bg-white/[0.03] p-4 flex flex-col gap-2.5"
+                  >
+                    <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-apple-ink-muted/60 dark:text-white/30">
+                      {t('room.previewTitle')}
+                    </span>
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-7 h-7 rounded-[9px] bg-ember/[0.1] dark:bg-ember/[0.16] flex items-center justify-center text-ember shrink-0">
+                        <Upload className="w-3.5 h-3.5" />
+                      </span>
+                      <div className="flex-1 space-y-1.5">
+                        <div className="st-skeleton bg-black/[0.09] dark:bg-white/10 h-[9px] w-3/4 rounded-full" />
+                        <div className="st-skeleton bg-black/[0.09] dark:bg-white/10 h-[9px] w-1/3 rounded-full" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-7 h-7 rounded-[9px] bg-ember/[0.1] dark:bg-ember/[0.16] flex items-center justify-center text-ember shrink-0">
+                        <Upload className="w-3.5 h-3.5" />
+                      </span>
+                      <div className="flex-1 space-y-1.5">
+                        <div className="st-skeleton bg-black/[0.09] dark:bg-white/10 h-[9px] w-1/2 rounded-full" />
+                        <div className="st-skeleton bg-black/[0.09] dark:bg-white/10 h-[9px] w-1/4 rounded-full" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
             </motion.div>
           </AnimatePresence>
@@ -1487,7 +1525,18 @@ export function SingleScreenApp() {
               <kbd aria-hidden="true" className="hidden sm:inline absolute top-5 right-16 px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-white/10 bg-white/60 dark:bg-white/5 text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">Esc</kbd>
               <h3 className="text-[16px] font-semibold text-apple-ink dark:text-white mb-2">{t('qr.scan.title')}</h3>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/50 mb-4">{t('qr.scan.body')}</p>
-              <Suspense fallback={<div className="w-full h-[280px] flex items-center justify-center rounded-[16px] bg-apple-parchment dark:bg-white/5 text-[13px] text-apple-ink-muted">{t('qr.scan.loading')}</div>}>
+              {/* Skeleton, not a text spinner: the lazy camera chunk loads in
+                  under a circle-slash frame on warm caches, but on cold ones
+                  the shell holds the scanner's exact place — same height, same
+                  radius, one quiet shimmer — instead of a sentence where the
+                  viewfinder is about to appear. */}
+              <Suspense
+                fallback={
+                  <div className="w-full h-[280px] rounded-[16px] bg-apple-parchment dark:bg-white/5 overflow-hidden relative" aria-hidden>
+                    <span className="st-skeleton absolute inset-0 bg-apple-ink/[0.05] dark:bg-white/[0.05]" />
+                  </div>
+                }
+              >
                 <QRScanner onScan={handleQRScan} onErrorFallback={() => { setShowQRScan(false); }} />
               </Suspense>
               <button

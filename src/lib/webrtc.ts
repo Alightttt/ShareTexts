@@ -743,68 +743,80 @@ export class PeerManager {
     }
   }
 
+  /**
+   * Signaling handler, bound once per manager. The socket is SHARED by every
+   * PeerManager the page ever creates (it is a singleton); handlers no-op via
+   * `destroyed` when a newer manager owns the room, and destroy() removes
+   * exactly this instance's pair — never a blanket socket.off(), which used
+   * to strip a NEWER manager's listeners during reconnect churn and strand
+   * both devices on "Connecting…".
+   */
+  private onSignal = async ({ from, signal }: { from: string; signal: SignalData }) => {
+    if (this.destroyed) return;
+    if (!this.peerId) this.peerId = from;
+
+    if (!this.pc) {
+      this.createPeerConnection();
+    } else if (this.pc.connectionState === 'failed' || this.pc.connectionState === 'closed') {
+      // A stale connection from a previous attempt — rebuild so we can
+      // accept a fresh offer (e.g. after the peer recovered).
+      this.teardownPeerConnection();
+      this.createPeerConnection();
+    }
+
+    try {
+      if (signal.type === 'offer') {
+        diag('webrtc.offer_received', true, `from ${(from || '').slice(0, 8)}`);
+        // The handshake is live on the receiving side too.
+        this.onNegotiating?.();
+        // Handle SDP glare defensively (both sides offered) by rolling back
+        // our local offer before accepting theirs.
+        if (this.pc!.signalingState !== 'stable') {
+          try {
+            await this.pc!.setLocalDescription({ type: 'rollback' } as RTCSessionDescriptionInit);
+          } catch { /* already stable */ }
+        }
+        await this.pc!.setRemoteDescription(new RTCSessionDescription(signal as RTCSessionDescriptionInit));
+
+        for (const candidate of this.iceCandidatesQueue) {
+          try { await this.pc!.addIceCandidate(new RTCIceCandidate(candidate)); } catch { /* stale */ }
+        }
+        this.iceCandidatesQueue = [];
+
+        const answer = await this.pc!.createAnswer();
+        await this.pc!.setLocalDescription(answer);
+        getSocket().emit('signal', {
+          roomId: this.roomId,
+          to: from,
+          signal: { type: 'answer', sdp: this.pc!.localDescription!.sdp }
+        });
+        diag('webrtc.answer_sent', true, `to ${(from || '').slice(0, 8)}`);
+      } else if (signal.type === 'answer') {
+        diag('webrtc.answer_received', true, `from ${(from || '').slice(0, 8)}`);
+        await this.pc!.setRemoteDescription(new RTCSessionDescription(signal as RTCSessionDescriptionInit));
+      } else if (signal.type === 'candidate') {
+        if (this.pc!.remoteDescription) {
+          try { await this.pc!.addIceCandidate(new RTCIceCandidate(signal.candidate)); } catch { /* stale */ }
+        } else {
+          this.iceCandidatesQueue.push(signal.candidate);
+        }
+      }
+    } catch {
+      // Signaling is best-effort; the initiator retry loop recovers.
+    }
+  };
+
+  /** Relay chunks addressed to the CURRENT room — inert once destroyed. */
+  private onRelay = ({ data }: { data: string | ArrayBuffer }) => {
+    if (this.destroyed) return;
+    void this.handleIncomingData(data);
+  };
+
   private setupSocketListeners() {
     const socket = getSocket();
 
-    socket.on('signal', async ({ from, signal }) => {
-      if (this.destroyed) return;
-      if (!this.peerId) this.peerId = from;
-
-      if (!this.pc) {
-        this.createPeerConnection();
-      } else if (this.pc.connectionState === 'failed' || this.pc.connectionState === 'closed') {
-        // A stale connection from a previous attempt — rebuild so we can
-        // accept a fresh offer (e.g. after the peer recovered).
-        this.teardownPeerConnection();
-        this.createPeerConnection();
-      }
-
-      try {
-        if (signal.type === 'offer') {
-          diag('webrtc.offer_received', true, `from ${(from || '').slice(0, 8)}`);
-          // The handshake is live on the receiving side too.
-          this.onNegotiating?.();
-          // Handle SDP glare defensively (both sides offered) by rolling back
-          // our local offer before accepting theirs.
-          if (this.pc!.signalingState !== 'stable') {
-            try {
-              await this.pc!.setLocalDescription({ type: 'rollback' } as RTCSessionDescriptionInit);
-            } catch { /* already stable */ }
-          }
-          await this.pc!.setRemoteDescription(new RTCSessionDescription(signal as RTCSessionDescriptionInit));
-
-          for (const candidate of this.iceCandidatesQueue) {
-            try { await this.pc!.addIceCandidate(new RTCIceCandidate(candidate)); } catch { /* stale */ }
-          }
-          this.iceCandidatesQueue = [];
-
-          const answer = await this.pc!.createAnswer();
-          await this.pc!.setLocalDescription(answer);
-          socket.emit('signal', {
-            roomId: this.roomId,
-            to: from,
-            signal: { type: 'answer', sdp: this.pc!.localDescription!.sdp }
-          });
-          diag('webrtc.answer_sent', true, `to ${(from || '').slice(0, 8)}`);
-        } else if (signal.type === 'answer') {
-          diag('webrtc.answer_received', true, `from ${(from || '').slice(0, 8)}`);
-          await this.pc!.setRemoteDescription(new RTCSessionDescription(signal as RTCSessionDescriptionInit));
-        } else if (signal.type === 'candidate') {
-          if (this.pc!.remoteDescription) {
-            try { await this.pc!.addIceCandidate(new RTCIceCandidate(signal.candidate)); } catch { /* stale */ }
-          } else {
-            this.iceCandidatesQueue.push(signal.candidate);
-          }
-        }
-      } catch (e) {
-        // Signaling is best-effort; the initiator retry loop recovers.
-      }
-    });
-
-    socket.on('relay_message', ({ data }) => {
-      if (this.destroyed) return;
-      void this.handleIncomingData(data);
-    });
+    socket.on('signal', this.onSignal);
+    socket.on('relay_message', this.onRelay);
 
     // Fallback: if WebRTC never opens within the probe window, switch the
     // connection badge to relay. Only surface the partner as reachable if
@@ -1569,9 +1581,16 @@ export class PeerManager {
     if (this.pc) {
       try { this.pc.close(); } catch { /* noop */ }
     }
-
+    // Detach THIS manager's listeners only. The signal/relay handlers close
+    // over `this` and no-op when a newer manager owns the room, so scoped
+    // removal is exactly equivalent to dropping every handler — without the
+    // side effect of killing a NEWER manager's signaling. The blanket
+    // socket.off() here was the production "reconnect never connects" bug:
+    // teardown of the old PeerManager removed the handlers the freshly
+    // created one needed, so its offers/answers/relay chunks were dropped on
+    // the floor and both devices sat on "Connecting…" forever.
     const socket = getSocket();
-    socket.off('signal');
-    socket.off('relay_message');
+    socket.off('signal', this.onSignal);
+    socket.off('relay_message', this.onRelay);
   }
 }

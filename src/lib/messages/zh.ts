@@ -121,6 +121,7 @@ const zh: Dict = {
   'room.setup': '正在准备你的传输房间。',
   'room.sendHint': '连接另一台设备：输入本机显示的代码。',
   'room.receiveHint': '输入另一台设备的代码。',
+  'room.previewTitle': '这里将显示的内容',
   'room.step.1': '在两台设备上都打开 ShareTexts。',
   'room.step.2': '一台点发送，另一台点接收。',
   'room.step.3': '输入、粘贴或拖放即可发送。即时到达——照片保持原始画质。',

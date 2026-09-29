@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Monitor, Smartphone, ArrowRight, Zap, Eye, EyeOff, RefreshCw, Search, Check, X, Wifi, QrCode, Link2, Loader2 } from 'lucide-react';
+import { ArrowRight, Zap, Eye, EyeOff, RefreshCw, Search, Check, X, Wifi, QrCode, Link2, Loader2 } from 'lucide-react';
 import { getSocket } from '../lib/socket';
 import { nearbyPresence, isPresenceHidden, setPresenceHidden, type NearbyDevice, type IncomingInvitation } from '../lib/nearby';
 import { getRecentDevices, recordRecentDevice, isTrustedToken, forgetRecentDevice, resolveLiveToken, lastSeenParts } from '../lib/pairing';
 import { useI18n } from '../lib/i18n';
 import { useSession } from '../lib/SessionContext';
 import { NearbyDetectOverlay } from './NearbyDetectOverlay';
+import { DeviceArt } from './DeviceArt';
 import { StandardSwitch } from './StandardSwitch';
 import { productEvent } from '../lib/telemetry';
 import { cn } from '../lib/utils';
@@ -76,11 +77,13 @@ type Phase =
   | { kind: 'connecting'; device: NearbyDevice }         // accepted — existing flow running
   | { kind: 'error'; text: string };
 
-/** Heuristic icon: phones pick the phone glyph, everything else the monitor. */
-function DeviceGlyph({ name }: { name: string }) {
-  return /iphone|ipad|android|phone|mobile/i.test(name)
-    ? <Smartphone className="w-4 h-4" aria-hidden />
-    : <Monitor className="w-4 h-4" aria-hidden />;
+/** Local overlay target: the NearbyDevice plus the truth it announced. */
+type OverlayTarget = NearbyDevice;
+
+/** Remembered devices store a name, not a kind — the same honest heuristic
+ *  the old glyph used picks phone vs desktop for the recents art. */
+function kindFromName(name: string): 'phone' | 'tablet' | 'desktop' {
+  return /iphone|ipad|android|phone|mobile/i.test(name) ? 'phone' : 'desktop';
 }
 
 /** A settings row with a switch — the compact shape the visibility and
@@ -225,6 +228,42 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
     // room (a stay pair opening ShareTexts on both devices gets the SAME
     // confirmed overlay, with the ∞ badge riding next to the name).
     if ((!autoOn && !session.lastStayRoom) || phase.kind !== 'idle' || overlayTarget || devices.length === 0) return;
+    // TRUSTED devices connect with ZERO taps when auto-connect is ON — that
+    // is the entire product promise of the switch ("connect automatically").
+    // The receiver's side already auto-accepts an invitation from a trusted
+    // token (see the onInvitation trust ladder), so the sender popping a
+    // modal anyway forced a tap on BOTH devices and made "auto" connect feel
+    // permanently broken. A trusted pair is a device the user paired with
+    // before; the first pair still gets the full confirmed overlay.
+    if (autoOn) {
+      const now = Date.now();
+      const trustedTarget = devices.find(d => isTrustedToken(d.id) && (autoCooldownRef.current.get(d.id) ?? 0) < now);
+      if (trustedTarget) {
+        const self = nearbyPresence.getSelfToken();
+        // Only the SMALLER presence token auto-invites. Two trusted devices
+        // with auto-connect ON would otherwise BOTH invite at the same
+        // instant, both auto-accept, and each join the other's room — two
+        // rooms, each with one lonely occupant staring at "waiting". The
+        // tiebreak makes exactly one side the inviter; the other side's
+        // trust ladder accepts the incoming invite. Same rule as the
+        // crossing resolver in onInvitation below.
+        if (!self || self < trustedTarget.id) {
+          setPhase({ kind: 'inviting', device: trustedTarget });
+          productEvent('product.method_nearby');
+          void nearbyPresence.invite(trustedTarget.id).then(delivered => {
+            if (delivered) return true; // receiver auto-accepts; the invite result finishes the join
+            setPhase({ kind: 'error', text: t('nearby.failTitle', { name: trustedTarget.name }) });
+            setFailedDevice(trustedTarget);
+            return false;
+          });
+          return;
+        }
+        // This side holds the larger token: fall through to the detected
+        // overlay. The trusted peer (smaller token, auto ON) invites us and
+        // the trust ladder accepts — and if it never does (its auto is OFF),
+        // the user still gets the manual confirm here.
+      }
+    }
     const now = Date.now();
     const target = devices.find(d => (autoCooldownRef.current.get(d.id) ?? 0) < now);
     if (!target) return;
@@ -248,6 +287,22 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
 
   /* --- incoming invitation ------------------------------------------------ */
   useEffect(() => nearbyPresence.onInvitation((inv: IncomingInvitation) => {
+    // A live session outranks everything: an invite that arrives after this
+    // device already connected (the race when BOTH sides tap Yes at once, or
+    // a redelivered invite from a churned socket) must NOT pop an overlay on
+    // top of an active room — and must not be accepted.
+    if (session.roomId) {
+      nearbyPresence.answerInvite(inv.from, false);
+      return;
+    }
+    // Any auto-accept below decides the pairing — an overlay about THIS
+    // device is now stale either way, so it never outlives the decision.
+    const clearOverlayFor = () => {
+      if (overlayTarget?.id !== inv.from) return;
+      if (pendingInviteRef.current?.from === inv.from) pendingInviteRef.current = null;
+      setOverlayTarget(null);
+      setOverlayBusy(false);
+    };
     // Trust ladder: (1) a previously PAIRED device always skips the popup —
     // auto-connect ON or OFF: the sender already confirmed twice.
     // (2) Otherwise the overlay answers it — 'incoming' mode if the popup
@@ -255,13 +310,25 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
     // (Presence tokens rotate with the worker; after a rotation trust
     // downgrades to the confirmed popup — the conservative outcome.)
     if (isTrustedToken(inv.from)) {
+      clearOverlayFor();
       const timer = setTimeout(() => { void answerInviteRef.current(true, inv); }, 0);
       return () => clearTimeout(timer);
     }
     // Mutual confirm: OUR invite to this same device is in flight — both
     // sides said "Yes" within the crossing window. That IS mutual consent:
     // accepting creates the room here and seats the inviter via the result.
+    // BUT both sides can accept-and-invite simultaneously (both taps land in
+    // the same second), and then each joins the OTHER's room — two rooms,
+    // each with one lonely device. The tiebreak: the SMALLER presence token
+    // is the designated inviter and declines the crossed invite; the larger
+    // token yields and accepts. Exactly one room results, deterministically.
     if (phase.kind === 'inviting' && phase.device.id === inv.from) {
+      const self = nearbyPresence.getSelfToken();
+      if (self && self < inv.from) {
+        nearbyPresence.answerInvite(inv.from, false); // my invite wins; its result completes the join
+        return () => {};
+      }
+      clearOverlayFor();
       const timer = setTimeout(() => { void answerInviteRef.current(true, inv); }, 0);
       return () => clearTimeout(timer);
     }
@@ -273,9 +340,9 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
     }
     if (overlayTarget) return; // a different popup is up — leave it
     setOverlayMode('incoming');
-    setOverlayTarget({ id: inv.from, name: inv.name, kind: inv.kind, browser: inv.browser });
+    setOverlayTarget({ id: inv.from, name: inv.name, kind: inv.kind, browser: inv.browser, model: inv.model, gpu: inv.gpu });
     productEvent('product.method_nearby');
-  }), [phase.kind, overlayTarget]);
+  }), [phase.kind, overlayTarget, session.roomId]);
 
   /* --- overlay actions ----------------------------------------------------- */
   /** "Yes" — the commit step. With a real invitation pending (the other
@@ -286,7 +353,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
     const pending = pendingInviteRef.current;
     if (pending && pending.from === device.id) {
       pendingInviteRef.current = null;
-      await answerInviteRef.current(true, { from: pending.from, name: pending.name, kind: pending.kind, browser: pending.browser });
+      await answerInviteRef.current(true, { from: pending.from, name: pending.name, kind: pending.kind, browser: pending.browser, model: pending.model, gpu: pending.gpu });
       setOverlayBusy(false);
       setOverlayTarget(null);
       return;
@@ -481,7 +548,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
                         : 'bg-[#f06413]/10 dark:bg-[#fb9243]/15'
                     )}>
                       {busy && <span aria-hidden className="absolute -inset-1 rounded-full border border-[#f06413]/40 dark:border-[#fb9243]/40 st-halo-ring" />}
-                      <DeviceGlyph name={d.name} />
+                      <DeviceArt kind={d.kind} model={d.model} gpu={d.gpu} size={36} />
                     </span>
                     <span className="flex-1 flex flex-col min-w-0 leading-tight">
                       <span className="text-[13.5px] font-semibold text-apple-ink dark:text-white truncate">{d.name}</span>
@@ -547,7 +614,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
                   className="group flex items-center gap-3 px-3.5 py-3 min-h-[52px] rounded-[14px] text-left border bg-apple-parchment/50 dark:bg-white/[0.02] border-apple-divider/30 dark:border-white/[0.04] transition-all"
                 >
                   <span className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center bg-apple-divider/40 dark:bg-white/[0.06] text-apple-ink-muted dark:text-white/40">
-                    <DeviceGlyph name={r.name} />
+                    <DeviceArt kind={kindFromName(r.name)} size={36} className="opacity-80" />
                   </span>
                   <span className="flex-1 flex flex-col min-w-0 leading-tight">
                     <span className="text-[13px] font-semibold text-apple-ink dark:text-white truncate">{r.name}</span>
@@ -754,7 +821,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
           both devices; incoming invites flip it to their incoming form. */}
       <NearbyDetectOverlay
         mode={overlayMode}
-        device={overlayTarget ? { name: overlayTarget.name, kind: overlayTarget.kind, browser: overlayTarget.browser } : null}
+        device={overlayTarget ? { name: overlayTarget.name, kind: overlayTarget.kind, browser: overlayTarget.browser, model: overlayTarget.model, gpu: overlayTarget.gpu } : null}
         busy={overlayBusy || phase.kind === 'inviting'}
         stayBadge={stayBadgeForOverlay}
         onConnect={() => { if (overlayTarget) void handleOverlayConnect(overlayTarget); }}

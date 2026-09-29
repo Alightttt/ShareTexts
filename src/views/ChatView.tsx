@@ -389,20 +389,27 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        // Layered exits: image viewer, then menus, then the room itself.
-        // Select-mode images keep the FIRST Escape (closes the viewer);
-        // the disconnect guard below only fires when nothing else is open.
+        // Layered exits: image viewer, then menus/sheets, then the room itself.
+        // One press peels exactly ONE layer — dismissing a menu must never
+        // simultaneously open the disconnect confirmation (that punished a
+        // simple dismissal with a destructive dialog).
+        const ivOpen = !!(window as Window & { __stImageViewerOpen?: boolean }).__stImageViewerOpen;
+        const hadLayer = showAttachmentMenu || showConnectionDetails || showSettings || selectMode || ivOpen;
         setShowAttachmentMenu(false);
         setShowConnectionDetails(false);
         setShowSettings(false);
         if (selectMode) exitSelectMode();
-        if (confirmDisconnect || showSettings) return;
-        if (!(window as Window & { __stImageViewerOpen?: boolean }).__stImageViewerOpen) setConfirmDisconnect(true);
+        if (hadLayer) return;
+        if (confirmDisconnect) return;
+        setConfirmDisconnect(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectMode, confirmDisconnect, showSettings]);
+    // exitSelectMode is deliberately omitted: it's recreated every render but
+    // only calls stable setters, so any render's copy behaves identically —
+    // including it would resubscribe this listener on every keystroke.
+  }, [selectMode, confirmDisconnect, showSettings, showAttachmentMenu, showConnectionDetails]);
 
   /* --- mobile back button = Esc -------------------------------
      While seated in a room, the Android back gesture/gesture-bar pops a

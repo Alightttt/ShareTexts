@@ -24,6 +24,9 @@ interface ConnectHandshakeProps {
   localIcon?: 'phone' | 'monitor';
   /** Name shown under the partner tile once known. */
   partnerName?: string | null;
+  /** Hide the scene's own status/sub lines when the surrounding surface
+   *  already carries the single source of truth (no doubled copy). */
+  quiet?: boolean;
 }
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -67,7 +70,7 @@ function SweepRing({ accent }: { accent: string }) {
   );
 }
 
-export function ConnectHandshake({ phase, localIcon = 'phone', partnerName }: ConnectHandshakeProps) {
+export function ConnectHandshake({ phase, localIcon = 'phone', partnerName, quiet = false }: ConnectHandshakeProps) {
   const { t } = useI18n();
   const connecting = phase === 'connecting';
   const connected = phase === 'connected';
@@ -208,22 +211,27 @@ export function ConnectHandshake({ phase, localIcon = 'phone', partnerName }: Co
         </motion.div>
       </div>
 
-      {/* Status line — crossfades, never bounces */}
-      <AnimatePresence mode="wait">
-        <motion.p
-          key={status}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.18 }}
-          className="mt-2 text-[13.5px] font-semibold text-apple-ink dark:text-white/85"
-          aria-live="polite"
-        >
-          {status}
-        </motion.p>
-      </AnimatePresence>
-      {!connected && (
-        <p className="mt-1 text-[13px] text-apple-ink-muted/70 dark:text-white/35">{t('connect.sub')}</p>
+      {/* Status line — crossfades, never bounces. Suppressed in quiet mode:
+          one status per screen is the contract. */}
+      {!quiet && (
+        <>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={status}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="mt-2 text-[13.5px] font-semibold text-apple-ink dark:text-white/85"
+              aria-live="polite"
+            >
+              {status}
+            </motion.p>
+          </AnimatePresence>
+          {!connected && (
+            <p className="mt-1 text-[13px] text-apple-ink-muted/70 dark:text-white/35">{t('connect.sub')}</p>
+          )}
+        </>
       )}
     </div>
   );

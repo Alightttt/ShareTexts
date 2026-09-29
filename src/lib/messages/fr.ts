@@ -121,6 +121,7 @@ const fr: Dict = {
   'room.setup': 'Préparation de votre salon de transfert.',
   'room.sendHint': 'Connectez l’autre appareil : saisissez le code affiché sur celui-ci.',
   'room.receiveHint': 'Saisissez le code de l’autre appareil.',
+  'room.previewTitle': 'Ce qui arrive ici',
   'room.step.1': 'Ouvrez ShareTexts sur les deux appareils.',
   'room.step.2': 'Touchez Envoyer sur l’un, Recevoir sur l’autre.',
   'room.step.3': 'Tapez, collez ou déposez. Ça arrive instantanément — et les photos restent originales.',

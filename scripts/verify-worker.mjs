@@ -161,6 +161,21 @@ async function runRoomProtocol() {
   await creator.send('relay_message', { data: '{"hello":"world"}' });
   const rejected = await joiner.waitFor((m) => m.type === 'event' && m.event === 'relay_message' && m.payload?.data === '{"hello":"world"}', 300);
   check('malformed relay payload rejected', !rejected);
+  // v2 chunk envelope — the app's text messages / hello / control packets all
+  // travel as {"version":1,"type":"chunk",payload:"enc:…"} JSON. The old
+  // gate accepted only bare base64/enc: strings, so EVERY relayed text
+  // transfer on the Cloudflare transport was silently dropped (transfers
+  // "never arrive" — the production bug). It must be forwarded.
+  const envelope = JSON.stringify({ version: 1, type: 'chunk', transferId: '7e2b9c0a-1111-4222-8333-444455556666', sequence: 0, total: 1, payload: 'enc:QQ==' });
+  const envPromise = joiner.waitFor((m) => m.type === 'event' && m.event === 'relay_message' && m.payload?.data === envelope);
+  await creator.send('relay_message', { data: envelope });
+  const envRelayed = await envPromise;
+  check('relay_message (v2 chunk envelope) forwarded', envRelayed?.data === envelope);
+  // A JSON string that only LOOKS like an envelope but carries a non-ciphertext
+  // payload is still rejected (the gate keeps its teeth).
+  await creator.send('relay_message', { data: JSON.stringify({ version: 1, type: 'chunk', payload: 'plaintext-not-allowed' }) });
+  const envRejected = await joiner.waitFor((m) => m.type === 'event' && m.event === 'relay_message' && m.payload?.data?.includes?.('plaintext-not-allowed'), 300);
+  check('envelope with non-ciphertext payload rejected', !envRejected);
   assertState(ctx, 'TRANSFERRING');
 
   // relay binary

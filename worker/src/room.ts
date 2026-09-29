@@ -137,15 +137,39 @@ const FRAME_RATE_BIN = { limit: 1200, windowMs: 10_000 };
  * else is rejected rather than fanned out — the signaling path must never
  * become a free JSON-broadcast service for malformed or hostile frames.
  */
+/**
+ * What a relayed TEXT frame may contain. The room socket carries two kinds of
+ * text:
+ *   · `enc:<base64>` / raw base64 — AES-GCM ciphertext blobs (pre-v2 clients);
+ *   · v2 chunk envelopes ({"version":1,"type":"chunk",...}) — JSON wrapping
+ *     `enc:`-ciphertext payloads. The app's TEXT messages, hello handshake,
+ *     receipts and control packets ALL travel as these envelopes (the only
+ *     alternative is WebRTC, and relay is the fallback when it is slow or
+ *     unavailable), so both shapes MUST be accepted or transfers silently
+ *     never arrive on the Cloudflare transport.
+ * Everything else is rejected — the relay must not become a free JSON
+ * broadcast service. Content is still opaque to the server: the ciphertext
+ * inside is never readable here.
+ */
 function validateRelayData(data: unknown): string | null {
   if (typeof data !== 'string') return null;
   if (data.length === 0 || data.length > RELAY_TEXT_MAX) return null;
-  // Client envelopes: "enc:<base64>" (current) or raw base64 (legacy text
-  // relay). Both are [A-Za-z0-9+/=] only. A JSON-looking string ({", "[") or
-  // anything with control characters is NOT a valid ciphertext.
-  const body = data.startsWith('enc:') ? data.slice(4) : data;
-  if (!/^[A-Za-z0-9+/=]+$/.test(body)) return null;
-  return data;
+  if (data.startsWith('enc:')) {
+    return /^[A-Za-z0-9+/=]+$/.test(data.slice(4)) ? data : null;
+  }
+  // Raw base64 (legacy text relay) — no structure to check beyond charset.
+  if (/^[A-Za-z0-9+/=]+$/.test(data)) return data;
+  // v2 chunk envelope: JSON with a known shape. Fields beyond the shape
+  // (transferId, sequence, total) are validated by the receiving client; the
+  // payload must be `enc:`-ciphertext, exactly like the direct shape above.
+  try {
+    const parsed = JSON.parse(data) as { version?: unknown; type?: unknown; payload?: unknown };
+    if (parsed?.version !== 1 || parsed?.type !== 'chunk' || typeof parsed?.payload !== 'string') return null;
+    if (!parsed.payload.startsWith('enc:') || !/^[A-Za-z0-9+/=]+$/.test(parsed.payload.slice(4))) return null;
+    return data;
+  } catch {
+    return null;
+  }
 }
 
 /**

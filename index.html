@@ -287,8 +287,24 @@
             <div class="st-bar" style="width:150px;height:56px;border-radius:16px"></div>
             <div class="st-bar" style="width:150px;height:56px;border-radius:16px"></div>
           </div>
+          <!-- The honest escalation (mirrors the in-app connecting screen):
+               an 8s boot is NOT normal — say so instead of shimmering forever.
+               Removed by main.tsx with the shell; never shown on a healthy boot. -->
+          <p id="st-boot-slow" style="display:none;margin:26px 0 0;font-size:12.5px;font-weight:500;color:#6e6e73;text-align:center;max-width:300px;line-height:1.5">
+            Still loading — your connection is slow. If this doesn't clear, check your network and refresh.
+          </p>
         </div>
       </div>
+      <script>
+        (function () {
+          try {
+            setTimeout(function () {
+              var el = document.getElementById('st-boot-slow');
+              if (el && document.getElementById('loading-shell')) el.style.display = 'block';
+            }, 8000);
+          } catch (e) { /* never block boot */ }
+        })();
+      </script>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

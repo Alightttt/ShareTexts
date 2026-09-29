@@ -121,6 +121,7 @@ const ja: Dict = {
   'room.setup': '転送ルームを準備中。',
   'room.sendHint': '相手のデバイスを接続：この画面に表示されているコードを入力させます。',
   'room.receiveHint': '相手のデバイスのコードを入力してください。',
+  'room.previewTitle': 'ここに届くもの',
   'room.step.1': '両方のデバイスで ShareTexts を開きます。',
   'room.step.2': '片方で「送信」、もう片方で「受信」をタップ。',
   'room.step.3': '入力・貼り付け・ドロップで即送信。写真は元のまま。',

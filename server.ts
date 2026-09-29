@@ -472,7 +472,7 @@ const PRESENCE_NAME_MAX = 32;
 // Rotating-token salt: a random per-process value. Tokens are thus only
 // meaningful within one server lifetime — another ephemeral layer.
 const presenceSalt = crypto.randomBytes(16).toString('hex');
-interface PresenceEntry { socketId: string; name: string; token: string; announcedAt: number; kind: string; browser: string; }
+interface PresenceEntry { socketId: string; name: string; token: string; announcedAt: number; kind: string; browser: string; model: string; gpu: string; }
 const presenceByDevice = new Map<string, PresenceEntry>();
 const presenceBySocket = new Map<string, string>(); // socketId → deviceId
 
@@ -495,12 +495,22 @@ function sanitizePresenceName(raw: unknown): string {
  *  payload purely for the detection overlay. Everything else is stripped. */
 const PRESENCE_KINDS = new Set(['phone', 'tablet', 'desktop']);
 const PRESENCE_BROWSER_MAX = 20;
+const PRESENCE_MODEL_MAX = 40;
+const PRESENCE_GPU = new Set(['NVIDIA', 'AMD', 'Intel', 'Apple']);
 function sanitizePresenceKind(raw: unknown): string {
   return typeof raw === 'string' && PRESENCE_KINDS.has(raw) ? raw : 'desktop';
 }
 function sanitizePresenceBrowser(raw: unknown): string {
   const s = typeof raw === 'string' ? raw : '';
   return s.replace(/[\x00-\x1F\x7F<>]/g, '').trim().slice(0, PRESENCE_BROWSER_MAX);
+}
+/** Model string (Android build UA) — sanitized/capped display hint. */
+function sanitizePresenceModel(raw: unknown): string {
+  const s = typeof raw === 'string' ? raw : '';
+  return s.replace(/[\x00-\x1F\x7F<>]/g, '').trim().slice(0, PRESENCE_MODEL_MAX);
+}
+function sanitizePresenceGpu(raw: unknown): string {
+  return typeof raw === 'string' && PRESENCE_GPU.has(raw) ? raw : '';
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -514,7 +524,7 @@ function broadcastPresenceList(): void {
     presenceBroadcastTimer = null;
     const devices = [...presenceByDevice.values()]
       .sort((a, b) => a.announcedAt - b.announcedAt)
-      .map(e => ({ id: e.token, name: e.name, kind: e.kind, browser: e.browser }));
+      .map(e => ({ id: e.token, name: e.name, kind: e.kind, browser: e.browser, model: e.model, gpu: e.gpu }));
     io.emit('presence_list', { devices });
   }, PRESENCE_BROADCAST_MIN_MS);
 }
@@ -1133,7 +1143,7 @@ io.on('connection', (socket) => {
     cb?.({ success: true, enabled: false });
   });
 
-safeOn('presence_announce', (payload: { deviceId?: unknown; name?: unknown; kind?: unknown; browser?: unknown }, cb) => {
+safeOn('presence_announce', (payload: { deviceId?: unknown; name?: unknown; kind?: unknown; browser?: unknown; model?: unknown; gpu?: unknown }, cb) => {
   // Roomless devices only: a seated device already has a partner and must not
   // appear in the landing-page lobby.
   const seated = [...rooms.values()].some(r => r.activePeers.has(socket.id));
@@ -1154,6 +1164,8 @@ safeOn('presence_announce', (payload: { deviceId?: unknown; name?: unknown; kind
     announcedAt: now,
     kind: sanitizePresenceKind(payload.kind),
     browser: sanitizePresenceBrowser(payload.browser),
+    model: sanitizePresenceModel(payload.model),
+    gpu: sanitizePresenceGpu(payload.gpu),
   });
   presenceBySocket.set(socket.id, payload.deviceId);
   socket.join('presence'); // lobby room: invites target the pool without scanning every socket
@@ -1204,7 +1216,7 @@ safeOn('presence_invite', ({ deviceId }: { deviceId?: unknown }, cb) => {
     broadcastPresenceList();
     return cb?.({ success: false, error: 'Device no longer available' });
   }
-  targetSocket.emit('presence_invitation', { from: entry.token, name: entry.name, kind: entry.kind, browser: entry.browser });
+  targetSocket.emit('presence_invitation', { from: entry.token, name: entry.name, kind: entry.kind, browser: entry.browser, model: entry.model, gpu: entry.gpu });
   count('presence.invited');
   cb?.({ success: true });
 });

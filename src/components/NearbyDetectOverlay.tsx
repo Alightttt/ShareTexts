@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Monitor, Smartphone, Tablet, Search, X, Infinity as InfinityIcon, Loader2 } from 'lucide-react';
+import { Search, X, Infinity as InfinityIcon, Loader2 } from 'lucide-react';
 import { useI18n } from '../lib/i18n';
 import { useFocusTrap } from '../lib/useFocusTrap';
 import { cn } from '../lib/utils';
+import { DeviceArt } from './DeviceArt';
 
 /**
  * NearbyDetectOverlay — the one popup BOTH nearby devices see.
@@ -33,16 +34,14 @@ import { cn } from '../lib/utils';
  * trapped while open; Escape and the backdrop cancel.
  */
 
-const GLYPHS = {
-  phone: Smartphone,
-  tablet: Tablet,
-  desktop: Monitor,
-} as const;
-
 export interface DetectOverlayDevice {
   name: string;
   kind: 'phone' | 'tablet' | 'desktop';
   browser: string;
+  /** Exact model when the web platform knows it (Android builds). */
+  model?: string;
+  /** GPU vendor hint (desktops): NVIDIA / AMD / Intel / Apple. */
+  gpu?: string;
 }
 
 export function NearbyDetectOverlay({
@@ -82,8 +81,6 @@ export function NearbyDetectOverlay({
     return () => cancelAnimationFrame(raf);
   }, [open, armed]);
 
-  const Glyph = shown ? GLYPHS[shown.kind] ?? Monitor : Monitor;
-
   return createPortal(
     <AnimatePresence>
       {open && shown && (
@@ -101,9 +98,9 @@ export function NearbyDetectOverlay({
         >
           <motion.div
             ref={trapRef}
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
+            initial={{ y: '100%', scale: 0.98 }}
+            animate={{ y: 0, scale: 1 }}
+            exit={{ y: '100%', scale: 0.98, transition: { duration: 0.18, ease: 'easeIn' } }}
             transition={{ type: 'spring', stiffness: 380, damping: 36 }}
             className="w-full sm:max-w-[380px]"
             data-testid="nearby-detect-overlay"
@@ -125,49 +122,77 @@ export function NearbyDetectOverlay({
               <div className="px-6 pt-5 sm:pt-6 pb-2 text-center">
                 {/* Eyebrow — the state, in the app's quiet uppercase voice.
                     Detected: "A nearby device detected". Incoming: who's asking. */}
-                <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#f06413] dark:text-[#fb9243]">
+                <motion.p
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05, duration: 0.25 }}
+                  className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#f06413] dark:text-[#fb9243]"
+                >
                   {mode === 'incoming'
                     ? t('nearby.inviteTitle', { name: shown.name })
                     : t('nearby.overlay.title')}
-                </p>
-                {/* The device itself: glyph BEFORE the name, browser beneath.
-                    The glyph tile mirrors the landing rows so the popup and
-                    the list read as one system. */}
-                <div className="mt-3 flex items-center justify-center gap-3">
-                  <span
-                    className={cn(
-                      'shrink-0 w-12 h-12 rounded-full flex items-center justify-center',
-                      'bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[#f06413] dark:text-[#fb9243]'
-                    )}
-                    aria-hidden
-                  >
-                    <Glyph className="w-5 h-5" strokeWidth={2} />
-                  </span>
-                  <span className="flex flex-col items-start min-w-0 leading-tight">
-                    <span className="flex items-center gap-2 min-w-0">
-                      <span className="text-[17px] font-semibold text-apple-ink dark:text-white truncate max-w-[180px]">
-                        {shown.name}
+                </motion.p>
+                {/* The device itself — authored platform art (brand-tinted
+                    where the platform tells us its hue), not a stock glyph.
+                    The tile mirrors the landing rows so the popup and the
+                    list read as one system. */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.85 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: 'spring', bounce: 0.3, duration: 0.5, delay: 0.06 }}
+                  className="mt-3.5 flex items-center justify-center"
+                >
+                  <DeviceArt
+                    kind={shown.kind}
+                    model={shown.model}
+                    gpu={shown.gpu}
+                    size={64}
+                    pulse={mode === 'detected' && !busy}
+                  />
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.12, duration: 0.25 }}
+                  className="mt-3 flex flex-col items-center leading-tight"
+                >
+                  <span className="flex items-center gap-2 max-w-full">
+                    <span className="text-[17px] font-semibold text-apple-ink dark:text-white truncate max-w-[200px]">
+                      {shown.name}
+                    </span>
+                    {stayBadge && (
+                      <span
+                        role="status"
+                        title={t('stay.badge')}
+                        data-testid="nearby-detect-stay-badge"
+                        className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[#f06413] dark:text-[#fb9243]"
+                      >
+                        <InfinityIcon className="w-3.5 h-3.5" strokeWidth={2} aria-hidden />
                       </span>
-                      {stayBadge && (
-                        <span
-                          role="status"
-                          title={t('stay.badge')}
-                          data-testid="nearby-detect-stay-badge"
-                          className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[#f06413] dark:text-[#fb9243]"
-                        >
-                          <InfinityIcon className="w-3.5 h-3.5" strokeWidth={2} aria-hidden />
-                        </span>
-                      )}
-                    </span>
-                    <span className="text-[12.5px] font-medium text-apple-ink-muted dark:text-white/45 truncate max-w-[200px]">
-                      {shown.browser || t('nearby.nearby')}
-                    </span>
+                    )}
                   </span>
-                </div>
+                  {/* Truth ladder for the sub-line: exact model when the
+                      device told us one (Android), otherwise the browser
+                      label, otherwise the neutral nearby state. Never an
+                      invented model. */}
+                  <span className="mt-0.5 text-[12.5px] font-medium text-apple-ink-muted dark:text-white/45 truncate max-w-[220px]">
+                    {shown.model || shown.browser || t('nearby.nearby')}
+                  </span>
+                  {shown.model && shown.browser && (
+                    <span className="text-[11.5px] font-medium text-apple-ink-muted/70 dark:text-white/35">
+                      {shown.browser}
+                    </span>
+                  )}
+                </motion.div>
                 {mode === 'incoming' && (
-                  <p className="mt-2.5 text-[13px] font-medium text-apple-ink-muted dark:text-white/50 leading-snug">
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.18, duration: 0.25 }}
+                    className="mt-2.5 text-[13px] font-medium text-apple-ink-muted dark:text-white/50 leading-snug"
+                  >
                     {t('nearby.inviteBody')}
-                  </p>
+                  </motion.p>
                 )}
               </div>
 

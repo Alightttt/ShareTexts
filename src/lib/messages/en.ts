@@ -130,6 +130,7 @@ const en = {
   'room.setup': 'Setting up your transfer room.',
   'room.sendHint': 'Connect the other device: enter the code shown on this one.',
   'room.receiveHint': 'Enter the code from the other device.',
+  'room.previewTitle': 'What arrives here',
   'room.step.1': 'Open ShareTexts on both devices.',
   'room.step.2': 'Tap Send on one, Receive on the other.',
   'room.step.3': 'Connect both — and you\'re good to go.',

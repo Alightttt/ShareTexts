@@ -13,7 +13,7 @@
  *     the cache on first fetch. Cross-origin requests (the signaling
  *     Worker's /health, /lookup, /ws) are never intercepted.
  */
-const CACHE = 'sharetexts-v17';
+const CACHE = 'sharetexts-v18';
 const SHELL = [
   '/',
   '/index.html',
@@ -55,17 +55,28 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === 'navigate') {
+    // STALE-WHILE-REVALIDATE: the cached shell paints INSTANTLY — on a slow
+    // 3G link network-first meant seconds of white browser chrome before our
+    // boot skeleton could even render ("loading screen never goes away"),
+    // because respondWith() held the navigation until the network answered.
+    // The boot skeleton inside the shell IS the loading state; it now shows
+    // at once, while the fresh HTML is fetched in the background and cached
+    // for the next visit.
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // Keep the cached shell fresh for offline use.
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put('/', copy));
-          return response;
-        })
-        .catch(() =>
-          caches.match('/').then((cached) => cached || caches.match('/index.html'))
-        )
+      caches.match('/').then((cached) => {
+        const network = fetch(request)
+          .then((response) => {
+            if (response && response.ok) {
+              const copy = response.clone();
+              caches.open(CACHE).then((cache) => cache.put('/', copy));
+            }
+            return response;
+          })
+          .catch(() => cached || caches.match('/index.html'));
+        // Cached shell answers immediately when present; offline falls back
+        // to it too. No cache (first ever visit) waits for the network.
+        return cached || network;
+      })
     );
     return;
   }
