@@ -64,9 +64,9 @@ export function ensureSocketConnected(timeoutMs = 16000): Promise<void> {
 export function humanJoinError(code: string | undefined, fallback: string): string {
   switch (code) {
     case 'INVALID_CODE':
-      return "That code isn't active. Check the other device and enter its latest six-digit code.";
+      return "That code isn't active. Check the other device for its latest six-digit code.";
     case 'ROOM_FULL':
-      return "This room already has two devices. Only two can connect at once.";
+      return "This room already has two devices — only two can connect at once.";
     case 'RATE_LIMITED':
       return "Too many attempts. Wait a moment and try again.";
     case 'SESSION_EXPIRED':
@@ -82,9 +82,9 @@ export function friendlyJoinCopy(e: unknown): string {
   const code = describeConnectFailure(e);
   switch (code) {
     case 'OFFLINE': return "You're offline. Check your internet and try again.";
-    case 'UNREACHABLE': return "ShareTexts's connection server isn't reachable right now. Try again in a moment.";
+    case 'UNREACHABLE': return "ShareTexts isn't reachable right now. Try again in a moment.";
     case 'CONFIG': return (e instanceof Error && e.message) || "ShareTexts couldn't reach its connection server. Please try again later.";
     case 'TIMEOUT': return "The connection took too long. One more try usually fixes it.";
-    default: return "Couldn't reach ShareTexts. Check your connection and try again.";
+    default: return "Couldn't reach ShareTexts. Check your internet and try again.";
   }
 }

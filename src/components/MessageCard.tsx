@@ -709,14 +709,14 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                           : t('xfer.receivedIn', { size: formatBytes(a.size), time: formatElapsed(a.completedAt - a.startedAt) })}
                     </span>
                   ) : isMe ? <DeliveryTick delivered={msg.delivered} seen={msg.seen} onBlue /> : msg.source === 'push' ? (
-                    <span className="font-semibold flex items-center gap-1"><Terminal className="w-3 h-3" /> Sent from your computer</span>
+                    <span className="font-semibold flex items-center gap-1"><Terminal className="w-3 h-3" /> {t('msg.fromPush')}</span>
                   ) : <span className="font-semibold">{t('xfer.receivedShort')}</span>}
                   {a.verified && <span className="flex items-center gap-0.5" title={t('msg.verifiedTitle')}><ShieldCheck className="w-3 h-3" /> {t('msg.verified')}</span>}
                   {/* Original-quality proof: size · exact pixel dimensions ·
                       exact format — read from the bytes that arrived. */}
                   <span className="hidden sm:inline">
                     {' • '}{formatBytes(a.size)}
-                    {dimsTxt ? <span title="Exact pixel size — never resized">{' • '}{dimsTxt}</span> : null}
+                    {dimsTxt ? <span title={t('msg.verifiedTitle')}>{' • '}{dimsTxt}</span> : null}
                     {a.type === 'image' && fmtShort && !decodeFailed ? ` • ${fmtShort}` : ''}
                     {' • '}{timeOf(msg.timestamp)}
                   </span>
@@ -858,6 +858,7 @@ function ActionButton({ icon, label, onClick, active, primary, onBlue, testId }:
  * Esc or backdrop to close. Touch-friendly and keyboard-friendly.
  */
 function ImageViewer({ src, name, onClose }: { src: string; name: string; onClose: () => void }) {
+  const { t } = useI18n();
   const [scale, setScale] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const pointers = useRef(new Map<number, { x: number; y: number }>());
@@ -948,7 +949,7 @@ function ImageViewer({ src, name, onClose }: { src: string; name: string; onClos
       </div>
       <button
         onPointerDown={(e) => { e.stopPropagation(); onClose(); }}
-        aria-label="Close image"
+        aria-label={t('common.close')}
         className="absolute top-4 right-4 w-11 h-11 rounded-full bg-black/55 border border-white/20 text-white flex items-center justify-center backdrop-blur hover:bg-black/75 transition-colors active:scale-95"
       >
         <X className="w-5 h-5" />

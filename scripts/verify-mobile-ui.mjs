@@ -16,7 +16,7 @@ await M.evaluate(() => localStorage.setItem('sharetext.theme', 'light'));
 await M.reload({ waitUntil: 'domcontentloaded' });
 await M.waitForTimeout(1000);
 const flipMs = await M.evaluate(async () => {
-  const btn = document.querySelector('[role="switch"][aria-label="Toggle dark mode"]');
+  const btn = document.querySelector('[data-testid="theme-toggle"]');
   const t0 = performance.now();
   btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   return new Promise(res => {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ShareTextsLogo } from '../components/ShareTextsLogo';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { useI18n } from '../lib/i18n';
 import {
   Send, Inbox, Copy, Download, Share2, QrCode, Link2,
   Shield, Zap, Monitor, Smartphone, ChevronRight, ChevronDown,
@@ -664,6 +665,7 @@ function sectionFromHash(): Section {
 }
 
 export function Docs() {
+  const { t } = useI18n();
   const [activeSection, setActiveSection] = useState<Section>(sectionFromHash);
 
   // Per-route document title — the home shell has its own static <title>.
@@ -730,7 +732,7 @@ export function Docs() {
             <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white translate-y-px">ShareTexts</span>
           </a>
           <div className="flex items-center gap-3 sm:gap-4 ml-auto">
-            <a href="/about" className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60 hover:text-apple-ink dark:hover:text-white transition-colors">About</a>
+            <a href="/about" className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.about')}</a>
             <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60">Docs</span>
             <ThemeToggle />
           </div>
@@ -815,9 +817,9 @@ export function Docs() {
       <footer className="border-t border-apple-divider dark:border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-6 py-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px] font-medium text-apple-ink-muted dark:text-white/50">
           <a href="/" className="hover:text-apple-ink dark:hover:text-white transition-colors">ShareTexts</a>
-          <a href="/about" className="hover:text-apple-ink dark:hover:text-white transition-colors">About</a>
-          <a href="/privacy" className="hover:text-apple-ink dark:hover:text-white transition-colors">Privacy</a>
-          <a href="/terms" className="hover:text-apple-ink dark:hover:text-white transition-colors">Terms</a>
+          <a href="/about" className="hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.about')}</a>
+          <a href="/privacy" className="hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.privacy')}</a>
+          <a href="/terms" className="hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.terms')}</a>
           <span className="ml-auto text-apple-ink-muted/50 dark:text-white/30">© {new Date().getFullYear()} ShareTexts</span>
         </div>
       </footer>

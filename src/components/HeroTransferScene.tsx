@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { useI18n } from '../lib/i18n';
 
 /**
  * HeroMockupScene — the landing hero IS the reference composition, as an
@@ -14,6 +15,7 @@ import React, { useRef, useState } from 'react';
 export function HeroMockupScene({ className }: { className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
+  const { t } = useI18n();
 
   return (
     <div ref={ref} className={className}>
@@ -23,7 +25,7 @@ export function HeroMockupScene({ className }: { className?: string }) {
         <source srcSet="/hero-composition.webp" type="image/webp" />
         <img
           src="/hero-composition.png"
-          alt="ShareTexts running on a laptop and iPhone — devices connected and transferring"
+          alt={t('home.heroAlt')}
           draggable={false}
           onLoad={() => setLoaded(true)}
           className={`block w-full h-auto select-none st-img-fade ${loaded ? 'st-img-loaded' : ''}`}

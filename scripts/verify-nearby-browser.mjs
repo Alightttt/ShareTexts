@@ -35,7 +35,7 @@ try {
   await A.waitForTimeout(1500);
   // The instruction lives as the searching row's title; the Wi-Fi hint and
   // the "waiting" subtitle appear after the grace / immediately respectively.
-  const hintText = await A.getByText('Open ShareTexts in another device').count();
+  const hintText = await A.getByText('Open ShareTexts on the other device').count();
   out('searching row visible with no peers', hintText >= 1);
   const rows0 = await A.locator('button', { hasText: 'Nearby' }).count();
   out('no device rows when alone', rows0 === 0, `rows=${rows0}`);

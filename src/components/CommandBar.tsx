@@ -235,7 +235,7 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
         run: () => { window.location.assign('/docs'); },
       },
       {
-        id: 'about', label: 'About', group: t('command.group.settings'),
+        id: 'about', label: t('command.about'), group: t('command.group.settings'),
         icon: <Info className="w-4 h-4" />, keywords: 'what is sharetext story',
         run: () => { window.location.assign('/about'); },
       },
@@ -246,7 +246,7 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
         run: () => setStatsOpen(true),
       },
       {
-        id: 'diagnostics', label: 'Connection diagnostics', group: t('command.group.settings'),
+        id: 'diagnostics', label: t('command.diagnostics'), group: t('command.group.settings'),
         icon: <Activity className="w-4 h-4" />, keywords: 'route rtt ice relay direct webrtc diagnostics debug state machine',
         opensSub: true,
         run: () => setDiagOpen(true),

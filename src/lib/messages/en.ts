@@ -11,7 +11,7 @@ const en = {
   "compat.body": "ShareTexts needs WebRTC, which this browser blocks or doesn't support. Tor's safest mode and most private blockers do this. Try Firefox, Chrome, Edge, or Brave — or allow WebRTC in your browser's settings.",
   'app.ended.body.expired': "The connection expired. For privacy, a room can't be reopened — start a new one to continue.",
   'app.ended.body.manual': 'You closed this room. Everything you sent is already on the other device.',
-  'app.ended.body.closed': 'The other device closed this room. Nothing incomplete was saved.',
+  'app.ended.body.closed': 'The other device closed this room. Anything still sending was not kept.',
   'app.ended.sub': 'No account needed, and nothing is kept after the room closes.',
   'app.ended.home': 'Back to Home',
   'app.ended.share': 'Send ShareTexts to someone you know',
@@ -19,6 +19,9 @@ const en = {
 
   // ── brand / nav / landing ──────────────────────────────────────────
   'nav.docs': 'Docs',
+  'nav.about': 'About',
+  'nav.privacy': 'Privacy',
+  'nav.terms': 'Terms',
 
   'home.title': 'Move anything\nbetween your devices.',
   'home.subtitle': "Share text, links, photos and files between any devices — phone to PC, PC to phone. No app, no account, no wires.",
@@ -28,6 +31,7 @@ const en = {
   'home.receiveHint': 'Join with a code',
   'home.journey': 'Open · Connect · Send',
   'home.roomsMade': 'connections made so far',
+  'home.heroAlt': 'ShareTexts running on a laptop and iPhone — devices connected and transferring',
   'home.retry': 'Try again',
   'footer.noApp': 'No app',
   'footer.noAccount': 'No account',
@@ -41,7 +45,7 @@ const en = {
   'create.title': 'Connect your other device.',
   'create.creating': 'Creating room…',
   'create.hint': 'Open ShareTexts on the other device and enter this code.',
-  'create.establishing': 'Establishing secure connection…',
+  'create.establishing': 'Connecting securely…',
   'create.connecting': 'Connecting…',
   'create.showQr': 'Show QR',
   'create.shareLink': 'Share link',
@@ -52,8 +56,8 @@ const en = {
   'receive.hint': 'Type the six-digit code from the other screen.',
   'receive.scan': 'Scan QR code',
   'receive.note': 'Codes refresh every 30 seconds. If yours stops working, ask for a new one.',
-  'connect.stuck': "Still linking — the other device is slow to respond.",
-  'connect.stuckLong': "This is taking unusually long. The other device may have closed ShareTexts — cancel and try a fresh code.",
+  'connect.stuck': "Still connecting — the other device is taking a while.",
+  'connect.stuckLong': "Still not connected. The other device may have closed ShareTexts — cancel and try a new code.",
   'common.tryAgain': "Try again",
 
   // ── connected summary / device pair ────────────────────────────────
@@ -69,17 +73,17 @@ const en = {
   // Honest, specific connect failures (Phase 0): each names the real cause
   // and the real next step instead of blaming the user's internet.
   'err.offline': 'This device is offline. Reconnect to Wi-Fi or data, then try again.',
-  'err.unreachable': "ShareTexts's service isn't responding right now. We're on it. Try again in a moment.",
+  'err.unreachable': "ShareTexts isn't responding right now. Give it a moment and try again.",
   'err.timeout2': 'The connection took too long. One more try usually fixes it.',
-  'err.config': "ShareTexts's connection service isn't configured for this deployment. The site owner needs to set the signaling URL.",
+  'err.config': "ShareTexts's connection service isn't set up on this site. The site owner needs to fix this.",
   'err.ratelimited': 'Too many attempts. Wait a minute and try again.',
   'err.retrying': "Couldn't connect. Retrying automatically…",
   'err.roomGone': 'This room has ended. Start a new one.',
   'err.roomFull': 'That room is already full.',
   'err.outdated': 'This app is out of date. Refresh to continue.',
-  'err.p2p': "Couldn't link the devices directly. Try a different network, or use a code or link instead.",
+  'err.p2p': "Couldn't connect directly. Try a different network, or use a code or link instead.",
   'err.peerUnavailable': "The other device isn't reachable right now. Ask it to rejoin, or try a code.",
-  'err.quota': "This device is out of storage space. Free up some space and try again.",
+  'err.quota': "This device is low on storage. Free up some space and try again.",
   'pair.paired': 'Paired',
   'pair.reconnecting': 'Reconnecting…',
   'pair.renameTitle': 'Tap to rename',
@@ -114,7 +118,7 @@ const en = {
   'connect.title': 'Connecting to your device…',
   'connect.sub': 'This takes a few seconds. Keep both devices open.',
   'connect.searching': 'Waiting for your other device…',
-  'connect.establishing': 'Devices found. Linking…',
+  'connect.establishing': 'Devices found — connecting…',
   'connect.linked': 'Connected',
   'connect.thisDevice': 'This device',
   'connect.otherDevice': 'Other device',
@@ -133,14 +137,14 @@ const en = {
   'room.previewTitle': 'What arrives here',
   'room.step.1': 'Open ShareTexts on both devices.',
   'room.step.2': 'Tap Send on one, Receive on the other.',
-  'room.step.3': 'Connect both — and you\'re good to go.',
+  'room.step.3': 'Connect both — and you\'re ready to send.',
 
   // ── QR overlays ────────────────────────────────────────────────────
   'qr.close': 'Close',
   'qr.display.title': 'QR code',
   'qr.scan.title': 'Scan QR code',
   'qr.scan.body': 'Point your camera at the QR code on the other device.',
-  'qr.scan.loading': 'Loading scanner...',
+  'qr.scan.loading': 'Starting camera…',
   'qr.scan.typeCode': 'Camera not opening? Type the code instead',
   'qr.cameraUnavailable': 'Camera isn’t available. Enter the code instead.',
   'qr.scan.trouble': 'Having trouble scanning?',
@@ -169,7 +173,7 @@ const en = {
   'toast.connected': 'Connected. You can start sending.',
   'toast.connectedTo': "Connected to {name}",
   'end.title': 'Disconnect?',
-  'end.body': "Both devices will go their separate ways. This can't be undone.",
+  'end.body': "Both devices disconnect. This can't be undone.",
   'end.keep': 'Keep connected',
   'banner.deviceOffline': 'Your device is offline. Transfers pause and resume automatically when the connection returns.',
   'banner.peerGone': 'The other device disconnected. This room stays open until it comes back.',
@@ -186,7 +190,7 @@ const en = {
   'chat.messageFrom': 'Message from {name}',
   'chat.peerDisconnected': 'Other device disconnected',
   'chat.peerOffline.title': 'Other device is offline',
-  'chat.peerOffline.body': 'It will reconnect when the other device comes back.',
+  'chat.peerOffline.body': 'It reconnects on its own when the device comes back.',
   'chat.ready': 'Ready when you are',
   'chat.empty.body': 'Type, paste, or drop anything — text, links, photos, files. It goes straight to the other device.',
   'chat.copyAll': 'Copy All',
@@ -198,7 +202,7 @@ const en = {
   // ── composer / attachments ─────────────────────────────────────────
   'attach.max': 'You can attach up to {max} files in one message. Send this batch first.',
   'attach.overflow': 'Not added: you can send up to {max} files at once.',
-  'attach.largeImage': '{name} is larger than 100 MB, so it arrives as a file without an inline preview. Original quality, byte-for-byte.',
+  'attach.largeImage': '{name} is over 100 MB, so it arrives as a file without a preview. Original quality, byte for byte.',
   'attach.tooLarge': "This file is too large even for ShareTexts (the limit is 1 TB). Split it and send the parts one by one.",
   'attach.count': '{count} of {max} attached',
   'attach.add': 'Add attachment',
@@ -233,7 +237,7 @@ const en = {
   'msg.delivered': 'Delivered',
   'msg.seen': 'Seen',
   'msg.verified': 'Verified',
-  'msg.verifiedTitle': 'Bytes checked against the original; nothing was altered',
+  'msg.verifiedTitle': 'Checked against the original — nothing was altered',
   'msg.fromPush': 'From your push link',
   'msg.couldNotSend': "Couldn't send",
   'msg.showFull': 'Show full text',
@@ -282,6 +286,8 @@ const en = {
 
   // ── command bar (⌘K) ─────────────────────────────────────────────
   'command.title': 'ShareTexts commands',
+  'command.about': 'About',
+  'command.diagnostics': 'Connection diagnostics',
   'command.transferStats': 'Transfer stats',
   'command.clearStats': 'Clear',
   'stats.transfers': 'Transfers',
@@ -306,7 +312,7 @@ const en = {
   // ── date separators / composer size hint ──────────────────────────
   'time.today': 'Today',
   'time.yesterday': 'Yesterday',
-  'composer.largePayload': 'Large text. It will transfer in chunks',
+  'composer.largePayload': 'Large text — it will arrive in parts',
 
   // ── inline confirm / message selection ────────────────────────────
   'end.tapAgain': 'Tap again to disconnect',
@@ -326,9 +332,9 @@ const en = {
   'stay.rejoining': 'Rejoining…',
 
   // ── nearby device discovery ───────────────────────────────────────
-  'nearby.hint': 'Open ShareTexts in another device',
+  'nearby.hint': 'Open ShareTexts on the other device',
   'nearby.autoTitle': 'Auto-connect',
-  'nearby.autoHint': "Ask to connect when a nearby device appears",
+  'nearby.autoHint': "Asks to connect when a device appears nearby",
   'nearby.sectionTitle': 'Nearby devices',
   'nearby.countOne': "Nearby · 1 device",
   'nearby.countMany': "Nearby · {n} devices",
@@ -390,10 +396,10 @@ const en = {
   'xfer.arrivedFrom': "From {name}",
   'xfer.receivedInFrom': "Received {size} from {name} in {time}",
   'create.joiningNow': "The other device is joining…",
-  'xfer.multi': "{n} transfers in flight",
+  'xfer.multi': "{n} transfers in progress",
 
   // ── nearby detection overlay (mutual confirmed auto-connect) ──────
-  'nearby.overlay.title': 'A nearby device detected',
+  'nearby.overlay.title': 'A device nearby was detected',
   'nearby.overlay.connect': 'Connect with this device?',
   'nearby.overlay.yes': 'Yes',
   'nearby.overlay.more': 'Find more devices nearby',
@@ -409,7 +415,7 @@ const en = {
   'settings.language': 'Language',
   'settings.room': 'Room',
   'settings.reconnect': 'Reconnection',
-  'settings.reconnectHint': 'The link recovers automatically. This forces it now.',
+  'settings.reconnectHint': 'The connection recovers on its own. This forces a reconnect now.',
   'settings.reconnectNow': 'Reconnect now',
 
 };

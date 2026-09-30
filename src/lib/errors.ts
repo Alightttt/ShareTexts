@@ -37,7 +37,7 @@ const ERROR_COPY: Record<string, string> = {
   RATE_LIMITED: 'Too many attempts. Try again in a minute.',
   UNSUPPORTED_VERSION: 'This app is out of date. Refresh to continue.',
   ORIGIN_NOT_ALLOWED: "ShareTexts's server rejected this browser. The site may need to be added to the server's allow list.",
-  INVALID_MESSAGE: 'Something went wrong with that request.',
+  INVALID_MESSAGE: "That request didn't go through. Try again.",
   UNREACHABLE: "Couldn't reach ShareTexts.",
   SIGNALING_TIMEOUT: "ShareTexts's server responded slowly. Try again in a moment.",
   SIGNALING_UNREACHABLE: "ShareTexts's connection server is unreachable. Check your internet.",
@@ -46,16 +46,16 @@ const ERROR_COPY: Record<string, string> = {
   // SERVER handshake worked but the direct browser-to-browser link failed —
   // the copy always offers the code/QR/link fallback, which routes around
   // strict NATs that defeated the direct path.
-  ICE_FAILED: "Couldn't establish a direct connection between the devices. Try a different network, or use a code or link instead.",
-  WEBRTC_FAILED: 'The devices could not complete their connection setup. Try again, or connect with a code.',
-  DATA_CHANNEL_FAILED: 'The connection dropped before it was ready. Try again.',
-  PEER_UNAVAILABLE: 'The other device is not reachable right now. Ask it to rejoin, or try a code.',
-  DISCOVERY_TIMEOUT: 'No nearby devices responded. Make sure both devices are open on ShareTexts.',
-  TRANSFER_TIMEOUT: 'The transfer stopped making progress. Try sending again.',
-  HASH_MISMATCH: "The file arrived damaged and was discarded. Try sending it again.",
-  QUOTA_EXCEEDED: "This device is out of storage space. Free up space and try again.",
+  ICE_FAILED: "Couldn't connect directly. Try a different network, or use a code or link instead.",
+  WEBRTC_FAILED: "Couldn't connect the devices. Try again, or connect with a code.",
+  DATA_CHANNEL_FAILED: "The connection dropped before it was ready. Try again.",
+  PEER_UNAVAILABLE: "The other device isn't reachable right now. Ask it to rejoin, or try a code.",
+  DISCOVERY_TIMEOUT: "No nearby devices responded. Make sure both devices have ShareTexts open.",
+  TRANSFER_TIMEOUT: "The transfer stopped moving. Try sending again.",
+  HASH_MISMATCH: "The file arrived damaged and was discarded. Send it again.",
+  QUOTA_EXCEEDED: "This device is low on storage. Free up some space and try again.",
   TRANSFER_CANCELLED: 'Transfer cancelled.',
-  PROTOCOL_MISMATCH: 'The other device is running a different ShareTexts version. Refresh both devices.',
+  PROTOCOL_MISMATCH: "The other device is running a different ShareTexts version. Refresh both devices.",
 };
 
 export function humanizeError(code: string | undefined, fallback: string): string {

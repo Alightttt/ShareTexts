@@ -725,7 +725,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         } else {
           roomCreateDiagEnd(requestId, 'failure', 'ROOM_CREATE_REJECTED', res.code);
         }
-        resolve({ ...res, error: humanJoinError(res.code, humanizeError(res.code, res.error || "Couldn't reach ShareTexts. Check your connection and try again.")) });
+        resolve({ ...res, error: humanJoinError(res.code, humanizeError(res.code, res.error || "Couldn't reach ShareTexts. Check your internet and try again.")) });
       });
     });
   };
@@ -770,7 +770,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         if (res.success) {
           setupJoiner(res.roomId!, res.secret!, res.createdAt);
         }
-        resolve({ ...res, error: humanJoinError(res.code, humanizeError(res.code, res.error || "Couldn't reach ShareTexts. Check your connection and try again.")) });
+        resolve({ ...res, error: humanJoinError(res.code, humanizeError(res.code, res.error || "Couldn't reach ShareTexts. Check your internet and try again.")) });
       });
     });
     // One silent retry for transport-shaped failures, same as code joins:

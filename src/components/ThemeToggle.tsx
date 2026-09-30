@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { animate, motion, useMotionValue } from 'motion/react';
 import { useTheme } from '../lib/theme';
+import { useI18n } from '../lib/i18n';
 
 /**
  * The theme switch — a compact iOS-class control.
@@ -49,6 +50,7 @@ const GRAY_OFF_DARK = '#39393d';
 
 export function ThemeToggle({ className = '' }: { className?: string }) {
   const { resolved, toggle } = useTheme();
+  const { t } = useI18n();
   const isDark = resolved === 'dark';
 
   const x = useMotionValue(isDark ? X_ON : 0);
@@ -106,7 +108,8 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
     <div
       role="switch"
       aria-checked={isDark}
-      aria-label="Toggle dark mode"
+      aria-label={t('settings.darkLight')}
+      data-testid="theme-toggle"
       tabIndex={0}
       onClick={() => { if (!movedRef.current) applyTheme(); movedRef.current = false; }}
       onKeyDown={(e) => {

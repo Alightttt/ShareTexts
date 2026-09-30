@@ -2,6 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import { CloudflareSocket } from './cloudflareSocket';
 import { devLog } from './devlog';
 import { diag } from './diag';
+import en from './messages/en';
 
 export { devLog };
 
@@ -228,7 +229,7 @@ export function signalingConfigIssue(): string | null {
   if (import.meta.env.DEV) return null;
   if (mode === 'cloudflare' && url) return null;
   if (mode === 'socketio' && url) return null;
-  return "ShareTexts couldn't reach its connection server. Please try again later.";
+  return en['err.config'];
 }
 
 /**
