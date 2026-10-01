@@ -16,6 +16,7 @@ import { SkeletonScreen } from './components/SkeletonScreen';
 import { SingleScreenApp } from './views/SingleScreenApp';
 const Docs = lazy(() => import('./views/Docs').then(m => ({ default: m.Docs })));
 const Legal = lazy(() => import('./views/Legal').then(m => ({ default: m.Legal })));
+const SpaceView = lazy(() => import('./views/SpaceView').then(m => ({ default: m.SpaceView })));
 
 /**
  * DisconnectToast — the "that's it" moment, demoted from a full screen to a
@@ -213,6 +214,21 @@ function AppContent() {
 
   if (typeof window !== 'undefined' && window.location.pathname === '/docs') {
     return <Suspense fallback={<RouteSkeleton wide />}><Docs /></Suspense>;
+  }
+
+  // Temporary Space (F14): /space/<uuid>#k=<token> — the access token rides
+  // in the URL FRAGMENT so it never reaches server logs or Referer headers.
+  if (typeof window !== 'undefined') {
+    const m = window.location.pathname.match(/^\/space\/([0-9a-f-]{36})$/i);
+    if (m) {
+      const frag = window.location.hash.replace(/^#/, '');
+      const km = frag.match(/^k=([A-Za-z0-9_-]+)$/);
+      return (
+        <Suspense fallback={<RouteSkeleton />}>
+          <SpaceView spaceId={m[1].toLowerCase()} token={km ? km[1] : ''} />
+        </Suspense>
+      );
+    }
   }
 
   if (typeof window !== 'undefined' && window.location.pathname === '/privacy') {

@@ -6,6 +6,8 @@ export interface Env {
   STATS: DurableObjectNamespace;
   /** Landing-page presence pool (nearby-device discovery). */
   LOBBY: DurableObjectNamespace;
+  /** Temporary Spaces (F14) — one Space DO per space id. */
+  SPACES: DurableObjectNamespace;
   /** Temporary Space content storage (F14). Bound when the feature deploys;
    *  space.ts degrades honestly (503) when the binding is absent. */
   SPACE_BUCKET?: R2Bucket;

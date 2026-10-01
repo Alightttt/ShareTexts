@@ -322,6 +322,7 @@ function log(...parts: unknown[]) {
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
+
   // Only the configured frontend origins may open signaling sockets. No
   // cookies or credentials are used, but a misconfigured `*` would let any
   // website burn rate-limit buckets and probe codes.
@@ -928,6 +929,41 @@ app.get('/api/preview', async (req, res) => {
   }
   res.json(data);
 });
+
+// --- Temporary Spaces (F14) — dev backend ----------------------------------
+
+import { SpaceDev } from './src/lib/space/devSpaceBackend';
+
+// Dev stand-in for the Worker's VAPID public key exposure: without real
+// keys the client's subscribe() still succeeds locally (the browser accepts
+// any applicationServerKey for a local subscription; no push is delivered).
+// Production uses the Worker's /space-vapid with the real VAPID public key.
+app.get('/space-vapid', (_req, res) => {
+  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || 'BDevSpacePlaceholderKey_NotARealVapidKey0000000000000000000000000000000000000000' });
+});
+
+const spaceDev = new SpaceDev(io);
+spaceDev.attachSocketNamespace();
+spaceDev.start();
+(function mountSpaces() {
+  const j = express.json({ limit: '1mb' });
+  const jsonPaths = new Set([
+    '/create', '/join', '/items/text', '/items/file/init',
+    '/items/file/complete', '/items/file/abort',
+    '/subscribe', '/unsubscribe', '/heartbeat', '/close',
+  ]);
+  const rawPaths = new Set(['/items/file/direct', '/items/file/part']);
+  app.use('/space/:id', (req, res, next) => {
+    // NOTE: inside a mounted middleware req.path is relative to the mount
+    // ("/create" for "/space/<id>/create") — keep the leading slash here and
+    // in the sets below; stripping it made every comparison fail silently.
+    const tail = req.path;
+    if (jsonPaths.has(tail)) return j(req, res, (err) => err ? next(err) : next());
+    if (rawPaths.has(tail)) return next(); // body stays a stream for the backend
+    next();
+  });
+  spaceDev.mount(app);
+})();
 
 // --- Socket handlers -------------------------------------------------------
 
@@ -1550,7 +1586,7 @@ async function start() {
         return res.sendFile(path.join(distPath, 'guides', 'about.html'));
       }
       // Known SPA routes that should get the app shell
-      if (req.path === '/' || req.path === '/docs' || req.path === '/privacy' || req.path === '/terms' || /^\/s\/[0-9a-f]{8}$/i.test(req.path)) {
+      if (req.path === '/' || req.path === '/docs' || req.path === '/privacy' || req.path === '/terms' || /^\/s\/[0-9a-f]{8}$/i.test(req.path) || /^\/space\/[0-9a-f-]{36}$/i.test(req.path)) {
         return res.sendFile(path.join(distPath, 'index.html'));
       }
       // Everything else is a 404

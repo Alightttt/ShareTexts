@@ -3,6 +3,7 @@ import { Registry } from './registry';
 import { Metrics } from './metrics';
 import { Stats } from './stats';
 import { Lobby } from './lobby';
+import { Space } from './space';
 import { json, dayKey, type Env } from './types';
 
 // Durable Object classes must be exported from the entrypoint.
@@ -11,6 +12,7 @@ export { Registry };
 export { Metrics };
 export { Stats };
 export { Lobby };
+export { Space };
 
 /**
  * ShareText signaling — Cloudflare Workers entry.
@@ -128,6 +130,33 @@ export default {
 
     if (path === '/lookup' && request.method === 'POST') {
       return lookup(request, env, cors);
+    }
+
+    // ── Temporary Spaces (F14) ───────────────────────────────────────────
+    // One Durable Object per space, named by the space id in the path.
+    // Every space request is origin-checked and rate-limited (per-scope
+    // limits in registry.ts); the Space DO authorizes the bearer token.
+    if (path.startsWith('/space/')) {
+      if (!(await rateLimited(env, 'space', clientIp(request)))) {
+        return json({ error: 'Too many attempts. Wait a moment and try again.' }, 429, cors);
+      }
+      const m = path.match(/^\/space\/([0-9a-f-]{36})$/i);
+      if (!m) return json({ error: 'Not found' }, 404, cors);
+      // Rewrite the internal URL so the DO sees the per-space path tail.
+      const internal = new Request('https://internal' + path + url.search, request);
+      const id = env.SPACES.idFromName(m[1].toLowerCase());
+      return env.SPACES.get(id).fetch(internal);
+    }
+
+    if (path === '/space-ws') {
+      // Space live updates: one WebSocket per device per space.
+      if (!(await rateLimited(env, 'ws', clientIp(request)))) {
+        return json({ error: 'Too many attempts. Wait a moment and try again.' }, 429, cors);
+      }
+      const spaceId = url.searchParams.get('space');
+      if (!spaceId || !UUID_RE.test(spaceId)) return json({ error: 'invalid space' }, 400, cors);
+      const id = env.SPACES.idFromName(spaceId.toLowerCase());
+      return env.SPACES.get(id).fetch(request);
     }
 
     if (path === '/resolve-short' && request.method === 'POST') {

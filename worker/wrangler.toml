@@ -2,14 +2,15 @@ name = "sharetext-signaling"
 main = "src/index.ts"
 compatibility_date = "2025-07-01"
 
-# Free-tier friendly: two DO classes, both backed by SQLite storage.
+# Free-tier friendly: SQLite-backed DO classes; Space added in v5 (F14).
 [durable_objects]
 bindings = [
   { name = "ROOMS", class_name = "Room" },
   { name = "REGISTRY", class_name = "Registry" },
   { name = "METRICS", class_name = "Metrics" },
   { name = "STATS", class_name = "Stats" },
-  { name = "LOBBY", class_name = "Lobby" }
+  { name = "LOBBY", class_name = "Lobby" },
+  { name = "SPACES", class_name = "Space" }
 ]
 
 [[migrations]]
@@ -27,6 +28,17 @@ new_sqlite_classes = ["Stats"]
 [[migrations]]
 tag = "v4-lobby"
 new_sqlite_classes = ["Lobby"]
+
+[[migrations]]
+tag = "v5-space"
+new_sqlite_classes = ["Space"]
+
+# Temporary Space content storage (F14). Bind the real bucket for deploys;
+# the Space DO degrades honestly (503 "Storage is not configured") when the
+# binding is absent, so text-only spaces still work without it.
+# [[r2_buckets]]
+# binding = "SPACE_BUCKET"
+# bucket_name = "sharetext-spaces"
 
 # Extra frontend origins can be added via the ALLOWED_ORIGINS var/secret.
 # Defaults (dev origins + sharetexts.online) are built in.

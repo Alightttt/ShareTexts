@@ -46,8 +46,11 @@ import { cn, shortCodeOf, sanitizeDeviceName, formatBytes } from '../lib/utils';
 import {
   LogOut, QrCode, Link2, Copy, Check,
   Smartphone, Monitor, X, Wifi, ArrowRightLeft, ArrowLeft, Info, Pencil, WifiOff, ServerOff,
-  Infinity as InfinityIcon, Upload, RotateCcw, Settings as SettingsIcon
+  Infinity as InfinityIcon, Upload, RotateCcw, Settings as SettingsIcon, Clock3
 } from 'lucide-react';
+import { SpaceCreateSheet, SpaceJoinSheet } from './SpaceView';
+import { recentSpaces } from '../lib/space/api';
+import { remainingShort as remainingShortOf } from '../lib/space/time';
 import { generateTOTP } from '../lib/totp';
 import { useFocusTrap } from '../lib/useFocusTrap';
 const QRScanner = lazy(() => import('../components/QRScanner').then(m => ({ default: m.QRScanner })));
@@ -127,6 +130,8 @@ export function SingleScreenApp() {
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   // Settings — one overlay for theme / language / stay connected / reconnect.
   const [showSettings, setShowSettings] = useState(false);
+  const [spaceSheet, setSpaceSheet] = useState<null | 'create' | 'join'>(null);
+  const [recent, setRecent] = useState(() => { try { return recentSpaces(); } catch { return []; } });
   const [createError, setCreateError] = useState<{ text: string; icon: 'offline' | 'server' | 'time' | 'info' } | null>(null);
   const [showQROverlay, setShowQROverlay] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -803,6 +808,51 @@ export function SingleScreenApp() {
                   );
                 })()}
               </AnimatePresence>
+              {/* Temporary Space (F14) — SECONDARY utility, deliberately quiet:
+                  one row after the rejoin card, never overpowering
+                  Send/Receive or Nearby (§1). Reuses the rejoin card's
+                  geometry so it reads as part of the same family. */}
+              <div className="order-4 mt-2.5 w-full flex flex-col gap-2" data-testid="space-entry">
+                {recent.length > 0 && recent.map(r => (
+                  <button
+                    key={r.spaceId}
+                    type="button"
+                    onClick={() => { window.location.href = `/space/${r.spaceId}`; }}
+                    className="group w-full flex items-center gap-3 pl-3.5 pr-3 py-2.5 rounded-[14px] bg-white/[0.55] dark:bg-white/[0.04] border border-apple-divider/70 dark:border-white/[0.08] hover:border-apple-ink/25 dark:hover:border-white/25 transition-colors text-left"
+                  >
+                    <Clock3 className="shrink-0 w-4 h-4 text-apple-ink-muted dark:text-white/50" aria-hidden />
+                    <span className="flex-1 min-w-0 flex items-center gap-2 text-[13px]">
+                      <span className="font-medium text-apple-ink dark:text-white/85 truncate">{r.name}</span>
+                      <span className="shrink-0 text-[12px] font-medium tabular-nums text-apple-ink-muted/80 dark:text-white/40">
+                        {t('space.closesIn', { time: remainingShortOf(r.expiresAt - Date.now()) })}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-[12.5px] font-semibold text-azure-600 dark:text-azure-400">{t('space.reopen')}</span>
+                  </button>
+                ))}
+                <div className="flex items-center justify-center gap-5 sm:gap-6">
+                  <button
+                    type="button"
+                    onClick={() => setSpaceSheet('create')}
+                    className="inline-flex items-center gap-2 text-[13.5px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors min-h-[36px]"
+                    data-testid="space-create-entry"
+                  >
+                    <Clock3 className="w-4 h-4" aria-hidden />
+                    {t('space.entryTitle')}
+                    <span className="hidden sm:inline text-apple-ink-muted/50 dark:text-white/30">· {t('space.entryHint')}</span>
+                  </button>
+                  <span className="w-px h-4 bg-apple-divider dark:bg-white/10" aria-hidden />
+                  <button
+                    type="button"
+                    onClick={() => setSpaceSheet('join')}
+                    className="inline-flex items-center gap-2 text-[13.5px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors min-h-[36px]"
+                    data-testid="space-join-entry"
+                  >
+                    <Link2 className="w-4 h-4" aria-hidden />
+                    {t('space.joinTitle')}
+                  </button>
+                </div>
+              </div>
               {/* Three-glyph teaching strip — mobile only (desktop's right
                   pane already carries the numbered steps). Duolingo's
                   "you always know what's next" in three glyphs and the
@@ -1611,6 +1661,8 @@ export function SingleScreenApp() {
       </AnimatePresence>
       {/* Settings — theme, language, stay connected, reconnection. */}
       <SettingsOverlay open={showSettings} onClose={() => setShowSettings(false)} />
+      <SpaceCreateSheet open={spaceSheet === 'create'} onClose={() => setSpaceSheet(null)} />
+      <SpaceJoinSheet open={spaceSheet === 'join'} onClose={() => setSpaceSheet(null)} />
       {/* Apple-style bottom-sheet confirmation before really ending the session. */}
       <ConfirmSheet
         open={confirmDisconnect}

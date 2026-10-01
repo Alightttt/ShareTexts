@@ -114,3 +114,53 @@ self.addEventListener('fetch', (event) => {
     )
   );
 });
+
+// ── Temporary Space reminders (F14) ────────────────────────────────────────
+// One push per space per device. The server sends a generic payload:
+//   { title, body, spaceId }  — never filenames or content.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { /* opaque payload */ }
+  if (!data || !data.spaceId) return; // unknown push shape — ignore quietly
+  event.waitUntil((async () => {
+    // Deduplicate: if this space's reminder notification is still showing,
+    // replace it rather than stacking duplicates.
+    const tag = 'space-reminder-' + data.spaceId;
+    const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const title = typeof data.title === 'string' ? data.title : 'ShareTexts';
+    const body = typeof data.body === 'string' ? data.body : 'Your space closes soon.';
+    await self.registration.showNotification(title, {
+      body,
+      tag,
+      renotify: false, // one reminder; a re-shown tag would be a second buzz
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      data: { spaceId: data.spaceId },
+    });
+    return clientList.length; // keeps linters honest about the clients read
+  })());
+});
+
+self.addEventListener('notificationclick', (event) => {
+  const data = event.notification.data || {};
+  event.notification.close();
+  const target = data.spaceId
+    ? '/space/' + data.spaceId
+    : '/';
+  event.waitUntil((async () => {
+    // Focus an existing window on this origin if one exists; the app routes
+    // itself to the space from its stored credential. Otherwise open fresh —
+    // if the credential is gone the app shows the join surface honestly.
+    const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of clientList) {
+      if (client.url.startsWith(self.location.origin)) {
+        await client.focus();
+        if (client.navigate) {
+          try { await client.navigate(target); } catch { /* navigation refused — the focused app is enough */ }
+        }
+        return;
+      }
+    }
+    await self.clients.openWindow(target);
+  })());
+});

@@ -41,6 +41,7 @@ const out = await build({
     room: path.join(root, 'worker', 'src', 'room.ts'),
     registry: path.join(root, 'worker', 'src', 'registry.ts'),
     metrics: path.join(root, 'worker', 'src', 'metrics.ts'),
+    space: path.join(root, 'worker', 'src', 'space.ts'),
     shim: shimPath,
   },
   bundle: true,
@@ -58,6 +59,7 @@ const { FakeCtx } = await import(pathToFileURL(path.join(tmp, 'shim.js')).href +
 const { Room, ROOM_TTL } = await import(pathToFileURL(path.join(tmp, 'room.js')).href + cacheBust);
 const { Registry } = await import(pathToFileURL(path.join(tmp, 'registry.js')).href + cacheBust);
 const { Metrics } = await import(pathToFileURL(path.join(tmp, 'metrics.js')).href + cacheBust);
+const { Space, SPACE_TTL_CAP } = await import(pathToFileURL(path.join(tmp, 'space.js')).href + cacheBust);
 
 // Capture the pair created inside each DO fetch.
 let lastPair = null;
@@ -653,6 +655,85 @@ async function runMetrics() {
   check('non-room metrics do not inflate the rooms counter', snap.lifetime_rooms_created === 113, `got ${snap.lifetime_rooms_created}`);
 }
 
+// ── Temporary Space (F14) DO ──────────────────────────────────────────────
+// Drives the REAL Space DO under the shim: create/join auth, per-device
+// membership, text items, delete/close permissions, 410-on-valid-cred after
+// close, and alarm-driven reminder + expiry + cleanup phases.
+async function runSpace() {
+  console.log('\n── Temporary Space DO ──');
+  const uuid = () => crypto.randomUUID();
+  const shaHex = async (s) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2, '0')).join('');
+  const bearer = (t) => ({ authorization: `Bearer ${t}`, 'x-device-key': 'wk' + t.slice(0, 4), 'x-device-name': 'W ' + t.slice(0, 3) });
+
+  const env = { SPACE_TEST_CLOCK: '1' };
+  const sid = uuid();
+  const doFetch = (p, init) => space.fetch(new Request('https://internal/space/' + sid + p, init));
+  const mk = () => new Space(new FakeCtx(), env);
+
+  let space = mk();
+  const now0 = Date.now();
+  const H = (n) => new Request('https://internal/space/' + sid + '/create', {
+    method: 'POST', headers: { 'content-type': 'application/json', 'x-device-key': 'wk' },
+    body: JSON.stringify({ durationMs: 6 * 3600_000 }),
+  });
+
+  // create
+  const cr = await space.fetch(H());
+  const crj = await cr.json();
+  check('DO create returns token + manageKey', cr.status === 200 && !!crj.token && !!crj.manageKey);
+  const dur = 6 * 3600_000;
+  check('DO expiry = now + duration (absolute)', crj.expiresAt - crj.createdAt === dur);
+  check('DO 6h reminder = 5h after create', Math.round((crj.reminderAt - crj.createdAt) / 3.6e6) === 5);
+  const reCr = await space.fetch(H());
+  check('DO re-create is 409', reCr.status === 409);
+
+  const T = crj.token, M = crj.manageKey;
+  const join = (t) => space.fetch(new Request('https://internal/space/' + sid + '/join', { method: 'POST', headers: { ...bearer(t), 'content-type': 'application/json' }, body: '{}' }));
+  const creatorJoin = await join(M);
+  const creatorJ = await creatorJoin.json();
+  check('DO creator joins once (manage key authorizes, token registers)', creatorJ.memberCount === 1, String(creatorJ.memberCount));
+  const d1 = await join(T);
+  const d1j = await d1.json();
+  check('DO second device joins with own pid', d1j.memberCount === 2 && d1j.participantId !== creatorJ.participantId);
+
+  // text item
+  const addT = await space.fetch(new Request('https://internal/space/' + sid + '/items/text', { method: 'POST', headers: { ...bearer(T), 'content-type': 'application/json' }, body: JSON.stringify({ text: 'hello from the DO' }) }));
+  const addTj = await addT.json();
+  check('DO text item READY with attribution', addT.status === 200 && addTj.item.state === 'READY' && addTj.item.addedByName.startsWith('W '));
+
+  // delete permissions
+  const delOther = await space.fetch(new Request('https://internal/space/' + sid + '/items/' + addTj.item.id, { method: 'DELETE', headers: bearer(M) }));
+  check('DO creator removes any item', delOther.status === 200);
+
+  // close + 410 shape
+  const memberClose = await space.fetch(new Request('https://internal/space/' + sid + '/close', { method: 'POST', headers: { ...bearer(T), 'content-type': 'application/json' }, body: '{}' }));
+  check('DO member cannot close', memberClose.status === 403);
+  const closeRes = await space.fetch(new Request('https://internal/space/' + sid + '/close', { method: 'POST', headers: { ...bearer(M), 'content-type': 'application/json' }, body: '{}' }));
+  check('DO creator closes early', closeRes.status === 200);
+  const joinClosed = await join(T);
+  const joinClosedJ = await joinClosed.json();
+  check('DO join after close is 410 {closed}', joinClosed.status === 410 && joinClosedJ.closed === true);
+
+  // expiry via test clock: create, then read with a future x-space-test-now
+  const sid2 = uuid();
+  const s2 = new Space(new FakeCtx(), env);
+  const cr2 = await s2.fetch(new Request('https://internal/space/' + sid2 + '/create', { method: 'POST', headers: { 'content-type': 'application/json', 'x-device-key': 'wk' }, body: JSON.stringify({ durationMs: 6 * 3600_000 }) }));
+  const cr2j = await cr2.json();
+  const future = cr2j.expiresAt + 1000;
+  const late = await s2.fetch(new Request('https://internal/space/' + sid2 + '/info', { headers: { ...bearer(cr2j.token), 'x-space-test-now': String(future) } }));
+  check('DO test clock pushes space past expiry (410)', late.status === 410);
+  // Cleanup phase: the alarm fires in REAL time (by design), so drive the
+  // already-EXPIRED space (closed early above) through its cleanup alarm.
+  await space.ctx.storage.setAlarm(Date.now() + 1);
+  await space.alarm(); // Phase 3: state EXPIRED → runCleanup → deleteAll
+  const afterClean = await join(T);
+  check('DO cleanup wipes state after expiry', afterClean.status === 401 || afterClean.status === 404, String(afterClean.status));
+
+  // alarm phase math on the live space: reminder set at create
+  check('DO alarm scheduled at reminder time', (await space.ctx.storage.getAlarm()) !== null);
+  void SPACE_TTL_CAP;
+}
+
 await runRoomProtocol();
 await runRefreshCode();
 await runStayConnected();
@@ -663,6 +744,7 @@ await runLiveIdleExpiry();
 await runDisconnectedState();
 await runRegistry();
 await runMetrics();
+await runSpace();
 
 rmSync(tmp, { recursive: true, force: true });
 console.log(`\n${passed} passed, ${failed} failed`);

@@ -44,11 +44,13 @@ interface RateBucket {
 //   lookup / resolve-short: 20 / 60s  — a real user does 1–3 lookups
 //   push:                    30 / 60s  — agent pushes are bearer-authenticated
 //   ws:                      30 / 60s  — one session is 1–2 connections
+//   space:                   40 / 60s  — create/join/uploads for a handful of spaces
 const RATE_LIMITS: Record<string, { limit: number; windowMs: number }> = {
   lookup: { limit: 20, windowMs: 60_000 },
   'resolve-short': { limit: 20, windowMs: 60_000 },
   push: { limit: 30, windowMs: 60_000 },
   ws: { limit: 30, windowMs: 60_000 },
+  space: { limit: 40, windowMs: 60_000 },
 };
 
 export class Registry extends DurableObject<Env> {

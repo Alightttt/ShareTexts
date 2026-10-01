@@ -217,3 +217,63 @@ retry/cancel, failures isolated to their row.
 A dropped socket HOLDS the seat for 60s (UI stays calm); recovery reclaims
 it silently. After the grace, `peer_disconnected` marks the row offline and
 destroys only that pair's links.
+
+## Temporary Spaces (F14)
+
+A **Temporary Space** is a SERVER-BACKED shared shelf — not a WebRTC room that
+stays open. Contents persist independently of any browser; the space closes
+itself at a precise, server-authoritative `expiresAt` (6h → 7d, absolute).
+
+### Deployment topology
+- **Production**: one SQLite Durable Object per space (`SPACES` binding) holds
+  metadata/items/membership; files live in R2 (`SPACE_BUCKET`), keys
+  `spaces/<spaceId>/<itemId>/object`. Absent bucket binding → spaces degrade
+  honestly to text-only (503 on file routes), never fake success.
+- **Dev/self-hosted** (`tsx server.ts`): `src/lib/space/devSpaceBackend.ts`
+  serves the IDENTICAL REST contract; files land on disk under `.spaces/`,
+  live updates ride a dedicated socket.io namespace `/space-live`.
+
+### Access model
+- 192-bit random ACCESS TOKEN (members) + MANAGE KEY (creator), returned once
+  at create, stored server-side ONLY as SHA-256 hashes, presented via Bearer.
+- Share link: `/space/<uuid>#k=<token>` — the secret rides in the URL
+  fragment (never hits server logs, proxies, or Referer).
+- Per-device identity: `pid = sha256(tokenHash + '.' + deviceKey)` where
+  `deviceKey` is a stable LOCAL seed (not a secret, never stored). Two devices
+  sharing one link are two members; a rejoin keeps its pid. The manage key
+  authorizes creator actions but never registers a member row — the creator
+  counts once.
+- Permissions: members add content, remove THEIR OWN items, download, copy;
+  the creator (manage key) additionally removes any item and closes early.
+  No other roles.
+
+### Uploads & downloads
+- ≤90 MB: one streaming PUT (browser streams the File; worker streams to R2).
+- >90 MB: resumable multipart — 8 MiB parts (×4 growth, 512 MiB cap, ≤10k
+  parts), server-recorded part numbers/etags, per-part retry, bounded client
+  concurrency (3), pause/resume/cancel, `/items/file/status` for resume.
+- SHA-256 computed client-side (incremental, chunked) and verified SERVER-side
+  before an item goes READY; mismatch → never published. Only READY items are
+  listable/downloadable.
+- Downloads are per-request authorized and stream; headers are
+  `attachment` + `nosniff` + `private, no-store`. Uploaded content is never
+  executed on the app origin. A download can never outlive the space.
+
+### Expiry & cleanup
+- `expiresAt = createdAt + duration` (absolute; "1 day" = 24h).
+- At the boundary: joins, uploads, downloads, text → rejected; a VALID
+  credential gets honest `410 {closed:true}` (no existence oracle: bad
+  credential stays a plain 401). Live clients get `space_closed`.
+- Cleanup phases (DO alarm; dev: sweeper): abort abandoned multipart uploads,
+  delete objects (batched), wipe all state, retry on failure. Logical closure
+  is precise; physical cleanup is background work.
+- One push reminder per space per subscribed device, at a lifetime-scaled
+  offset (6h→1h, 12h→3h, 1d→6h … 7d→24h; `reminderOffsetFor`), sent via the
+  Worker's VAPID Web Push. Dead subscriptions are pruned. Push is a
+  convenience: the in-app countdown always works, and unsupported contexts
+  say "Reminders aren't available here" instead of promising.
+
+### Live updates
+`space_sync` (snapshot) · `item_added` · `item_deleted` · `members_changed` ·
+`space_closed` · `space_auth_failed` (→ client re-joins). Wire frames carry
+`v:1`. The namespace never shares event names with room signaling.
