@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { SessionState, ChatMessage, ConnectionType } from '../types';
+import { SessionState, ChatMessage, ConnectionType, PeerDevice } from '../types';
 import { getSocket, devLog, resolveShortCode, refreshCode as refreshCodeRPC } from './socket';
 import { emitRoomConnected, resetRoomsBumpLatch } from './useLiveStats';
 import { PeerManager, clearAllTransferState, getPartialInfo } from './webrtc';
@@ -12,6 +12,11 @@ import { productEvent } from './telemetry';
 import { recordConnection, recordPartnerSeen } from './pairing';
 // Round 03 decomposition: focused session modules (behavior moved verbatim).
 import { loadStoredSession, saveStoredSession, loadLastStayRoom, saveLastStayRoom, saveLastStayCredentials, sanitizeStoredMessages, type StoredSession } from './session/persistence';
+// Multi-device room: roster mirror (membership vs. per-device links) and the
+// per-peer connection manager. A participant's link state never mutates
+// another participant's row; the roster store is the single source of truth.
+import { roomRoster, participantIdFor, type RosterEntry } from './roomRoster';
+import { PeerConnectionManager } from './peerConnections';
 import { DEVICE_NAME_KEY, platformDefaultName, guessDeviceName, ensureDeviceNameSeeded } from './session/deviceIdentity';
 import { sha256Hex } from './session/fileIntegrity';
 import { ensureSocketConnected, humanJoinError, friendlyJoinCopy } from './session/socketReady';
@@ -33,6 +38,9 @@ interface SessionContextValue {
   retryTransfer: (messageId: string) => Promise<void>;
   retryText: (messageId: string) => Promise<void>;
   cancelTransfer: (messageId: string) => void;
+  /** Multi-device: retry / cancel ONE recipient's leg of a fan-out send. */
+  retryRecipient: (messageId: string, recipientId: string) => Promise<void>;
+  cancelRecipient: (messageId: string, recipientId: string) => void;
   /** Pause one of OUR in-flight uploads (receiver is told; resume lifts it). */
   pauseTransfer: (messageId: string) => void;
   /** Resume a paused upload. */
@@ -59,6 +67,19 @@ interface SessionContextValue {
   /** Re-enter the last Stay Connected room from the landing page. Resolves
    *  false when no promise is remembered or the room is truly gone. */
   rejoinStayRoom: () => Promise<boolean>;
+  /** Multi-device room roster (this device included; isSelf marks it). */
+  peers: PeerDevice[];
+  /** This device's stable participant id in the current room (or null). */
+  selfParticipantId: string | null;
+  /** Recipients for the NEXT send (participant ids). */
+  recipients: string[];
+  toggleRecipient: (participantId: string) => void;
+  selectAllRecipients: () => void;
+  clearRecipients: () => void;
+  /** Open (or warm) the direct link to a participant on demand — used by
+   *  the device picker and by the send path. NEVER builds a full mesh: only
+   *  links the user's choices actually require. */
+  ensureLink: (participantId: string) => Promise<boolean>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -84,7 +105,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       deviceName: stored?.deviceName || guessDeviceName(),
       partnerName: stored?.partnerName ?? null,
       stayConnected: stored?.stayConnected ?? false,
-      lastStayRoom: loadLastStayRoom()
+      lastStayRoom: loadLastStayRoom(),
+      peers: [],
+      recipients: []
     };
   });
 
@@ -95,6 +118,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const peerManagerRef = useRef<PeerManager | null>(null);
+  /** Multi-device room manager: participantId → PeerManager. The classic
+   *  single-peer flow mirrors its one link into peerManagerRef so every
+   *  existing consumer (message engine, seen receipts, diagnostics) keeps
+   *  working unchanged. */
+  const pcmRef = useRef<PeerConnectionManager | null>(null);
+  /** This device's stable participant id in the CURRENT room (null when not
+   *  seated). Room-scoped: a refresh reclaims the same roster seat. */
+  const selfPidRef = useRef<string | null>(null);
   /** Generation token for PeerManager creation. `peer_joined` can fire twice
    *  (churn / duplicate delivery); both firings start an async
    *  createPeerManager, and destroying "the current" PM before the first
@@ -105,6 +136,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   /** Why the last connection dropped (error taxonomy, src/lib/errors.ts).
    *  Read by diagnostics; cleared when a channel opens again. */
   const lastFailureCodeRef = useRef<string | null>(null);
+  /** Most recent NEW room member (multi-device): the initiator defers its
+   *  WebRTC offer until a real send needs the link — no full mesh. */
+  const lastJoinedPeerRef = useRef<string | null>(null);
   /** Capability negotiation result from the peer's hello (protocol version
    *  + shared feature mask). Transfer code consults it to degrade cleanly. */
   const peerCapsRef = useRef<{ name: string; protocolVersion: number; features: string[]; featureMask: string[] } | null>(null);
@@ -139,8 +173,89 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     getRenderMessages: () => sessionRef.current.messages,
     getPeer: () => peerManagerRef.current,
     sendSeenWhenVisible,
+    getRecipients: () => recipientsRef.current,
+    // Routed through a ref: ensureLink is defined below (it closes over the
+    // room manager refs), and useMessageEngine must not capture a TDZ binding.
+    ensureLink: (pid: string) => ensureLinkRef.current(pid),
   });
-  const { updateMessageAttachment, sendMessage, retryText, retryTransfer, cancelTransfer, pauseTransfer, resumeTransferById, transferSpeedFor, wirePeerHandlers, handleChannelOpen, handlePushMessage, clearRuntimeState } = messageEngine;
+  const { updateMessageAttachment, sendMessage, retryText, retryTransfer, cancelTransfer, pauseTransfer, resumeTransferById, transferSpeedFor, wirePeerHandlers, handleChannelOpen, handlePushMessage, clearRuntimeState, setPcm, retryRecipient, cancelRecipient } = messageEngine;
+
+  // ---- Multi-device roster mirror -------------------------------------------
+  // The authoritative roster lives in the framework-free RoomRoster store;
+  // this subscription mirrors it into React state (peers[]) for the device
+  // picker, room header and composer summary. One subscription per provider
+  // — components never poll.
+  const [peers, setPeers] = useState<PeerDevice[]>([]);
+  useEffect(() => {
+    const mirror = () => {
+      setPeers(roomRoster.entries().map((e: RosterEntry) => ({ ...e })));
+    };
+    mirror();
+    return roomRoster.subscribe(mirror);
+  }, []);
+  // Per-link truth → partnerConnected: any OPEN link means "someone can hear
+  // me". Multi-device rooms have no single partner, so the honest aggregate
+  // (≥1 connected link among LIVE participants) is what the composer, header
+  // and state machine should believe. Keeps the classic 1-to-1 flow
+  // byte-identical (no pcm → no pcm callback → no behavior change).
+  useEffect(() => {
+    const pcm = pcmRef.current;
+    if (!pcm) return;
+    pcm.onAnyLinkChange = () => {
+      const liveIds = new Set(roomRoster.otherEntries().filter(e => e.link !== 'offline').map(e => e.id));
+      const anyOpen = pcm.linked().some(id => liveIds.has(id));
+      setSession(s => (s.partnerConnected === anyOpen ? s : { ...s, partnerConnected: anyOpen }));
+    };
+    return () => { if (pcmRef.current) pcmRef.current.onAnyLinkChange = null; };
+  }, [session.roomId]);
+  /** Recipients for the NEXT send (participant ids). Kept OUTSIDE React
+   *  state? No — inside session state (below) so the composer renders it
+   *  and the persistence effect can ignore it (ephemeral by design). */
+  const [recipients, setRecipients] = useState<string[]>([]);
+  const recipientsRef = useRef<string[]>([]);
+  recipientsRef.current = recipients;
+
+  /** Resolve a live link for a participant through the room manager,
+   *  creating the PeerManager (and its hooks) on first need. */
+  const ensureLinkFor = useCallback((participantId: string): Promise<PeerManager | null> => {
+    const s = sessionRef.current;
+    if (!s.roomId || !s.secret || !pcmRef.current) return Promise.resolve(null);
+    const pcm = pcmRef.current;
+    return pcm.ensure(
+      participantId,
+      {
+        onOpen: () => {
+          roomRoster.setLink(participantId, 'connected');
+          lastFailureCodeRef.current = null;
+          // Recovery inside the grace window — cancel the calm timer.
+          if (disconnectCalmTimerRef.current) { clearTimeout(disconnectCalmTimerRef.current); disconnectCalmTimerRef.current = null; }
+          // Same channel-open consequences every link gets: late DELIVERED
+          // receipts, resend requests, interrupted-transfer resume.
+          const pm = pcmRef.current?.get(participantId);
+          if (pm) handleChannelOpen(pm);
+          emitRoomConnected();
+          recordConnection();
+          connMachine.to('CONNECTED');
+        },
+        onDisconnect: () => {
+          roomRoster.setLink(participantId, 'reconnecting');
+        },
+        onDisconnectImmediate: () => {
+          roomRoster.setLink(participantId, 'offline');
+        },
+        onNegotiating: () => {
+          roomRoster.setLink(participantId, 'connecting');
+        },
+      },
+      async () => {
+        const pm = await createPeerManager(s.roomId!, s.secret!, true);
+        pm.attach(participantId);
+        wirePeerHandlers(pm);
+        return pm;
+      },
+    ).catch(() => null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Dev/test hook: reach the live PeerManager without exposing the secret.
   // requestReconnect is re-created each render (it closes over `session`), so
@@ -153,6 +268,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         requestReconnect: () => requestReconnectRef.current(),
         getMessages: () => messagesRef.current,
         getPartialInfo,
+        pcmLinks: () => pcmRef.current?.linked() ?? [],
+        pcmLink: (pid: string) => {
+          const pm = pcmRef.current?.get(pid);
+          return pm ? { bound: pm.boundId, dc: pm.getDataChannel()?.readyState ?? null } : null;
+        },
+        recipients: () => recipientsRef.current,
+        session: () => sessionRef.current,
       };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -226,12 +348,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const socket = getSocket();
 
-    socket.on('peer_joined', ({ peerId }) => {
-      // A peer is now in the room — kick off the WebRTC handshake. Don't claim
-      // the partner is "connected" yet: ChatView appears only once the data
-      // channel actually opens (onOpen) or the relay fallback confirms a
-      // working path, so the UI never shows a green badge on a dead link.
-      diag('peer.peer_joined', true, (peerId || '').slice(0, 8));
+    socket.on('peer_joined', (payload: { peerId?: string; participant?: { id: string; name: string; platform: string; joinedAt: number }; roster?: { participants?: never[]; seq?: number }; initiatorId?: string | null }) => {
+      const peerId = payload?.peerId || '';
+      // A peer is now in the room. In a MULTI-device room this is a roster
+      // DELTA — the new member is added to the picker, but WebRTC connects
+      // ONLY when a data relationship is needed (never a full mesh).
+      diag('peer.peer_joined', true, peerId.slice(0, 8));
+      const multi = roomRoster.size > 0;
+      if (payload.roster && Array.isArray(payload.roster.participants)) {
+        roomRoster.applySnapshot(payload.roster as never);
+      } else if (payload.participant) {
+        roomRoster.upsert(payload.participant, { link: 'none' });
+      }
       // Only descend the pairing ladder when we're actually below it. The
       // seat keepalive reseat makes the server re-announce the join to a
       // room whose pair is ALREADY CONNECTED — demanding SIGNALING then
@@ -242,54 +370,125 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setSession(s => ({
         ...s,
         partnerConnecting: true,
-        // Transition from 'waiting' (room created, no peer) to 'connecting'
-        // (peer joined, WebRTC handshake starting).
         connectionType: s.connectionType === 'disconnected' || s.connectionType === 'waiting' ? 'connecting' : s.connectionType
       }));
-      // Whichever device is already in the room initiates the WebRTC
-      // handshake. This also covers reconnects after a refresh: the refreshed
-      // device rejoins and the remaining peer gets this event and re-offers.
-      if (session.roomId && session.secret) {
-        if (peerManagerRef.current) peerManagerRef.current.destroy();
+      // Link discipline (NO full mesh). A TWO-device room keeps the classic
+      // behavior — connect immediately, exactly as before (the common case
+      // must not regress). From the THIRD member on, only the deterministic
+      // initiator (most senior member — the server's pick) may open a link,
+      // and it defers until a real send needs it: joining a big room must
+      // not spawn N-1 WebRTC connections.
+      const s = sessionRef.current;
+      const roomSize = roomRoster.size;
+      const amInitiator = roomSize <= 2
+        ? true // classic pair: either side may offer (refresh coverage)
+        : !!payload.initiatorId && payload.initiatorId === selfPidRef.current;
+      if (s.roomId && s.secret && peerId) {
         startSeatKeepalive();
-        const gen = ++pmGenerationRef.current;
-        void createPeerManager(session.roomId, session.secret, true).then(pm => {
-          if (gen !== pmGenerationRef.current) { pm.destroy(); return; } // superseded
-          peerManagerRef.current = pm;
-          setupPeerManager(pm);
-          pm.initiateConnection(peerId);
-        });
+        if (roomSize > 2) {
+          // Multi-device: EVERYONE pre-warms an ANSWERING link to the new
+          // member (bound, registered with the router — but NO offer: links
+          // open on demand, never a mesh). A junior member can offer to the
+          // senior at any time: the senior's parked link answers. Without it
+          // the offer would find no handler and both devices would sit on
+          // "Connecting…".
+          roomRoster.setLink(peerId, 'connecting');
+          void ensureLinkFor(peerId).then(pm => {
+            if (!pm) roomRoster.setLink(peerId, 'none'); // honest per-link failure
+          }).catch(() => {
+            roomRoster.setLink(peerId, 'none');
+          });
+          if (amInitiator) {
+            lastJoinedPeerRef.current = peerId;
+            diag('peer.joined_no_mesh', true, `roster=${roomSize} initiator=${amInitiator}`);
+          }
+        } else {
+          if (peerManagerRef.current) peerManagerRef.current.destroy();
+          const gen = ++pmGenerationRef.current;
+          void createPeerManager(s.roomId, s.secret, true).then(pm => {
+            if (gen !== pmGenerationRef.current) { pm.destroy(); return; } // superseded
+            peerManagerRef.current = pm;
+            setupPeerManager(pm);
+            pm.initiateConnection(peerId);
+          });
+        }
       }
     });
 
-    socket.on('peer_recovered', ({ peerId }) => {
-      diag('peer.peer_recovered', true, (peerId || '').slice(0, 8));
+    socket.on('peer_recovered', (payload: { peerId?: string; roster?: { participants?: never[]; seq?: number } }) => {
+      const peerId = payload?.peerId || '';
+      diag('peer.peer_recovered', true, peerId.slice(0, 8));
+      if (payload.roster && Array.isArray(payload.roster.participants)) {
+        roomRoster.applySnapshot(payload.roster as never);
+      }
       setSession(s => ({
         ...s,
         partnerConnecting: true,
         connectionType: s.connectionType === 'disconnected' || s.connectionType === 'waiting' ? 'connecting' : s.connectionType
       }));
-      // The peer's transport came back, but the WebRTC connection is gone.
-      // Re-establish it from this side.
-      if (session.roomId && session.secret && peerId) {
-        if (peerManagerRef.current) peerManagerRef.current.destroy();
+      // The peer's transport came back — same logical participant (stable
+      // id). Every survivor re-offers WebRTC to it: 1-to-1 rebuilds the
+      // single link; multi-device re-links only the pairs that had one (the
+      // sender keeps its lane; unrelated members do nothing).
+      const s = sessionRef.current;
+      if (s.roomId && s.secret && peerId) {
         startSeatKeepalive();
-        const gen = ++pmGenerationRef.current;
-        void createPeerManager(session.roomId, session.secret, true).then(pm => {
-          if (gen !== pmGenerationRef.current) { pm.destroy(); return; } // superseded
-          peerManagerRef.current = pm;
-          setupPeerManager(pm);
-          pm.initiateConnection(peerId);
-        });
+        const multi = roomRoster.size > 2;
+        if (multi) {
+          // ALWAYS re-establish this pair's link — even when this side holds
+          // no live link yet (the no-op that stranded a refreshed device with
+          // zero links and a forever-disabled Send). A bounded retry loop
+          // rides out the recovered peer's page hydration: the first offer
+          // can legitimately land before its answering link is registered.
+          roomRoster.setLink(peerId, 'connecting');
+          void (async () => {
+            for (let attempt = 0; attempt < 5; attempt++) {
+              if (sessionRef.current.roomId !== s.roomId) return; // room changed
+              if (roomRoster.entries().some(e => e.id === peerId && e.link === 'offline')) return; // confirmed gone
+              const pm = await ensureLinkFor(peerId).catch(() => null);
+              if (pm && await pm.ensureOpen(8000).catch(() => false)) return; // link is back
+              await new Promise(r => setTimeout(r, 2500));
+            }
+            roomRoster.setLink(peerId, 'none');
+          })();
+        } else {
+          if (peerManagerRef.current) peerManagerRef.current.destroy();
+          const gen = ++pmGenerationRef.current;
+          void createPeerManager(s.roomId, s.secret, true).then(pm => {
+            if (gen !== pmGenerationRef.current) { pm.destroy(); return; } // superseded
+            peerManagerRef.current = pm;
+            setupPeerManager(pm);
+            pm.initiateConnection(peerId);
+          });
+        }
       }
     });
 
-    socket.on('peer_disconnected', () => {
-      // The server CONFIRMED the peer really left (its 60s seat grace
-      // elapsed or it left cleanly). Skip the client-side calm window and
-      // show the true disconnected state immediately.
-      diag('peer.confirmed_gone', true);
-      peerManagerRef.current?.onDisconnectImmediate?.();
+    socket.on('peer_disconnected', (payload: { peerId?: string } | undefined) => {
+      const goneId = payload?.peerId || '';
+      // The server CONFIRMED a device really left (its 60s seat grace
+      // elapsed or it left cleanly). In a multi-device room this isolates
+      // to THAT participant's row — the rest of the room is untouched. In
+      // the classic 1-to-1 room the single link dies, as before.
+      diag('peer.confirmed_gone', true, goneId.slice(0, 8));
+      const multi = roomRoster.size > 0;
+      if (multi) {
+        if (goneId) roomRoster.markOffline(goneId);
+        if (goneId) pcmRef.current?.destroyLink(goneId);
+        // The classic 1-to-1 link may BE the departed participant's channel
+        // (pre-room-growth link) — retire it too, or the composer would
+        // believe a dead channel is still listening.
+        if (goneId && peerManagerRef.current?.boundId === goneId) {
+          try { peerManagerRef.current.onDisconnect = null; peerManagerRef.current.onDisconnectImmediate = null; peerManagerRef.current.destroy(); } catch { /* idempotent */ }
+          peerManagerRef.current = null;
+        }
+        // partnerConnected tracks the CLASSIC link only in 1-to-1 rooms; in
+        // a seated multi-device room other live links must keep it true (the
+        // pcm onAnyLinkChange mirror below owns the truth).
+        if (roomRoster.size <= 2) setSession(s => ({ ...s, partnerConnected: false, connectionType: 'disconnected' }));
+      } else {
+        peerManagerRef.current?.onDisconnectImmediate?.();
+      }
     });
 
     socket.on('room_closed', ({ reason }) => {
@@ -366,6 +565,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       // Peer recovered inside the disconnect-grace window — cancel the calm
       // timer so it can never fire a false "disconnected" after recovery.
       if (disconnectCalmTimerRef.current) { clearTimeout(disconnectCalmTimerRef.current); disconnectCalmTimerRef.current = null; }
+      // Mirror a rostered classic link into the picker's per-device truth —
+      // a link that predates the room's growth to 3+ is otherwise shown as
+      // 'none' forever even while it carries live traffic.
+      if (pm.boundId) roomRoster.setLink(pm.boundId, 'connected');
       setSession(s => ({ ...s, partnerConnected: true, partnerConnecting: false }));
       // The one true "two devices connected" moment — the tracker listens
       // here so it counts real connections, not room creations.
@@ -546,14 +749,23 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       if (cancelled) return;
-      const res = await new Promise<{ success: boolean; error?: string; createdAt?: number }>((resolve) => {
-        socket.emit('resume_room', { roomId: stored.roomId, secret: stored.secret }, resolve);
+      const res = await new Promise<{ success: boolean; error?: string; createdAt?: number; myParticipantId?: string; roster?: { participants?: unknown[]; seq?: number } }>((resolve) => {
+        socket.emit('resume_room', { roomId: stored.roomId, secret: stored.secret, pid: participantIdFor(stored.roomId) }, resolve);
       });
       if (cancelled) return;
       diag('room.resume', !!res.success, res.success ? 'ok' : (res.error || 'unknown'));
       if (res.success) {
         // Back in the room, but the WebRTC channel is new — the app shows
         // "Connecting…" until it opens, instead of a premature green badge.
+        selfPidRef.current = res.myParticipantId || participantIdFor(stored.roomId);
+        setRecipients([]); // resume re-reads the roster — the selection starts clean
+        roomRoster.reset(selfPidRef.current);
+        if (res.roster && Array.isArray(res.roster.participants)) {
+          roomRoster.applySnapshot(res.roster as never);
+        }
+        pcmRef.current?.destroy();
+        pcmRef.current = new PeerConnectionManager(stored.roomId, stored.secret);
+        setPcm(pcmRef.current); // fan-out legs route through per-recipient links
         setSession(s => ({
           ...s,
           roomId: stored.roomId,
@@ -568,12 +780,37 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         }));
         startSeatKeepalive();
         if (peerManagerRef.current) peerManagerRef.current.destroy();
-        const gen = ++pmGenerationRef.current;
-        void createPeerManager(stored.roomId, stored.secret, false).then(pm => {
-          if (gen !== pmGenerationRef.current) { pm.destroy(); return; } // superseded
-          peerManagerRef.current = pm;
-          setupPeerManager(pm);
-        });
+        const liveOthers = roomRoster.otherEntries().filter(e => e.link !== 'offline');
+        if (liveOthers.length > 1) {
+          // Multi-device resume: NO classic peer — pre-warm an ANSWERING link
+          // to every live member so their peer_recovered re-offers find a
+          // registered handler the moment they arrive (the survivors offer;
+          // this device answers). A bare classic PM here used to grab the
+          // router's unbound slot and steal frames addressed to pcm links.
+          // sessionRef is refreshed first — see the join-path note.
+          sessionRef.current = { ...sessionRef.current, roomId: stored.roomId, secret: stored.secret };
+          const gen = ++pmGenerationRef.current;
+          void (async () => {
+            for (const entry of liveOthers) {
+              if (gen !== pmGenerationRef.current) return; // superseded
+              roomRoster.setLink(entry.id, 'connecting');
+              const pm = await ensureLinkFor(entry.id).catch(() => null);
+              if (!pm) roomRoster.setLink(entry.id, 'none');
+            }
+          })();
+        } else {
+          const gen = ++pmGenerationRef.current;
+          void createPeerManager(stored.roomId, stored.secret, false).then(pm => {
+            if (gen !== pmGenerationRef.current) { pm.destroy(); return; } // superseded
+            peerManagerRef.current = pm;
+            setupPeerManager(pm);
+            // The resume ack carries the roster — mirror the partner's link
+            // state so the device picker starts honest.
+            for (const entry of roomRoster.otherEntries()) {
+              roomRoster.setLink(entry.id, entry.link === 'offline' ? 'offline' : 'none');
+            }
+          });
+        }
       } else if (res.error?.includes('two devices') && attempt < 3) {
         // The previous socket may not have been cleaned up yet; retry shortly.
         setTimeout(() => { if (!cancelled) void tryResume(attempt + 1); }, 1500);
@@ -590,6 +827,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // resume ack — so nothing here blocks first paint; the shell renders
     // this tick regardless. One macro-task of deferral just lets React
     // commit the initial state first.
+    // (Multi-device: tryResume below carries the stored room's participant
+    // id so the server reclaims the SAME roster seat — never a duplicate.)
     setTimeout(() => { if (!cancelled) void tryResume(); }, 0);
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -620,13 +859,33 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         reject(new ConnectError('TIMEOUT'));
       }, ACK_TIMEOUT);
 
+      // A random pre-pid works for create: the room-scoped stable id is
+      // minted AFTER the server assigns the roomId (server echoes it in
+      // myParticipantId, we persist it below).
       try {
-        socket.emit('create_room', (res: { success: boolean; roomId?: string; secret?: string; createdAt?: number; error?: string; code?: string }) => {
+        socket.emit('create_room', { pid: crypto.randomUUID() }, (res: { success: boolean; roomId?: string; secret?: string; createdAt?: number; error?: string; code?: string; myParticipantId?: string; roster?: { participants?: unknown[]; seq?: number } }) => {
           if (settled) return;
           settled = true;
           clearTimeout(timer);
           diag('room.create', !!res.success, res.success ? res.roomId : (res.error || 'unknown'));
           if (res.success && res.roomId && res.secret) {
+            // Persist THIS device's participant id for the new room so a
+            // refresh reclaims the same roster seat.
+            selfPidRef.current = res.myParticipantId || participantIdFor(res.roomId);
+            try {
+              localStorage.setItem('sharetext.deviceId', JSON.stringify({
+                ...JSON.parse(localStorage.getItem('sharetext.deviceId') || '{}'),
+                [res.roomId]: selfPidRef.current,
+              }));
+            } catch { /* private mode */ }
+            roomRoster.reset(selfPidRef.current);
+            if (res.roster && Array.isArray(res.roster.participants)) {
+              roomRoster.applySnapshot(res.roster as never);
+            }
+            pcmRef.current?.destroy();
+            pcmRef.current = new PeerConnectionManager(res.roomId, res.secret);
+            setPcm(pcmRef.current); // fan-out legs route through per-recipient links
+            setRecipients([]); // a new room starts unaddressed — never carry a stale selection
             saveStoredSession({ roomId: res.roomId, secret: res.secret, isCreator: true, createdAt: res.createdAt });
             connMachine.to('PAIRING');
             setSession({
@@ -716,12 +975,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         try { (getSocket() as any).connect?.(); } catch { /* best effort */ }
         resolve({ success: false, error: "Couldn't reach ShareTexts." });
       }, 12000);
-      getSocket().emit('join_with_code', { code }, (res: { success: boolean; roomId?: string; secret?: string; createdAt?: number; error?: string; code?: string }) => {
+      // join_with_code has no roomId yet (the code IS the address) — mint a
+      // provisional pid; the server echoes the authoritative one back and
+      // setupJoiner persists it under the real room.
+      getSocket().emit('join_with_code', { code, pid: crypto.randomUUID() }, (res: { success: boolean; roomId?: string; secret?: string; createdAt?: number; error?: string; code?: string; myParticipantId?: string; roster?: { participants?: unknown[]; seq?: number } }) => {
         clearTimeout(timeout);
         diag('room.join', !!res.success, res.success ? 'ok' : (res.code || res.error || 'unknown'));
         if (res.success) {
           roomCreateDiagEnd(requestId, 'success');
-          setupJoiner(res.roomId!, res.secret!, res.createdAt);
+          setupJoiner(res.roomId!, res.secret!, res.createdAt, res.myParticipantId, res.roster as never);
         } else {
           roomCreateDiagEnd(requestId, 'failure', 'ROOM_CREATE_REJECTED', res.code);
         }
@@ -764,11 +1026,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         try { (getSocket() as any).connect?.(); } catch { /* best effort */ }
         resolve({ success: false, error: "Couldn't reach ShareTexts." });
       }, 12000);
-      getSocket().emit('join_with_link', { roomId }, (res: { success: boolean; roomId?: string; secret?: string; createdAt?: number; error?: string; code?: string }) => {
+      getSocket().emit('join_with_link', { roomId, pid: participantIdFor(roomId) }, (res: { success: boolean; roomId?: string; secret?: string; createdAt?: number; error?: string; code?: string; myParticipantId?: string; roster?: { participants?: unknown[]; seq?: number } }) => {
         clearTimeout(timeout);
         diag('room.join_link', !!res.success, res.success ? 'ok' : (res.code || res.error || 'unknown'));
         if (res.success) {
-          setupJoiner(res.roomId!, res.secret!, res.createdAt);
+          setupJoiner(res.roomId!, res.secret!, res.createdAt, res.myParticipantId, res.roster as never);
         }
         resolve({ ...res, error: humanJoinError(res.code, humanizeError(res.code, res.error || "Couldn't reach ShareTexts. Check your internet and try again.")) });
       });
@@ -799,13 +1061,25 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     return joinWithLink(res.roomId);
   };
 
-  const setupJoiner = (roomId: string, secret: string, createdAt?: number) => {
+  const setupJoiner = (roomId: string, secret: string, createdAt?: number, myPid?: string, roster?: { participants?: unknown[]; seq?: number } | null) => {
     abandonedRef.current = false;
     // Rejoining the SAME room (device dropped, re-entered the code): keep
     // this device's own history. Stored messages are reloaded below, and
     // partner files we no longer hold are re-requested on channel open.
     const isRejoin = session.roomId === roomId && session.messages.length > 0;
     const keptMessages = isRejoin ? session.messages : [];
+    // Stable participant id: prefer the server's echo (authoritative), fall
+    // back to the locally minted room-scoped id. Either way a refresh will
+    // reclaim the SAME roster seat.
+    selfPidRef.current = myPid || participantIdFor(roomId);
+    setRecipients([]); // a fresh seat starts unaddressed
+    roomRoster.reset(selfPidRef.current);
+    if (roster && Array.isArray(roster.participants)) {
+      roomRoster.applySnapshot(roster as never);
+    }
+    pcmRef.current?.destroy();
+    pcmRef.current = new PeerConnectionManager(roomId, secret);
+    setPcm(pcmRef.current); // fan-out legs route through per-recipient links
     saveStoredSession({ roomId, secret, isCreator: false, createdAt, messages: keptMessages.length ? keptMessages : sanitizeStoredMessages(loadStoredSession()?.messages) });
     connMachine.to('PAIRING');
     setSession({
@@ -825,12 +1099,31 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
     startSeatKeepalive();
     if (peerManagerRef.current) peerManagerRef.current.destroy();
-    const gen = ++pmGenerationRef.current;
-    void createPeerManager(roomId, secret, false).then(pm => {
-      if (gen !== pmGenerationRef.current) { pm.destroy(); return; } // superseded
-      peerManagerRef.current = pm;
-      setupPeerManager(pm);
-    });
+    const liveOthers = roomRoster.otherEntries().filter(e => e.link !== 'offline');
+    if (liveOthers.length > 1) {
+      // Multi-device join: pre-warm an ANSWERING link to every live member —
+      // no classic peer (it would squat the router's unbound slot and steal
+      // frames addressed to per-participant links). sessionRef is refreshed
+      // FIRST: ensureLinkFor reads it, and at this point React has not yet
+      // re-rendered (the stale snapshot still says roomId: null, which made
+      // every pre-warm silently no-op and left this device unable to answer
+      // any offer).
+      sessionRef.current = { ...sessionRef.current, roomId, secret };
+      void (async () => {
+        for (const entry of liveOthers) {
+          roomRoster.setLink(entry.id, 'connecting');
+          const pm = await ensureLinkFor(entry.id).catch(() => null);
+          if (!pm) roomRoster.setLink(entry.id, 'none');
+        }
+      })();
+    } else {
+      const gen = ++pmGenerationRef.current;
+      void createPeerManager(roomId, secret, false).then(pm => {
+        if (gen !== pmGenerationRef.current) { pm.destroy(); return; } // superseded
+        peerManagerRef.current = pm;
+        setupPeerManager(pm);
+      });
+    }
   };
 
   const setDeviceName = (name: string) => {
@@ -1054,6 +1347,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // cleared by closeSession (explicit close) or the re-entry itself.
     saveStoredSession(null);
     stopSeatKeepalive();
+    setRecipients([]); // session over — the recipient selection is ephemeral
     // A pending disconnect-calm timer is part of the DEAD session: if it
     // fired after the reset it would flip the fresh session's state (the
     // IDLE → RECONNECTING rejection in the logs). Cancel it here where
@@ -1170,8 +1464,46 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     getSocket().emit(enabled ? 'stay_connected_enable' : 'stay_connected_disable', { roomId: session.roomId });
   };
 
+  // ---- Multi-recipient selection + send ------------------------------------
+  const toggleRecipient = useCallback((participantId: string) => {
+    if (!participantId || participantId === selfPidRef.current) return;
+    setRecipients(prev => prev.includes(participantId)
+      ? prev.filter(id => id !== participantId)
+      : [...prev, participantId]);
+    // Selecting a device is intent to talk to it — warm the link (bounded,
+    // no mesh: one link per selection, only for chosen devices).
+    void ensureLinkFor(participantId).catch(() => { /* picker shows the honest link state */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const selectAllRecipients = useCallback(() => {
+    const all = roomRoster.otherEntries().filter(e => e.link !== 'offline').map(e => e.id);
+    setRecipients(all);
+    for (const id of all) {
+      void ensureLinkFor(id).catch(() => { /* per-link failure stays per-link */ });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const clearRecipients = useCallback(() => setRecipients([]), []);
+
+  const ensureLinkRef = useRef<(participantId: string) => Promise<boolean>>(async () => false);
+  const ensureLink = useCallback((participantId: string): Promise<boolean> => {
+    return ensureLinkFor(participantId).then(pm => {
+      if (!pm) return false;
+      return pm.ensureOpen().catch(() => false);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  ensureLinkRef.current = ensureLink;
+
+  // Mirror roster + recipients into the session snapshot the UI reads.
+  useEffect(() => {
+    setSession(s => ({ ...s, peers, recipients }));
+  }, [peers, recipients]);
+
   return (
-    <SessionContext.Provider value={{ session, createSession, joinWithCode, joinWithLink, joinWithShortCode, sendMessage, updateMessageAttachment, retryTransfer, retryText, cancelTransfer, pauseTransfer, resumeTransferById, setDeviceName, transferSpeedFor, requestReconnect, refreshCode, closeSession, leaveView, abandonSession, setStayConnected, registerRoomViewer, claimSeen, rejoinStayRoom }}>
+    <SessionContext.Provider value={{ session: { ...session, peers, recipients }, createSession, joinWithCode, joinWithLink, joinWithShortCode, sendMessage, updateMessageAttachment, retryTransfer, retryText, cancelTransfer, pauseTransfer, resumeTransferById, setDeviceName, transferSpeedFor, requestReconnect, refreshCode, closeSession, leaveView, abandonSession, setStayConnected, registerRoomViewer, claimSeen, rejoinStayRoom, peers, selfParticipantId: selfPidRef.current, recipients, toggleRecipient, selectAllRecipients, clearRecipients, ensureLink, retryRecipient, cancelRecipient }}>
       {children}
     </SessionContext.Provider>
   );

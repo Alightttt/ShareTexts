@@ -271,6 +271,11 @@ export function SingleScreenApp() {
       creatorLeftConnectingRef.current = false;
     }
     if (session.partnerConnected) setPanelMode('connected');
+    // Multi-device room (3+ members): this device is SEATED — the room is
+    // real even before a personal WebRTC link opens (link-on-demand means a
+    // member may hold NO link). Hiding behind "connecting" would strand
+    // senders on a handshake screen inside their own room.
+    else if ((session.peers?.length ?? 0) > 2 && session.roomId) setPanelMode('connected');
     // Once the channel has opened for this room, a later partnerConnecting is
     // a reconnect (handled above), never a first connect.
     else if (session.roomId && everConnectedRef.current) setPanelMode('connected');
@@ -1293,7 +1298,33 @@ export function SingleScreenApp() {
                 <PartnerDeviceIcon className="relative w-4 h-4" />
               </span>
               <span className="hidden md:flex flex-col leading-tight min-w-0">
-                <span className="text-[12.5px] font-semibold text-apple-ink dark:text-white truncate max-w-[130px]">{session.partnerName || t('chat.pairedDevice')}</span>
+                {/* Room-aware header (F13): a 3+ device room leads with the
+                    device COUNT — never "Connected to Windows PC" for a whole
+                    room. The two-device room keeps the partner's name. */}
+                <span className="text-[12.5px] font-semibold text-apple-ink dark:text-white truncate max-w-[130px]">
+                  {(session.peers?.filter(p => !p.isSelf).length ?? 0) > 1
+                    ? t('room.deviceCount', { count: String((session.peers?.length ?? 0)) })
+                    : (session.partnerName || t('chat.pairedDevice'))}
+                </span>
+                {(session.peers?.filter(p => !p.isSelf).length ?? 0) > 1 ? (
+                  <span data-testid="room-device-count" className="text-[10.5px] font-medium text-apple-ink-muted dark:text-white/45">
+                    {(() => {
+                      const list = session.peers?.filter(p => !p.isSelf) ?? [];
+                      const parts: string[] = [];
+                      const ready = list.filter(p => p.link === 'connected').length;
+                      const connecting = list.filter(p => p.link === 'connecting' || p.link === 'reconnecting').length;
+                      const offline = list.filter(p => p.link === 'offline').length;
+                      if (ready) parts.push(t('room.readyCount', { count: String(ready) }));
+                      if (connecting) parts.push(t('room.connectingCount', { count: String(connecting) }));
+                      if (offline) parts.push(t('room.offlineCount', { count: String(offline) }));
+                      // Members with no link yet are still IN the room — the
+                      // honest baseline is the roster, never an empty string.
+                      const idle = list.length - ready - connecting - offline;
+                      if (idle > 0 && parts.length === 0) parts.push(t('room.deviceCount', { count: String(list.length) }));
+                      return parts.join(' · ');
+                    })()}
+                  </span>
+                ) : (
                 <span className={cn("text-[10.5px] font-medium", session.connectionType === 'disconnected' ? "text-status-warning" : session.connectionType === 'connecting' ? "text-status-warning" : "text-status-success")}>
                   {session.connectionType === 'disconnected'
                     ? t('chat.offline')
@@ -1305,6 +1336,7 @@ export function SingleScreenApp() {
                           ? t('conn.relay')
                           : t('common.connected')}
                 </span>
+                )}
               </span>
               <span className="md:hidden w-1.5 h-1.5 rounded-full shrink-0 ml-0.5" aria-hidden>
                 <span className={cn("block w-1.5 h-1.5 rounded-full", session.connectionType === 'disconnected' || session.connectionType === 'connecting' ? "bg-status-warning" : "bg-status-success animate-pulse")} />

@@ -135,14 +135,41 @@ function firstMissing(chunks: ArrayBuffer[]): number {
   // memory receive path), not arrived data — the ack must not overstate.
   while (i < chunks.length && chunks[i] && (chunks[i] as ArrayBuffer).byteLength > 0) i++;
   return i;
-}
+}  /** Same prefix computation for the OPFS disk-backed bitmap. */
+  function firstMissingBitmap(bitmap: Uint8Array): number {
+    let i = 0;
+    while (i < bitmap.length && bitmap[i]) i++;
+    return i;
+  }
 
-/** Same prefix computation for the OPFS disk-backed bitmap. */
-function firstMissingBitmap(bitmap: Uint8Array): number {
-  let i = 0;
-  while (i < bitmap.length && bitmap[i]) i++;
-  return i;
-}
+  /**
+   * GLOBAL send-slot budget across the whole page. Multi-device fan-out means
+   * several PeerManagers can encrypt+push at the same instant; without a
+   * shared ceiling a 20-recipient send would open 20 deep encryption
+   * pipelines at once. Slots are allocated first-come-first-served and held
+   * for the duration of one transfer — this is the controlled fan-out that
+   * keeps a big send from starving the browser. It is a RUNTIME RESOURCE
+   * POLICY: queueing here delays work, it never refuses participants.
+   * (Per-recipient ordering still comes from the scheduler; this only caps
+   * simultaneous encryption/push pipelines.) */
+  class GlobalSendSlots {
+    private active = 0;
+    private queue: Array<() => void> = [];
+    constructor(private readonly max: number) {}
+    acquire(): Promise<void> {
+      if (this.active < this.max) {
+        this.active++;
+        return Promise.resolve();
+      }
+      return new Promise((resolve) => this.queue.push(resolve));
+    }
+    release(): void {
+      const next = this.queue.shift();
+      if (next) next();
+      else this.active--;
+    }
+  }
+  const globalSendSlots = new GlobalSendSlots(3);
 
 /**
  * Transfer state lives OUTSIDE PeerManager instances. WebRTC teardown on a
@@ -290,6 +317,80 @@ export class TransferCancelledError extends Error {
   }
 }
 
+/**
+ * Multi-device signal router. In a multi-device room SEVERAL PeerManagers
+ * are alive at once, all sharing the page's ONE signaling socket. A blanket
+ * socket.on('signal') per manager would deliver EVERY peer's offers to
+ * EVERY manager — offers meant for device B would tear down device C's
+ * negotiation. The router dispatches by participant id: each link gets
+ * exactly the frames addressed to it, and destroy() detaches only its own
+ * handler. `relay_message` follows the same rule; unaddressed relay frames
+ * (legacy 1-to-1 servers/peers) go to the FIRST registered link so the
+ * existing two-device flow is untouched.
+ */
+interface LinkFrame {
+  from?: string;
+  data?: string | ArrayBuffer;
+  signal?: SignalData;
+}
+const signalRouter = {
+  links: new Map<string, PeerManager>(),
+  /** The answering side constructs its link BEFORE it knows the peer's id
+   *  (the offer carries it). That unbound link is the fallback target for
+   *  unaddressed/unknown frames — the classic 1-to-1 receive path. Without
+   *  it, the first offer would arrive with NO registered handler and both
+   *  devices would sit on "Connecting…" forever. The single-registered-link
+   *  shortcut is SAFE only while exactly one bound link exists — never
+   *  misroute a stranger's frame into it once several links live. */
+  fallback: null as PeerManager | null,
+  installed: false,
+  ensure(): void {
+    if (this.installed) return;
+    this.installed = true;
+    const socket = getSocket();
+    const targetFor = (from: string): PeerManager | undefined => {
+      const bound = from ? this.links.get(from) : undefined;
+      if (bound) return bound;
+      // STRICT routing: an unknown sender's frame goes to the parked
+      // answering link (which binds itself on accept) — NEVER to "whatever
+      // single link happens to exist". That shortcut misrouted a third
+      // device's answer into another pair's negotiation and silently hung
+      // the fan-out. When nothing matches, the frame is dropped: a real
+      // peer re-sends; a stale generation stays dead.
+      return this.fallback ?? undefined;
+    };
+    socket.on('signal', (msg: LinkFrame) => {
+      const from = typeof msg?.from === 'string' ? msg.from : '';
+      const target = targetFor(from);
+      if (target && msg.signal) target.acceptSignal({ from, signal: msg.signal });
+    });
+    socket.on('relay_message', (msg: LinkFrame) => {
+      const from = typeof msg?.from === 'string' ? msg.from : '';
+      const target = targetFor(from);
+      if (target && msg.data !== undefined) target.acceptRelay(msg.data);
+    });
+  },
+  register(peerId: string, pm: PeerManager): void {
+    this.ensure();
+    this.links.set(peerId, pm);
+    if (this.fallback === pm) this.fallback = null;
+  },
+  /** Park an unbound (answering) link as the unaddressed-frames target. */
+  registerFallback(pm: PeerManager): void {
+    this.ensure();
+    if (!this.fallback || this.fallback.isDestroyed()) this.fallback = pm;
+  },
+  unregister(peerId: string, pm: PeerManager): void {
+    if (this.links.get(peerId) === pm) this.links.delete(peerId);
+  },
+  has(peerId: string, pm: PeerManager): boolean {
+    return this.links.get(peerId) === pm;
+  },
+  clear(): void {
+    this.links.clear();
+  },
+};
+
 export class PeerManager {
   private pc: RTCPeerConnection | null = null;
   /** Bulk channel: chat text + file chunks (the heavy pipe). */
@@ -321,6 +422,9 @@ export class PeerManager {
    *  after the channel has been down AND silent for a while. */
   private disconnectStallTimer: ReturnType<typeof setTimeout> | null = null;
   private lastIncomingActivity = 0;
+  /** Wall-clock moment the data channel last opened (0 = never). Feeds
+   *  openSince() — the honest per-link "ready" readout for multi-device UI. */
+  private channelOpenedAt = 0;
 
   public onMessage: ((data: string) => void) | null = null;
   public onFileProgress: ((transferId: string, progress: number, total: number) => void) | null = null;
@@ -365,6 +469,12 @@ export class PeerManager {
 
   private isRelayFallback = false;
   private iceCandidatesQueue: RTCIceCandidateInit[] = [];
+  /** Wall-clock bookkeeping for the room-level connection manager: when the
+   *  channel last left the open state, and when this manager was created.
+   *  Never used for user-visible state — the honest per-link states come
+   *  from the RTCPeerConnection itself. */
+  private notOpenSince = 0;
+  private readonly createdAt = Date.now();
   /** Machine-readable cause of the last connection failure, for the error
    *  taxonomy (src/lib/errors.ts). Read by the session layer when the UI
    *  needs to explain WHAT failed; null while the link is healthy. */
@@ -420,6 +530,10 @@ export class PeerManager {
   public initiateConnection(peerId: string) {
     if (this.destroyed) return;
     this.peerId = peerId;
+    // Bound late: initiateConnection can be the first moment the link learns
+    // its participant id (the router entry must exist before any answer can
+    // find its way back).
+    signalRouter.register(peerId, this);
     diag('webrtc.initiate', true, `to ${(peerId || '').slice(0, 8)}`);
     this.startOfferCycle();
   }
@@ -494,6 +608,8 @@ export class PeerManager {
           signal: { type: 'offer', sdp: this.pc.localDescription.sdp }
         });
         diag('webrtc.offer_sent', true, `to ${(this.peerId || '').slice(0, 8)}`);
+        // (emit targets the participant id; the server resolves it to the
+        // peer's CURRENT socket — the routing is symmetric with incoming.)
       })
       .catch(() => { /* connection may have been torn down */ });
   }
@@ -588,6 +704,7 @@ export class PeerManager {
     setDataChannel(channel);
     channel.onopen = () => {
       this.isRelayFallback = false;
+      this.channelOpenedAt = Date.now();
       diag('webrtc.channel_open', true);
       this.determineConnectionType();
       void this.sendHello();
@@ -598,6 +715,7 @@ export class PeerManager {
     };
     channel.onclose = () => {
       diag('webrtc.channel_closed', true);
+      this.notOpenSince = Date.now();
       // If the PC didn't already record an ICE failure, a closed channel
       // before any open means the SCTP association died — classify it.
       if (!this.lastFailureCode && !this.isRelayFallback) this.lastFailureCode = 'DATA_CHANNEL_FAILED';
@@ -744,16 +862,17 @@ export class PeerManager {
   }
 
   /**
-   * Signaling handler, bound once per manager. The socket is SHARED by every
-   * PeerManager the page ever creates (it is a singleton); handlers no-op via
-   * `destroyed` when a newer manager owns the room, and destroy() removes
-   * exactly this instance's pair — never a blanket socket.off(), which used
-   * to strip a NEWER manager's listeners during reconnect churn and strand
-   * both devices on "Connecting…".
+   * Inbound signaling for THIS link, dispatched by the multi-device router
+   * (signalRouter) by participant id. The old per-instance socket listeners
+   * are gone: with N links alive, a blanket socket.on('signal') delivered
+   * every peer's offers to every manager. `from` still binds an unbound
+   * link (the 1-to-1 flow where the answerer learns its peer from the
+   * first offer).
    */
-  private onSignal = async ({ from, signal }: { from: string; signal: SignalData }) => {
+  public acceptSignal = async ({ from, signal }: { from: string; signal: SignalData }) => {
     if (this.destroyed) return;
     if (!this.peerId) this.peerId = from;
+    if (!signalRouter.has(from, this)) signalRouter.register(from, this);
 
     if (!this.pc) {
       this.createPeerConnection();
@@ -806,17 +925,21 @@ export class PeerManager {
     }
   };
 
-  /** Relay chunks addressed to the CURRENT room — inert once destroyed. */
-  private onRelay = ({ data }: { data: string | ArrayBuffer }) => {
+  /** Relay chunks addressed to THIS link (routed by participant id) — inert
+   *  once destroyed. */
+  public acceptRelay = (data: string | ArrayBuffer) => {
     if (this.destroyed) return;
     void this.handleIncomingData(data);
   };
 
   private setupSocketListeners() {
-    const socket = getSocket();
-
-    socket.on('signal', this.onSignal);
-    socket.on('relay_message', this.onRelay);
+    // Register with the shared multi-device router instead of touching the
+    // socket directly — one socket, N links, frames dispatched by participant
+    // id. A link that does not know its peer yet (the answering side) parks
+    // itself as the router's fallback so the FIRST offer finds a handler;
+    // acceptSignal binds the id and promotes it to a full registration.
+    if (this.peerId) signalRouter.register(this.peerId, this);
+    else signalRouter.registerFallback(this);
 
     // Fallback: if WebRTC never opens within the probe window, switch the
     // connection badge to relay. Only surface the partner as reachable if
@@ -1175,7 +1298,7 @@ export class PeerManager {
       if (this.dc && this.dc.readyState === 'open') {
         this.dc.send(serialized);
       } else {
-        getSocket().emit('relay_message', { roomId: this.roomId, data: serialized });
+        getSocket().emit('relay_message', { roomId: this.roomId, to: this.peerId, data: serialized });
       }
     } catch { /* hello is best-effort */ }
   }
@@ -1215,7 +1338,7 @@ export class PeerManager {
       if (!sentViaDc) {
         this.isRelayFallback = true;
         if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
-        getSocket().emit('relay_message', { roomId: this.roomId, data: serialized });
+        getSocket().emit('relay_message', { roomId: this.roomId, to: this.peerId, data: serialized });
       }
     }
   }
@@ -1271,7 +1394,7 @@ export class PeerManager {
       if (this.dc && this.dc.readyState === 'open') {
         this.dc.send(serialized);
       } else {
-        getSocket().emit('relay_message', { roomId: this.roomId, data: serialized });
+        getSocket().emit('relay_message', { roomId: this.roomId, to: this.peerId, data: serialized });
       }
     } catch { /* cancel is best-effort */ }
   }
@@ -1355,9 +1478,11 @@ export class PeerManager {
     // to the relay for the rest of this transfer instead of hanging forever.
     let wedged = false;
 
-    // Wait for a send slot before opening the pipeline — see TransferSlots.
-    // A cancel that lands while queued is caught right after acquisition.
-    await fileSendSlots.acquire();
+    // Wait for BOTH budgets: the GLOBAL page-wide fan-out ceiling first, then
+    // this link's own per-connection slots. A cancel that lands while queued
+    // is caught right after acquisition.
+    await globalSendSlots.acquire();
+    try { await fileSendSlots.acquire(); } catch (e) { globalSendSlots.release(); throw e; }
     // Local UI: flip the bubble out of 'Waiting…' now that the slot is ours.
     if (this.onLocalQueueStart) this.onLocalQueueStart(transferId);
     // Tell the peer this transfer left the queue and is starting, so their
@@ -1449,7 +1574,7 @@ export class PeerManager {
           setCurrentTransport('relay');
           if (this.onConnectionTypeChange) this.onConnectionTypeChange('relay');
           if (this.onTransportReady) { this.onTransportReady(); this.onTransportReady = null; }
-          getSocket().emit('relay_message', { roomId: this.roomId, data: entry.packet.buffer });
+          getSocket().emit('relay_message', { roomId: this.roomId, to: this.peerId, data: entry.packet.buffer });
         }
 
         sendIdx++;
@@ -1488,6 +1613,7 @@ export class PeerManager {
       productEvent('product.transfer_completed');
       productEvent('product.activation');
     } finally {
+      globalSendSlots.release();
       fileSendSlots.release();
       this.transferControllers.delete(transferId);
       this.pauseSends.delete(transferId);
@@ -1558,6 +1684,77 @@ export class PeerManager {
     await this.sendFile(file, transferId, start);
   }
 
+  /** True once destroy() ran. The room-level manager uses this to decide
+   *  whether a stored link is still usable. */
+  public isDestroyed(): boolean {
+    return this.destroyed;
+  }
+
+  /** Milliseconds since the data channel last left the open state (0 while
+   *  open). Feeds the idle-link reaper — a resource policy, never a cap. */
+  public idleSince(): number {
+    if (this.dc && this.dc.readyState === 'open') return 0;
+    return this.notOpenSince ? Date.now() - this.notOpenSince : Date.now() - this.createdAt;
+  }
+
+  /** Milliseconds since the data channel FIRST opened on this link (0 while
+   *  never opened). Honest per-link readiness for the UI's "ready" label. */
+  public openSince(): number {
+    return this.channelOpenedAt ? Date.now() - this.channelOpenedAt : 0;
+  }
+
+  /** The participant id this link is bound to (null until bound). The session
+   *  layer uses it to recognize when the CLASSIC single-peer link is already
+   *  the direct channel to a participant — reusing it instead of building a
+   *  duplicate parallel link. */
+  public get boundId(): string | null {
+    return this.peerId;
+  }
+
+  /**
+   * Multi-device addressing: point this link's signaling and relay frames at
+   * ONE participant (and tag the room credential on relay frames so the
+   * socket.io server can scope them). Called by the room-level manager right
+   * after construction; a link never negotiates with "whoever is out there".
+   */
+  attach(participantId: string): void {
+    if (this.destroyed) return;
+    this.peerId = participantId;
+    // Bind NOW, not on the first inbound frame: an outbound-initiated link
+    // must be a ROUTED target before the peer's answer arrives. Left
+    // unregistered it sat in the fallback slot, and with two links alive the
+    // second link's answer was misrouted into the first one's negotiation —
+    // the fan-out hang.
+    signalRouter.register(participantId, this);
+  }
+
+  /**
+   * On-demand link warm-up: the sender is about to need this link. Builds the
+   * peer connection and starts the offer cycle if the channel is not already
+   * open; resolves as soon as the channel is usable. Bounded wait — a peer
+   * that never answers fails the send honestly instead of hanging the
+   * composer (the failure is per-recipient, never room-wide).
+   */
+  ensureOpen(timeoutMs = 12000): Promise<boolean> {
+    if (this.destroyed) return Promise.resolve(false);
+    if (this.dc && this.dc.readyState === 'open') return Promise.resolve(true);
+    if (!this.peerId) return Promise.resolve(false);
+    this.startOfferCycle();
+    return new Promise<boolean>((resolve) => {
+      const prev = this.onOpen;
+      const finish = (ok: boolean) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        this.onOpen = prev;
+        resolve(ok);
+      };
+      let settled = false;
+      const timer = setTimeout(() => finish(false), timeoutMs);
+      this.onOpen = () => { prev?.(); finish(true); };
+    });
+  }
+
   /** Test/debug hook — the underlying RTCPeerConnection (never the secret). */
   public getPc(): RTCPeerConnection | null {
     return this.pc;
@@ -1581,16 +1778,14 @@ export class PeerManager {
     if (this.pc) {
       try { this.pc.close(); } catch { /* noop */ }
     }
-    // Detach THIS manager's listeners only. The signal/relay handlers close
-    // over `this` and no-op when a newer manager owns the room, so scoped
-    // removal is exactly equivalent to dropping every handler — without the
-    // side effect of killing a NEWER manager's signaling. The blanket
-    // socket.off() here was the production "reconnect never connects" bug:
-    // teardown of the old PeerManager removed the handlers the freshly
-    // created one needed, so its offers/answers/relay chunks were dropped on
-    // the floor and both devices sat on "Connecting…" forever.
-    const socket = getSocket();
-    socket.off('signal', this.onSignal);
-    socket.off('relay_message', this.onRelay);
+    // Detach THIS link from the shared router only. Other links (multi-device
+    // room) keep their dispatch entries; the socket listeners themselves are
+    // installed once for the whole page.
+    if (this.peerId) signalRouter.unregister(this.peerId, this);
+  }
+
+  /** Test/diagnostic hook — the multi-device signal router singleton. */
+  public static get router() {
+    return signalRouter;
   }
 }

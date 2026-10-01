@@ -166,3 +166,54 @@ parsing re-validates every list entry before render.
 
 Test suite: `npm run test:nearby` (protocol tests incl. existing-flow
 regression, duplicates, withdrawal, seated-device removal, XSS-name handling).
+
+## Multi-device rooms (F13)
+
+A room is NO LONGER a pair. Membership is an explicit, server-authoritative
+ROSTER; direct data links exist only between pairs that actually exchange
+data (link-on-demand — there is deliberately NO full mesh, and NO product
+participant cap; the internal seat guard exists solely as a server abuse
+limit, invisible in the product).
+
+### Identity
+
+Every member holds a stable `participantId` (UUIDv4): minted client-side
+(`sharetext.deviceId`, room-scoped, capped at 20 rooms), confirmed in the
+join/resume ack (`myParticipantId`), and echoed by every delta. A refresh
+RECLAIMS the same seat (`resume_room` with the pid → `reclaimed`), so churn
+never duplicates a member.
+
+### Events (additions)
+
+| Event | Direction | Payload | Notes |
+|---|---|---|---|
+| `create_room` / `join_with_code` / `join_with_link` / `resume_room` | c→s | `{ ..., pid }` | The client's stable participant id. |
+| ack of the above | s→c | `{ ..., myParticipantId, roster: { participants, seq } }` | Authoritative seat + full roster snapshot. |
+| `peer_joined` | s→others | `{ peerId, participant, roster, initiatorId }` | Roster DELTA. `initiatorId` = most senior member (joinedAt, tie by id) — deterministic, both sides compute the same answer. |
+| `peer_recovered` | s→others | `{ peerId, roster }` | Same logical device came back (reclaimed seat). Survivors re-establish their links; the recovered device answers. |
+| `peer_disconnected` | s→room | `{ peerId, remaining }` | CONFIRMED leave (grace elapsed / clean leave). Isolates to that participant's row — never a room-wide teardown. |
+| `signal` / `relay_message` | c→s | `{ ..., to: participantId }` | Addressed per-link. The client's signal router dispatches strictly by participant id; an unknown sender's frame goes only to a parked answering link — never to "whatever link exists". |
+
+### Link discipline
+
+Joining a room of N opens ZERO WebRTC connections (the picker warms an
+ANSWERING link only after the first deliberate selection; senders open
+senders' links on demand at send time). A 10-device room where one device
+sends to two others holds exactly two links on the sender and zero on the
+other seven. Two-device rooms keep the classic immediate-connect flow —
+the common case must not regress.
+
+### Transfer semantics
+
+One send to N recipients is ONE logical message with N independent
+per-recipient transfers (`Attachment.recipients[]` / `ChatMessage.textRecipients[]`,
+fresh wire id per recipient, shared checksum). A bounded bulk-lane scheduler
+(3 concurrent bulk legs, unbounded control lane) admits every recipient —
+queued, never stamped — and partial success is first-class: per-recipient
+retry/cancel, failures isolated to their row.
+
+### Disconnect grace
+
+A dropped socket HOLDS the seat for 60s (UI stays calm); recovery reclaims
+it silently. After the grace, `peer_disconnected` marks the row offline and
+destroys only that pair's links.

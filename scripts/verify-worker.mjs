@@ -129,27 +129,39 @@ async function runRoomProtocol() {
   const room = new Room(ctx, makeEnv());
 
   // create → WAITING
+  const SECOND_PID = 'pid-second-device-00000000';
   const creator = await connect(room, roomId);
-  const created = await creator.send('create_room');
+  const created = await creator.send('create_room', { pid: 'pid-creator-device-00000000' });
   check('create_room ack', created.success === true && created.roomId === roomId, `room ${String(created.roomId).slice(0, 8)}`);
+  check('creator roster + stable pid in ack', created.myParticipantId === 'pid-creator-device-00000000' && created.roster?.participants?.length === 1);
   const secret = created.secret;
   assertState(ctx, 'WAITING');
 
-  // join → CONNECTED + peer_joined
+  // join → CONNECTED + peer_joined (the delta now carries a stable participant
+  // id, the roster snapshot, and the deterministic initiator pick)
   const code = codeFor(secret, created.createdAt);
   const joiner = await connect(room, roomId);
-  const joined = await joiner.send('join_with_code', { code });
+  const joined = await joiner.send('join_with_code', { code, pid: SECOND_PID });
   check('join_with_code ack', joined.success === true && joined.roomId === roomId);
   const peerJoined = await creator.waitFor((m) => m.type === 'event' && m.event === 'peer_joined');
   check('creator receives peer_joined', !!peerJoined?.peerId, `peer ${String(peerJoined?.peerId).slice(0, 8)}`);
-  const joinerCid = peerJoined.peerId;
+  const joinerCid = SECOND_PID; // the delta now speaks participant ids
+  check('delta carries the stable participant id', peerJoined?.peerId === SECOND_PID);
+  check('delta carries the roster snapshot + initiator', Array.isArray(peerJoined?.roster?.participants) && peerJoined.roster.participants.length === 2 && peerJoined.initiatorId === 'pid-creator-device-00000000');
+  check('joiner ack carries the roster snapshot', joined.roster?.participants?.length === 2 && joined.myParticipantId === SECOND_PID);
   assertState(ctx, 'CONNECTED');
 
-  // signal forwarding
+  // signal forwarding — addressed by PARTICIPANT id now (the modern wire form)
   const sigPromise = creator.waitFor((m) => m.type === 'event' && m.event === 'signal');
-  await joiner.send('signal', { to: creator.cid, signal: { type: 'offer', sdp: 'v=0 fake sdp' } });
+  await joiner.send('signal', { to: SECOND_PID === 'pid-second-device-00000000' ? 'pid-creator-device-00000000' : SECOND_PID, signal: { type: 'offer', sdp: 'v=0 fake sdp' } });
   const sig = await sigPromise;
-  check('signal forwarded to creator', sig?.from === joinerCid && sig?.signal?.type === 'offer');
+  check('signal forwarded to creator (pid-addressed)', sig?.from === SECOND_PID && sig?.signal?.type === 'offer');
+  // Legacy addressing (raw cid) must still resolve — a stale client that
+  // echoes socket ids must not silently lose signaling.
+  const sig2Promise = joiner.waitFor((m) => m.type === 'event' && m.event === 'signal');
+  await creator.send('signal', { to: joiner.cid, signal: { type: 'answer', sdp: 'v=0 fake answer' } });
+  const sig2 = await sig2Promise;
+  check('signal forwarded with legacy cid addressing', sig2?.from === 'pid-creator-device-00000000' && sig2?.signal?.type === 'answer');
 
   // relay text → TRANSFERRING. Payload must look like ciphertext (the OWASP
   // message-validation gate rejects non-base64 broadcast attempts).
@@ -200,11 +212,19 @@ async function runRoomProtocol() {
   const forwardedAfterFlood = joiner.inbox.length - before;
   check('frame flood throttled (≤60 forwarded of 80)', forwardedAfterFlood <= 61, `forwarded ${forwardedAfterFlood}`);
 
-  // third device → ROOM_FULL
+  // multi-device: a THIRD device joins the same room — the roster grows,
+  // there is no product-level participant cap.
   const third = await connect(room, roomId);
-  const thirdRes = await third.send('join_with_code', { code });
-  check('third device rejected with ROOM_FULL', thirdRes.success === false && thirdRes.code === 'ROOM_FULL', thirdRes.error);
+  const thirdRes = await third.send('join_with_code', { code, pid: 'pid-third-device-00000000' });
+  check('third device joins the same room (no product cap)', thirdRes.success === true && thirdRes.myParticipantId === 'pid-third-device-00000000', thirdRes.error);
+  check('roster holds all three participants', (ctx.storage.map.get('room')?.participants?.length ?? 0) === 3);
+  // A FORGED roster claim — reusing another device's pid — is just a seat
+  // reclaim (the room secret gates every action): the roster must not grow.
+  const fourth = await connect(room, roomId);
+  const fourthRes = await fourth.send('join_with_code', { code, pid: 'pid-third-device-00000000' });
+  check('reused pid reclaims the seat (roster stays 3)', fourthRes.success === true && (ctx.storage.map.get('room')?.participants?.length ?? 0) === 3);
   third.close();
+  fourth.close();
 
   // wrong code → INVALID_CODE; then brute-force → RATE_LIMITED
   const wrongCode = await connect(room, roomId);
@@ -224,29 +244,33 @@ async function runRoomProtocol() {
   await room.webSocketClose(joiner.server);
   const early = await discPromise;
   check('no immediate peer_disconnected during grace', !early);
-  assertState(ctx, 'TRANSFERRING');
+  // TRANSFERRING is a transient relay-activity marker — any join/resume
+  // recompute from the live roster lands back on CONNECTED.
+  assertState(ctx, 'CONNECTED');
 
-  // resume with the same cid within the grace window → seat reclaimed
+  // resume with the same pid within the grace window → seat reclaimed
   // silently (peer_recovered, not peer_joined)
   const preSt = ctx.storage.map.get('room');
-  console.log('  [dbg] pre-resume: peerA', preSt.peerA?.slice(0,8), 'peerB', preSt.peerB?.slice(0,8), 'grace keys', preSt.grace ? Object.keys(preSt.grace).length : 0, 'joinerCid', joinerCid?.slice(0,8));
+  console.log('  [dbg] pre-resume: members', preSt.participants?.length, 'grace keys', preSt.grace ? Object.keys(preSt.grace).length : 0);
   const rejoiner = await connect(room, roomId, joinerCid);
-  const resumed = await rejoiner.send('resume_room', { roomId, secret });
+  const resumed = await rejoiner.send('resume_room', { roomId, secret, pid: SECOND_PID });
   check('resume_room ack', resumed.success === true);
   const recovered = await creator.waitFor((m) => m.type === 'event' && m.event === 'peer_recovered');
-  check('creator sees peer_recovered (silent reconnect)', recovered?.peerId === joinerCid);
+  check('creator sees peer_recovered (stable participant id)', recovered?.peerId === SECOND_PID);
   assertState(ctx, 'CONNECTED');
-  check('seat reclaimed by the same cid', ctx.storage.map.get('room')?.peerB === joinerCid);
+  check('seat reclaimed by the same participant id', ctx.storage.map.get('room')?.participants?.some((p) => p.pid === SECOND_PID && p.cid === rejoiner.cid));
   // waitFor re-scans the whole inbox — the initial peer_joined is still in
   // it, so look only at messages received AFTER the peer_recovered event.
   const recoveredIdx = creator.inbox.findIndex((m) => m.type === 'event' && m.event === 'peer_recovered');
   const noJoinNoise = creator.inbox.slice(recoveredIdx + 1).find((m) => m.type === 'event' && m.event === 'peer_joined');
   check('recovery does not emit a redundant peer_joined', !noJoinNoise);
 
-  // A different device cannot steal the grace-held seat
+  // A device WITHOUT the room secret cannot enter — grace or not, the
+  // secret is the credential (there is no seat to "steal": membership is
+  // pid-keyed, and the roster guard is the only cap).
   const intruder = await connect(room, roomId);
-  const intruderRes = await intruder.send('resume_room', { roomId, secret });
-  check('stranger cannot steal the seat within grace', intruderRes.success === false && intruderRes.code === 'ROOM_FULL', intruderRes.error);
+  const intruderRes = await intruder.send('resume_room', { roomId, secret: 'WRONG-SECRET-WRONG-SECRET-1' });
+  check('stranger cannot enter without the secret', intruderRes.success === false, intruderRes.error);
   intruder.close();
 
   // manual close → room_closed to both; storage cleared
@@ -320,13 +344,14 @@ async function runLiveIdleExpiry() {
 }
 
 async function runDisconnectedState() {
+  const SECOND_PID = 'pid-second-device-00000000';
   const roomId = uuid();
   const ctx = new FakeCtx();
   const room = new Room(ctx, makeEnv());
   const a = await connect(room, roomId);
-  const created = await a.send('create_room');
+  const created = await a.send('create_room', { pid: 'pid-creator-device-00000000' });
   const joiner = await connect(room, roomId);
-  await joiner.send('join_with_code', { code: codeFor(created.secret, created.createdAt) });
+  await joiner.send('join_with_code', { code: codeFor(created.secret, created.createdAt), pid: SECOND_PID });
   assertState(ctx, 'CONNECTED');
 
   // Grace: a closed seat is HELD for 60s (tab refresh / network blip must not
@@ -334,7 +359,7 @@ async function runDisconnectedState() {
   a.client.close(1000, 'test');
   await room.webSocketClose(a.server);
   assertState(ctx, 'CONNECTED');
-  check('creator seat grace-held', (ctx.storage.map.get('room')?.grace?.[a.cid] ?? 0) > Date.now());
+  check('creator seat grace-held', (ctx.storage.map.get('room')?.grace?.['pid-creator-device-00000000'] ?? 0) > Date.now());
   joiner.client.close(1000, 'test');
   await room.webSocketClose(joiner.server);
   assertState(ctx, 'CONNECTED');
@@ -345,7 +370,7 @@ async function runDisconnectedState() {
   const fresh = new Room(ctx, makeEnv());
   await fresh.alarm();
   assertState(ctx, 'DISCONNECTED');
-  check('evicted seats cleared', ctx.storage.map.get('room')?.peerA === null && ctx.storage.map.get('room')?.peerB === null);
+  check('evicted seats cleared', (ctx.storage.map.get('room')?.participants?.length ?? 1) === 0 && !ctx.storage.map.get('room')?.grace);
 
   // Empty room expires via alarm (no peers to notify) once past its TTL.
   // A fresh instance reads the back-dated state from storage — the cached
@@ -464,7 +489,7 @@ async function runFreshCidRejoin() {
   const fresh = await connect(room, roomId);
   const resumed = await fresh.send('resume_room', { roomId, secret });
   check('rejoin: fresh cid + correct secret enters empty room', resumed.success === true, resumed.error || '');
-  check('rejoin: room seated again', ctx.storage.map.get('room')?.peerA != null || ctx.storage.map.get('room')?.peerB != null);
+  check('rejoin: room seated again', (ctx.storage.map.get('room')?.participants?.length ?? 0) >= 1);
   // ...and the security half: a WRONG secret still gets nothing.
   const intruder = await connect(room, roomId);
   const denied = await intruder.send('resume_room', { roomId, secret: 'WRONG-SECRET-WRONG-SECRET-1' });

@@ -31,6 +31,15 @@ import { sanitizeFilename } from '../utils';
 import { recordTransferBytes } from '../pairing';
 import { normalizePastedText } from '../textFidelity';
 import { sha256Hex } from './fileIntegrity';
+// Multi-device fan-out: one logical share → N independent per-recipient
+// transfers, scheduled through a bounded bulk-lane scheduler so a big send
+// never opens dozens of encryption pipelines at once (and text keeps its
+// own fast lane).
+import { TransferScheduler } from '../transferScheduler';
+import { roomRoster } from '../roomRoster';
+import type { RecipientTransfer } from '../../types';
+/** Partial patch shape for one recipient's state row. */
+type RecipientTransferPatch = RecipientTransfer;
 
 export interface MessageEngineDeps {
   setSession: Dispatch<SetStateAction<SessionState>>;
@@ -41,10 +50,20 @@ export interface MessageEngineDeps {
   getPeer: () => PeerManager | null;
   /** Seen confirmation gated on page visibility (session/seenReceipts.ts). */
   sendSeenWhenVisible: (send: () => void) => void;
+  /** Multi-device: recipients for the next send (participant ids), and a
+   *  per-participant link resolver. Absent/empty in the classic 1-to-1
+   *  flow, which keeps its exact existing behavior. */
+  getRecipients?: () => string[];
+  ensureLink?: (participantId: string) => Promise<boolean>;
 }
 
 export interface MessageEngine {
   updateMessageAttachment(messageId: string, updates: Partial<NonNullable<ChatMessage['attachment']>>): void;
+  /** Retry ONE failed recipient of a multi-recipient message (never resends
+   *  to recipients that already succeeded). */
+  retryRecipient(messageId: string, recipientId: string): Promise<void>;
+  /** Cancel ONE recipient's leg (others keep moving). */
+  cancelRecipient(messageId: string, recipientId: string): void;
   /** Assign the message/transfer callbacks onto a PeerManager. */
   wirePeerHandlers(pm: PeerManager): void;
   /** Channel-open consequences: resume interrupted transfers, then honest
@@ -61,10 +80,29 @@ export interface MessageEngine {
   transferSpeedFor(transferId: string): { bytesPerSec: number; etaSec: number | null } | null;
   /** Clear all per-session runtime maps (reset path). */
   clearRuntimeState(): void;
+  /** Bind the room's PeerConnectionManager (multi-device fan-out routing).
+   *  Pass null on room teardown to restore pure classic routing. */
+  setPcm(pcm: { get(participantId: string): PeerManager | null } | null): void;
 }
-
 export function useMessageEngine(deps: MessageEngineDeps): MessageEngine {
   const { setSession, getMessages, getRenderMessages, getPeer, sendSeenWhenVisible } = deps;
+  const getRecipients = deps.getRecipients ?? (() => []);
+  const ensureLink = deps.ensureLink ?? (async () => false);
+  /** Multi-device room manager accessor — resolved lazily so the engine can
+   *  route per-recipient legs to their own PeerManager links. MUST be a ref,
+   *  not a render-scoped `let`: a plain variable is re-created (null) on
+   *  every render, silently discarding the provider's setPcm assignment and
+   *  falling every fan-out leg back onto the classic single peer — recipient
+   *  2+ then never receives anything while the sender's strip claims
+   *  success. Null in the classic flow. */
+  const getPcmRef = useRef<{ get(participantId: string): PeerManager | null } | null>(null);
+  /** Assigns the room's manager (see the note above). Writes the REF — the
+   *  assignment survives every render. */
+  const setPcm = (pcm: { get(participantId: string): PeerManager | null } | null) => { getPcmRef.current = pcm; };
+  /** The fan-out scheduler lives per engine instance; a lane budget of 3
+   *  bulk jobs matches the page's global send-slot budget. CONTROL jobs
+   *  (text) are unbounded by design. */
+  const schedulerRef = useRef(new TransferScheduler(3));
 
   // Last-published progress per transfer, for throttling onFileProgress.
   const progressRef = useRef<Map<string, number>>(new Map());
@@ -556,8 +594,172 @@ export function useMessageEngine(deps: MessageEngineDeps): MessageEngine {
     }
   };
 
+  /**
+   * MULTI-RECIPIENT SEND. One user action = ONE logical share that fans out
+   * to N recipients, each with its own real state (partial success is
+   * first-class). The source work is shared: one File, one checksum, one
+   * metadata template; only the wire transfer id and delivery state are per
+   * recipient (fresh UUID per recipient so reassembly/cancel/retry stay
+   * independently addressable). The scheduler's bounded bulk lane provides
+   * the controlled fan-out — 30 recipients queue, they don't stampede.
+   * Receivers are UNAWARE of the fan-out: each gets the ordinary 1-to-1
+   * message shape.
+   */
+  const sendToRecipients = async (
+    text: string,
+    attachment: ChatMessage['attachment'],
+    file: File | undefined,
+    recipientIds: string[],
+  ): Promise<void> => {
+    const msgId = crypto.randomUUID();
+    const baseAttachment = attachment
+      ? { ...attachment, status: file ? ('preparing' as const) : ('complete' as const), url: undefined }
+      : undefined;
+    const perRecipient = new Map(recipientIds.map(id => [id, {
+      recipientId: id,
+      state: 'pending' as const,
+      progress: 0,
+    }]));
+    const transferIds: Record<string, string> = {};
+    for (const id of recipientIds) transferIds[id] = crypto.randomUUID();
+
+    const msg: ChatMessage = {
+      id: msgId,
+      sender: 'me',
+      text,
+      timestamp: Date.now(),
+      attachment: baseAttachment
+        ? { ...baseAttachment, recipients: [...perRecipient.values()], transferIds }
+        : undefined,
+      textRecipients: baseAttachment ? undefined : [...perRecipient.values()],
+    };
+
+    if (file && attachment) {
+      pendingFilesRef.current.set(msgId, file);
+      if (pendingFilesRef.current.size > 20) {
+        const oldest = pendingFilesRef.current.keys().next().value;
+        if (oldest !== undefined) pendingFilesRef.current.delete(oldest);
+      }
+    }
+    setSession(s => ({ ...s, messages: [...s.messages, msg] }));
+    if (file && attachment) {
+      updateMessageAttachment(msgId, { url: URL.createObjectURL(file) });
+    }
+
+    const setRecipientState = (rid: string, patch: Partial<RecipientTransferPatch>) => {
+      setSession(s => ({
+        ...s,
+        messages: s.messages.map(m => {
+          if (m.id !== msgId) return m;
+          const recs = m.attachment?.recipients ?? m.textRecipients;
+          if (!recs) return m;
+          const next = recs.map(r => r.recipientId === rid ? { ...r, ...patch } : r);
+          return m.attachment
+            ? { ...m, attachment: { ...m.attachment, recipients: next } }
+            : { ...m, textRecipients: next };
+        })
+      }));
+    };
+
+    // One honest checksum, computed once for all recipients.
+    let checksum: string | undefined;
+    if (file && attachment) {
+      void sha256Hex(file).then(c => {
+        checksum = c;
+        updateMessageAttachment(msgId, { checksum: c });
+        for (const rid of recipientIds) {
+          const pm = getPeerForRecipient(rid);
+          void pm?.sendFileHash(transferIds[rid], c);
+        }
+      }).catch(() => { /* per-recipient transfer reports its own failure */ });
+    }
+
+    await Promise.all(recipientIds.map(async (rid) => {
+      setRecipientState(rid, { state: file ? 'waiting' : 'sending', startedAt: Date.now() });
+      const ok = await schedulerRef.current.enqueue({
+        opId: msgId,
+        recipientId: rid,
+        // Text = control lane (fast, tiny); files = bulk lane (bounded).
+        lane: file ? 'bulk' : 'control',
+        run: async () => {
+          const pm = await getOrCreateLink(rid);
+          if (!pm) {
+            setRecipientState(rid, { state: 'failed', error: 'unavailable', completedAt: Date.now(), retryable: true });
+            return;
+          }
+          const wireId = transferIds[rid];
+          const myAttachment = baseAttachment
+            ? { ...baseAttachment, id: wireId, checksum, url: undefined }
+            : undefined;
+          const payloadMsg: ChatMessage = { ...msg, id: msgId, sender: 'partner', attachment: myAttachment, textRecipients: undefined };
+          try {
+            await pm.send(JSON.stringify(payloadMsg));
+            if (file && attachment) {
+              // The receiver registers by attachment.id — which is now the
+              // recipient's fresh wire id.
+              await pm.sendFile(file, wireId);
+            }
+            setRecipientState(rid, { state: 'sent', progress: 1, completedAt: Date.now() });
+          } catch (e) {
+            if (e instanceof TransferCancelledError) {
+              setRecipientState(rid, { state: 'cancelled', completedAt: Date.now() });
+            } else {
+              setRecipientState(rid, { state: 'failed', error: (e as Error)?.message?.slice(0, 80), completedAt: Date.now(), retryable: true });
+            }
+          }
+        },
+      });
+      if (!ok) setRecipientState(rid, { state: 'cancelled', completedAt: Date.now() });
+    }));
+    // Durable copies only matter for retry; keep them (pendingFilesRef) —
+    // per-recipient retries below reuse the same File.
+  };
+
+  /** Resolve the link for one recipient through the multi-device manager.
+   *  Returns the classic single peer in the 1-to-1 flow. When the classic
+   *  peer is BOUND to this recipient (its `boundId` matches), it IS the
+   *  direct channel — reuse it rather than building a duplicate parallel
+   *  link to the same device. */
+  const getPeerForRecipient = (rid: string): PeerManager | null => {
+    const single = getPeer();
+    if (single && !single.isDestroyed() && single.boundId === rid) return single;
+    if (single && !getPcmRef.current) return single;
+    return getPcmRef.current?.get(rid) ?? null;
+  };
+
+  /** Open (or reuse) the link to one recipient before a fan-out leg. */
+  const getOrCreateLink = async (rid: string): Promise<PeerManager | null> => {
+    const existing = getPeerForRecipient(rid);
+    if (existing) {
+      const ok = await existing.ensureOpen().catch(() => false);
+      if (ok) return existing;
+    }
+    const ok = await ensureLink(rid);
+    if (!ok) return null;
+    return getPcmRef.current?.get(rid) ?? null;
+  };
+
   const sendMessage = async (rawText: string, attachment?: ChatMessage['attachment'], file?: File, batchIndex = 0) => {
     const pm = getPeer();
+    // Multi-recipient path: any targeted leg in a 3+ device room goes through
+    // the fan-out scheduler (1 selected → targeted; none → every other live
+    // device; 2+ → the chosen set). Only the classic TWO-device room keeps
+    // the direct single-peer flow EXACTLY as it was (fast path, no scheduling
+    // overhead — the common case must not regress). Defaulting here — not in
+    // the UI — means a send in a seated multi-device room can never depend on
+    // the picker having been opened, and can never silently no-op on a
+    // deferred classic link.
+    const rids = getRecipients().filter(id => id !== roomRoster.selfParticipantId);
+    const multiRoom = roomRoster.size > 2;
+    if (multiRoom && rids.length === 0) {
+      for (const e of roomRoster.otherEntries()) {
+        if (e.link !== 'offline') rids.push(e.id);
+      }
+    }
+    if (multiRoom && rids.length >= 1) {
+      await sendToRecipients(normalizePastedText(rawText), attachment, file, rids);
+      return;
+    }
     if (!pm) return;
     // Text fidelity: normalize ONCE on the sender so both devices hold the
     // exact same JS string. Valid text (emoji, RTL, tabs, CRLF, all unicode)
@@ -830,6 +1032,97 @@ export function useMessageEngine(deps: MessageEngineDeps): MessageEngine {
     pushBuffersRef.current.clear();
   }, []);
 
+  /**
+   * Retry ONE failed recipient of a multi-recipient message. The content is
+   * resent ONLY to this recipient — a fresh wire transfer id is minted so
+   * the receiver's reassembly is clean; recipients that already succeeded
+   * are never touched (idempotent by recipient id on the logical message).
+   */
+  const retryRecipient = async (messageId: string, recipientId: string): Promise<void> => {
+    const msg = getRenderMessages().find(m => m.id === messageId);
+    if (!msg) return;
+    const recs = msg.attachment?.recipients ?? msg.textRecipients;
+    const rec = recs?.find(r => r.recipientId === recipientId);
+    if (!rec || (rec.state !== 'failed' && rec.state !== 'cancelled')) return;
+    const setRecipientState = (patch: Partial<RecipientTransferPatch>) => {
+      setSession(s => ({
+        ...s,
+        messages: s.messages.map(m => {
+          if (m.id !== messageId) return m;
+          const rs = m.attachment?.recipients ?? m.textRecipients;
+          if (!rs) return m;
+          const next = rs.map(r => r.recipientId === recipientId ? { ...r, ...patch } : r);
+          return m.attachment
+            ? { ...m, attachment: { ...m.attachment, recipients: next } }
+            : { ...m, textRecipients: next };
+        })
+      }));
+    };
+    setRecipientState({ state: 'waiting', progress: 0, error: undefined, startedAt: Date.now() });
+    const file = msg.attachment ? pendingFilesRef.current.get(messageId) : undefined;
+    const ok = await schedulerRef.current.enqueue({
+      opId: messageId + ':' + recipientId,
+      recipientId,
+      lane: file ? 'bulk' : 'control',
+      run: async () => {
+        const pm = await getOrCreateLink(recipientId);
+        if (!pm) {
+          setRecipientState({ state: 'failed', error: 'unavailable', completedAt: Date.now(), retryable: true });
+          return;
+        }
+        const wireId = crypto.randomUUID();
+        setSession(s => ({
+          ...s,
+          messages: s.messages.map(m => {
+            if (m.id !== messageId || !m.attachment?.transferIds) return m;
+            return { ...m, attachment: { ...m.attachment, transferIds: { ...m.attachment.transferIds, [recipientId]: wireId } } };
+          })
+        }));
+        const myAttachment = msg.attachment
+          ? { ...msg.attachment, id: wireId, url: undefined, recipients: undefined, transferIds: undefined }
+          : undefined;
+        const payloadMsg: ChatMessage = { ...msg, sender: 'partner', attachment: myAttachment, textRecipients: undefined };
+        try {
+          await pm.send(JSON.stringify(payloadMsg));
+          if (file && myAttachment) await pm.sendFile(file, wireId);
+          setRecipientState({ state: 'sent', progress: 1, completedAt: Date.now() });
+        } catch (e) {
+          if (e instanceof TransferCancelledError) {
+            setRecipientState({ state: 'cancelled', completedAt: Date.now() });
+          } else {
+            setRecipientState({ state: 'failed', error: (e as Error)?.message?.slice(0, 80), completedAt: Date.now(), retryable: true });
+          }
+        }
+      },
+    });
+    if (!ok) setRecipientState({ state: 'cancelled', completedAt: Date.now() });
+  };
+
+  /** Cancel ONE recipient's leg of a multi-recipient message. Other legs
+   *  keep moving; a slow device never holds the others hostage. */
+  const cancelRecipient = (messageId: string, recipientId: string): void => {
+    schedulerRef.current.cancelOp(messageId + ':' + recipientId);
+    schedulerRef.current.cancelOp(messageId);
+    const pm = getPeerForRecipient(recipientId);
+    const msg = getRenderMessages().find(m => m.id === messageId);
+    const wireId = msg?.attachment?.transferIds?.[recipientId];
+    if (pm && wireId) pm.cancelTransfer(wireId);
+    setSession(s => ({
+      ...s,
+      messages: s.messages.map(m => {
+        if (m.id !== messageId) return m;
+        const rs = m.attachment?.recipients ?? m.textRecipients;
+        if (!rs) return m;
+        const next = rs.map(r => r.recipientId === recipientId && (r.state === 'pending' || r.state === 'waiting' || r.state === 'sending')
+          ? { ...r, state: 'cancelled' as const, completedAt: Date.now() }
+          : r);
+        return m.attachment
+          ? { ...m, attachment: { ...m.attachment, recipients: next } }
+          : { ...m, textRecipients: next };
+      })
+    }));
+  };
+
   return {
     updateMessageAttachment,
     wirePeerHandlers,
@@ -843,5 +1136,8 @@ export function useMessageEngine(deps: MessageEngineDeps): MessageEngine {
     resumeTransferById,
     transferSpeedFor,
     clearRuntimeState,
+    setPcm,
+    retryRecipient,
+    cancelRecipient,
   };
 }

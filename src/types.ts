@@ -1,5 +1,34 @@
 export type ConnectionType = 'connecting' | 'local' | 'direct' | 'relay' | 'disconnected' | 'waiting';
 
+/** Per-device link state mirrored into React for the device picker/roster UI.
+ *  Membership (being in the room) is separate from link health — a device
+ *  can be a room member with no open link, and one link failing says
+ *  nothing about the others. */
+export type DeviceLinkState = 'none' | 'connecting' | 'connected' | 'reconnecting' | 'offline' | 'failed';
+
+export interface PeerDevice {
+  id: string;
+  name: string;
+  platform: string;
+  joinedAt: number;
+  link: DeviceLinkState;
+  isSelf: boolean;
+}
+
+/** Delivery state of ONE recipient's copy of a multi-recipient send. The
+ *  overall operation is a partial-success first-class object: some
+ *  recipients succeed while others fail or stay pending — the room is never
+ *  globally "failed" because one device dropped. */
+export interface RecipientTransfer {
+  recipientId: string; // stable participant id
+  state: 'pending' | 'waiting' | 'sending' | 'sent' | 'failed' | 'cancelled';
+  progress?: number; // 0..1 real byte progress
+  startedAt?: number;
+  completedAt?: number;
+  error?: string;
+  retryable?: boolean;
+}
+
 export interface Attachment {
   id: string; // unique transfer id
   type: 'image' | 'file' | 'video' | 'audio'; // maps onto protocol ObjectType (see lib/protocol.ts)
@@ -28,6 +57,13 @@ export interface Attachment {
    *  'checksum-mismatch' = the bytes arrived but don't match the original
    *  (corruption mid-flight) — retry restarts the transfer from zero. */
   note?: 'resend-unavailable' | 'checksum-mismatch';
+  /** Multi-recipient fan-out (sender side): one sub-transfer per recipient,
+   *  each with its OWN real state. `transferIds` maps participant id → the
+   *  fresh wire transfer id that recipient receives (fresh per recipient so
+   *  reassembly/cancel/retry stay per-device addressable). Absent on a
+   *  plain 1-to-1 send and on every receiver-side card. */
+  recipients?: RecipientTransfer[];
+  transferIds?: Record<string, string>;
 }
 
 export interface ChatMessage {
@@ -44,6 +80,9 @@ export interface ChatMessage {
    *  say "Couldn't send" honestly and offer Retry (attachments use
    *  attachment.status instead). */
   delivery?: 'failed';
+  /** Multi-recipient TEXT delivery: per-recipient receipt states (sender
+   *  side only). `delivered`/`seen` stay the single-recipient story. */
+  textRecipients?: RecipientTransfer[];
   /** True only after the OTHER device confirms (via encrypted receipt) that
    *  this message actually arrived. Set by the sender; never guessed. */
   delivered?: boolean;
@@ -76,6 +115,13 @@ export interface SessionState {
    *  explicitly disconnects. Server exempts the room from expiry; both sides
    *  show the badge, and the landing page offers one-tap re-entry. */
   stayConnected: boolean;
+  /** Multi-device room roster (this device INCLUDED, isSelf marks it).
+   *  Mirrored from the authoritative RoomRoster store; absent in legacy
+   *  snapshots → the UI falls back to the two-device model. */
+  peers?: PeerDevice[];
+  /** Recipients the composer will send to (participant ids, this device
+   *  excluded). Empty = classic single-partner room. */
+  recipients?: string[];
   /** Credentials for the last Stay Connected room this device was in, kept
    *  after a normal disconnect so the landing page can offer re-entry with
    *  history. Cleared when the user explicitly closes the room. */

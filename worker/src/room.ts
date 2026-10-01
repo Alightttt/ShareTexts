@@ -49,13 +49,47 @@ const STAY_EMPTY_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** Explicit room lifecycle. No scattered booleans. */
 export type RoomPhase =
-  | 'WAITING'      // created, one peer seated
-  | 'CONNECTED'    // two peers paired
+  | 'WAITING'      // created, one participant seated
+  | 'CONNECTED'    // two or more participants seated
   | 'TRANSFERRING' // data is moving through this room (relay activity observed)
   | 'DISCONNECTED' // a peer left; rejoin window
   | 'CLOSING'      // manual close in progress
   | 'EXPIRED'      // idle-timeout fired
   | 'CLOSED';      // terminal; storage deleted
+
+/** One member of a multi-device room. `pid` is the room-scoped stable
+ *  participant id (client-provided AFTER the room credential check — never a
+ *  display name); `cid` is its CURRENT socket. A returning device reclaims
+ *  its pid, so refreshes never duplicate roster entries. */
+interface Participant {
+  pid: string;         // stable room-scoped participant id
+  cid: string;         // current live connection (socket) id
+  name: string;        // display hint only — never identity
+  platform: string;    // 'phone' | 'tablet' | 'desktop'
+  joinedAt: number;    // membership start; also the deterministic initiator tiebreak
+}
+
+/** Internal abuse guard on roster size — a resource policy, NOT a product
+ *  cap: no user surface ever mentions a limit. Matches server.ts. */
+const MAX_PARTICIPANTS = 64;
+
+/** The wire shape of a roster entry — nothing sensitive. */
+function rosterOf(participants: Participant[]) {
+  return participants
+    .slice()
+    .sort((a, b) => a.joinedAt - b.joinedAt)
+    .map((p) => ({ id: p.pid, name: p.name, platform: p.platform, joinedAt: p.joinedAt }));
+}
+
+/** Deterministic WebRTC initiator for a roster: the most senior member
+ *  (earliest join), ties broken by id so every device computes the same
+ *  answer without negotiation. The initiator offers to NEW members when a
+ *  link is needed; every OTHER pair connects on demand (never a full mesh). */
+function initiatorOf(participants: Participant[]): string | null {
+  if (participants.length === 0) return null;
+  const sorted = participants.slice().sort((a, b) => a.joinedAt - b.joinedAt || (a.pid < b.pid ? -1 : 1));
+  return sorted[0].pid;
+}
 
 interface RoomState {
   roomId: string;
@@ -68,9 +102,14 @@ interface RoomState {
   codeAnchor: number;
   lastActive: number;
   expiresAt: number;
-  peerA: string | null; // connection ids (cid)
-  peerB: string | null;
-  /** cid → grace deadline (ms). Seats whose socket closed recently; cleared on
+  /** AUTHORITATIVE multi-device membership. A room may hold any number of
+   *  participants — there is deliberately NO product cap (the internal
+   *  MAX_PARTICIPANTS guard is abuse control, not a limit we surface). */
+  participants: Participant[];
+  /** Monotonic roster version — bumped on every membership mutation so
+   *  clients can reject stale/out-of-order roster deltas. */
+  rosterSeq: number;
+  /** pid → grace deadline (ms). Seats whose socket closed recently; cleared on
    *  return or when the alarm finalizes the eviction. */
   grace?: Record<string, number>;
   codeFails: number;
@@ -90,7 +129,7 @@ interface RoomState {
    *  meaning: only a device that was PART of the room ends it for everyone. */
   stayOwner?: string | null;
   /** Remembered membership across empty-room phases: when a Stay Connected
-   *  room has both seats empty, the last two cids are kept here (persisted
+   *  room has every seat empty, the member pids are kept here (persisted
    *  with the room) so a returning device is recognized as a member, and so
    *  a random third device cannot close the promise room. Snapshot on
    *  enable; survives hibernation because it lives on RoomState. */
@@ -234,6 +273,14 @@ export class Room extends DurableObject<Env> {
   /** Per-connection abuse buckets — in-memory only (see FrameBucket). */
   private frameBuckets = new Map<string, FrameBucket>();
 
+  /** The `to` participant id carried on the most recent TEXT frame — binary
+   *  relay chunks carry no envelope, so the addressing of the text frame that
+   *  preceded them (same sender, same turn) decides whether the binary data
+   *  is targeted or broadcast. In-memory, per-wake: worst case a wedged
+   *  binary stream temporarily fans out to all members, the same behavior
+   *  the pre-multi-device relay had. */
+  private lastBinaryTo: string | null = null;
+
   /** Sliding-window-per-fixed-bucket frame gate. Returns false when the
    *  connection exceeded its text or binary frame allowance for the current
    *  window — the frame is silently dropped (the sender sees a stalled
@@ -319,8 +366,8 @@ export class Room extends DurableObject<Env> {
     const r = await this.loadRoom();
     if (!r) return [];
     const live: string[] = [];
-    for (const cid of [r.peerA, r.peerB]) {
-      if (cid && this.openSocket(cid)) live.push(cid);
+    for (const p of r.participants) {
+      if (p.cid && this.openSocket(p.cid)) live.push(p.pid);
     }
     return live;
   }
@@ -336,15 +383,46 @@ export class Room extends DurableObject<Env> {
 
   private async memberOf(cid: string): Promise<boolean> {
     const r = await this.loadRoom();
-    return !!r && (r.peerA === cid || r.peerB === cid);
+    return !!r && r.participants.some((p) => p.cid === cid);
   }
 
-  private otherOf(cid: string): string | null {
+  /** The participant record carrying this connection id. */
+  private participantOf(cid: string): Participant | null {
     const r = this.room;
     if (!r) return null;
-    if (r.peerA === cid) return r.peerB;
-    if (r.peerB === cid) return r.peerA;
+    return r.participants.find((p) => p.cid === cid) ?? null;
+  }
+
+  /** Resolve a signaling target: a pid (current wire), a cid (legacy echo),
+   *  or null when the target is not a live member of this room. */
+  private targetPid(room: RoomState, to: unknown): string | null {
+    if (typeof to !== 'string' || !to) return null;
+    if (to === 'all') return null;
+    const byPid = room.participants.find((p) => p.pid === to);
+    if (byPid && this.openSocket(byPid.cid)) return byPid.pid;
+    const byCid = room.participants.find((p) => p.cid === to);
+    if (byCid) return byCid.pid;
     return null;
+  }
+
+  /** Send a text frame to ONE member by pid. */
+  private sendToPid(room: RoomState, pid: string, msg: unknown) {
+    const p = room.participants.find((x) => x.pid === pid);
+    const ws = p ? this.openSocket(p.cid) : null;
+    if (ws) ws.send(JSON.stringify(msg));
+  }
+
+  /** Send a text frame to every member EXCEPT `selfPid` (legacy clients may
+   *  still address by cid — memberOf/cidOf keep them routable). */
+  private sendToOthers(selfCid: string, msg: unknown) {
+    const r = this.room;
+    if (!r) return;
+    const self = r.participants.find((p) => p.cid === selfCid);
+    for (const p of r.participants) {
+      if (self && p.pid === self.pid) continue;
+      const ws = this.openSocket(p.cid);
+      if (ws) ws.send(JSON.stringify(msg));
+    }
   }
 
   private async sendTo(cid: string, msg: unknown) {
@@ -353,58 +431,71 @@ export class Room extends DurableObject<Env> {
   }
 
   private async notifyOthers(selfCid: string, event: string, payload: unknown) {
-    const conns = await this.ensureConns();
-    for (const cid of conns.keys()) {
+    await this.ensureConns();
+    for (const cid of this.conns!.keys()) {
       if (cid === selfCid) continue;
       const ws = this.openSocket(cid);
       if (ws) ws.send(JSON.stringify({ type: 'event', event, payload }));
     }
   }
 
-  /** Seat a connection into a free slot; 'full' when both are held. A seat
-   *  held by disconnect grace still counts as occupied — the departing device
-   *  is entitled to reclaim it within the window (mirrors server.ts). */
-  private async assignSlot(cid: string): Promise<'A' | 'B' | 'full'> {
-    const r = this.room;
-    if (!r) return 'full';
-    const live = await this.livePeers();
-    if (r.peerA === cid || r.peerB === cid) return r.peerA === cid ? 'A' : 'B';
-    const held = (c: string | null) => !!c && (live.includes(c) || (r.grace?.[c] ?? 0) > Date.now());
-    if (held(r.peerA) && held(r.peerB)) return 'full';
-    if (!held(r.peerA)) {
-      if (r.grace && r.peerA) delete r.grace[r.peerA];
-      r.peerA = cid;
-      return 'A';
-    }
-    if (r.grace && r.peerB) delete r.grace[r.peerB];
-    r.peerB = cid;
-    return 'B';
+  /** Roster payload builder (snapshot form, shared by acks and events). */
+  private rosterSnapshot(r: RoomState) {
+    return { participants: rosterOf(r.participants), seq: r.rosterSeq };
   }
 
-  /** Drop grace entries for cids that no longer hold a seat. */
+  /** Seat a connection into the roster. Returns 'reclaimed' when a KNOWN
+   *  participant id takes its seat back (refresh/reconnect — the room learns
+   *  it is the same logical device), 'seated' for a genuinely new member,
+   *  'full' ONLY at the internal abuse guard — a room's membership is
+   *  otherwise unbounded (multi-device product requirement; the old
+   *  two-seat cap is gone). A participant in disconnect grace still owns
+   *  its roster entry, so a newcomer never steals a seat a departing device
+   *  is entitled to reclaim. */
+  private async assignSlot(cid: string, pid: string, name = 'Device', platform = 'desktop'): Promise<'seated' | 'reclaimed' | 'full'> {
+    const r = this.room;
+    if (!r) return 'full';
+    const existing = r.participants.find((p) => p.pid === pid);
+    if (existing) {
+      existing.cid = cid;
+      existing.name = name;
+      existing.platform = platform;
+      if (r.grace) delete r.grace[pid];
+      return 'reclaimed';
+    }
+    if (r.participants.length >= MAX_PARTICIPANTS) return 'full';
+    r.participants.push({ pid, cid, name, platform, joinedAt: Date.now() });
+    r.rosterSeq++;
+    return 'seated';
+  }
+
+  /** Drop grace entries for participants that no longer hold a seat. */
   private async pruneGrace() {
     const r = this.room;
     if (!r?.grace) return;
-    for (const c of Object.keys(r.grace)) {
-      if (r.peerA !== c && r.peerB !== c) delete r.grace[c];
+    for (const pid of Object.keys(r.grace)) {
+      if (!r.participants.some((p) => p.pid === pid)) delete r.grace[pid];
     }
     if (Object.keys(r.grace).length === 0) delete r.grace;
     await this.ctx.storage.put('room', r);
   }
 
-  /** Derive the lifecycle state from live peer count (2/1/0). ALSO owns the
+  /** Derive the lifecycle state from the live roster. ALSO owns the
    *  lifetime "rooms made" increment: the counter fires exactly when a room
-   *  FIRST holds two live peers — a real two-device connection, not a room
-   *  that was merely created (creator alone, refreshes, and failed pairings
-   *  must never inflate the public tracker). The once-per-room flag is
-   *  persisted with the room, so a hibernation wake or storage reload can
+   *  FIRST holds two live participants — a real multi-device connection, not
+   *  a room that was merely created (creator alone, refreshes, and failed
+   *  pairings must never inflate the public tracker). The once-per-room flag
+   *  is persisted with the room, so a hibernation wake or storage reload can
    *  never double-count the same pairing. */
   private async recomputeState() {
     const r = this.room;
     if (!r) return;
     const live = await this.livePeers();
     const wasConnected = r.state === 'CONNECTED';
-    r.state = live.length >= 2 ? 'CONNECTED' : live.length === 1 ? 'WAITING' : 'DISCONNECTED';
+    // A room with a REMEMBERED roster but no live sockets keeps the
+    // rejoinable WAITING phase (empty-room tombstone); DISCONNECTED is only
+    // reached once the roster itself has been emptied (grace evictions ran).
+    r.state = live.length >= 2 ? 'CONNECTED' : live.length === 1 ? 'WAITING' : (r.participants.length === 0 ? 'DISCONNECTED' : 'WAITING');
     await this.ctx.storage.put('room', r);
     if (r.state === 'CONNECTED' && !wasConnected && !r.countedConnected) {
       r.countedConnected = true;
@@ -423,21 +514,25 @@ export class Room extends DurableObject<Env> {
     if (!r || !r.grace) return;
     const now = Date.now();
     let changed = false;
-    for (const [cid, deadline] of Object.entries(r.grace)) {
+    for (const [pid, deadline] of Object.entries(r.grace)) {
       if (now < deadline) continue;
-      delete r.grace[cid];
+      delete r.grace[pid];
       changed = true;
       // The socket may have quietly returned without a resume (hibernation
       // reuse with the same cid); keep the seat if it's live again.
-      if (this.openSocket(cid)) continue;
-      if (r.peerA === cid) r.peerA = null;
-      if (r.peerB === cid) r.peerB = null;
-      await this.notifyOthers(cid, 'peer_disconnected', {
-        peerId: cid,
+      const p = r.participants.find((x) => x.pid === pid);
+      if (p && this.openSocket(p.cid)) continue;
+      if (p) {
+        r.participants = r.participants.filter((x) => x.pid !== pid);
+        r.rosterSeq++;
+      }
+      await this.notifyOthers(p?.cid ?? '', 'peer_disconnected', {
+        peerId: pid,
         remaining: (await this.livePeers()).length,
+        roster: this.rosterSnapshot(r),
       });
       await reportPresence(this.env, r.roomId, (await this.livePeers()).length);
-      log('grace expired, peer evicted', cid.slice(0, 8));
+      log('grace expired, participant evicted', pid.slice(0, 8));
     }
     if (!changed) return;
     if (Object.keys(r.grace).length === 0) delete r.grace;
@@ -523,9 +618,16 @@ export class Room extends DurableObject<Env> {
       await this.touch();
       await this.markTransferring();
       await count(this.env, 'relay.binary_messages');
-      const other = this.otherOf(cid);
-      if (other) {
-        const ws2 = this.openSocket(other);
+      // Multi-device fan-out: targeted when the sender addressed one
+      // participant, to every other member otherwise (the 1-to-1 case is
+      // unchanged — two members, so "broadcast" reaches exactly the peer).
+      const r = this.room!;
+      const toPid = this.targetPid(r, this.lastBinaryTo);
+      const targets = toPid
+        ? r.participants.filter((p) => p.pid === toPid)
+        : r.participants.filter((p) => p.cid !== cid);
+      for (const t of targets) {
+        const ws2 = this.openSocket(t.cid);
         if (ws2) ws2.send(message);
       }
       return;
@@ -546,10 +648,13 @@ export class Room extends DurableObject<Env> {
     if (typeof msg.event !== 'string') {
       return this.ackErr(cid, msg.id, 'INVALID_MESSAGE', 'Unknown message type.');
     }
+    // Remember the addressing of text frames so a following binary relay
+    // chunk (envelope-less by design) inherits the same target.
+    this.lastBinaryTo = typeof msg.payload?.to === 'string' ? msg.payload.to : null;
 
     switch (msg.event) {
       case 'create_room':
-        return this.handleCreate(cid, msg.id);
+        return this.handleCreate(cid, msg.id, msg.payload);
       case 'join_with_code':
         return this.handleJoinWithCode(cid, msg.id, msg.payload);
       case 'join_with_link':
@@ -582,20 +687,29 @@ export class Room extends DurableObject<Env> {
       await this.dropConn(cid);
       return;
     }
-    // Only a seated peer (creator/joiner) counts as a disconnect — a socket
-    // that never joined (e.g. a failed code probe) must not disturb the room.
-    const wasMember = r.peerA === cid || r.peerB === cid;
-    if (wasMember) {
-      // Grace: keep the seat and tell nobody yet. The other device keeps its
-      // room without a scary "disconnected" banner for a tab refresh or a
-      // brief network blip. If the device comes back (resume_room or a new
-      // socket with the same cid) the grace is cancelled; otherwise the alarm
-      // confirms the eviction after DISCONNECT_GRACE_MS.
+    // Only a seated participant counts as a disconnect — a socket that never
+    // joined (e.g. a failed code probe) must not disturb the room.
+    const self = this.participantOf(cid);
+    if (self) {
+      // Grace: keep the seat and tell nobody yet. The other devices keep
+      // their room without a scary "disconnected" banner for a tab refresh or
+      // a brief network blip. If the device comes back (resume_room or a new
+      // socket reclaiming its pid) the grace is cancelled; otherwise the
+      // alarm confirms the eviction after DISCONNECT_GRACE_MS. The whole
+      // rest of the roster stays untouched — one device leaving never tears
+      // the room down.
+      //
+      // ORDER MATTERS: drop the connection record FIRST. The worker runtime
+      // may deliver the hibernation close for an already-closing socket and
+      // then exit the isolate without further I/O turns — any storage write
+      // queued after a lost await never lands. The original code wrote the
+      // grace state first and lost it on every abrupt close, leaving seats
+      // looking occupied forever ("room full" for a two-device room).
+      await this.dropConn(cid);
       r.grace = r.grace ?? {};
-      r.grace[cid] = Date.now() + DISCONNECT_GRACE_MS;
+      r.grace[self.pid] = Date.now() + DISCONNECT_GRACE_MS;
       r.lastActive = Date.now();
       await this.ctx.storage.put('room', r);
-      await this.dropConn(cid);
       // Re-arm the room alarm to also cover the earliest grace deadline.
       const earliest = Math.min(...Object.values(r.grace));
       const alarm = await this.ctx.storage.getAlarm();
@@ -621,7 +735,7 @@ export class Room extends DurableObject<Env> {
     // kill the room while a peer holds a seat. A room whose seats stay
     // empty for a full TTL still ends via the tombstone branch below.
     const idleExpired = !r.stayConnected && now - r.lastActive > ROOM_TTL;
-    if (live.length === 0 && !idleExpired && r.peerA === null && r.peerB === null) {
+    if (live.length === 0 && !idleExpired && r.participants.length === 0) {
       if (r.stayConnected) {
         // Stay Connected with both seats empty: the promise outlives a closed
         // tab (that is its entire point) — a device can re-enter the room
@@ -657,12 +771,18 @@ export class Room extends DurableObject<Env> {
 
   // ---- handlers ----------------------------------------------------------
 
-  private async handleCreate(cid: string, id?: string) {
+  private async handleCreate(cid: string, id?: string, payload?: { pid?: unknown }) {
     const r = await this.loadRoom();
     if (r) return this.ackErr(cid, id, 'ROOM_EXISTS', 'This room already exists.');
     const secret = base32Encode(crypto.getRandomValues(new Uint8Array(16)));
     const roomId = this.urlRoomId ?? crypto.randomUUID();
     const now = Date.now();
+    // The creator's stable participant id rides the create payload (the
+    // client proved nothing yet, but the room secret gates every later
+    // action — a forged pid only mislabels the creator to itself).
+    const pid = typeof payload?.pid === 'string' && payload.pid.length >= 8 && payload.pid.length <= 64
+      ? payload.pid
+      : crypto.randomUUID();
     this.room = {
       roomId,
       secret,
@@ -671,8 +791,8 @@ export class Room extends DurableObject<Env> {
       codeAnchor: now,
       lastActive: now,
       expiresAt: now + ROOM_TTL,
-      peerA: cid,
-      peerB: null,
+      participants: [{ pid, cid, name: 'Creator', platform: 'desktop', joinedAt: now }],
+      rosterSeq: 1,
       codeFails: 0,
       codeFailReset: 0,
     };
@@ -684,16 +804,16 @@ export class Room extends DurableObject<Env> {
     await this.registerInRegistry(this.room);
     log('room created', roomId.slice(0, 8), 'WAITING');
     // NOTE: rooms.created is NOT fired here. The tracker counts real
-    // two-device connections — recomputeState fires it when the room first
-    // holds two live peers.
+    // multi-device connections — recomputeState fires it when the room first
+    // holds two live participants.
     await reportPresence(this.env, roomId, (await this.livePeers()).length);
     // createdAt anchors the pairing-code window (90s from room creation).
-    this.ackOk(cid, id, { roomId, secret, createdAt: now });
+    this.ackOk(cid, id, { roomId, secret, createdAt: now, participantId: pid, myParticipantId: pid, roster: this.rosterSnapshot(this.room) });
   }
 
-  private async handleJoinWithCode(cid: string, id?: string, payload?: { code?: unknown }) {
+  private async handleJoinWithCode(cid: string, id?: string, payload?: { code?: unknown; pid?: unknown }) {
     const r = await this.loadRoom();
-    if (!r || r.peerA === cid || r.peerB === cid) {
+    if (!r || r.participants.some((p) => p.cid === cid)) {
       return this.ackErr(cid, id, 'INVALID_CODE', 'Invalid or expired code');
     }
     const code = payload?.code;
@@ -718,15 +838,15 @@ export class Room extends DurableObject<Env> {
       return this.ackErr(cid, id, 'INVALID_CODE', 'Invalid or expired code');
     }
     r.codeFails = 0;
-    const slot = await this.assignSlot(cid);
+    const slot = await this.assignSlot(cid, this.pidFrom(payload));
     if (slot === 'full') {
       await count(this.env, 'joins.failed:room_full');
-      return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText room is already full.');
+      return this.ackErr(cid, id, 'ROOM_FULL', 'This room cannot take more devices right now.');
     }
     await this.completeJoin(cid, id);
   }
 
-  private async handleJoinWithLink(cid: string, id?: string, payload?: { secret?: unknown }) {
+  private async handleJoinWithLink(cid: string, id?: string, payload?: { secret?: unknown; pid?: unknown }) {
     const r = await this.loadRoom();
     if (!r) {
       await count(this.env, 'joins.failed:session_expired');
@@ -736,36 +856,52 @@ export class Room extends DurableObject<Env> {
       await count(this.env, 'joins.failed:invalid_session');
       return this.ackErr(cid, id, 'INVALID_SESSION', 'This room link isn\u2019t valid anymore.');
     }
-    if (r.peerA === cid || r.peerB === cid) {
-      return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.codeAnchor });
+    if (r.participants.some((p) => p.cid === cid)) {
+      return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.codeAnchor, roster: this.rosterSnapshot(r) });
     }
-    const slot = await this.assignSlot(cid);
+    const slot = await this.assignSlot(cid, this.pidFrom(payload));
     if (slot === 'full') {
       await count(this.env, 'joins.failed:room_full');
-      return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText room is already full.');
+      return this.ackErr(cid, id, 'ROOM_FULL', 'This room cannot take more devices right now.');
     }
     await this.completeJoin(cid, id);
   }
 
-  private async handleResume(cid: string, id?: string, payload?: { secret?: unknown }) {
+  private pidFrom(payload?: { pid?: unknown }): string {
+    return typeof payload?.pid === 'string' && payload.pid.length >= 8 && payload.pid.length <= 64
+      ? payload.pid
+      : `legacy-${crypto.randomUUID()}`;
+  }
+
+  private async handleResume(cid: string, id?: string, payload?: { secret?: unknown; pid?: unknown }) {
     const r = await this.loadRoom();
     if (!r || r.secret !== payload?.secret) {
       return this.ackErr(cid, id, 'SESSION_EXPIRED', 'This room has expired.');
     }
-    if (r.peerA === cid || r.peerB === cid) {
-      // The peer's transport came back and it still holds its seat — the
-      // worker-path equivalent of socket.io session recovery (the client
-      // reuses its cid across reconnects and tab refreshes). Tell the other
-      // device to re-offer WebRTC so the channel — and any interrupted
-      // transfer — can resume quietly, without a disconnect/reconnect blip.
+    // PID-BASED RECLAIM: a resume carrying a participant id the roster knows
+    // is the SAME LOGICAL DEVICE returning — whether on the same socket
+    // (transport recovery) or a brand-new one (tab refresh). Rebind its cid,
+    // cancel its grace, and tell the survivors it recovered so they re-offer
+    // WebRTC. The room identity never rotates and no duplicate "Device 2"
+    // roster entry is ever created.
+    const pid = this.pidFrom(payload);
+    const known = r.participants.find((p) => p.pid === pid) ??
+      // Legacy compat: a pid-less resume on a socket that already sits in
+      // the roster is the pre-multi-device recovery path.
+      r.participants.find((p) => p.cid === cid && pid.startsWith('legacy-'));
+    if (known) {
       if (r.grace) {
-        delete r.grace[cid];
+        delete r.grace[known.pid];
         if (Object.keys(r.grace).length === 0) delete r.grace;
-        await this.ctx.storage.put('room', r);
       }
+      known.cid = cid;
+      await this.ctx.storage.put('room', r);
+      await this.ensureConns();
+      this.conns!.set(cid, { roomId: r.roomId });
+      await this.ctx.storage.put('conn:' + cid, { roomId: r.roomId });
       await this.recomputeState();
-      await this.notifyOthers(cid, 'peer_recovered', { peerId: cid });
-      return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.codeAnchor, stayConnected: !!r.stayConnected });
+      await this.notifyOthers(cid, 'peer_recovered', { peerId: known.pid, roster: this.rosterSnapshot(r) });
+      return this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.codeAnchor, stayConnected: !!r.stayConnected, participantId: known.pid, myParticipantId: known.pid, roster: this.rosterSnapshot(r) });
     }
     // Re-entry into a room with both seats empty: the caller already proved
     // possession of the 128-bit room secret (checked above) — the secret IS
@@ -773,27 +909,29 @@ export class Room extends DurableObject<Env> {
     // gate here rejected a legitimate device whose connection id changed
     // across reconnects, making rejoin fail "sometimes".) The snapshot is
     // still honored for CLOSE: only remembered members may end an empty
-    // promise room for everyone (handleClose).
-    // Drop stale seats whose sockets are gone so the returning device can
+    // promise room for everyone (handleClose).    // Drop stale seats whose sockets are gone so the returning device can
     // sit. A dropped seat is a real eviction: notify the survivors (the
     // returning device itself is excluded — its own old seat must not make
     // it flash "disconnected" on rejoin).
+
     const live = await this.livePeers();
-    for (const stale of [r.peerA, r.peerB]) {
-      if (stale && !live.includes(stale)) {
-        if (r.grace) delete r.grace[stale];
-        if (r.peerA === stale) r.peerA = null;
-        if (r.peerB === stale) r.peerB = null;
+    for (const p of [...r.participants]) {
+      if (p.pid === (payload?.pid as string)) continue;
+      if (!live.includes(p.pid)) {
+        if (r.grace) delete r.grace[p.pid];
+        r.participants = r.participants.filter((x) => x.pid !== p.pid);
+        r.rosterSeq++;
         await this.notifyOthers(cid, 'peer_disconnected', {
-          peerId: stale,
+          peerId: p.pid,
           remaining: (await this.livePeers()).length,
+          roster: this.rosterSnapshot(r),
         });
         await reportPresence(this.env, r.roomId, (await this.livePeers()).length);
       }
     }
     await this.ctx.storage.put('room', r);
-    const slot = await this.assignSlot(cid);
-    if (slot === 'full') return this.ackErr(cid, id, 'ROOM_FULL', 'This ShareText room is already full.');
+    const slot = await this.assignSlot(cid, this.pidFrom(payload));
+    if (slot === 'full') return this.ackErr(cid, id, 'ROOM_FULL', 'This room cannot take more devices right now.');
     await this.pruneGrace();
     await this.completeJoin(cid, id);
   }
@@ -805,11 +943,25 @@ export class Room extends DurableObject<Env> {
     await this.ctx.storage.put('conn:' + cid, { roomId: r.roomId });
     await this.touch();
     await this.recomputeState();
-    await this.notifyOthers(cid, 'peer_joined', { peerId: cid });
-    log('peer joined', r.roomId.slice(0, 8), cid.slice(0, 8), 'state', r.state);
+    const self = this.participantOf(cid);
+    await this.notifyOthers(cid, 'peer_joined', {
+      peerId: self?.pid ?? cid,
+      participant: self ? { id: self.pid, name: self.name, platform: self.platform, joinedAt: self.joinedAt } : undefined,
+      roster: this.rosterSnapshot(r),
+      initiatorId: initiatorOf(r.participants),
+    });
+    log('peer joined', r.roomId.slice(0, 8), cid.slice(0, 8), 'state', r.state, 'members', r.participants.length);
     await count(this.env, 'joins.succeeded');
     await reportPresence(this.env, r.roomId, (await this.livePeers()).length);
-    this.ackOk(cid, id, { roomId: r.roomId, secret: r.secret, createdAt: r.codeAnchor, stayConnected: !!r.stayConnected });
+    this.ackOk(cid, id, {
+      roomId: r.roomId,
+      secret: r.secret,
+      createdAt: r.codeAnchor,
+      stayConnected: !!r.stayConnected,
+      participantId: self?.pid,
+      myParticipantId: self?.pid,
+      roster: this.rosterSnapshot(r),
+    });
   }
 
   /**
@@ -839,23 +991,33 @@ export class Room extends DurableObject<Env> {
     const signal = validateSignal(payload?.signal);
     if (!signal) return;
     await this.touch();
+    const self = this.participantOf(cid);
     const to = payload?.to;
-    const msg = { type: 'event' as const, event: 'signal', payload: { from: cid, signal } };
-    if (typeof to === 'string' && to !== cid) {
-      await this.sendTo(to, msg);
+    const r = this.room!;
+    // Targeted point-to-point negotiation: offers go to ONE participant.
+    const targetPid = this.targetPid(r, to);
+    if (targetPid) {
+      this.sendToPid(r, targetPid, { type: 'event', event: 'signal', payload: { from: self?.pid ?? cid, signal } });
     } else {
-      await this.notifyOthers(cid, 'signal', { from: cid, signal });
+      await this.notifyOthers(cid, 'signal', { from: self?.pid ?? cid, signal });
     }
   }
 
-  private async handleRelayText(cid: string, _id: string | undefined, payload?: { data?: unknown }) {
+  private async handleRelayText(cid: string, _id: string | undefined, payload?: { to?: unknown; data?: unknown }) {
     if (!(await this.memberOf(cid))) return;
     const data = validateRelayData(payload?.data);
     if (data === null) return;
     await this.touch();
     await this.markTransferring();
     await count(this.env, 'relay.text_messages');
-    await this.notifyOthers(cid, 'relay_message', { data });
+    const self = this.participantOf(cid);
+    const r = this.room!;
+    const targetPid = this.targetPid(r, payload?.to);
+    if (targetPid) {
+      this.sendToPid(r, targetPid, { type: 'event', event: 'relay_message', payload: { from: self?.pid ?? cid, data } });
+    } else {
+      await this.notifyOthers(cid, 'relay_message', { from: self?.pid ?? cid, data });
+    }
   }
 
   private async markTransferring() {
@@ -875,8 +1037,8 @@ export class Room extends DurableObject<Env> {
     // the remembered membership — a random device that somehow reaches the
     // close event must never end someone else's promise room.
     const isLiveMember = (await this.memberOf(cid));
-    const remembered = r.stayMembers?.includes(cid) ?? false;
-    if (!isLiveMember && !(r.stayConnected && r.peerA === null && r.peerB === null && remembered)) return;
+    const remembered = r.stayMembers?.includes(this.participantOf(cid)?.pid ?? '') ?? false;
+    if (!isLiveMember && !(r.stayConnected && r.participants.length === 0 && remembered)) return;
     log('room closed manually', r.roomId.slice(0, 8));
     await this.destroyRoom('manual_close');
   }
@@ -898,16 +1060,15 @@ export class Room extends DurableObject<Env> {
       // Snapshot the current membership: these are the devices the promise
       // belongs to. Kept across the empty-room phase so re-entry recognizes
       // members and only members can later close the room.
-      r.stayMembers = [r.peerA, r.peerB].filter((p): p is string => !!p);
+      r.stayMembers = r.participants.map((p) => p.pid);
     } else {
       r.stayOwner = null;
       r.stayMembers = undefined;
     }
     await this.ctx.storage.put('room', r);
     const event = { type: 'event' as const, event: 'stay_connected_state', payload: { enabled } };
-    for (const peer of [r.peerA, r.peerB]) {
-      if (!peer) continue;
-      const ws = this.openSocket(peer);
+    for (const peer of r.participants) {
+      const ws = this.openSocket(peer.cid);
       if (ws && ws.readyState === 1) {
         try { ws.send(JSON.stringify(event)); } catch { /* best effort */ }
       }
@@ -951,13 +1112,17 @@ export class Room extends DurableObject<Env> {
     r.lastActive = timestamp;
     r.expiresAt = timestamp + ROOM_TTL;
     await this.ctx.storage.put('room', r);
-    const live = await this.livePeers();
+    // Push goes to EVERY seated device (multi-device rooms included); a
+    // device whose socket is in disconnect grace is skipped — it is not
+    // actually reading right now, and a late fan-out to a ghost seat would
+    // surface the message twice after its resume.
+    const live = (await this.livePeers())
 
     if (typeof body.text === 'string' && body.text.trim().length > 0) {
       const text = body.text.slice(0, PUSH_TEXT_MAX);
       await count(this.env, 'push.text');
-      for (const cid of live) {
-        await this.sendTo(cid, { type: 'event', event: 'push_message', payload: { id: messageId, kind: 'text', text, timestamp } });
+      for (const pid of live) {
+        await this.sendToPid(r, pid, { type: 'event', event: 'push_message', payload: { id: messageId, kind: 'text', text, timestamp } });
       }
       return json({ ok: true, messageId });
     }
@@ -988,8 +1153,8 @@ export class Room extends DurableObject<Env> {
     for (let i = 0; i < chunkCount; i++) {
       const chunk = raw.slice(i * PUSH_CHUNK, (i + 1) * PUSH_CHUNK);
       const payload = { ...base, chunkIndex: i, dataBase64: btoa(chunk) };
-      for (const cid of live) {
-        await this.sendTo(cid, { type: 'event', event: 'push_message', payload });
+      for (const pid of live) {
+        await this.sendToPid(r, pid, { type: 'event', event: 'push_message', payload });
       }
     }
     return json({ ok: true, messageId });

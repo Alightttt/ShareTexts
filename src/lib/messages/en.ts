@@ -23,6 +23,47 @@ const en = {
   'nav.privacy': 'Privacy',
   'nav.terms': 'Terms',
 
+  // ── multi-device room: device picker / recipients (F13) ──────────
+  'picker.title': 'Devices in this room',
+  'picker.oneDevice': '1 device in this room',
+  'picker.deviceCount': '{count} devices in this room',
+  'picker.search': 'Search devices',
+  'picker.empty': 'No other devices yet. Share the code to add one.',
+  'picker.noMatch': 'No device matches that search.',
+  'picker.thisDevice': 'This device',
+  'picker.ready': 'Ready',
+  'picker.connecting': 'Connecting…',
+  'picker.offline': 'Offline',
+  'picker.failed': 'Couldn\u2019t connect',
+  'picker.idle': 'In the room',
+  'picker.selectAll': 'Select all {count}',
+  'picker.clear': 'Clear',
+  'picker.unknownDevice': 'Device',
+  'picker.remove': 'Remove {name}',
+  'picker.open': 'Choose devices',
+
+  // ── multi-device room: composer / recipients ─────────────────────
+  'composer.toDevices': 'To: devices…',
+  'composer.toOne': 'To: {name}',
+  'composer.toMany': 'To: {count} devices',
+  'composer.moreDevices': '+{count} more',
+  'composer.sendToCount': 'Send to {count} devices',
+
+  // ── multi-device room: per-recipient delivery ────────────────────
+  'xfer.sentAll': 'Sent to all {count} devices',
+  'xfer.sentSome': 'Sent to {sent} of {total} devices',
+  'xfer.sentNone': 'Couldn\u2019t send — {failed} of {total} failed',
+  'xfer.sendingTo': 'Sending to {count} devices…',
+  'xfer.retryFor': 'Retry {name}',
+  'xfer.cancelFor': 'Cancel for {name}',
+
+  // ── multi-device room: header / room state ───────────────────────
+  'room.deviceCount': '{count} devices',
+  'room.oneDevice': '1 device',
+  'room.readyCount': '{count} ready',
+  'room.connectingCount': '{count} connecting',
+  'room.offlineCount': '{count} offline',
+
   'home.title': 'Move anything\nbetween your devices.',
   'home.subtitle': "Share text, links, photos and files between any devices — phone to PC, PC to phone. No app, no account, no wires.",
   'home.send': 'Send',

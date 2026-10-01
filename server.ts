@@ -359,11 +359,21 @@ function clientIp(socket: import('socket.io').Socket): string {
   return socket.handshake.address || 'unknown';
 }
 
+/** One member of a multi-device room. Identity is a room-scoped stable id
+ *  minted client-side (survives refresh/rejoin) — never the display name, and
+ *  never reused across rooms. `socketId` is the participant's CURRENT live
+ *  socket; it changes on every reconnect while `id` stays fixed. */
+interface ParticipantInfo {
+  id: string;          // stable room-scoped participant id (client UUID)
+  socketId: string;    // current live socket (mirror; participants is authoritative)
+  name: string;        // sanitized display name (cosmetic only)
+  platform: string;    // 'phone' | 'tablet' | 'desktop' (display hint)
+  joinedAt: number;    // membership start — also the WebRTC initiator tiebreak
+}
+
 interface Room {
   id: string;
   secret: string;
-  creatorId: string;
-  joinerId?: string;
   /** Room creation time — also the pairing-code anchor until refreshed. */
   createdAt: number;
   /** The TOTP anchor. Re-anchored on refresh_code so the creator always sees
@@ -371,7 +381,16 @@ interface Room {
    *  valid for one more window (±1 validation) so a typing joiner isn't cut off. */
   codeAnchor: number;
   lastActive: number;
+  /** Socket-level seat mirror (socket ids). Derived from `participants` and
+   *  kept in sync by seatParticipant/removeParticipant; legacy paths (signal
+   *  membership, relay, presence seated-check, sweeps) read this. */
   activePeers: Set<string>;
+  /** AUTHORITATIVE room membership: participant id → info. A room may hold
+   *  any number of participants — there is deliberately NO product cap. */
+  participants: Map<string, ParticipantInfo>;
+  /** Monotonic roster version — bumped on every membership mutation so
+   *  clients can reject stale/out-of-order roster deltas. */
+  rosterSeq: number;
   /** Stay Connected: both devices asked to keep the room alive until one
    *  explicitly closes it. Exempts the room from every TTL sweep — it only
    *  dies when a seated device emits close_room. */
@@ -383,20 +402,102 @@ interface Room {
   countedConnected?: boolean;
 }
 
+/** Internal abuse guard on room size — a resource policy, NOT a product cap:
+ *  the UI never shows or enforces a limit. 64 seats is far beyond any real
+ *  sharing room while bounding per-room fan-out for hostile clients. */
+const MAX_PARTICIPANTS = 64;
+
+/** Live (socket still connected) participants, in join order. */
+function liveParticipants(room: Room): ParticipantInfo[] {
+  const out: ParticipantInfo[] = [];
+  for (const p of room.participants.values()) {
+    if (io.sockets.sockets.has(p.socketId)) out.push(p);
+  }
+  return out;
+}
+
+/** The wire shape of a roster entry — nothing sensitive (no sockets, no ids
+ *  beyond the room-scoped participant id). */
+function rosterList(room: Room) {
+  return [...room.participants.values()]
+    .sort((a, b) => a.joinedAt - b.joinedAt)
+    .map(p => ({ id: p.id, name: p.name, platform: p.platform, joinedAt: p.joinedAt }));
+}
+
+function participantBySocket(room: Room, socketId: string): ParticipantInfo | null {
+  for (const p of room.participants.values()) {
+    if (p.socketId === socketId) return p;
+  }
+  return null;
+}
+
+/** Resolve a "to" field to a LIVE socket in this room. Accepts a participant
+ *  id (the modern wire form) or a raw socket id (legacy clients that echoed
+ *  the old peerId=socketId payloads) — both stay routable. */
+function resolveRoomTarget(room: Room, to: unknown): string | null {
+  if (typeof to !== 'string' || !to) return null;
+  const p = room.participants.get(to);
+  if (p && io.sockets.sockets.has(p.socketId)) return p.socketId;
+  if (room.activePeers.has(to) && io.sockets.sockets.has(to)) return to;
+  return null;
+}
+
+/** Seat (or re-seat) a participant. Returns 'reclaimed' when a KNOWN
+ *  participant id takes its seat back (refresh/reconnect — the room must
+ *  learn it is the same logical device), 'seated' for a genuinely new
+ *  member, 'full' only at the internal abuse guard. */
+function seatParticipant(
+  room: Room,
+  socketId: string,
+  info: { id: string; name: string; platform: string }
+): 'seated' | 'reclaimed' | 'full' {
+  const existing = room.participants.get(info.id);
+  if (existing) {
+    if (existing.socketId !== socketId) room.activePeers.delete(existing.socketId);
+    existing.socketId = socketId;
+    existing.name = info.name;
+    existing.platform = info.platform;
+    room.activePeers.add(socketId);
+    return 'reclaimed';
+  }
+  if (liveParticipants(room).length >= MAX_PARTICIPANTS) return 'full';
+  room.participants.set(info.id, {
+    id: info.id,
+    socketId,
+    name: info.name,
+    platform: info.platform,
+    joinedAt: Date.now(),
+  });
+  room.activePeers.add(socketId);
+  return 'seated';
+}
+
+/** Remove a participant from the roster (its socketId may be stale). */
+function removeParticipant(room: Room, participantId: string): boolean {
+  const p = room.participants.get(participantId);
+  if (!p) return false;
+  room.participants.delete(participantId);
+  // Only free the socket mirror if this participant still owns the socket —
+  // a reclaimed seat may have moved the socket to a newer participant record.
+  const owner = participantBySocket(room, p.socketId);
+  if (!owner) room.activePeers.delete(p.socketId);
+  room.rosterSeq++;
+  return true;
+}
+
 /** Fire the lifetime "rooms made" increment exactly when THIS room first
- *  holds two LIVE seats — a real two-device connection. A seat held only by
- *  disconnect grace (its socket is gone) doesn't count: the two devices must
- *  actually be connected at the same moment. Idempotent per room via
- *  countedConnected; reseat/recovery paths that re-add a peer to an
+ *  holds two LIVE participants — a real multi-device connection. A seat held
+ *  only by disconnect grace (its socket is gone) doesn't count: the devices
+ *  must actually be connected at the same moment. Idempotent per room via
+ *  countedConnected; reseat/recovery paths that re-add a participant to an
  *  already-counted room never re-increment. */
 function countConnectedIfFirst(room: Room) {
-  if (room.countedConnected || room.activePeers.size < 2) return;
-  for (const pid of room.activePeers) {
-    if (!io.sockets.sockets.has(pid)) return; // grace-held seat, device really gone
-  }
+  if (room.countedConnected) return;
+  const live = liveParticipants(room);
+  if (live.length < 2) return;
   room.countedConnected = true;
   count('rooms.created');
-  log('rooms-made incremented', room.id.slice(0, 8), 'two live peers seated');
+  log('rooms-made incremented', room.id.slice(0, 8), `${live.length} live participants seated`);
 }
 
 const rooms = new Map<string, Room>();
@@ -561,6 +662,12 @@ setInterval(() => {
 // reconnects via connectionStateRecovery we can notify the other peer.
 const socketRooms = new Map<string, Set<string>>();
 
+// Per-socket participant identity: socketId → (roomId → stable participant
+// id). Join/resume handlers fill it; the connectionStateRecovery handler
+// below reads it to give a returning socket its OLD participant seat back.
+// Cleaned up when the recovery window closes (confirmed eviction or recovery).
+const socketParticipants = new Map<string, Map<string, string>>();
+
 // Disconnect grace: a device that briefly closes its tab (or blips off the
 // network) must NOT tear the room down for the other device. We hold its
 // seat and stay quiet for this window; only if it truly does not come back
@@ -588,9 +695,11 @@ function releaseStaleSeats(socketId: string, keepRoomId?: string) {
     if (rid === keepRoomId) continue;
     if (!room.activePeers.has(socketId)) continue;
     room.activePeers.delete(socketId);
-    if (room.creatorId === socketId) room.creatorId = '';
-    if (room.joinerId === socketId) room.joinerId = undefined;
-    io.to(rid).emit('peer_disconnected', { peerId: socketId, remaining: room.activePeers.size });
+    // Free the roster seat too, and tell the survivors WHICH participant left
+    // (participant id — stable across the room's life).
+    const gone = participantBySocket(room, socketId);
+    if (gone) removeParticipant(room, gone.id);
+    io.to(rid).emit('peer_disconnected', { peerId: gone?.id || socketId, remaining: liveParticipants(room).length });
   }
 }
 
@@ -826,6 +935,19 @@ io.on('connection', (socket) => {
   const ip = clientIp(socket);
   log('socket connected', socket.id.slice(0, 8), 'ip', ip, 'recovered', !!socket.recovered);
 
+  // Per-connection participant bookkeeping: roomId → this device's stable
+  // participant id in that room. Join handlers fill it; signal/relay read it
+  // to attribute frames on the multi-device wire.
+  const socketRoomsById = socketParticipants.get(socket.id) ?? new Map<string, string>();
+  socketParticipants.set(socket.id, socketRoomsById);
+  const platformLabel = ((): string => {
+    try {
+      const ua = String(socket.handshake.headers['user-agent'] || '');
+      if (/iPhone|iPad|iPod|Android/i.test(ua)) return 'phone';
+      return 'desktop';
+    } catch { return 'desktop'; }
+  })();
+
   // Malformed client emits (missing ack callback / wrong payload shape)
   // must NEVER crash the signaling process. safeOn wraps every handler:
   // the last argument is normalized to a callable ack when the handler
@@ -845,36 +967,46 @@ io.on('connection', (socket) => {
     });
   };
 
-  safeOn('create_room', (cb) => {
+  safeOn('create_room', (payload: { pid?: unknown } | undefined, cb?: (...args: any[]) => void) => {
+    const cbFn = typeof payload === 'function' ? payload : cb;
+    if (typeof cbFn !== 'function') return;
     if (limited(ip, createAttempts, 20, 60 * 1000)) {
-      return cb({ success: false, error: 'Too many sessions. Try again shortly.' });
+      return cbFn({ success: false, error: 'Too many sessions. Try again shortly.' });
     }
 
     const roomId = crypto.randomUUID();
     const secret = new OTPAuth.Secret({ size: 16 }).base32;
 
-    rooms.set(roomId, {
+    const room: Room = {
       id: roomId,
       secret,
-      creatorId: socket.id,
       createdAt: Date.now(),
       codeAnchor: Date.now(),
       lastActive: Date.now(),
-      activePeers: new Set([socket.id])
-    });
+      activePeers: new Set([socket.id]),
+      participants: new Map(),
+      rosterSeq: 1,
+    };
+    const pidRaw = (payload as { pid?: unknown })?.pid;
+    const selfId = typeof pidRaw === 'string' && /^[0-9a-f-]{36}$/i.test(pidRaw)
+      ? pidRaw
+      : crypto.randomUUID();
+    room.participants.set(selfId, { id: selfId, socketId: socket.id, name: 'Creator', platform: platformLabel, joinedAt: room.createdAt });
+    socketRoomsById.set(roomId, selfId);
+    rooms.set(roomId, room);
 
     socket.join(roomId);
-    log('room created', roomId.slice(0, 8), 'by', socket.id.slice(0, 8));
+    log('room created', roomId.slice(0, 8), 'by participant', selfId.slice(0, 8));
     // NOTE: rooms.created is NOT fired here. The tracker counts real
-    // two-device connections — countConnectedIfFirst fires it when a second
-    // live seat lands.
-    countConnectedIfFirst(rooms.get(roomId)!);
+    // multi-device connections — countConnectedIfFirst fires it when a second
+    // live participant lands.
+    countConnectedIfFirst(room);
     // codeAnchor anchors the pairing-code window (90s from room creation,
     // re-anchored on refresh_code when the creator lands on the connect screen).
-    cb({ success: true, roomId, secret, createdAt: rooms.get(roomId)!.codeAnchor, stayConnected: false });
+    cbFn({ success: true, roomId, secret, createdAt: room.codeAnchor, stayConnected: false, participantId: selfId, myParticipantId: selfId, roster: { participants: rosterList(room), seq: room.rosterSeq } });
   });
 
-  safeOn('join_with_code', ({ code }, cb) => {
+  safeOn('join_with_code', ({ code, pid: joinPid }, cb) => {
     if (limited(ip, codeAttempts, 10, 60 * 1000)) {
       count('joins.failed:rate_limited');
       return cb({ success: false, error: 'Too many attempts. Try again later.' });
@@ -912,27 +1044,36 @@ io.on('connection', (socket) => {
     }
 
     if (matchedRoom) {
-      if (matchedRoom.activePeers.size >= 2 && !matchedRoom.activePeers.has(socket.id)) {
-        return cb({ success: false, error: 'This session already has two devices.' });
+      // The client proves its stable identity with its room-scoped
+      // participantId (payload, post-TOTP): a known id reclaims its seat so
+      // a refresh rejoins AS THE SAME participant — never a duplicate row.
+      const selfId = typeof joinPid === 'string' && /^[0-9a-f-]{36}$/i.test(joinPid) ? joinPid : crypto.randomUUID();
+      const result = seatParticipant(matchedRoom, socket.id, { id: selfId, name: 'Device', platform: platformLabel });
+      if (result === 'full') {
+        count('joins.failed:room_full');
+        return cb({ success: false, error: 'This room is at its internal capacity. Please start a new session.' });
       }
-
-      matchedRoom.joinerId = socket.id;
       matchedRoom.lastActive = Date.now();
-      matchedRoom.activePeers.add(socket.id);
       socket.join(matchedRoom.id);
       countConnectedIfFirst(matchedRoom);
+      socketRoomsById.set(matchedRoom.id, selfId);
 
       log('peer joined room', matchedRoom.id.slice(0, 8));
-      socket.to(matchedRoom.id).emit('peer_joined', { peerId: socket.id });
+      // Roster broadcast: the joiner needs the snapshot (join ack carries it),
+      // existing members need the delta. Returning members (reclaimed) get a
+      // snapshot-shaped delta so the initiator tiebreak (joinedAt) is
+      // deterministic on every device.
+      const rosterDelta = { type: 'event' as const, event: 'peer_joined', payload: { peerId: selfId, participant: { id: selfId, name: 'Device', platform: platformLabel, joinedAt: matchedRoom.participants.get(selfId)!.joinedAt }, roster: { participants: rosterList(matchedRoom), seq: matchedRoom.rosterSeq }, initiatorId: ([...matchedRoom.participants.values()].sort((a, b) => a.joinedAt - b.joinedAt || (a.id < b.id ? -1 : 1))[0] || null)?.id ?? null } };
+      socket.to(matchedRoom.id).emit('peer_joined', rosterDelta.payload);
       count('joins.succeeded');
-      cb({ success: true, roomId: matchedRoom.id, secret: matchedRoom.secret, createdAt: matchedRoom.codeAnchor });
+      cb({ success: true, roomId: matchedRoom.id, secret: matchedRoom.secret, createdAt: matchedRoom.codeAnchor, participantId: selfId, myParticipantId: selfId, roster: { participants: rosterList(matchedRoom), seq: matchedRoom.rosterSeq } });
     } else {
       count('joins.failed:invalid_code');
       cb({ success: false, error: 'Invalid or expired code' });
     }
   });
 
-  safeOn('join_with_link', ({ roomId, secret }, cb) => {
+  safeOn('join_with_link', ({ roomId, secret, pid: linkPid }, cb) => {
     const room = rooms.get(roomId);
     if (!room) {
       count('joins.failed:session_expired');
@@ -945,23 +1086,35 @@ io.on('connection', (socket) => {
       return cb({ success: false, error: 'Invalid session' });
     }
 
-    if (room.activePeers.size >= 2 && !room.activePeers.has(socket.id)) {
-      count('joins.failed:room_full');
-      return cb({ success: false, error: 'This session already has two devices.' });
-    }
-
     // Reconnect path: free this socket's stale seat in any OTHER room.
     releaseStaleSeats(socket.id, roomId);
 
-    room.joinerId = socket.id;
+    // The client proves its stable identity with its room-scoped
+    // participantId (payload, post-secret): a known id reclaims its seat.
+    const selfId = typeof linkPid === 'string' && /^[0-9a-f-]{36}$/i.test(linkPid) ? linkPid : crypto.randomUUID();
+    const result = seatParticipant(room, socket.id, { id: selfId, name: 'Device', platform: platformLabel });
+    if (result === 'full') {
+      count('joins.failed:room_full');
+      return cb({ success: false, error: 'This room is at its internal capacity. Please start a new session.' });
+    }
     room.lastActive = Date.now();
-    room.activePeers.add(socket.id);
     socket.join(roomId);
     countConnectedIfFirst(room);
+    socketRoomsById.set(roomId, selfId);
 
-    socket.to(roomId).emit('peer_joined', { peerId: socket.id });
+    // Existing members learn the new/returning member via a delta that also
+    // carries the current roster + initiator pick so every device computes
+    // the same WebRTC initiator without extra chatter.
+    const joinedAt = room.participants.get(selfId)!.joinedAt;
+    const seniority = [...room.participants.values()].sort((a, b) => a.joinedAt - b.joinedAt || (a.id < b.id ? -1 : 1));
+    socket.to(roomId).emit('peer_joined', {
+      peerId: selfId,
+      participant: { id: selfId, name: 'Device', platform: platformLabel, joinedAt },
+      roster: { participants: rosterList(room), seq: room.rosterSeq },
+      initiatorId: seniority[0]?.id ?? null,
+    });
     count('joins.succeeded');
-    cb({ success: true, roomId, secret: room.secret, createdAt: room.codeAnchor, stayConnected: !!room.stayConnected });
+    cb({ success: true, roomId, secret: room.secret, createdAt: room.codeAnchor, stayConnected: !!room.stayConnected, participantId: selfId, myParticipantId: selfId, roster: { participants: rosterList(room), seq: room.rosterSeq } });
   });
 
   // Resolve a stable /s/<code> share link to the room it points at. The
@@ -984,7 +1137,7 @@ io.on('connection', (socket) => {
   // Rejoin after a page refresh — or after a RESTART, for Stay Connected
   // rooms. Requires the session secret, which only a device that previously
   // joined the room can hold.
-  safeOn('resume_room', ({ roomId, secret }, cb) => {
+  safeOn('resume_room', ({ roomId, secret, pid: resumePid }, cb) => {
     let room = rooms.get(roomId);
     if (!room || room.secret !== secret) {
       // Restart resurrection: if this room carries a live Stay Connected
@@ -995,11 +1148,12 @@ io.on('connection', (socket) => {
         room = {
           id: roomId,
           secret,
-          creatorId: socket.id,
           createdAt: Date.now(),
           codeAnchor: Date.now(),
           lastActive: Date.now(),
           activePeers: new Set<string>(),
+          participants: new Map(),
+          rosterSeq: 1,
           stayConnected: true,
         };
         rooms.set(roomId, room);
@@ -1010,33 +1164,51 @@ io.on('connection', (socket) => {
       }
     }
 
-    // Drop stale peers that are no longer connected so the returning device
-    // can take its seat back. Cancel their grace timers — the device is
-    // back under a new socket, so the "really gone" notice must never fire.
-    for (const pid of [room.creatorId, room.joinerId]) {
-      if (pid && pid !== socket.id && !io.sockets.sockets.get(pid) && room.activePeers.has(pid)) {
-        room.activePeers.delete(pid);
-        cancelGrace(pid);
+    // Drop stale participants whose sockets are gone AND whose disconnect
+    // grace has NOT claimed them yet — a grace-held seat belongs to a device
+    // that may return (refresh window); evicting it here would strand its
+    // return. A participant whose socket is STILL live is a real device that
+    // must never be silently evicted from a multi-device room.
+    for (const p of [...room.participants.values()]) {
+      if (p.id !== socket.id && !io.sockets.sockets.has(p.socketId) && !pendingGrace.has(p.socketId)) {
+        removeParticipant(room, p.id);
       }
     }
-
-    if (room.activePeers.size >= 2 && !room.activePeers.has(socket.id)) {
-      return cb({ success: false, error: 'This session already has two devices.' });
-    }
+    if (room.activePeers.size === 0) room.activePeers.clear();
 
     // Reconnect path: free this socket's stale seat in any OTHER room.
     releaseStaleSeats(socket.id, roomId);
 
-    if (!room.activePeers.has(socket.id)) {
-      room.activePeers.add(socket.id);
+    // Resume carries the stable participantId (post-secret proof): a known
+    // id reclaims its seat (same logical device); an unknown id is a new
+    // member of a room this device had not seated in before.
+    const selfId = typeof resumePid === 'string' && /^[0-9a-f-]{36}$/i.test(resumePid) ? resumePid : crypto.randomUUID();
+    const result = seatParticipant(room, socket.id, { id: selfId, name: 'Device', platform: platformLabel });
+    if (result === 'full') {
+      return cb({ success: false, error: 'This room is at its internal capacity. Please start a new session.' });
     }
     room.lastActive = Date.now();
     socket.join(roomId);
     countConnectedIfFirst(room);
+    socketRoomsById.set(roomId, selfId);
 
-    // Tell the other (live) peer to re-establish the connection with us.
-    socket.to(roomId).emit('peer_joined', { peerId: socket.id });
-    cb({ success: true, roomId, secret: room.secret, createdAt: room.codeAnchor, stayConnected: !!room.stayConnected });
+    // Tell the other (live) members to re-establish WebRTC with us. A
+    // RECLAIMED seat means the same logical device returned → survivors
+    // re-offer to it (peer_recovered semantics). A genuinely NEW seat is a
+    // roster join → the delta decides the initiator deterministically.
+    if (result === 'reclaimed') {
+      room.rosterSeq++;
+      socket.to(roomId).emit('peer_recovered', { peerId: selfId, roster: { participants: rosterList(room), seq: room.rosterSeq } });
+    } else {
+      const seniority = [...room.participants.values()].sort((a, b) => a.joinedAt - b.joinedAt || (a.id < b.id ? -1 : 1));
+      socket.to(roomId).emit('peer_joined', {
+        peerId: selfId,
+        participant: { id: selfId, name: 'Device', platform: platformLabel, joinedAt: room.participants.get(selfId)!.joinedAt },
+        roster: { participants: rosterList(room), seq: room.rosterSeq },
+        initiatorId: seniority[0]?.id ?? null,
+      });
+    }
+    cb({ success: true, roomId, secret: room.secret, createdAt: room.codeAnchor, stayConnected: !!room.stayConnected, participantId: selfId, myParticipantId: selfId, roster: { participants: rosterList(room), seq: room.rosterSeq } });
   });
 
   // The creator reached the connect screen — re-anchor the code window so the
@@ -1068,17 +1240,21 @@ io.on('connection', (socket) => {
     }
     room.lastActive = Date.now();
 
-    // Only forward to a peer that is actually in the room.
+    // Targeted delivery for point-to-point negotiation (multi-device: offers
+    // go to ONE participant, never the whole room). `to` is a participant id
+    // on the current wire; a raw socket id (legacy echo) still resolves.
+    const fromId = participantBySocket(room, socket.id)?.id ?? socket.id;
     if (to) {
-      if (room.activePeers.has(to)) {
-        socket.to(to).emit('signal', { from: socket.id, signal });
+      const targetSocket = resolveRoomTarget(room, to);
+      if (targetSocket) {
+        socket.to(targetSocket).emit('signal', { from: fromId, signal });
       }
     } else {
-      socket.to(roomId).emit('signal', { from: socket.id, signal });
+      socket.to(roomId).emit('signal', { from: fromId, signal });
     }
     cb?.({ success: true });
   });
-  safeOn('relay_message', ({ roomId, data }, cb) => {
+  safeOn('relay_message', ({ roomId, to, data }, cb) => {
     const room = rooms.get(roomId);
     if (!room) return cb?.({ success: false, error: 'Room not found' });
     if (!room.activePeers.has(socket.id)) return cb?.({ success: false, error: 'Not a member' });
@@ -1098,13 +1274,23 @@ io.on('connection', (socket) => {
     room.lastActive = Date.now();
 
     count(isString ? 'relay.text_messages' : 'relay.binary_messages');
-    socket.to(roomId).emit('relay_message', { from: socket.id, data });
+    // Multi-device relay: targeted when the sender addressed one participant,
+    // broadcast to the other members otherwise (the 1-to-1 case is unchanged
+    // — two participants, so "broadcast" still reaches exactly the peer).
+    const fromId = participantBySocket(room, socket.id)?.id ?? socket.id;
+    const toSocket = to != null ? resolveRoomTarget(room, to) : null;
+    if (toSocket) {
+      socket.to(toSocket).emit('relay_message', { from: fromId, data });
+    } else {
+      socket.to(roomId).emit('relay_message', { from: fromId, data });
+    }
     cb?.({ success: true });
   });
   safeOn('close_room', ({ roomId }) => {
     const room = rooms.get(roomId);
     if (room && room.activePeers.has(socket.id)) {
       rooms.delete(roomId);
+      socketRoomsById.delete(roomId);
       // An explicit close ends even a Stay Connected promise — drop it from
       // the durability registry so nothing revives a room the user ended.
       forgetStayRoom(roomId);
@@ -1260,11 +1446,15 @@ safeOn('presence_invite_result', (payload: { to?: unknown; accepted?: unknown; r
     for (const [id, room] of rooms.entries()) {
       if (room.activePeers.has(socket.id)) {
         // Hold the seat through the grace window instead of evicting
-        // immediately — the other device keeps its room without a scary
+        // immediately — the other devices keep their room without a scary
         // "disconnected" state for a tab refresh or a brief network blip.
+        // The PARTICIPANT stays in the roster; the grace only freezes the
+        // socket mirror. Recipients go stale for the room, transfers to it
+        // are individually retryable — never a room-wide teardown.
         room.lastActive = Date.now();
         affected.add(id);
         cancelGrace(socket.id);
+        const pid = socketRoomsById.get(id);
         const timer = setTimeout(() => {
           pendingGrace.delete(socket.id);
           const r = rooms.get(id);
@@ -1272,8 +1462,9 @@ safeOn('presence_invite_result', (payload: { to?: unknown; accepted?: unknown; r
           // The socket came back within the window — keep the seat.
           if (io.sockets.sockets.has(socket.id)) return;
           if (r.activePeers.has(socket.id)) r.activePeers.delete(socket.id);
-          log('peer disconnect confirmed', id.slice(0, 8), 'peer', socket.id.slice(0, 8));
-          socket.to(id).emit('peer_disconnected', { peerId: socket.id, remaining: r.activePeers.size });
+          socketParticipants.delete(socket.id); // recovery window is over
+          log('peer disconnect confirmed', id.slice(0, 8), 'peer', (pid || socket.id).slice(0, 8));
+          io.to(id).emit('peer_disconnected', { peerId: pid || socket.id, remaining: liveParticipants(r).length });
         }, DISCONNECT_GRACE_MS);
         pendingGrace.set(socket.id, timer);
       }
@@ -1294,18 +1485,30 @@ io.on('connection', (socket) => {
     // "really gone" eviction from its earlier disconnect.
     cancelGrace(socket.id);
     const roomsToNotify = socketRooms.get(socket.id);
+    const byRoom = socketParticipants.get(socket.id);
     if (roomsToNotify) {
       socketRooms.delete(socket.id);
       for (const roomId of roomsToNotify) {
         const room = rooms.get(roomId);
         if (room) {
-          room.activePeers.add(socket.id);
+          // The recovered socket resumes its OLD participant seat when the
+          // roster still knows it (same logical device — never a duplicate
+          // "Device 2"); otherwise it re-seats as a fresh member.
+          const pid = byRoom?.get(roomId);
+          const seat = seatParticipant(room, socket.id, { id: pid || crypto.randomUUID(), name: 'Device', platform: 'desktop' });
+          if (seat === 'full') continue;
           room.lastActive = Date.now();
           countConnectedIfFirst(room);
-          socket.to(roomId).emit('peer_recovered', { peerId: socket.id });
+          room.rosterSeq++;
+          io.to(roomId).emit('peer_recovered', { peerId: pid || socket.id, roster: { participants: rosterList(room), seq: room.rosterSeq } });
         }
       }
     }
+  } else {
+    // A fresh socket identity that will never recover: its participant map
+    // is dead weight — release it once the disconnect grace has resolved.
+    // (Live maps for recovered sockets were re-registered on connect.)
+    if (!socketParticipants.has(socket.id)) socketParticipants.set(socket.id, new Map());
   }
 });
 

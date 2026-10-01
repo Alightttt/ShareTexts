@@ -27,6 +27,8 @@ import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
 import { saveDraft, loadDraft, clearDraft, ComposerDraft } from '../lib/draftStore';
 import { useFocusTrap } from '../lib/useFocusTrap';
 import { useI18n } from '../lib/i18n';
+import { DevicePicker, RecipientSummary } from '../components/DevicePicker';
+import { RecipientStrip } from '../components/RecipientStrip';
 
 /** Localized date-separator label: Today / Yesterday / a real date. */
 function dateKeyOf(ts: number): string {
@@ -40,7 +42,12 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   // lands later still speaks the CURRENT language.
   const tRef = useRef(t);
   tRef.current = t;
-  const { session, sendMessage, closeSession, cancelTransfer, requestReconnect, setDeviceName, registerRoomViewer, claimSeen } = useSession();
+  const { session, sendMessage, closeSession, cancelTransfer, requestReconnect, setDeviceName, registerRoomViewer, claimSeen, peers, recipients, toggleRecipient, selectAllRecipients, clearRecipients, retryRecipient, cancelRecipient } = useSession();
+  // Multi-device room state (calm defaults): the picker opens on demand; the
+  // rest of the room doesn't change just because the roster grew.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const others = useMemo(() => peers.filter(p => !p.isSelf), [peers]);
+  const isMultiRoom = others.length > 1;
   // A phone on phones, a screen on desktops — the "who am I talking to" chips
   // in the standalone header must match the device the user is actually on.
   const isMobileDevice = (() => {
@@ -695,6 +702,11 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     if (sendingRef.current) return;
     if (!inputText.trim() && attachments.length === 0) return;
     if (disconnected) return;
+    // Multi-device: any chosen recipient routes the send through the fan-out
+    // scheduler (messageEngine.sendToRecipients — 1 selected → targeted; none
+    // → every other live device). Clearing the selection afterwards is
+    // deliberate — the next send starts unaddressed, never silent broadcast.
+    const fanout = session.recipients && session.recipients.length >= 1;
     sendingRef.current = true;
     try {
     if (attachments.length > 0) {
@@ -710,6 +722,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     }
     setInputText('');
     setAttachments([]);
+    if (fanout) clearRecipients();
     void clearDraft(session.roomId);
     setSentPulse(true);
     setTimeout(() => setSentPulse(false), 900);
@@ -957,8 +970,27 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               className="text-[12px] font-semibold text-apple-ink dark:text-white truncate max-w-[38vw] sm:max-w-[160px]"
             >
-              {session.partnerName || t('chat.pairedDevice')}
+              {/* Room-aware header (F13): a 3+ device room says how many
+                  devices are in it — never "Connected to Windows PC" for a
+                  whole room. The two-device room keeps the familiar name. */}
+              {others.length > 1
+                ? t('room.deviceCount', { count: String(others.length + 1) })
+                : (session.partnerName || t('chat.pairedDevice'))}
             </motion.span>
+            {others.length > 1 && (
+              <span data-testid="room-device-count" className="text-[10.5px] font-medium text-apple-ink-muted dark:text-white/45">
+                {(() => {
+                  const ready = others.filter(p => p.link === 'connected').length;
+                  const connecting = others.filter(p => p.link === 'connecting' || p.link === 'reconnecting').length;
+                  const offline = others.filter(p => p.link === 'offline').length;
+                  const parts: string[] = [];
+                  if (ready) parts.push(t('room.readyCount', { count: String(ready) }));
+                  if (connecting) parts.push(t('room.connectingCount', { count: String(connecting) }));
+                  if (offline) parts.push(t('room.offlineCount', { count: String(offline) }));
+                  return parts.join(' · ');
+                })()}
+              </span>
+            )}
             <span className={cn(
               "flex items-center gap-1 text-[10.5px] font-medium",
               disconnected || session.connectionType === 'connecting'
@@ -1333,6 +1365,19 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                         onToggleSelect={() => toggleSelected(msg.id)}
                         onLongPressStart={enterSelectMode}
                       />
+                      {/* Sender-side fan-out truth: ONE logical share renders
+                          once, with a per-recipient summary beneath it (partial
+                          success, per-device retry/cancel). Receivers never see
+                          this — their cards stay the clean 1-to-1 shape. */}
+                      {msg.sender === 'me' && (msg.attachment?.recipients || msg.textRecipients) && (
+                        <RecipientStrip
+                          message={msg}
+                          recipients={(msg.attachment?.recipients ?? msg.textRecipients)!}
+                          nameOf={(id) => peers.find(p => p.id === id)?.name ?? t('picker.unknownDevice')}
+                          onRetry={(mid, rid) => { void retryRecipient(mid, rid); }}
+                          onCancel={cancelRecipient}
+                        />
+                      )}
                     </React.Fragment>
                   );
                 })}
@@ -1415,6 +1460,39 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
             <kbd className="px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">{t('composer.shiftEnter')}</kbd>
             <span>{t('composer.newLine')}</span>
           </div>
+          {/* Multi-device recipient row — visible the moment the room has
+              more than one other device. The user always knows WHERE content
+              will go BEFORE pressing send; one-recipient rooms never see it. */}
+          {others.length > 0 && (
+            <div className="relative" data-testid="recipient-row">
+              <RecipientSummary
+                peers={peers}
+                selected={recipients}
+                onOpen={() => setPickerOpen(o => !o)}
+                onRemove={toggleRecipient}
+              />
+              <AnimatePresence>
+                {pickerOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.18 }}
+                    className="absolute bottom-full left-0 right-0 mb-2 z-40"
+                  >
+                    <DevicePicker
+                      peers={peers}
+                      selected={recipients}
+                      onToggle={toggleRecipient}
+                      onSelectAll={selectAllRecipients}
+                      onClear={clearRecipients}
+                      onClose={() => setPickerOpen(false)}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
           <AnimatePresence>
             {errorMsg && (
               <motion.div role="alert" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
@@ -1603,7 +1681,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 type="button"
                 data-testid="send"
                 onClick={handleSend}
-                disabled={(!inputText.trim() && attachments.length === 0) || !session.partnerConnected}
+                disabled={(!inputText.trim() && attachments.length === 0) || (!session.partnerConnected && !(recipients.length > 0) && !isMultiRoom)}
                 aria-label={t('composer.send')}
                 className="w-[44px] h-[44px] rounded-full flex items-center justify-center shrink-0 transition-all duration-200 active:scale-90 text-white bg-ember hover:bg-[#d9560e] disabled:bg-apple-hairline dark:disabled:bg-white/15 disabled:shadow-none disabled:text-apple-ink-muted/50 dark:disabled:text-white/30 shadow-[0_1px_3px_rgba(240,100,19,0.35)]"
               >

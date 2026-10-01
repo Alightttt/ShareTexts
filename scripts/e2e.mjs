@@ -153,7 +153,15 @@ async function main() {
   await C.locator('input[inputmode="numeric"]').fill(freshCode);
   await sleep(4000);
   const cBody = await C.locator('body').innerText();
-  if (cBody.includes('already has two devices')) {
+  // F13 multi-device rooms: a THIRD device now JOINS the same room (there is
+  // deliberately no product-level participant cap). The dedicated
+  // multi-device suite (scripts/verify-multi-device.mjs) asserts the roster
+  // and fan-out behavior in depth; here we just require an honest outcome:
+  // either seated in the room (composer visible) or a graceful rejection.
+  const cComposer = await C.getByTestId('composer').count();
+  if (cComposer > 0 || cBody.includes('Devices found') || cBody.includes('Connected')) {
+    console.log('STEP 9 OK: third device joined the room (multi-device rooms)');
+  } else if (cBody.includes('already has two devices')) {
     console.log('STEP 9 OK: third device rejected gracefully');
   } else {
     console.log('STEP 9 WARN: third device result:', cBody.slice(0, 300).replace(/\n/g, ' | '));
