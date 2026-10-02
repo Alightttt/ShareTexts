@@ -1,23 +1,27 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { motion, useSpring, useMotionValue, useTransform } from 'motion/react';
+import { Loader2, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 // ---------------------------------------------------------------------------
-// TactileButton — physically dimensional button
+// TactileButton — physically dimensional button (v2)
 // ---------------------------------------------------------------------------
-// Structure (bottom to top):
-//   1. Shadow layer — sits below, gives depth
-//   2. Base surface — gradient from light (top) to darker (bottom)
-//   3. Top highlight — thin bright edge catching light
-//   4. Bottom edge — subtle darker edge for grounding
-//   5. Pointer light — radial highlight following cursor
-//   6. Content layer — text + icons
+// Anatomy (bottom to top):
+//   1. Shadow layer — drop depth + INSET bevel (light from above: the top
+//      edge catches a bright hairline, the lower edge recesses into shade).
+//      Pressing does not move the button body — it SINKS: drop shadow
+//      compresses, the inset bevel inverts into a recess, and the content
+//      drops 1.5px. Release springs back. (Press recipe adapted from
+//      OpenSourceUI's 3D button — bevel/press principles only, restyled
+//      with ShareTexts tokens; no dependency added.)
+//   2. Base surface — light-from-top gradient
+//   3. Top highlight / bottom edge hairlines
+//   4. Pointer light — radial highlight following the cursor
+//   5. Content — text + icons, drops on press
 //
-// The 3D illusion comes from:
-//   - Light source from ABOVE → top edge bright, bottom edge dark
-//   - Gradient surface → lighter at top, subtly darker at bottom
-//   - Shadow grows when lifted (hover), tightens when pressed
-//   - Content shifts down on press, up on hover
+// States: idle · hover · focus · pressed · disabled · loading · success
+// Loading keeps the label (truthful: the action is running); success swaps
+// the icon for a check for as long as the caller holds the flag.
 // ---------------------------------------------------------------------------
 
 type ButtonVariant = 'primary' | 'soft' | 'secondary' | 'ghost';
@@ -28,6 +32,10 @@ interface TactileButtonProps {
   size?: ButtonSize;
   icon?: React.ReactNode;
   iconPosition?: 'left' | 'right';
+  /** Truthful in-flight state: spinner replaces the icon, button is busy. */
+  loading?: boolean;
+  /** Brief confirmation state: check replaces the icon. */
+  success?: boolean;
   children: React.ReactNode;
   className?: string;
   disabled?: boolean;
@@ -36,46 +44,34 @@ interface TactileButtonProps {
   type?: 'button' | 'submit' | 'reset';
 }
 
-// Shape lock: every TactileButton is a full pill. The rest of the app
-// (pairing actions, QR/copy buttons, chips) already speaks pill; these 8–10px
-// radii were the one inconsistent corner family.
 const SIZE_CLASSES: Record<ButtonSize, string> = {
   sm: 'px-4 py-2 text-[13px] gap-2 rounded-full min-h-[36px]',
-  md: 'px-5 py-2.5 text-[14px] gap-2.5 rounded-full min-h-[40px]',
-  lg: 'px-7 py-3.5 text-[15px] gap-3.5 rounded-full min-h-[48px]',
+  md: 'px-5 py-2.5 text-[14px] gap-2.5 rounded-full min-h-[44px]',
+  lg: 'px-7 py-3.5 text-[15px] gap-3 rounded-full min-h-[52px]',
 };
 
-// Each variant defines its own surface gradient + shadow layers.
-// Primary is INK (near-black in light, white in dark) — the same visual
-// language as Apple's own marketing CTAs and the app's "New session"
-// button. Blue is an accent, not a paint bucket: it lives in links and
-// smaller actions. Shadows are neutral black at low alpha — a colored glow
-// shadow is the single loudest tell of template-grade UI.
+// Bevel language: resting = top-light + bottom-shade insets under a drop
+// shadow; pressed = drop shadow compressed, insets flip into a recess.
 const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; shadowHover: string; shadowPress: string; gradient: string }> = {
   primary: {
     base: 'text-white',
-    shadowIdle: '0 1px 2px rgba(240,100,19,0.25), 0 4px 10px -4px rgba(240,100,19,0.35)',
-    shadowHover: '0 4px 10px rgba(240,100,19,0.2), 0 12px 26px -8px rgba(240,100,19,0.4)',
-    shadowPress: '0 1px 2px rgba(240,100,19,0.3)',
-    gradient: 'linear-gradient(180deg, #f9743a 0%, #f06413 60%, #e05c0f 100%)',
+    shadowIdle: '0 1px 2px rgba(150,55,6,0.30), 0 5px 12px -4px rgba(240,100,19,0.42), inset 0 1px 1px rgba(255,255,255,0.30), inset 0 -2px 3px rgba(139,50,5,0.30)',
+    shadowHover: '0 2px 4px rgba(150,55,6,0.26), 0 12px 26px -8px rgba(240,100,19,0.48), inset 0 1px 1px rgba(255,255,255,0.34), inset 0 -2px 3px rgba(139,50,5,0.22)',
+    shadowPress: '0 1px 1px rgba(150,55,6,0.28), inset 0 2px 5px rgba(112,40,4,0.38), inset 0 -1px 1px rgba(255,255,255,0.10)',
+    gradient: 'linear-gradient(180deg, #f9743a 0%, #f06413 58%, #de5b0e 100%)',
   },
   soft: {
-    // The primary's sibling: same filled anatomy, one step lighter on the
-    // ember ramp — reads as "same family, quieter choice" (Send vs Receive).
     base: 'text-white',
-    shadowIdle: '0 1px 2px rgba(240,100,19,0.16), 0 4px 10px -4px rgba(240,100,19,0.22)',
-    shadowHover: '0 4px 10px rgba(240,100,19,0.13), 0 12px 26px -8px rgba(240,100,19,0.26)',
-    shadowPress: '0 1px 2px rgba(240,100,19,0.2)',
-    gradient: 'linear-gradient(180deg, #fb9a56 0%, #f98b41 60%, #f07d33 100%)',
+    shadowIdle: '0 1px 2px rgba(150,55,6,0.22), 0 4px 10px -4px rgba(240,100,19,0.30), inset 0 1px 1px rgba(255,255,255,0.28), inset 0 -2px 3px rgba(150,58,8,0.24)',
+    shadowHover: '0 2px 4px rgba(150,55,6,0.2), 0 10px 22px -8px rgba(240,100,19,0.34), inset 0 1px 1px rgba(255,255,255,0.32), inset 0 -2px 3px rgba(150,58,8,0.18)',
+    shadowPress: '0 1px 1px rgba(150,55,6,0.2), inset 0 2px 5px rgba(126,48,6,0.30), inset 0 -1px 1px rgba(255,255,255,0.10)',
+    gradient: 'linear-gradient(180deg, #fb9a56 0%, #f98b41 58%, #ef7c30 100%)',
   },
   secondary: {
-    // A paper tile with a hairline edge — sits on the canvas without
-    // competing with the primary. Gradient reads from a theme-aware CSS
-    // variable (index.css) so dark mode gets a graphite surface.
     base: 'text-apple-ink dark:text-white',
-    shadowIdle: '0 1px 2px rgba(0,0,0,0.05)',
-    shadowHover: '0 3px 8px rgba(0,0,0,0.07), 0 8px 20px -6px rgba(0,0,0,0.1)',
-    shadowPress: '0 1px 2px rgba(0,0,0,0.05)',
+    shadowIdle: '0 1px 2px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 1px rgba(0,0,0,0.045)',
+    shadowHover: '0 3px 8px rgba(0,0,0,0.07), 0 8px 20px -6px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -1px 1px rgba(0,0,0,0.04)',
+    shadowPress: '0 1px 1px rgba(0,0,0,0.05), inset 0 2px 4px rgba(0,0,0,0.10), inset 0 -1px 0 rgba(255,255,255,0.4)',
     gradient: 'var(--st-btn-secondary-grad)',
   },
   ghost: {
@@ -87,10 +83,7 @@ const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; 
   },
 };
 
-
-// Surface fill under the gradient overlay
 const SURFACE_FILLS: Record<ButtonVariant, string> = {
-  // Primary speaks the brand: ember fill, white text in both themes.
   primary: 'bg-ember',
   soft: 'bg-[#f98b41]',
   secondary: 'bg-white dark:bg-apple-tile-2',
@@ -102,6 +95,8 @@ export function TactileButton({
   size = 'lg',
   icon,
   iconPosition = 'left',
+  loading = false,
+  success = false,
   children,
   className,
   disabled,
@@ -112,26 +107,21 @@ export function TactileButton({
   const [isPressed, setIsPressed] = useState(false);
 
   const vs = VARIANT_STYLES[variant];
+  const busy = loading || success;
+  const inactive = disabled || loading;
 
-  // Pointer position for light effect (normalized 0-1 inside button)
+  // Pointer light position (normalized) + spring-smoothed follow.
   const px = useMotionValue(0.5);
   const py = useMotionValue(0.5);
-
-  // Spring-animated position for smooth light follow
   const lightX = useSpring(px, { stiffness: 150, damping: 15 });
   const lightY = useSpring(py, { stiffness: 150, damping: 15 });
-
-  // Light opacity — fades in on hover, out on leave
   const lightOpacity = useSpring(0, { stiffness: 200, damping: 20 });
 
-  // Y transform — rises on hover, compresses on press (Apple Design §4)
-  const y = useSpring(0, { stiffness: 300, damping: 20 });
+  // Body: rises a breath on hover, sinks 1.5px on press (the keycap press).
+  const y = useSpring(0, { stiffness: 420, damping: 24 });
+  // Content: drops WITH the press so the label reads pressed, not floated.
+  const contentY = useSpring(0, { stiffness: 500, damping: 26 });
 
-  // Shadow animation — expanded on hover, tight on press. The shadow is
-  // visible AT REST (starts at 1): a button with zero resting depth reads as
-  // a flat rectangle, and flat buttons are what make the idle screen feel
-  // like a generic dashboard instead of a physical utility. Hover lifts it,
-  // press compresses it, leave settles back to rest.
   const shadowY = useSpring(0, { stiffness: 200, damping: 20 });
   const shadowOpacity = useSpring(1, { stiffness: 200, damping: 20 });
 
@@ -149,50 +139,52 @@ export function TactileButton({
       shadowY.set(4);
       shadowOpacity.set(1);
     }
-  }, [lightOpacity, y, shadowY, shadowOpacity, isPressed]);
+  }, [lightOpacity, shadowY, shadowOpacity, isPressed]);
 
   const handlePointerLeave = useCallback(() => {
     setIsHovered(false);
     lightOpacity.set(0);
     y.set(0);
+    contentY.set(0);
     shadowY.set(0);
-    shadowOpacity.set(1); // settle back to resting depth
+    shadowOpacity.set(1);
     setIsPressed(false);
-  }, [lightOpacity, y, shadowY, shadowOpacity]);
+  }, [lightOpacity, y, contentY, shadowY, shadowOpacity]);
 
   const handlePointerDown = useCallback(() => {
+    if (inactive) return;
     setIsPressed(true);
-    y.set(1);
+    y.set(1.5);
+    contentY.set(1.5);
     shadowY.set(0);
-    shadowOpacity.set(0.5);
-  }, [y, shadowY, shadowOpacity]);
+    shadowOpacity.set(0.6);
+  }, [y, contentY, shadowY, shadowOpacity, inactive]);
 
   const handlePointerUp = useCallback(() => {
     setIsPressed(false);
     if (isHovered) {
-      y.set(-2);
+      y.set(-1.5);
+      contentY.set(0);
       shadowY.set(4);
       shadowOpacity.set(1);
     } else {
       y.set(0);
+      contentY.set(0);
       shadowY.set(0);
       shadowOpacity.set(1);
     }
-  }, [y, shadowY, shadowOpacity, isHovered]);
+  }, [y, contentY, shadowY, shadowOpacity, isHovered]);
 
-  // Pointer light gradient
   const lightGradient = useTransform(
     [lightX, lightY],
     ([lx, ly]: number[]) => `radial-gradient(ellipse at ${lx * 100}% ${ly * 100}%, rgba(255,255,255,0.15) 0%, transparent 55%)`
   );
 
-  // Compose shadow from spring values
   const boxShadow = useTransform(
     [shadowY, shadowOpacity],
     ([sy, so]: number[]) => {
       const base = isPressed ? vs.shadowPress : isHovered ? vs.shadowHover : vs.shadowIdle;
       if (variant === 'ghost') return base;
-      // Interpolate shadow spread based on elevation
       const spread = Math.round(sy);
       return base + `, 0 ${spread}px ${spread * 3}px rgba(0,0,0,${0.08 * so})`;
     }
@@ -203,7 +195,8 @@ export function TactileButton({
   return (
     <motion.button
       ref={ref}
-      disabled={disabled}
+      disabled={inactive}
+      aria-busy={loading || undefined}
       className={cn(
         'relative overflow-hidden font-semibold select-none',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-azure-500',
@@ -211,7 +204,8 @@ export function TactileButton({
         SIZE_CLASSES[size],
         vs.base,
         surfaceFill,
-        disabled && 'opacity-50 cursor-not-allowed',
+        inactive && 'opacity-50 cursor-not-allowed',
+        !inactive && 'cursor-pointer',
         className,
       )}
       style={{ y, touchAction: 'manipulation' as const }}
@@ -222,50 +216,51 @@ export function TactileButton({
       onPointerUp={handlePointerUp}
       {...props}
     >
-      {/* Shadow layer — sits behind the button, gives it physical depth */}
+      {/* Depth layer: drop shadow + inset bevel/recess */}
       <motion.div
         className="absolute inset-0 rounded-[inherit] pointer-events-none"
-        style={{
-          boxShadow,
-          opacity: shadowOpacity,
-        }}
+        style={{ boxShadow, opacity: shadowOpacity }}
       />
 
-      {/* Surface gradient — light from top, dark from bottom = 3D */}
+      {/* Surface gradient — light from top, dark from bottom */}
       <div
         className="absolute inset-0 rounded-[inherit] pointer-events-none z-[1]"
         style={{ background: vs.gradient }}
       />
 
-      {/* Top highlight — thin bright edge where light catches */}
-      <div className="absolute inset-x-[2px] top-[1px] h-[1px] bg-gradient-to-r from-transparent via-white/[0.2] to-transparent pointer-events-none z-[2] rounded-t-[inherit]" />
+      {/* Top highlight hairline */}
+      <div className="absolute inset-x-[2px] top-[1px] h-[1px] bg-gradient-to-r from-transparent via-white/[0.25] to-transparent pointer-events-none z-[2] rounded-t-[inherit]" />
 
-      {/* Bottom edge — subtle darker line for grounding */}
-      <div className="absolute inset-x-[2px] bottom-[1px] h-[1px] bg-gradient-to-r from-transparent via-black/[0.08] to-transparent pointer-events-none z-[2] rounded-b-[inherit]" />
+      {/* Bottom grounding hairline */}
+      <div className="absolute inset-x-[2px] bottom-[1px] h-[1px] bg-gradient-to-r from-transparent via-black/[0.10] to-transparent pointer-events-none z-[2] rounded-b-[inherit]" />
 
-      {/* Pointer light overlay — follows cursor inside button */}
+      {/* Pointer light overlay */}
       <motion.div
         className="absolute inset-0 pointer-events-none z-[3] rounded-[inherit]"
-        style={{
-          background: lightGradient,
-          opacity: lightOpacity,
-        }}
+        style={{ background: lightGradient, opacity: lightOpacity }}
       />
 
-      {/* Content layer */}
-      <span className="relative z-10 flex items-center justify-center gap-2 whitespace-nowrap">
-        {icon && iconPosition === 'left' && (
+      {/* Content — sinks with the press */}
+      <motion.span
+        className="relative z-10 flex items-center justify-center gap-2 whitespace-nowrap"
+        style={{ y: contentY }}
+      >
+        {(icon || loading || success) && iconPosition === 'left' && (
           <span className="shrink-0 flex items-center justify-center leading-none">
-            {icon}
+            {loading ? <Loader2 className="w-[1.15em] h-[1.15em] animate-spin" aria-hidden />
+              : success ? <Check className="w-[1.15em] h-[1.15em]" strokeWidth={3} aria-hidden />
+              : icon}
           </span>
         )}
         <span className="leading-none flex items-center">{children}</span>
-        {icon && iconPosition === 'right' && (
+        {(icon || loading || success) && iconPosition === 'right' && (
           <span className="shrink-0">
-            {icon}
+            {loading ? <Loader2 className="w-[1.15em] h-[1.15em] animate-spin" aria-hidden />
+              : success ? <Check className="w-[1.15em] h-[1.15em]" strokeWidth={3} aria-hidden />
+              : icon}
           </span>
         )}
-      </span>
+      </motion.span>
     </motion.button>
   );
 }

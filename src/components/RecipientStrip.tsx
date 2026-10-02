@@ -79,11 +79,21 @@ export function RecipientStrip({
       {open && (
         <ul className="space-y-0.5 border-t border-black/6 px-2 pb-2 pt-1 dark:border-white/8" role="list">
           {recipients.map((r) => (
-            <li key={r.recipientId} className="flex items-center gap-2 rounded-lg px-2 py-1.5" role="listitem">
+            <li key={r.recipientId} className="relative flex items-center gap-2 rounded-lg px-2 py-1.5" role="listitem">
               <StateIcon state={r.state} />
               <span className="min-w-0 flex-1 truncate text-xs text-neutral-700 dark:text-neutral-200">
                 {nameOf(r.recipientId)}
               </span>
+              {/* Progress as a hairline under the row: real bytes moving, legible
+                  at a glance — the % number stays for precision. */}
+              {r.state === 'sending' && typeof r.progress === 'number' && (
+                <span aria-hidden className="absolute inset-x-2 -bottom-px h-[2px] rounded-full overflow-hidden bg-black/8 dark:bg-white/10">
+                  <span
+                    className="block h-full rounded-full bg-[--ember] transition-[width] duration-300 ease-out"
+                    style={{ width: `${Math.max(2, Math.round(r.progress * 100))}%` }}
+                  />
+                </span>
+              )}
               {r.state === 'sending' && typeof r.progress === 'number' && (
                 <span className="text-[11px] tabular-nums text-neutral-400">
                   {Math.round(r.progress * 100)}%

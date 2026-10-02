@@ -28,6 +28,7 @@ import { saveDraft, loadDraft, clearDraft, ComposerDraft } from '../lib/draftSto
 import { useFocusTrap } from '../lib/useFocusTrap';
 import { useI18n } from '../lib/i18n';
 import { DevicePicker, RecipientSummary } from '../components/DevicePicker';
+import { hapticArrive } from '../lib/haptics';
 import { RecipientStrip } from '../components/RecipientStrip';
 
 /** Localized date-separator label: Today / Yesterday / a real date. */
@@ -328,6 +329,8 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
     const st = lastMessage.attachment?.status;
     const tr = tRef.current;
     if (st === 'complete') {
+      // A real arrival — the transfer landed intact. One quiet tick.
+      hapticArrive();
       const type = lastMessage.attachment?.type;
       setAnnouncement(type === 'image' ? tr('chat.photoReceived') : type === 'video' ? tr('chat.videoReceived') : type === 'audio' ? tr('chat.audioReceived') : tr('chat.fileReceived', { name: lastMessage.attachment!.name }));
     } else if (st === 'failed') {

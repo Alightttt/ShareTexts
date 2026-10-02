@@ -686,7 +686,7 @@ export function SingleScreenApp() {
                   tracker is passive status, so it lives ABOVE the action
                   cluster — status never interrupts the Send/Receive flow
                   (usability audit #6). */}
-              <h1 className="order-1 text-[34px] sm:text-[42px] lg:text-[52px] font-bold tracking-[-0.035em] leading-[1.06] text-apple-ink dark:text-white text-center sm:text-left" style={{ fontFamily: 'var(--font-display)' }}>
+              <h1 className="st-display order-1 text-[34px] sm:text-[42px] lg:text-[52px] text-apple-ink dark:text-white text-center sm:text-left">
                 {(() => { const [a, b] = t('home.title').split('\n'); return (<>{a}{b ? <><br />{b}</> : null}</>); })()}
               </h1>
               {/* whitespace-pre-line honors the subtitle's deliberate line
@@ -695,31 +695,28 @@ export function SingleScreenApp() {
                 {t('home.subtitle')}
               </p>
               {/* Live activity tracker — bare (NO pill): a breathing dot, the
-                  bold lifetime count, and the label. Always visible: the
-                  count floors at 100 (rooms made before lifetime tracking
-                  existed) and grows with the live service number when it
-                  answers. MOBILE: between the buttons and the hero image,
-                  centered. DESKTOP: right below the buttons, left-aligned
-                  like the heading/subtitle/buttons. */}
+                  lifetime count, and the label. Honest, local, floored at the
+                  pre-telemetry era count. QUIET by rank: it is metadata, so
+                  it whispers — the Send/Receive pair owns this screen. */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
-                className="order-2 mt-4 flex items-center justify-center lg:justify-start gap-2.5 whitespace-nowrap w-fit mx-auto lg:mx-0"
+                className="order-2 mt-3 flex items-center justify-center lg:justify-start gap-2 whitespace-nowrap w-fit mx-auto lg:mx-0"
               >
                 {/* Halo dot: two slow radar rings drift outward from a solid
                     glowing core — layered, staggered, so it reads as breath,
                     not alarm. Halts under prefers-reduced-motion. */}
-                <span className="relative flex items-center justify-center w-4 h-4 shrink-0" aria-hidden>
+                <span className="relative flex items-center justify-center w-3.5 h-3.5 shrink-0" aria-hidden>
                   <span className="st-halo-ring absolute inset-0 rounded-full bg-status-success/40" />
                   <span className="st-halo-ring st-halo-lag absolute inset-0 rounded-full bg-status-success/25" />
-                  <span className="relative w-2 h-2 rounded-full bg-status-success shadow-[0_0_6px_rgba(52,199,89,0.7)]" />
+                  <span className="relative w-1.5 h-1.5 rounded-full bg-status-success shadow-[0_0_6px_rgba(52,199,89,0.7)]" />
                 </span>
                 {nearbyStatus
-                  ? <span className="text-[16px] font-medium text-apple-ink-muted dark:text-white/70 leading-none">{nearbyStatus}</span>
+                  ? <span className="text-[13.5px] font-medium text-apple-ink-muted dark:text-white/55 leading-none">{nearbyStatus}</span>
                   : <>
-                    <span className="text-[19px] font-extrabold text-apple-ink dark:text-white tnum leading-none">{Math.max(roomsCreated ?? 0, 113).toLocaleString()}</span>
-                    <span className="text-[16px] font-medium text-apple-ink-muted dark:text-white leading-none">{t('home.roomsMade')}</span>
+                    <span className="text-[16px] font-bold text-apple-ink/90 dark:text-white/90 tnum leading-none">{Math.max(roomsCreated ?? 0, 113).toLocaleString()}</span>
+                    <span className="text-[13.5px] font-medium text-apple-ink-muted/85 dark:text-white/50 leading-none">{t('home.roomsMade')}</span>
                   </>}
               </motion.div>
               {/* Equal-width grid: the two primary actions share ONE geometry
@@ -974,22 +971,20 @@ export function SingleScreenApp() {
                     {!session.partnerConnecting && (
                       <motion.div key="pairing-actions" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                       <div className="mt-5 space-y-2">
-                    {/* Equal-weight paper tiles: the code is the hero of this
-                        screen, so the three sharing tools don't compete — no
-                        one blue pill outranking the others arbitrarily. */}
-                    {/* Show QR is the primary action on this screen — scanning
-                        is the fastest pairing path on any phone. */}
-                    <button onClick={() => setShowQROverlay(true)} className="w-full flex items-center justify-center gap-2 px-5 py-3 text-white rounded-full text-[14px] font-semibold min-h-[48px] transition-colors active:scale-[0.97] shadow-sm bg-ember hover:bg-[#d9560e]">
-                      <QrCode className="w-4 h-4" /> {t('create.showQr')}
-                    </button>
-                    <button onClick={shareLink} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] rounded-full text-[13px] font-semibold text-apple-ink dark:text-white/90 transition-colors active:scale-[0.97] min-h-[44px]">
-                      {copiedLink ? <AnimatedIcon animate="check" active><Check className="w-4 h-4 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="link"><Link2 className="w-4 h-4 text-apple-ink-muted dark:text-white/50" /></AnimatedIcon>}
+                    {/* The tactile system, propagated: Show QR is the screen's
+                        primary (scanning is the fastest pairing path on any
+                        phone), so it carries the keycap depth; the two copy
+                        tools sit on the paper secondary tile. One anatomy
+                        across home and pairing — the app feels like one app. */}
+                    <TactileButton onClick={() => setShowQROverlay(true)} variant="primary" size="md" className="w-full" icon={<QrCode className="w-4 h-4" />} data-testid="show-qr">
+                      {t('create.showQr')}
+                    </TactileButton>
+                    <TactileButton onClick={shareLink} variant="secondary" size="md" className="w-full" icon={copiedLink ? <AnimatedIcon animate="check" active><Check className="w-4 h-4 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="link"><Link2 className="w-4 h-4 text-apple-ink-muted dark:text-white/50" /></AnimatedIcon>}>
                       {copiedLink ? t('create.copied') : t('create.shareLink')}
-                    </button>
-                    <button onClick={copyCode} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-white/[0.06] border border-apple-divider/60 dark:border-white/10 hover:bg-apple-parchment dark:hover:bg-white/[0.08] rounded-full text-[13px] font-medium text-apple-ink dark:text-white/70 transition-colors active:scale-[0.98] min-h-[44px]">
-                      {copiedCode ? <AnimatedIcon animate="check" active><Check className="w-3.5 h-3.5 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="copy"><Copy className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /></AnimatedIcon>}
+                    </TactileButton>
+                    <TactileButton onClick={copyCode} variant="secondary" size="md" className="w-full" icon={copiedCode ? <AnimatedIcon animate="check" active><Check className="w-3.5 h-3.5 text-status-success" /></AnimatedIcon> : <AnimatedIcon animate="copy"><Copy className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50" /></AnimatedIcon>}>
                       {copiedCode ? t('create.codeCopied') : t('create.copyCode')}
-                    </button>
+                    </TactileButton>
                       </div>
                       </motion.div>
                     )}

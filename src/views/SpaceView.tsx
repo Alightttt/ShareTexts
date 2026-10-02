@@ -14,10 +14,11 @@
 import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ArrowLeft, Check, Clock, Copy, Download, File as FileIcon, Image as ImageIcon,
+  ArrowLeft, ArrowUp, Check, Clock, Copy, Download, File as FileIcon, Image as ImageIcon,
   Link2, Loader2, Pause, Play, Plus, QrCode, Share2, Trash2, UploadCloud, X, XCircle,
 } from 'lucide-react';
 import { useI18n } from '../lib/i18n';
+import { TactileButton } from '../components/TactileButton';
 import type { MsgKey } from '../lib/messages/types';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useSpaceClient, type LocalUpload } from '../lib/space/useSpaceClient';
@@ -389,7 +390,7 @@ export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): 
         <button onClick={onClose} aria-label={t('space.cancel')} className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-apple-ink-muted/60 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]">
           <X className="w-4 h-4" />
         </button>
-        <h2 className="text-[19px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">{t('space.createHeading')}</h2>
+        <h2 className="text-[16.5px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">{t('space.createHeading')}</h2>
         <p className="mt-1.5 text-[13.5px] leading-relaxed text-apple-ink-muted dark:text-white/55">{t('space.createSub')}</p>
 
         <label className="block mt-5 text-[13px] font-medium text-apple-ink dark:text-white/80" htmlFor="space-name">{t('space.nameLabel')}</label>
@@ -438,15 +439,16 @@ export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): 
 
         {error && <p className="mt-3 text-[13px] text-red-600 dark:text-red-400" role="alert">{error}</p>}
 
-        <button
+        <TactileButton
           onClick={() => void create()}
-          disabled={busy}
+          loading={busy}
+          variant="primary"
+          size="lg"
+          className="mt-6 w-full"
           data-testid="space-create-cta"
-          className="mt-6 w-full min-h-[50px] rounded-full bg-ember hover:bg-[#d9560e] disabled:opacity-60 text-white text-[15px] font-semibold shadow-[0_4px_14px_-6px_rgba(240,100,19,0.5)] transition-all active:scale-[0.98] inline-flex items-center justify-center gap-2"
         >
-          {busy && <Loader2 className="w-4 h-4 animate-spin" />}
           {busy ? t('space.creating') : t('space.createCta')}
-        </button>
+        </TactileButton>
         <p className="mt-3 text-[12px] leading-relaxed text-apple-ink-muted/70 dark:text-white/35">
           {t('space.shareHint')}
         </p>
@@ -502,7 +504,7 @@ export function SpaceJoinSheet({ open, onClose }: { open: boolean; onClose(): vo
         <button onClick={onClose} aria-label={t('space.cancel')} className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-apple-ink-muted/60 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]">
           <X className="w-4 h-4" />
         </button>
-        <h2 className="text-[19px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">{t('space.joinTitle')}</h2>
+        <h2 className="text-[16.5px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">{t('space.joinTitle')}</h2>
         <p className="mt-1.5 text-[13.5px] text-apple-ink-muted dark:text-white/55">{t('space.entryHint')}</p>
         <input
           value={code}
@@ -515,14 +517,17 @@ export function SpaceJoinSheet({ open, onClose }: { open: boolean; onClose(): vo
           autoFocus
         />
         {error && <p className="mt-3 text-[13px] text-red-600 dark:text-red-400" role="alert">{error}</p>}
-        <button
+        <TactileButton
           onClick={() => void go()}
-          disabled={!code.trim() || busy}
-          className="mt-5 w-full min-h-[50px] rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 disabled:opacity-50 text-[15px] font-semibold transition-all active:scale-[0.98] inline-flex items-center justify-center gap-2"
+          disabled={!code.trim()}
+          loading={busy}
+          variant="primary"
+          size="lg"
+          className="mt-5 w-full"
+          data-testid="space-join-cta"
         >
-          {busy && <Loader2 className="w-4 h-4 animate-spin" />}
           {t('space.reopen')}
-        </button>
+        </TactileButton>
       </motion.div>
     </div>
   );
@@ -556,7 +561,7 @@ function ShareSheet({ open, spaceId, token, onClose }: { open: boolean; spaceId:
         <button onClick={onClose} aria-label={t('space.cancel')} className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-apple-ink-muted/60 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]">
           <X className="w-4 h-4" />
         </button>
-        <h2 className="text-[19px] font-semibold text-apple-ink dark:text-white">{t('space.share')}</h2>
+        <h2 className="text-[16.5px] font-semibold text-apple-ink dark:text-white">{t('space.share')}</h2>
         <p className="mt-1.5 text-[13px] leading-relaxed text-apple-ink-muted dark:text-white/55">{t('space.shareHint')}</p>
         <div className="mt-4 flex items-center gap-2">
           <input
@@ -867,7 +872,7 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
             className="shrink-0 w-11 h-11 rounded-full bg-ember text-white flex items-center justify-center disabled:opacity-40 active:scale-[0.97] transition-transform"
             data-testid="space-send"
           >
-            <ArrowLeft className="w-5 h-5 rotate-90" />
+            <ArrowUp className="w-5 h-5" strokeWidth={2.4} />
           </button>
         </div>
       </footer>

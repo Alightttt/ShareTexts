@@ -525,17 +525,17 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
                   <motion.button
                     key={d.id}
                     type="button"
-                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                    initial={{ opacity: 0, y: 10, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.15 } }}
-                    transition={{ type: 'spring', bounce: 0.25, duration: 0.4, delay: i * 0.04 }}
+                    transition={{ type: 'spring', bounce: 0, duration: 0.34, delay: i * 0.04 }}
                     onClick={() => handleInvite(d)}
                     disabled={phase.kind !== 'idle'}
                     aria-label={t('nearby.connectAria', { name: d.name })}
                     className={cn(
-                      'group flex items-center gap-3 px-3.5 py-3 min-h-[52px] rounded-[14px] text-left',
-                      'bg-white dark:bg-apple-tile-1 border border-apple-divider/50 dark:border-apple-tile-3',
-                      'hover:border-[#f06413]/40 dark:hover:border-[#fb9243]/45 hover:shadow-[0_2px_10px_-4px_rgba(31,26,20,0.12)] dark:hover:shadow-[0_2px_10px_-4px_rgba(0,0,0,0.5)]',
+                      'group flex items-center gap-3 px-3.5 py-3 min-h-[56px] rounded-[14px] text-left',
+                      'bg-white dark:bg-apple-tile-1 border border-apple-divider/50 dark:border-apple-tile-3 shadow-xs',
+                      'hover:border-[#f06413]/40 dark:hover:border-[#fb9243]/45 hover:shadow-card',
                       'active:scale-[0.985] transition-all',
                       'disabled:opacity-50 disabled:pointer-events-none',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember/60'
@@ -610,7 +610,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.15 } }}
-                  transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+                  transition={{ type: 'spring', bounce: 0, duration: 0.32 }}
                   className="group flex items-center gap-3 px-3.5 py-3 min-h-[52px] rounded-[14px] text-left border bg-apple-parchment/50 dark:bg-white/[0.02] border-apple-divider/30 dark:border-white/[0.04] transition-all"
                 >
                   <span className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center bg-apple-divider/40 dark:bg-white/[0.06] text-apple-ink-muted dark:text-white/40">
@@ -626,7 +626,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
                     type="button"
                     onClick={() => { forgetRecentDevice(r.token); setRecents(getRecentDevices()); }}
                     aria-label={t('nearby.forget')}
-                    className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-apple-ink-muted/50 dark:text-white/30 hover:text-status-danger hover:bg-status-danger/10 active:scale-90 transition-all opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                    className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-apple-ink-muted/50 dark:text-white/30 hover:text-status-danger hover:bg-status-danger/10 active:scale-90 transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
