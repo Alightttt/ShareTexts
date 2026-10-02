@@ -491,6 +491,17 @@ const ja: Dict = {
   'space.errAdd': '追加できませんでした。もう一度お試しください。',
   'space.errDownload': 'ファイルをダウンロードできませんでした。もう一度お試しください。',
   'space.errClose': 'スペースを閉じられませんでした。もう一度お試しください。',
+  'space.errRemove': '削除できませんでした。もう一度お試しください。',
+  'space.memberCountOne': '1台の端末',
+  'space.addedByYou': 'あなたが追加',
+  'space.upPaused': '一時停止中',
+  'space.removeConfirmTitle': 'これを削除しますか？',
+  'space.removeConfirmBody': 'スペース内の全員から見えなくなります。手元にまだあれば、もう一度追加できます。',
+  'space.removeConfirmCta': '削除',
+  'space.joinPlaceholder': 'スペースのリンクをここに貼り付け',
+  'space.joinBadLink': 'スペースのリンクではないようです。# の後ろも含めてリンク全体をコピーしてください。',
+  'space.joinRejected': '開けませんでした — キーがこのスペースと一致しません。',
+  'space.joinClosed': 'このスペースはすでに閉じています。',
 };
 
 export default ja;

@@ -7,7 +7,8 @@
  *   ADD: one composer — type, paste, choose, drop
  *
  * Copy follows §93: human, calm, honest. Server state is authoritative —
- * the view only mirrors what useSpaceClient reports.
+ * the view only mirrors what useSpaceClient reports. Every action that CAN
+ * fail tells the user honestly (inline notice), never silently.
  */
 
 import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
@@ -17,12 +18,13 @@ import {
   Link2, Loader2, Pause, Play, Plus, QrCode, Share2, Trash2, UploadCloud, X, XCircle,
 } from 'lucide-react';
 import { useI18n } from '../lib/i18n';
+import type { MsgKey } from '../lib/messages/types';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useSpaceClient, type LocalUpload } from '../lib/space/useSpaceClient';
-import { spaceShareLink, localCreds } from '../lib/space/api';
+import { spaceShareLink, localCreds, joinSpace, parseSpaceShare, SpaceApiError } from '../lib/space/api';
 import type { SpaceItem } from '../lib/space/types';
 import { closingTime, remainingShort, urgencyTier } from '../lib/space/time';
-import { reminderSupport, enableReminder, disableReminder } from '../lib/space/reminders';
+import { reminderSupport, enableReminder } from '../lib/space/reminders';
 
 const QRCode = lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeSVG })));
 
@@ -41,6 +43,23 @@ function humanDuration(ms: number): string {
   const h = ms / HOUR;
   if (h < 24) return `${h}h`;
   return `${ms / (24 * HOUR)}d`;
+}
+void humanDuration;
+
+function isUrlLike(s: string): boolean {
+  return /^https?:\/\/\S+$/i.test(s.trim());
+}
+
+/** Escape closes the sheet — desktop grammar; on mobile the backdrop does it. */
+function useEscape(active: boolean, onClose: () => void) {
+  useEffect(() => {
+    if (!active) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [active, onClose]);
 }
 
 // ── small atoms ───────────────────────────────────────────────────────────
@@ -73,9 +92,11 @@ function fmtSize(n: number): string {
 const PREVIEWABLE = /^(image\/(png|jpeg|gif|webp|avif|heic|heif|bmp))$/i;
 
 function ItemCard({
-  item, canRemove, onCopy, onDownload, onRemove,
+  item, spaceId, mine, canRemove, onCopy, onDownload, onRemove,
 }: {
   item: SpaceItem;
+  spaceId: string;
+  mine: boolean;
   canRemove: boolean;
   onCopy(item: SpaceItem): void;
   onDownload(item: SpaceItem): void;
@@ -83,28 +104,32 @@ function ItemCard({
 }) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
-  const [err, setErr] = useState(false);
   const isImage = item.kind === 'file' && PREVIEWABLE.test(item.mime);
+  // 'loading' → shimmer in the preview slot; 'failed' → no preview block at
+  // all (§21 — a failed preview is NOT an error, the file row still works).
+  const [preview, setPreview] = useState<'loading' | 'ready' | 'failed'>('loading');
   const [src, setSrc] = useState<string | null>(null);
 
-  // Previews load lazily and only for safe image types; anything else gets
-  // the clean file representation (§21 — a failed preview is NOT an error).
+  // Previews load lazily and only for safe image types, via the same
+  // authorized fetch downloads use — the blob URL never touches our origin
+  // as an executable-content URL (§19).
   useEffect(() => {
     if (!isImage) return;
     let dead = false;
     let url: string | null = null;
-    import('../lib/space/api').then(({ downloadItem }) => {
-      // Reuse the authorized fetch; render via blob URL — never a raw
-      // executable-content URL on our origin (§19).
-    }).catch(() => { /* preview unavailable */ });
-    (async () => {
-      try {
-        const { default: apiMod } = await import('../lib/space/api') as unknown as { default?: unknown };
-        void apiMod;
-      } catch { /* noop */ }
-    })();
+    import('../lib/space/api')
+      .then(({ fetchItemBlobUrl }) => fetchItemBlobUrl(spaceId, item))
+      .then((blobUrl) => {
+        if (dead) { URL.revokeObjectURL(blobUrl); return; }
+        url = blobUrl;
+        setSrc(blobUrl);
+        setPreview('ready');
+      })
+      .catch(() => { if (!dead) setPreview('failed'); });
     return () => { dead = true; if (url) URL.revokeObjectURL(url); };
-  }, [isImage]);
+    // item.id/mime/size are stable per item; re-fetch only on those.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isImage, spaceId, item.id]);
 
   return (
     <motion.div
@@ -117,6 +142,30 @@ function ItemCard({
       data-testid="space-item"
       data-kind={item.kind}
     >
+      {isImage && preview !== 'failed' && (
+        <button
+          type="button"
+          className="block w-full cursor-zoom-in bg-apple-parchment/60 dark:bg-white/[0.04]"
+          onClick={() => { if (src) window.open(src, '_blank', 'noopener'); }}
+          aria-label={item.name || t('space.download')}
+          disabled={!src}
+        >
+          {preview === 'ready' && src ? (
+            <img
+              src={src}
+              alt={item.name || ''}
+              draggable={false}
+              className="w-full max-h-72 object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <span className="relative flex items-center justify-center h-44 overflow-hidden">
+              <span className="st-skeleton w-full h-full absolute inset-0" aria-hidden />
+              <ImageIcon className="w-6 h-6 text-apple-ink-muted/40 dark:text-white/25 relative" aria-hidden />
+            </span>
+          )}
+        </button>
+      )}
       <div className="p-3.5">
         {item.kind === 'text' && (
           <p className="text-[14.5px] leading-relaxed text-apple-ink dark:text-white/90 whitespace-pre-wrap break-words max-h-56 overflow-y-auto">{item.text}</p>
@@ -135,7 +184,7 @@ function ItemCard({
         {item.kind === 'file' && (
           <div className="flex items-center gap-3">
             <span className="shrink-0 w-10 h-10 rounded-[12px] bg-apple-parchment dark:bg-white/[0.06] flex items-center justify-center">
-              {isImage && !err
+              {isImage && preview !== 'failed'
                 ? <ImageIcon className="w-5 h-5 text-apple-ink-muted dark:text-white/55" />
                 : <FileIcon className="w-5 h-5 text-apple-ink-muted dark:text-white/55" />}
             </span>
@@ -146,7 +195,7 @@ function ItemCard({
           </div>
         )}
         <div className="mt-2.5 flex items-center gap-2.5 text-[12px] text-apple-ink-muted/80 dark:text-white/40">
-          <span className="truncate">{t('space.addedBy', { name: item.addedByName })}</span>
+          <span className="truncate">{mine ? t('space.addedByYou') : t('space.addedBy', { name: item.addedByName })}</span>
           <span className="flex-1" />
           {item.kind === 'text' && (
             <button
@@ -181,42 +230,117 @@ function ItemCard({
   );
 }
 
-function UploadRow({ up, onCancel, t }: { up: LocalUpload; onCancel(key: string): void; t: (k: never, p?: never) => string }) {
+type TFunc = (k: MsgKey, p?: Record<string, string | number>) => string;
+
+function UploadRow({
+  up, onCancel, onPause, onResume, onRetry, onDismiss, t,
+}: {
+  up: LocalUpload;
+  onCancel(key: string): void;
+  onPause(key: string): void;
+  onResume(key: string): void;
+  onRetry(key: string): void;
+  onDismiss(key: string): void;
+  t: TFunc;
+}) {
   const pct = up.progress.size > 0 ? Math.min(100, Math.round((up.progress.sent / up.progress.size) * 100)) : 0;
+  const phase = up.progress.phase;
   const label =
-    up.progress.phase === 'preparing' ? t('space.upPreparing' as never) :
-    up.progress.phase === 'verifying' ? t('space.upVerifying' as never) :
-    up.progress.phase === 'paused' ? t('space.pause' as never) :
-    up.progress.phase === 'failed' ? t('space.upFailed' as never) :
-    up.progress.phase === 'cancelled' ? t('space.upCancelled' as never) :
-    t('space.upUploading' as never);
-  const done = up.progress.phase === 'ready';
+    phase === 'preparing' ? t('space.upPreparing') :
+    phase === 'uploading' ? t('space.upUploading') :
+    phase === 'verifying' ? t('space.upVerifying') :
+    phase === 'paused' ? t('space.upPaused') :
+    phase === 'failed' ? t('space.upFailed') :
+    phase === 'cancelled' ? t('space.upCancelled') :
+    t('space.upUploading');
+  // Honest percent in every byte-counted phase; "preparing" shows digest
+  // read progress when it's still reading the file.
+  const pctText =
+    phase === 'preparing'
+      ? (up.progress.prepare ?? 0) < 1 ? ` · ${Math.round((up.progress.prepare ?? 0) * 100)}%` : ''
+      : (phase === 'uploading' || phase === 'paused') ? ` · ${pct}%`
+      : '';
+  const done = phase === 'ready';
+  const failed = phase === 'failed';
+  const cancelled = phase === 'cancelled';
+  const active = phase === 'uploading' || phase === 'preparing';
+
   return (
-    <div className="rounded-[16px] bg-white dark:bg-[#1c1c21] border border-apple-divider/70 dark:border-white/[0.08] p-3.5" data-testid="space-upload" data-phase={up.progress.phase}>
+    <div className="rounded-[16px] bg-white dark:bg-[#1c1c21] border border-apple-divider/70 dark:border-white/[0.08] p-3.5" data-testid="space-upload" data-phase={phase}>
       <div className="flex items-center gap-3">
         <span className="shrink-0 w-10 h-10 rounded-[12px] bg-apple-parchment dark:bg-white/[0.06] flex items-center justify-center">
-          <UploadCloud className={`w-5 h-5 ${done ? 'text-emerald-600 dark:text-emerald-400' : up.progress.phase === 'failed' || up.progress.phase === 'cancelled' ? 'text-red-500' : 'text-apple-ink-muted dark:text-white/55'}`} />
+          <UploadCloud className={`w-5 h-5 ${done ? 'text-emerald-600 dark:text-emerald-400' : failed || cancelled ? 'text-red-500' : 'text-apple-ink-muted dark:text-white/55'}`} />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[14px] font-medium text-apple-ink dark:text-white/90 truncate">{up.name}</span>
-          <span className="block text-[12.5px] text-apple-ink-muted dark:text-white/50">
-            {label}{!done && up.progress.phase === 'uploading' ? ` · ${pct}%` : ''}
+          <span className="block text-[12.5px] text-apple-ink-muted dark:text-white/50" aria-live="polite">
+            {label}{pctText}
           </span>
+          {failed && up.progress.error && (
+            <span className="block text-[11.5px] text-red-600/80 dark:text-red-400/80 truncate">{up.progress.error}</span>
+          )}
         </span>
-        {(up.progress.phase === 'uploading' || up.progress.phase === 'preparing') && (
-          <button className="shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-1 min-h-[28px] text-[12px] font-medium text-red-600/80 dark:text-red-400/80 hover:bg-red-500/[0.08]" onClick={() => onCancel(up.key)}>
-            <XCircle className="w-3.5 h-3.5" />
-            {t('space.cancelUpload' as never)}
+        {phase === 'paused' && (
+          <button
+            className="shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-1 min-h-[28px] text-[12px] font-medium text-apple-ink dark:text-white/80 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]"
+            onClick={() => onResume(up.key)}
+            data-testid="space-upload-resume"
+          >
+            <Play className="w-3.5 h-3.5" />
+            {t('space.resume')}
           </button>
         )}
-        {up.progress.phase === 'failed' && (
-          <span className="shrink-0 text-[12px] font-medium text-red-600 dark:text-red-400">{t('space.retry' as never)}</span>
+        {active && (
+          <button
+            className="shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-1 min-h-[28px] text-[12px] font-medium text-apple-ink-muted dark:text-white/60 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]"
+            onClick={() => onPause(up.key)}
+            data-testid="space-upload-pause"
+          >
+            <Pause className="w-3.5 h-3.5" />
+            {t('space.pause')}
+          </button>
+        )}
+        {(active || phase === 'paused') && (
+          <button
+            className="shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-1 min-h-[28px] text-[12px] font-medium text-red-600/80 dark:text-red-400/80 hover:bg-red-500/[0.08]"
+            onClick={() => onCancel(up.key)}
+          >
+            <XCircle className="w-3.5 h-3.5" />
+            {t('space.cancelUpload')}
+          </button>
+        )}
+        {failed && (
+          <>
+            <button
+              className="shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-1 min-h-[28px] text-[12px] font-semibold text-azure-600 dark:text-azure-400 hover:bg-azure-500/[0.08]"
+              onClick={() => onRetry(up.key)}
+              data-testid="space-upload-retry"
+            >
+              {t('space.retry')}
+            </button>
+            <button
+              className="shrink-0 rounded-full p-1.5 min-h-[28px] text-apple-ink-muted/60 dark:text-white/40 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]"
+              onClick={() => onDismiss(up.key)}
+              aria-label={t('space.cancelUpload')}
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </>
+        )}
+        {cancelled && (
+          <button
+            className="shrink-0 rounded-full p-1.5 min-h-[28px] text-apple-ink-muted/60 dark:text-white/40 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]"
+            onClick={() => onDismiss(up.key)}
+            aria-label={t('space.cancelUpload')}
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         )}
       </div>
-      {!done && up.progress.phase !== 'failed' && up.progress.phase !== 'cancelled' && (
+      {!done && !failed && !cancelled && (
         <div className="mt-2.5 h-1 rounded-full bg-apple-ink/[0.07] dark:bg-white/[0.08] overflow-hidden">
-          <div className={`h-full rounded-full transition-[width] duration-300 ${up.progress.phase === 'verifying' ? 'animate-pulse' : ''}`}
-            style={{ width: `${up.progress.phase === 'verifying' ? 100 : pct}%` }} />
+          <div className={`h-full rounded-full transition-[width] duration-300 ${phase === 'verifying' ? 'animate-pulse' : ''}`}
+            style={{ width: `${phase === 'verifying' ? 100 : phase === 'preparing' ? Math.round((up.progress.prepare ?? 0) * 100) : pct}%` }} />
         </div>
       )}
     </div>
@@ -233,8 +357,10 @@ export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const support = useMemo(() => reminderSupport(), []);
+  useEscape(open, onClose);
 
   const create = async () => {
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -271,8 +397,10 @@ export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): 
           id="space-name"
           value={name}
           onChange={e => setName(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void create(); } }}
           placeholder={t('space.namePlaceholder')}
           maxLength={80}
+          autoFocus
           className="mt-1.5 w-full rounded-[12px] border border-apple-divider dark:border-white/[0.12] bg-white dark:bg-white/[0.04] px-3.5 py-2.5 text-[14.5px] text-apple-ink dark:text-white placeholder:text-apple-ink-muted/50 dark:placeholder:text-white/30 outline-none focus:ring-2 focus:ring-azure-500/40"
         />
 
@@ -308,10 +436,10 @@ export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): 
           </span>
         </label>
 
-        {error && <p className="mt-3 text-[13px] text-red-600 dark:text-red-400">{error}</p>}
+        {error && <p className="mt-3 text-[13px] text-red-600 dark:text-red-400" role="alert">{error}</p>}
 
         <button
-          onClick={create}
+          onClick={() => void create()}
           disabled={busy}
           data-testid="space-create-cta"
           className="mt-6 w-full min-h-[50px] rounded-full bg-ember hover:bg-[#d9560e] disabled:opacity-60 text-white text-[15px] font-semibold shadow-[0_4px_14px_-6px_rgba(240,100,19,0.5)] transition-all active:scale-[0.98] inline-flex items-center justify-center gap-2"
@@ -334,24 +462,39 @@ export function SpaceJoinSheet({ open, onClose }: { open: boolean; onClose(): vo
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  if (!open) return null;
+  useEscape(open, onClose);
+
+  // One honest error per failure: unparsable link / wrong key / already
+  // closed / anything else. No token surgery — parseSpaceShare owns the
+  // grammar, and the redirect reuses exactly what was parsed.
   const go = async () => {
+    const raw = code.trim();
+    if (!raw || busy) return;
     setBusy(true);
     setError(null);
+    const parsed = parseSpaceShare(raw);
+    if (!parsed) {
+      setError(t('space.joinBadLink'));
+      setBusy(false);
+      return;
+    }
     try {
-      const { joinFromShare } = await import('../lib/space/api');
-      const snap = await joinFromShare(code);
-      window.location.href = `/space/${snap.spaceId}#k=${code.includes('#k=') ? code.split('#k=')[1].split(/[^\w-]/)[0] : extractToken(code) || snapToken(snap)}`;
+      await joinSpace(parsed.spaceId, parsed.token);
+      window.location.href = `/space/${parsed.spaceId}#k=${parsed.token}`;
     } catch (e) {
-      setError((e as Error).message || t('space.errGeneric'));
+      if (e instanceof SpaceApiError && e.closed) setError(t('space.joinClosed'));
+      else if (e instanceof SpaceApiError && (e.status === 401 || e.status === 403)) setError(t('space.joinRejected'));
+      else setError((e as Error)?.message || t('space.errGeneric'));
       setBusy(false);
     }
   };
+
+  if (!open) return null;
   return (
     <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-6">
       <div className="absolute inset-0 bg-black/35 backdrop-blur-[2px]" onClick={onClose} />
       <motion.div
-        role="dialog" aria-modal="true" aria-label={t('space.entryTitle')}
+        role="dialog" aria-modal="true" aria-label={t('space.joinTitle')}
         initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.22 }}
         className="relative w-full sm:max-w-[420px] rounded-t-[24px] sm:rounded-[24px] bg-apple-canvas dark:bg-[#1c1c21] border border-apple-divider/60 dark:border-white/[0.08] shadow-[0_24px_80px_-24px_rgba(0,0,0,0.4)] p-5 sm:p-6"
         data-testid="space-join"
@@ -359,22 +502,25 @@ export function SpaceJoinSheet({ open, onClose }: { open: boolean; onClose(): vo
         <button onClick={onClose} aria-label={t('space.cancel')} className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-apple-ink-muted/60 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]">
           <X className="w-4 h-4" />
         </button>
-        <h2 className="text-[19px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">{t('space.entryTitle')}</h2>
+        <h2 className="text-[19px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">{t('space.joinTitle')}</h2>
         <p className="mt-1.5 text-[13.5px] text-apple-ink-muted dark:text-white/55">{t('space.entryHint')}</p>
         <input
           value={code}
           onChange={e => setCode(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && code.trim() && !busy) void go(); }}
-          placeholder="https://sharetexts.online/space/…#k=…  ·  or paste the whole link"
+          placeholder={t('space.joinPlaceholder')}
+          spellCheck={false}
+          autoCapitalize="off"
           className="mt-4 w-full rounded-[12px] border border-apple-divider dark:border-white/[0.12] bg-white dark:bg-white/[0.04] px-3.5 py-2.5 text-[14px] text-apple-ink dark:text-white placeholder:text-apple-ink-muted/50 dark:placeholder:text-white/30 outline-none focus:ring-2 focus:ring-azure-500/40"
           autoFocus
         />
-        {error && <p className="mt-3 text-[13px] text-red-600 dark:text-red-400">{error}</p>}
+        {error && <p className="mt-3 text-[13px] text-red-600 dark:text-red-400" role="alert">{error}</p>}
         <button
           onClick={() => void go()}
           disabled={!code.trim() || busy}
-          className="mt-5 w-full min-h-[50px] rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 disabled:opacity-50 text-[15px] font-semibold transition-all active:scale-[0.98]"
+          className="mt-5 w-full min-h-[50px] rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 disabled:opacity-50 text-[15px] font-semibold transition-all active:scale-[0.98] inline-flex items-center justify-center gap-2"
         >
+          {busy && <Loader2 className="w-4 h-4 animate-spin" />}
           {t('space.reopen')}
         </button>
       </motion.div>
@@ -382,18 +528,13 @@ export function SpaceJoinSheet({ open, onClose }: { open: boolean; onClose(): vo
   );
 }
 
-function extractToken(raw: string): string | null {
-  const m = raw.match(/k=([A-Za-z0-9_-]+)/) || raw.match(/\.([A-Za-z0-9_-]{20,})$/);
-  return m ? m[1] : null;
-}
-function snapToken(_s: unknown): string { return ''; }
-
 // ── share sheet ───────────────────────────────────────────────────────────
 
 function ShareSheet({ open, spaceId, token, onClose }: { open: boolean; spaceId: string; token: string; onClose(): void }) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  useEscape(open, onClose);
   if (!open) return null;
   const link = spaceShareLink(spaceId, token);
   const copy = async () => {
@@ -457,10 +598,31 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
   const [removeId, setRemoveId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [composer, setComposer] = useState('');
+  const [notice, setNotice] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const myPid = snapshot?.participantId;
 
   const localToken = token || localCreds(spaceId)?.token || '';
+
+  // One honest inline error channel: failures surface here instead of
+  // disappearing into silent catches.
+  const showNotice = (msg: string) => {
+    setNotice(msg);
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setNotice(null), 6000);
+  };
+  useEffect(() => () => { if (noticeTimer.current) clearTimeout(noticeTimer.current); }, []);
+
+  // Composer grows with its content (single line → a few), capped so the
+  // header never scrolls away.
+  useEffect(() => {
+    const el = composerRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 128)}px`;
+  }, [composer]);
 
   // Paste anything anywhere: text/link/image/file (the universal model §25).
   useEffect(() => {
@@ -475,15 +637,36 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
       const text = e.clipboardData.getData('text/plain');
       if (text && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         e.preventDefault();
-        const isUrl = /^https?:\/\/\S+$/i.test(text.trim());
-        client.addTextItem(text, isUrl ? 'link' : 'text').catch(() => { /* composer shows error via conn */ });
+        client.addTextItem(text, isUrlLike(text) ? 'link' : 'text')
+          .catch(() => showNotice(t('space.errAdd')));
       }
     };
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
-  }, [client]);
+  }, [client, t]);
 
   const canClose = !!localCreds(spaceId)?.manageKey;
+
+  const submitText = () => {
+    const text = composer.trim();
+    if (!text) return;
+    setComposer('');
+    client.addTextItem(text, isUrlLike(text) ? 'link' : 'text')
+      .catch(() => { setComposer(text); showNotice(t('space.errAdd')); });
+  };
+
+  const shareSpace = async () => {
+    const link = spaceShareLink(spaceId, localToken);
+    if (typeof navigator !== 'undefined' && 'share' in navigator) {
+      try { await navigator.share({ text: link }); return; } catch { /* cancelled → try clipboard */ }
+    }
+    try {
+      await navigator.clipboard.writeText(link);
+      showNotice(t('space.copied'));
+    } catch {
+      showNotice(t('composer.copyFailed'));
+    }
+  };
 
   if (conn === 'closed') {
     return (
@@ -512,6 +695,8 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
     );
   }
 
+  const loadingFirst = !snapshot && conn === 'connecting';
+
   return (
     <div
       className="min-h-dvh bg-apple-canvas dark:bg-[#131315] font-sans flex flex-col"
@@ -527,7 +712,7 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
       <header className="shrink-0 sticky top-0 z-40 bg-apple-canvas/85 dark:bg-[#131315]/85 backdrop-blur border-b border-apple-divider/50 dark:border-white/[0.06]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
           <a href="/" aria-label={t('space.backHome')} className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center hover:bg-black/[0.05] dark:hover:bg-white/[0.08]">
-            <ArrowLeft className="w-4.5 h-4.5 text-apple-ink-muted dark:text-white/60" />
+            <ArrowLeft className="w-[18px] h-[18px] text-apple-ink-muted dark:text-white/60" />
           </a>
           <div className="min-w-0 flex-1">
             <h1 className="text-[15.5px] font-semibold text-apple-ink dark:text-white truncate leading-tight">{snapshot?.name || '…'}</h1>
@@ -535,16 +720,20 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
               <Countdown expiresAt={snapshot.expiresAt} now={nowMs} />
             )}
           </div>
-          <span className="shrink-0 text-[12.5px] font-medium text-apple-ink-muted dark:text-white/45 tabular-nums" data-testid="space-members">
-            {snapshot ? t('space.memberCount', { count: snapshot.memberCount }) : ''}
-          </span>
+          {snapshot && (
+            <span className="shrink-0 text-[12.5px] font-medium text-apple-ink-muted dark:text-white/45 tabular-nums" data-testid="space-members">
+              {snapshot.memberCount === 1
+                ? t('space.memberCountOne')
+                : t('space.memberCount', { count: snapshot.memberCount })}
+            </span>
+          )}
           <button
             onClick={() => setShareOpen(true)}
             className="shrink-0 inline-flex items-center gap-1.5 min-h-[36px] px-3.5 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[13px] font-semibold active:scale-[0.97] transition-transform"
             data-testid="space-share-btn"
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span className="hidden xs:inline sm:inline">{t('space.share')}</span>
+            <span className="hidden min-[400px]:inline">{t('space.share')}</span>
           </button>
           {canClose && (
             <button
@@ -562,7 +751,31 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
         {conn === 'offline' && (
           <p className="mb-3 text-[12.5px] font-medium text-amber-600 dark:text-amber-400" role="status">{t('space.reconnecting')}</p>
         )}
-        {items.length === 0 && uploads.length === 0 ? (
+        <AnimatePresence>
+          {notice && (
+            <motion.p
+              role="alert"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="mb-3 text-[13px] font-medium text-red-600 dark:text-red-400"
+            >
+              {notice}
+            </motion.p>
+          )}
+        </AnimatePresence>
+        {loadingFirst ? (
+          /* One loading language: the same skeleton grammar the QR overlays
+             use — shape first, words never. */
+          <div className="space-y-2.5" aria-label={t('space.contentLabel')} data-testid="space-loading">
+            {[64, 44, 52].map((h, i) => (
+              <div key={i} className="rounded-[16px] bg-white dark:bg-[#1c1c21] border border-apple-divider/70 dark:border-white/[0.08] p-3.5">
+                <span className="st-skeleton block rounded-[8px]" style={{ height: h / 2 + 8 }} />
+                <span className="st-skeleton mt-2 block h-2.5 w-1/3 rounded-full" />
+              </div>
+            ))}
+          </div>
+        ) : items.length === 0 && uploads.length === 0 ? (
           <div className="rounded-[20px] border border-dashed border-apple-divider dark:border-white/[0.12] py-14 text-center" data-testid="space-empty">
             <p className="text-[15px] font-medium text-apple-ink-muted dark:text-white/55">{t('space.empty')}</p>
             <p className="mt-1 text-[13.5px] text-apple-ink-muted/70 dark:text-white/40">{t('space.emptyHint')}</p>
@@ -572,18 +785,28 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
             <AnimatePresence initial={false}>
               {uploads.map(up => (
                 <li key={up.key}>
-                  <UploadRow up={up} onCancel={client.cancelUpload} t={t as never} />
+                  <UploadRow
+                    up={up}
+                    t={t}
+                    onCancel={client.cancelUpload}
+                    onDismiss={client.dismissUpload}
+                    onPause={client.pauseUpload}
+                    onResume={client.resumeUpload}
+                    onRetry={client.retryUpload}
+                  />
                 </li>
               ))}
               {items.map(item => (
                 <li key={item.id}>
                   <ItemCard
                     item={item}
+                    spaceId={spaceId}
+                    mine={!!myPid && item.addedBy === myPid}
                     canRemove={!!myPid && (item.addedBy === myPid || canClose)}
                     onCopy={async (it) => {
-                      try { await navigator.clipboard.writeText(it.text || ''); } catch { /* blocked */ }
+                      try { await navigator.clipboard.writeText(it.text || ''); } catch { showNotice(t('composer.copyFailed')); }
                     }}
-                    onDownload={(it) => { client.download(it.id).catch(() => { /* row stays; retry available */ }); }}
+                    onDownload={(it) => { client.download(it.id).catch(() => showNotice(t('space.errDownload'))); }}
                     onRemove={(it) => setRemoveId(it.id)}
                   />
                 </li>
@@ -615,31 +838,30 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
             }}
           />
           <textarea
+            ref={composerRef}
             value={composer}
             onChange={e => setComposer(e.target.value)}
             onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
-                const text = composer.trim();
-                if (!text) return;
-                const isUrl = /^https?:\/\/\S+$/i.test(text);
-                client.addTextItem(text, isUrl ? 'link' : 'text').catch(() => {});
-                setComposer('');
+                submitText();
               }
             }}
             rows={1}
             placeholder={t('space.composerPlaceholder')}
-            className="flex-1 min-w-0 resize-none max-h-32 rounded-[20px] border border-apple-divider dark:border-white/[0.1] bg-white dark:bg-white/[0.05] px-4 py-2.5 text-[14.5px] text-apple-ink dark:text-white placeholder:text-apple-ink-muted/50 dark:placeholder:text-white/30 outline-none focus:ring-2 focus:ring-azure-500/40"
+            className="flex-1 min-w-0 min-h-[44px] resize-none max-h-32 rounded-[20px] border border-apple-divider dark:border-white/[0.1] bg-white dark:bg-white/[0.05] px-4 py-2.5 text-[14.5px] text-apple-ink dark:text-white placeholder:text-apple-ink-muted/50 dark:placeholder:text-white/30 outline-none focus:ring-2 focus:ring-azure-500/40"
             data-testid="space-composer"
           />
           <button
-            onClick={() => {
-              const text = composer.trim();
-              if (!text) return;
-              const isUrl = /^https?:\/\/\S+$/i.test(text);
-              client.addTextItem(text, isUrl ? 'link' : 'text').catch(() => {});
-              setComposer('');
-            }}
+            onClick={() => { void shareSpace(); }}
+            aria-label={t('space.share')}
+            className="shrink-0 w-11 h-11 rounded-full bg-white dark:bg-white/[0.06] border border-apple-divider dark:border-white/[0.1] flex items-center justify-center hover:border-apple-ink/30 dark:hover:border-white/30 transition-colors"
+            data-testid="space-share-row"
+          >
+            <Share2 className="w-[18px] h-[18px] text-apple-ink dark:text-white/80" />
+          </button>
+          <button
+            onClick={submitText}
             disabled={!composer.trim()}
             aria-label={t('space.addText')}
             className="shrink-0 w-11 h-11 rounded-full bg-ember text-white flex items-center justify-center disabled:opacity-40 active:scale-[0.97] transition-transform"
@@ -668,16 +890,20 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
         confirmLabel={t('space.closeConfirmCta')}
         cancelLabel={t('space.cancel')}
         onCancel={() => setCloseConfirm(false)}
-        onConfirm={() => { setCloseConfirm(false); client.closeNow().catch(() => { /* stays open; error honest */ }); }}
+        onConfirm={() => { setCloseConfirm(false); client.closeNow().catch(() => showNotice(t('space.errClose'))); }}
       />
       <ConfirmSheet
         open={!!removeId}
-        title={t('space.remove')}
-        body={t('space.remove')}
-        confirmLabel={t('space.remove')}
+        title={t('space.removeConfirmTitle')}
+        body={t('space.removeConfirmBody')}
+        confirmLabel={t('space.removeConfirmCta')}
         cancelLabel={t('space.cancel')}
         onCancel={() => setRemoveId(null)}
-        onConfirm={() => { const id = removeId; setRemoveId(null); if (id) client.removeItem(id).catch(() => {}); }}
+        onConfirm={() => {
+          const id = removeId;
+          setRemoveId(null);
+          if (id) client.removeItem(id).catch(() => showNotice(t('space.errRemove')));
+        }}
       />
     </div>
   );

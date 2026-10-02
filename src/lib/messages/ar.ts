@@ -491,6 +491,17 @@ const ar: Dict = {
   'space.errAdd': 'تعذّرت الإضافة. حاول مجددًا.',
   'space.errDownload': 'تعذّر تنزيل الملف. حاول مجددًا.',
   'space.errClose': 'تعذّر إغلاق المساحة. حاول مجددًا.',
+  'space.errRemove': 'تعذّرت الإزالة. حاول مجددًا.',
+  'space.memberCountOne': 'جهاز واحد',
+  'space.addedByYou': 'أضفته أنت',
+  'space.upPaused': 'متوقف مؤقتًا',
+  'space.removeConfirmTitle': 'إزالة هذا؟',
+  'space.removeConfirmBody': 'سيختفي لدى الجميع في المساحة. يمكنك إضافته مجددًا إن كان لا يزال لديك.',
+  'space.removeConfirmCta': 'إزالة',
+  'space.joinPlaceholder': 'الصق رابط المساحة هنا',
+  'space.joinBadLink': 'لا يبدو هذا رابط مساحة. انسخ الرابط كاملًا بما في ذلك الجزء بعد #.',
+  'space.joinRejected': 'تعذّر الفتح — المفتاح لا يطابق هذه المساحة.',
+  'space.joinClosed': 'هذه المساحة أُغلقت بالفعل.',
 };
 
 export default ar;

@@ -6,7 +6,7 @@
  * device-side) and merged into the rendered list.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { addText, closeSpace, deleteItem, downloadItem, forgetSpace, joinSpace, localCreds } from './api';
 import { connectSpaceLive } from './live';
 import { abortUpload, uploadFile, type UploadHandle, type UploadProgress } from './uploader';
@@ -20,6 +20,8 @@ export interface LocalUpload {
   size: number;
   progress: UploadProgress;
   handle: UploadHandle | null;
+  /** Kept so a failed upload can be retried without re-picking the file. */
+  file: File;
 }
 
 export interface SpaceClient {
@@ -31,6 +33,10 @@ export interface SpaceClient {
   addTextItem(text: string, kind: 'text' | 'link'): Promise<void>;
   startUpload(file: File): void;
   cancelUpload(key: string): void;
+  dismissUpload(key: string): void;
+  pauseUpload(key: string): void;
+  resumeUpload(key: string): void;
+  retryUpload(key: string): void;
   removeItem(itemId: string): Promise<void>;
   download(itemId: string): Promise<void>;
   closeNow(): Promise<void>;
@@ -135,6 +141,12 @@ export function useSpaceClient(spaceId: string, token: string): SpaceClient {
     if (expired) setConn(prev => (prev === 'closed' ? prev : 'closed'));
   }, [expired]);
 
+  // A closed space is never re-openable — drop the local credential so it
+  // stops appearing in "recent spaces" (the share link still works if kept).
+  useEffect(() => {
+    if (conn === 'closed') forgetSpace(spaceId);
+  }, [conn, spaceId]);
+
   // ── actions ───────────────────────────────────────────────────────────
   const addTextItem = useCallback(async (text: string, kind: 'text' | 'link') => {
     const item = await addText(spaceId, text, kind);
@@ -151,8 +163,9 @@ export function useSpaceClient(spaceId: string, token: string): SpaceClient {
     const key = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const entry: LocalUpload = {
       key, name: file.name, size: file.size,
-      progress: { phase: 'preparing', sent: 0, size: file.size },
+      progress: { phase: 'preparing', sent: 0, size: file.size, prepare: 0 },
       handle: null,
+      file,
     };
     uploadsRef.current.set(key, entry);
     setUploads([...uploadsRef.current.values()]);
@@ -198,6 +211,33 @@ export function useSpaceClient(spaceId: string, token: string): SpaceClient {
     }, 2500);
   }, []);
 
+  const dismissUpload = useCallback((key: string) => {
+    const cur = uploadsRef.current.get(key);
+    cur?.handle?.cancel();
+    uploadsRef.current.delete(key);
+    setUploads([...uploadsRef.current.values()]);
+  }, []);
+
+  const pauseUpload = useCallback((key: string) => {
+    const cur = uploadsRef.current.get(key);
+    if (!cur || (cur.progress.phase !== 'uploading' && cur.progress.phase !== 'preparing')) return;
+    cur.handle?.pause();
+  }, []);
+
+  const resumeUpload = useCallback((key: string) => {
+    const cur = uploadsRef.current.get(key);
+    if (!cur || cur.progress.phase !== 'paused') return;
+    cur.handle?.resume();
+  }, []);
+
+  const retryUpload = useCallback((key: string) => {
+    const cur = uploadsRef.current.get(key);
+    if (!cur || cur.progress.phase !== 'failed') return;
+    uploadsRef.current.delete(key);
+    setUploads([...uploadsRef.current.values()]);
+    startUpload(cur.file);
+  }, [startUpload]);
+
   const removeItem = useCallback(async (itemId: string) => {
     await deleteItem(spaceId, itemId);
     setItems(prev => prev.filter(p => p.id !== itemId));
@@ -215,7 +255,5 @@ export function useSpaceClient(spaceId: string, token: string): SpaceClient {
 
   const forget = useCallback(() => forgetSpace(spaceId), [spaceId]);
 
-  const merged = useMemo(() => items, [items]);
-
-  return { snapshot, items: merged, uploads, conn, nowMs, addTextItem, startUpload, cancelUpload, removeItem, download, closeNow, forget };
+  return { snapshot, items, uploads, conn, nowMs, addTextItem, startUpload, cancelUpload, dismissUpload, pauseUpload, resumeUpload, retryUpload, removeItem, download, closeNow, forget };
 }

@@ -520,6 +520,17 @@ const en = {
   'space.errAdd': "Couldn't add it. Try again.",
   'space.errDownload': "Couldn't download the file. Try again.",
   'space.errClose': "Couldn't close the space. Try again.",
+  'space.errRemove': "Couldn't remove it. Try again.",
+  'space.memberCountOne': '1 device',
+  'space.addedByYou': 'Added by you',
+  'space.upPaused': 'Paused',
+  'space.removeConfirmTitle': 'Remove this?',
+  'space.removeConfirmBody': 'It disappears for everyone in the space. You can add it again if you still have it.',
+  'space.removeConfirmCta': 'Remove',
+  'space.joinPlaceholder': 'Paste the space link here',
+  'space.joinBadLink': "That doesn't look like a space link. Copy the whole link, including the part after #.",
+  'space.joinRejected': "Couldn't open it — the key doesn't match this space.",
+  'space.joinClosed': 'This space has already closed.',
 
 };
 

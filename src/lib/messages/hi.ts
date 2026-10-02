@@ -491,6 +491,17 @@ const hi: Dict = {
   'space.errAdd': 'जोड़ा नहीं जा सका। फिर कोशिश करें।',
   'space.errDownload': 'फ़ाइल डाउनलोड नहीं हुई। फिर कोशिश करें।',
   'space.errClose': 'स्पेस बंद नहीं हुआ। फिर कोशिश करें।',
+  'space.errRemove': 'हटाया नहीं जा सका। फिर कोशिश करें।',
+  'space.memberCountOne': '1 डिवाइस',
+  'space.addedByYou': 'आपने जोड़ा',
+  'space.upPaused': 'रोका गया',
+  'space.removeConfirmTitle': 'इसे हटाएँ?',
+  'space.removeConfirmBody': 'यह स्पेस में सबके लिए गायब हो जाएगा। अगर आपके पास अभी भी है तो दोबारा जोड़ सकते हैं।',
+  'space.removeConfirmCta': 'हटाएँ',
+  'space.joinPlaceholder': 'स्पेस लिंक यहाँ पेस्ट करें',
+  'space.joinBadLink': 'यह स्पेस लिंक नहीं लगता। पूरा लिंक कॉपी करें, # के बाद वाला हिस्सा भी।',
+  'space.joinRejected': 'खुल नहीं सका — यह कुंजी इस स्पेस से मेल नहीं खाती।',
+  'space.joinClosed': 'यह स्पेस पहले ही बंद हो चुका है।',
 };
 
 export default hi;

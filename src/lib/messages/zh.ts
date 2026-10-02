@@ -491,6 +491,17 @@ const zh: Dict = {
   'space.errAdd': '添加失败，请重试。',
   'space.errDownload': '文件下载失败，请重试。',
   'space.errClose': '无法关闭空间，请重试。',
+  'space.errRemove': '无法移除，请重试。',
+  'space.memberCountOne': '1 台设备',
+  'space.addedByYou': '由你添加',
+  'space.upPaused': '已暂停',
+  'space.removeConfirmTitle': '移除这一项？',
+  'space.removeConfirmBody': '空间内所有人都将看不到它。如果本地还有，可以再次添加。',
+  'space.removeConfirmCta': '移除',
+  'space.joinPlaceholder': '在此粘贴空间链接',
+  'space.joinBadLink': '这不像空间链接。请复制完整链接，包括 # 后面的部分。',
+  'space.joinRejected': '无法打开——密钥与此空间不匹配。',
+  'space.joinClosed': '该空间已经关闭。',
 };
 
 export default zh;

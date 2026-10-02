@@ -492,6 +492,17 @@ const de: Dict = {
   'space.errAdd': 'Konnte nicht hinzugefügt werden. Versuch es erneut.',
   'space.errDownload': 'Datei konnte nicht heruntergeladen werden. Versuch es erneut.',
   'space.errClose': 'Bereich konnte nicht geschlossen werden. Versuch es erneut.',
+  'space.errRemove': 'Konnte nicht entfernt werden. Versuch es erneut.',
+  'space.memberCountOne': '1 Gerät',
+  'space.addedByYou': 'Von dir hinzugefügt',
+  'space.upPaused': 'Pausiert',
+  'space.removeConfirmTitle': 'Dies entfernen?',
+  'space.removeConfirmBody': 'Es verschwindet für alle im Bereich. Du kannst es erneut hinzufügen, wenn du es noch hast.',
+  'space.removeConfirmCta': 'Entfernen',
+  'space.joinPlaceholder': 'Füge hier den Link des Bereichs ein',
+  'space.joinBadLink': 'Das sieht nicht nach einem Bereich-Link aus. Kopiere den ganzen Link, auch den Teil nach #.',
+  'space.joinRejected': 'Konnte nicht geöffnet werden – der Schlüssel passt nicht zu diesem Bereich.',
+  'space.joinClosed': 'Dieser Bereich ist bereits geschlossen.',
 };
 
 export default de;

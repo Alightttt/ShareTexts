@@ -26,6 +26,10 @@ export interface UploadProgress {
   /** Bytes the server has acknowledged. */
   sent: number;
   size: number;
+  /** Which path the server chose (known after init). */
+  mode?: 'direct' | 'multipart';
+  /** 0…1 while phase === 'preparing' (integrity digest being computed). */
+  prepare?: number;
   error?: string;
 }
 
@@ -125,13 +129,15 @@ class Sha256 {
   }
 }
 
-/** Streaming SHA-256 of a Blob/File, read in 8 MiB chunks. */
-async function sha256OfBlob(blob: Blob): Promise<string> {
+/** Streaming SHA-256 of a Blob/File, read in 8 MiB chunks. Reports how far
+ *  it has read so big files can show honest "preparing" progress. */
+async function sha256OfBlob(blob: Blob, onProgress?: (read: number, total: number) => void): Promise<string> {
   const hasher = new Sha256();
   const CHUNK = 8 * 1024 * 1024;
   for (let off = 0; off < blob.size; off += CHUNK) {
     const buf = new Uint8Array(await blob.slice(off, off + CHUNK).arrayBuffer());
     hasher.update(buf);
+    onProgress?.(Math.min(off + CHUNK, blob.size), blob.size);
   }
   return hasher.hex();
 }
@@ -152,6 +158,7 @@ export function uploadFile(
     paused: false,
     cancelled: false,
     itemId: null as string | null,
+    mode: undefined as 'direct' | 'multipart' | undefined,
     sent: 0,
     abort: new AbortController(),
   };
@@ -159,16 +166,16 @@ export function uploadFile(
   const waitWhilePaused = async () => {
     while (state.paused && !state.cancelled) await new Promise(r => setTimeout(r, 250));
   };
-  const prog = (phase: UploadPhase, error?: string) =>
-    onUpdate({ phase, sent: Math.min(state.sent, file.size), size: file.size, error });
+  const prog = (phase: UploadPhase, extra?: { error?: string; prepare?: number }) =>
+    onUpdate({ phase, sent: Math.min(state.sent, file.size), size: file.size, mode: state.mode, ...extra });
 
   const done = (async () => {
     try {
-      prog('preparing');
+      prog('preparing', { prepare: 0 });
 
       // Digest first (streamed) so init can carry it; the server verifies
       // the received bytes against this before publishing the item.
-      const hash = await sha256OfBlob(file);
+      const hash = await sha256OfBlob(file, (read, total) => prog('preparing', { prepare: total ? read / total : 0 }));
 
       const init = await initFile(spaceId, {
         name: file.name,
@@ -177,6 +184,7 @@ export function uploadFile(
         sha256: hash,
       });
       state.itemId = init.itemId;
+      state.mode = init.mode;
       const base = spaceApiBase();
       const creds = localCreds(spaceId)!;
 
@@ -282,7 +290,7 @@ export function uploadFile(
         void abortUpload(spaceId, state.itemId);
         throw new CancelledError();
       }
-      prog('failed', e instanceof Error ? e.message : 'Upload failed');
+      prog('failed', { error: e instanceof Error ? e.message : 'Upload failed' });
       throw e;
     }
   })();

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Smartphone, Monitor, Tablet, Search, Check, Users, CircleDashed,
@@ -86,6 +86,25 @@ export function DevicePicker({
 }) {
   const { t } = useI18n();
   const [query, setQuery] = useState('');
+  const searchRef = useRef<HTMLInputElement>(null);
+  // Outside pointer press dismisses the popover — the picker is an overlay
+  // of the composer, not a destination of its own.
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!onClose) return;
+    const onPointer = (e: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) onClose();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.stopPropagation(); onClose(); }
+    };
+    document.addEventListener('pointerdown', onPointer, true);
+    window.addEventListener('keydown', onKey, true);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer, true);
+      window.removeEventListener('keydown', onKey, true);
+    };
+  }, [onClose]);
   const others = useMemo(() => peers.filter(p => !p.isSelf), [peers]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -96,8 +115,18 @@ export function DevicePicker({
   const showSearch = others.length > 6;
   const showSelectAll = selectable.length > 1;
 
+  // The picker exists to pick: opening it with ≥7 devices puts the caret in
+  // the search field immediately — zero extra taps on a crowded room.
+  useEffect(() => {
+    if (showSearch) {
+      const id = requestAnimationFrame(() => searchRef.current?.focus());
+      return () => cancelAnimationFrame(id);
+    }
+  }, [showSearch]);
+
   return (
     <div
+      ref={rootRef}
       className={cn(
         'flex flex-col overflow-hidden rounded-2xl border border-black/8 bg-[--paper] shadow-lg shadow-black/5',
         'dark:border-white/10 dark:bg-[--paper-dark]',
@@ -132,6 +161,7 @@ export function DevicePicker({
           <div className="flex items-center gap-2 rounded-xl border border-black/8 bg-white/60 px-3 py-2 dark:border-white/10 dark:bg-white/5">
             <Search className="h-4 w-4 text-neutral-400" aria-hidden="true" />
             <input
+              ref={searchRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}

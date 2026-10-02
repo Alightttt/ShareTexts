@@ -492,6 +492,17 @@ const fr: Dict = {
   'space.errAdd': 'Impossible d’ajouter. Réessayez.',
   'space.errDownload': 'Impossible de télécharger ce fichier. Réessayez.',
   'space.errClose': 'Impossible de fermer l’espace. Réessayez.',
+  'space.errRemove': 'Impossible de le retirer. Réessayez.',
+  'space.memberCountOne': '1 appareil',
+  'space.addedByYou': 'Ajouté par vous',
+  'space.upPaused': 'En pause',
+  'space.removeConfirmTitle': 'Retirer ceci ?',
+  'space.removeConfirmBody': 'Cela disparaît pour tout le monde dans l’espace. Vous pouvez le rajouter si vous l’avez encore.',
+  'space.removeConfirmCta': 'Retirer',
+  'space.joinPlaceholder': 'Collez ici le lien de l’espace',
+  'space.joinBadLink': 'Cela ne ressemble pas à un lien d’espace. Copiez le lien entier, y compris la partie après #.',
+  'space.joinRejected': 'Impossible de l’ouvrir — la clé ne correspond pas à cet espace.',
+  'space.joinClosed': 'Cet espace est déjà fermé.',
 };
 
 export default fr;

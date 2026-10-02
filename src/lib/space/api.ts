@@ -256,26 +256,37 @@ export function downloadUrl(spaceId: string, itemId: string): string {
   return `${spaceApiBase()}/space/${spaceId}/items/${itemId}/download`;
 }
 
-/** Download with per-request Bearer auth: fetch → blob → object URL → click.
- *  The auth header can't ride on a plain <a href>, so this is the way. */
-export async function downloadItem(spaceId: string, item: SpaceItem): Promise<void> {
+/** Fetch an item's bytes as an object URL (authorized fetch). The caller
+ *  owns the URL: previews revoke it on unmount; downloads hand it to the
+ *  browser and revoke after a beat. */
+export async function fetchItemBlobUrl(spaceId: string, item: SpaceItem): Promise<string> {
   const creds = localCreds(spaceId);
   if (!creds) throw new SpaceApiError(401, 'No access');
   const res = await fetch(downloadUrl(spaceId, item.id), { headers: headers(creds.token) });
   if (!res.ok) await readError(res);
   const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  try {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = item.name || 'file';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  } finally {
-    // Give the browser a beat to start the download before revoking.
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  return URL.createObjectURL(blob);
+}
+
+/** Download with per-request Bearer auth: fetch → blob → object URL → click.
+ *  The auth header can't ride on a plain <a href>, so this is the way.
+ *  Returns the object URL so callers that only want the bytes (previews)
+ *  can use fetchItemBlobUrl instead and skip the download click entirely. */
+export async function downloadItem(spaceId: string, item: SpaceItem): Promise<string> {
+  const url = await fetchItemBlobUrl(spaceId, item);
+  if (typeof document !== 'undefined') {
+    try {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = item.name || 'file';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch { /* preview-only use (SSR/tests) — keep the URL alive */ }
   }
+  // Give the browser a beat to start the download before revoking.
+  setTimeout(() => URL.revokeObjectURL(url), 120_000);
+  return url;
 }
 
 // ── reminders ─────────────────────────────────────────────────────────────
