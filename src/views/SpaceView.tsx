@@ -20,11 +20,13 @@ import {
 import { useI18n } from '../lib/i18n';
 import { TactileButton } from '../components/TactileButton';
 import type { MsgKey } from '../lib/messages/types';
+import { OverlaySheet } from '../components/OverlaySheet';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useSpaceClient, type LocalUpload } from '../lib/space/useSpaceClient';
 import { spaceShareLink, localCreds, joinSpace, parseSpaceShare, SpaceApiError } from '../lib/space/api';
 import type { SpaceItem } from '../lib/space/types';
 import { closingTime, remainingShort, urgencyTier } from '../lib/space/time';
+import { isRunningOut } from '../lib/space/lifetime';
 import { reminderSupport, enableReminder } from '../lib/space/reminders';
 
 const QRCode = lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeSVG })));
@@ -51,34 +53,27 @@ function isUrlLike(s: string): boolean {
   return /^https?:\/\/\S+$/i.test(s.trim());
 }
 
-/** Escape closes the sheet — desktop grammar; on mobile the backdrop does it. */
-function useEscape(active: boolean, onClose: () => void) {
-  useEffect(() => {
-    if (!active) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); onClose(); }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [active, onClose]);
-}
-
 // ── small atoms ───────────────────────────────────────────────────────────
 
-function Countdown({ expiresAt, now }: { expiresAt: number; now: number }) {
+function Countdown({ expiresAt, now, createdAt }: { expiresAt: number; now: number; createdAt?: number }) {
   const { t } = useI18n();
   const left = expiresAt - now;
   const tier = urgencyTier(left);
+  // Honest urgency: real elapsed share of the promised lifetime (or the last
+  // hour) — never a decorative alarm while the shelf is barely used.
+  const runningOut = isRunningOut(createdAt ?? expiresAt - 24 * 3_600_000, expiresAt, now);
   const color =
     tier === 'imminent' ? 'text-red-600 dark:text-red-400'
-    : tier === 'soon' ? 'text-amber-600 dark:text-amber-400'
+    : tier === 'soon' && runningOut ? 'text-amber-600 dark:text-amber-400'
     : 'text-apple-ink-muted dark:text-white/50';
   if (left <= 0) return null;
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[13px] font-medium tabular-nums ${color}`}>
-      <Clock className="w-3.5 h-3.5" />
-      {t('space.closesIn', { time: remainingShort(left) })}
-      <span className="hidden sm:inline text-apple-ink-muted/60 dark:text-white/35">· {closingTime(expiresAt)}</span>
+    <span className="inline-flex items-center gap-1.5 min-w-0">
+      <span className={`inline-flex items-center gap-1.5 text-[13px] font-medium tabular-nums ${color}`}>
+        <Clock className="w-3.5 h-3.5" />
+        {t('space.closesIn', { time: remainingShort(left) })}
+        <span className="hidden sm:inline text-apple-ink-muted/60 dark:text-white/35">· {closingTime(expiresAt)}</span>
+      </span>
     </span>
   );
 }
@@ -139,7 +134,7 @@ function ItemCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.18 }}
-      className="group relative rounded-[16px] bg-white dark:bg-[#1c1c21] border border-apple-divider/70 dark:border-white/[0.08] shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden"
+      className="group relative rounded-[16px] bg-white dark:bg-[#1c1c21] border border-apple-divider/70 dark:border-white/[0.08] shadow-card dark:shadow-none overflow-hidden"
       data-testid="space-item"
       data-kind={item.kind}
     >
@@ -169,7 +164,7 @@ function ItemCard({
       )}
       <div className="p-3.5">
         {item.kind === 'text' && (
-          <p className="text-[14.5px] leading-relaxed text-apple-ink dark:text-white/90 whitespace-pre-wrap break-words max-h-56 overflow-y-auto">{item.text}</p>
+          <p className="st-body text-apple-ink dark:text-white/90 whitespace-pre-wrap break-words max-h-56 overflow-y-auto">{item.text}</p>
         )}
         {item.kind === 'link' && (
           <a
@@ -190,8 +185,8 @@ function ItemCard({
                 : <FileIcon className="w-5 h-5 text-apple-ink-muted dark:text-white/55" />}
             </span>
             <span className="min-w-0">
-              <span className="block text-[14px] font-medium text-apple-ink dark:text-white/90 truncate">{item.name || 'file'}</span>
-              <span className="block text-[12.5px] text-apple-ink-muted dark:text-white/50">{fmtSize(item.size)}{PREVIEWABLE.test(item.mime) ? '' : ` · ${t('space.downloadOnly')}`}</span>
+              <span className="st-label block text-[14px] text-apple-ink dark:text-white/90 truncate">{item.name || 'file'}</span>
+              <span className="st-meta block text-apple-ink-muted dark:text-white/50">{fmtSize(item.size)}{PREVIEWABLE.test(item.mime) ? '' : ` · ${t('space.downloadOnly')}`}</span>
             </span>
           </div>
         )}
@@ -267,7 +262,7 @@ function UploadRow({
   const active = phase === 'uploading' || phase === 'preparing';
 
   return (
-    <div className="rounded-[16px] bg-white dark:bg-[#1c1c21] border border-apple-divider/70 dark:border-white/[0.08] p-3.5" data-testid="space-upload" data-phase={phase}>
+    <div className="rounded-[16px] bg-white dark:bg-[#1c1c21] border border-apple-divider/70 dark:border-white/[0.08] shadow-card dark:shadow-none p-3.5" data-testid="space-upload" data-phase={phase}>
       <div className="flex items-center gap-3">
         <span className="shrink-0 w-10 h-10 rounded-[12px] bg-apple-parchment dark:bg-white/[0.06] flex items-center justify-center">
           <UploadCloud className={`w-5 h-5 ${done ? 'text-emerald-600 dark:text-emerald-400' : failed || cancelled ? 'text-red-500' : 'text-apple-ink-muted dark:text-white/55'}`} />
@@ -358,7 +353,6 @@ export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const support = useMemo(() => reminderSupport(), []);
-  useEscape(open, onClose);
 
   const create = async () => {
     if (busy) return;
@@ -377,20 +371,9 @@ export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): 
     }
   };
 
-  if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-6">
-      <div className="absolute inset-0 bg-black/35 backdrop-blur-[2px]" onClick={onClose} />
-      <motion.div
-        role="dialog" aria-modal="true" aria-label={t('space.createHeading')}
-        initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.22 }}
-        className="relative w-full sm:max-w-[460px] max-h-[90dvh] overflow-y-auto rounded-t-[24px] sm:rounded-[24px] bg-apple-canvas dark:bg-[#1c1c21] border border-apple-divider/60 dark:border-white/[0.08] shadow-[0_24px_80px_-24px_rgba(0,0,0,0.4)] p-5 sm:p-6"
-        data-testid="space-create"
-      >
-        <button onClick={onClose} aria-label={t('space.cancel')} className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-apple-ink-muted/60 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]">
-          <X className="w-4 h-4" />
-        </button>
-        <h2 className="text-[16.5px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">{t('space.createHeading')}</h2>
+    <OverlaySheet open={open} onClose={onClose} label={t('space.createHeading')} maxWidth={460} testId="space-create">
+      <h2 className="text-[16.5px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">{t('space.createHeading')}</h2>
         <p className="mt-1.5 text-[13.5px] leading-relaxed text-apple-ink-muted dark:text-white/55">{t('space.createSub')}</p>
 
         <label className="block mt-5 text-[13px] font-medium text-apple-ink dark:text-white/80" htmlFor="space-name">{t('space.nameLabel')}</label>
@@ -452,8 +435,7 @@ export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): 
         <p className="mt-3 text-[12px] leading-relaxed text-apple-ink-muted/70 dark:text-white/35">
           {t('space.shareHint')}
         </p>
-      </motion.div>
-    </div>
+    </OverlaySheet>
   );
 }
 
@@ -464,7 +446,6 @@ export function SpaceJoinSheet({ open, onClose }: { open: boolean; onClose(): vo
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  useEscape(open, onClose);
 
   // One honest error per failure: unparsable link / wrong key / already
   // closed / anything else. No token surgery — parseSpaceShare owns the
@@ -491,20 +472,9 @@ export function SpaceJoinSheet({ open, onClose }: { open: boolean; onClose(): vo
     }
   };
 
-  if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-6">
-      <div className="absolute inset-0 bg-black/35 backdrop-blur-[2px]" onClick={onClose} />
-      <motion.div
-        role="dialog" aria-modal="true" aria-label={t('space.joinTitle')}
-        initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.22 }}
-        className="relative w-full sm:max-w-[420px] rounded-t-[24px] sm:rounded-[24px] bg-apple-canvas dark:bg-[#1c1c21] border border-apple-divider/60 dark:border-white/[0.08] shadow-[0_24px_80px_-24px_rgba(0,0,0,0.4)] p-5 sm:p-6"
-        data-testid="space-join"
-      >
-        <button onClick={onClose} aria-label={t('space.cancel')} className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-apple-ink-muted/60 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]">
-          <X className="w-4 h-4" />
-        </button>
-        <h2 className="text-[16.5px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">{t('space.joinTitle')}</h2>
+    <OverlaySheet open={open} onClose={onClose} label={t('space.joinTitle')} maxWidth={420} testId="space-join">
+      <h2 className="text-[16.5px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">{t('space.joinTitle')}</h2>
         <p className="mt-1.5 text-[13.5px] text-apple-ink-muted dark:text-white/55">{t('space.entryHint')}</p>
         <input
           value={code}
@@ -528,8 +498,7 @@ export function SpaceJoinSheet({ open, onClose }: { open: boolean; onClose(): vo
         >
           {t('space.reopen')}
         </TactileButton>
-      </motion.div>
-    </div>
+    </OverlaySheet>
   );
 }
 
@@ -539,8 +508,6 @@ function ShareSheet({ open, spaceId, token, onClose }: { open: boolean; spaceId:
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
-  useEscape(open, onClose);
-  if (!open) return null;
   const link = spaceShareLink(spaceId, token);
   const copy = async () => {
     try {
@@ -550,18 +517,8 @@ function ShareSheet({ open, spaceId, token, onClose }: { open: boolean; spaceId:
     } catch { /* clipboard blocked */ }
   };
   return (
-    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-6">
-      <div className="absolute inset-0 bg-black/35 backdrop-blur-[2px]" onClick={onClose} />
-      <motion.div
-        role="dialog" aria-modal="true" aria-label={t('space.share')}
-        initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.22 }}
-        className="relative w-full sm:max-w-[420px] rounded-t-[24px] sm:rounded-[24px] bg-apple-canvas dark:bg-[#1c1c21] border border-apple-divider/60 dark:border-white/[0.08] shadow-[0_24px_80px_-24px_rgba(0,0,0,0.4)] p-5 sm:p-6"
-        data-testid="space-share"
-      >
-        <button onClick={onClose} aria-label={t('space.cancel')} className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center text-apple-ink-muted/60 hover:bg-black/[0.05] dark:hover:bg-white/[0.08]">
-          <X className="w-4 h-4" />
-        </button>
-        <h2 className="text-[16.5px] font-semibold text-apple-ink dark:text-white">{t('space.share')}</h2>
+    <OverlaySheet open={open} onClose={onClose} label={t('space.share')} maxWidth={420} testId="space-share">
+      <h2 className="text-[16.5px] font-semibold text-apple-ink dark:text-white">{t('space.share')}</h2>
         <p className="mt-1.5 text-[13px] leading-relaxed text-apple-ink-muted dark:text-white/55">{t('space.shareHint')}</p>
         <div className="mt-4 flex items-center gap-2">
           <input
@@ -587,8 +544,7 @@ function ShareSheet({ open, spaceId, token, onClose }: { open: boolean; spaceId:
             </Suspense>
           </div>
         )}
-      </motion.div>
-    </div>
+    </OverlaySheet>
   );
 }
 
@@ -715,6 +671,16 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
     >
       {/* ── header ── */}
       <header className="shrink-0 sticky top-0 z-40 bg-apple-canvas/85 dark:bg-[#131315]/85 backdrop-blur border-b border-apple-divider/50 dark:border-white/[0.06]">
+        {/* Lifetime hairline — time actually spent of the promised window.
+            Renders only once the shelf is genuinely running out (≥60% spent
+            or the last hour); calm metadata before that, no fake urgency. */}
+        {snapshot && isRunningOut(snapshot.createdAt ?? snapshot.expiresAt - 24 * 3_600_000, snapshot.expiresAt, nowMs) && (
+          <div
+            aria-hidden
+            className="absolute bottom-0 left-0 h-[2px] bg-ember/70 transition-[width] duration-1000 ease-linear"
+            style={{ width: `${Math.min(100, Math.round(((nowMs - (snapshot.createdAt ?? snapshot.expiresAt - 24 * 3_600_000)) / Math.max(1, snapshot.expiresAt - (snapshot.createdAt ?? snapshot.expiresAt - 24 * 3_600_000))) * 100))}%` }}
+          />
+        )}
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
           <a href="/" aria-label={t('space.backHome')} className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center hover:bg-black/[0.05] dark:hover:bg-white/[0.08]">
             <ArrowLeft className="w-[18px] h-[18px] text-apple-ink-muted dark:text-white/60" />
@@ -722,7 +688,7 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
           <div className="min-w-0 flex-1">
             <h1 className="text-[15.5px] font-semibold text-apple-ink dark:text-white truncate leading-tight">{snapshot?.name || '…'}</h1>
             {snapshot && (
-              <Countdown expiresAt={snapshot.expiresAt} now={nowMs} />
+              <Countdown expiresAt={snapshot.expiresAt} now={nowMs} createdAt={snapshot.createdAt} />
             )}
           </div>
           {snapshot && (

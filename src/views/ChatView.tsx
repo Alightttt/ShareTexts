@@ -1312,9 +1312,10 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 </div>
               ) : (
                 /* Connected empty room: the two linked devices, the
-                    destination named by its real name, and the four kinds
-                    of things that travel. Real product facts — the only
-                    illustration is the actual device pair. */
+                    destination named by its real name, then ONE sentence of
+                    honest instruction. No slogan row — the composer's own
+                    teaching row already names Type · Paste · Drop a few
+                    hundred pixels below, and saying it twice is noise. */
                 <div className="flex flex-col items-center">
                   {/* Packet train rides between the two devices — the shared
                       primitive positions itself on the same grid as the SVG. */}
@@ -1329,13 +1330,8 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                       {t('chat.empty.dest', { name: session.partnerName })}
                     </p>
                   )}
-                  <p className="text-[13px] text-apple-ink-muted max-w-[280px] leading-relaxed mt-2 text-center">
+                  <p className="text-[13px] text-apple-ink-muted max-w-[280px] leading-relaxed mt-1.5 text-center">
                     {t('chat.empty.body')}
-                  </p>
-                  {/* The four real object kinds — quiet caps, a promise the
-                      composer is about to keep. */}
-                  <p className="mt-4 text-[10.5px] font-semibold tracking-[0.14em] text-apple-ink-muted/70 dark:text-white/35">
-                    {t('chat.empty.kinds')}
                   </p>
                 </div>
               )}

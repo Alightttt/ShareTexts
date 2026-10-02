@@ -1131,23 +1131,25 @@ export function SingleScreenApp() {
                 )}
 
               {/* Live session stats — the left pane earns its place by
-                  reporting the room it's hosting: real counts, not copy. */}
+                  reporting the room it's hosting: real counts, not copy.
+                  De-boxed: figures + hairlines, no border chrome — the
+                  numbers are the object, not their container. */}
               {(() => {
                 const msgs = session.messages;
                 const fileCount = msgs.filter(m => m.attachment && m.attachment.status === 'complete').length;
                 const bytes = msgs.reduce((n, m) => n + (m.attachment?.status === 'complete' ? (m.attachment.size ?? 0) : 0), 0);
                 const stat = (label: string, value: string) => (
-                  <div key={label} className="flex-1 flex flex-col items-center gap-0.5 py-2.5">
-                    <span className="text-[17px] font-bold text-apple-ink dark:text-white tnum leading-none">{value}</span>
-                    <span className="text-[11px] font-medium text-apple-ink-muted dark:text-white/45 leading-none">{label}</span>
+                  <div key={label} className="flex-1 flex flex-col items-center gap-1 py-1">
+                    <span className="text-[16px] font-bold text-apple-ink dark:text-white tnum leading-none">{value}</span>
+                    <span className="text-[10.5px] font-medium uppercase tracking-[0.06em] text-apple-ink-muted/85 dark:text-white/40 leading-none">{label}</span>
                   </div>
                 );
                 return (
-                  <div className="mb-4 rounded-[16px] border border-apple-divider/50 dark:border-white/[0.07] bg-white/60 dark:bg-white/[0.04] p-1.5 flex items-stretch">
+                  <div className="mb-4 px-1 flex items-stretch">
                     {stat(msgs.length === 1 ? t('conn.stats.message') : t('conn.stats.messages'), String(msgs.length))}
-                    <span className="w-px bg-apple-divider/50 dark:bg-white/[0.07]" aria-hidden />
+                    <span className="w-px bg-apple-divider/70 dark:bg-white/[0.09]" aria-hidden />
                     {stat(fileCount === 1 ? t('conn.stats.file') : t('conn.stats.files'), String(fileCount))}
-                    <span className="w-px bg-apple-divider/50 dark:bg-white/[0.07]" aria-hidden />
+                    <span className="w-px bg-apple-divider/70 dark:bg-white/[0.09]" aria-hidden />
                     {stat(t('conn.stats.data'), bytes > 0 ? formatBytes(bytes) : '0')}
                   </div>
                 );

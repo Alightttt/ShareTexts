@@ -173,7 +173,7 @@ export function DevicePicker({
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-2" role="listbox" aria-label={t('picker.title')} aria-multiselectable="true">
+      <div className="min-h-0 flex-1 overflow-y-auto p-2.5 space-y-1" role="listbox" aria-label={t('picker.title')} aria-multiselectable="true">
         {filtered.length === 0 ? (
           <p className="px-3 py-6 text-center text-sm text-neutral-400">
             {others.length === 0 ? t('picker.empty') : t('picker.noMatch')}
@@ -195,7 +195,7 @@ export function DevicePicker({
                   'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors',
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[--ember]',
                   isSelected
-                    ? 'bg-[--ember]/10 dark:bg-[--ember]/15'
+                    ? 'bg-[--ember]/10 dark:bg-[--ember]/15 ring-1 ring-inset ring-[--ember]/35'
                     : 'hover:bg-black/4 dark:hover:bg-white/6',
                   offline && 'opacity-50'
                 )}
