@@ -32,8 +32,11 @@ await B.goto('http://localhost:3010', { waitUntil: 'domcontentloaded' });
 await A.waitForTimeout(2500);
 
 // 1. The detection overlay pops on BOTH sides (mutual detection).
-const overlayOnA = await A.getByTestId('nearby-detect-overlay').count() > 0;
-const overlayOnB = await B.getByTestId('nearby-detect-overlay').count() > 0;
+//    Wait for the REAL condition (discovery + overlay render) instead of
+//    snapshotting count() at an arbitrary instant — local-network discovery
+//    legitimately takes seconds, and a snapshot mid-wait false-fails.
+const overlayOnA = await A.getByTestId('nearby-detect-overlay').waitFor({ timeout: 20000 }).then(() => true).catch(() => false);
+const overlayOnB = await B.getByTestId('nearby-detect-overlay').waitFor({ timeout: 20000 }).then(() => true).catch(() => false);
 check('detection overlay on A', overlayOnA);
 check('detection overlay on B', overlayOnB);
 
@@ -45,10 +48,13 @@ const labelArmed = (await primaryA.innerText()).trim();
 check('two-step confirm arms in place', labelBefore !== labelArmed, `"${labelBefore}" → "${labelArmed}"`);
 
 // 3. A commits → invite is sent → B's overlay flips to incoming, B confirms.
+//    Wait for the invite TEXT to actually render on B (up to 20s) rather
+//    than a fixed 1.2s nap + one innerText read.
 await primaryA.click(); // Yes
-await A.waitForTimeout(1200);
-const bDialogText = (await B.getByRole('dialog').innerText().catch(() => '')).replace(/\s+/g, ' ');
-check('B overlay shows incoming invite', /wants to connect/i.test(bDialogText), bDialogText.slice(0, 80));
+const inviteArrived = await B.getByRole('dialog').getByText(/wants to connect/i)
+  .waitFor({ timeout: 20000 }).then(() => true).catch(() => false);
+const bDialogText = inviteArrived ? 'wants to connect' : '';
+check('B overlay shows incoming invite', inviteArrived, bDialogText.slice(0, 80));
 await B.getByRole('button', { name: 'Yes', exact: true }).click().catch(() => {});
 await A.waitForTimeout(500);
 

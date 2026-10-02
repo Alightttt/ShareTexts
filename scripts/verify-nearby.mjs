@@ -81,7 +81,11 @@ try {
   const names1 = (list1?.devices || []).map(d => d.name);
   check('list broadcasts both devices', names1.includes('Windows PC') && names1.includes('iPhone'), names1);
   check('list has only token ids (no deviceIds/UUIDs)', (list1?.devices || []).every(d => /^[0-9a-f]{32}$/.test(d.id) && d.id !== devA && d.id !== devB));
-  check('list has exactly 2 fields per device', (list1?.devices || []).every(d => Object.keys(d).sort().join(',') === 'id,name'));
+  // The list carries the rich-presence contract (id · name · kind · browser ·
+  // model · gpu) — the fields the client's DeviceArt and "Windows PC · Chrome"
+  // rows render. The old id+name-only expectation predated rich presence and
+  // could never pass against the shipped server.
+  check('list entries carry the rich-presence fields', (list1?.devices || []).every(d => Object.keys(d).sort().join(',') === 'browser,gpu,id,kind,model,name'), Object.keys(list1?.devices?.[0] || {}).sort().join(','));
 
   // Names render as plain text: control chars and angle brackets must be
   // stripped server-side before they ever reach another browser.

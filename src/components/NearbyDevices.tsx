@@ -95,7 +95,7 @@ function ToggleRow({ icon, active, title, hint, onClick, ariaLabel, testId, rowT
   return (
     <div
       data-testid={rowTestId}
-      className="flex items-center gap-2.5 py-2"
+      className="flex items-center gap-2.5 py-2 min-h-[44px]"
     >
       <span
         className={cn(
@@ -780,7 +780,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
             data-testid="nearby-why-toggle"
             aria-expanded={whyOpen}
             onClick={() => { setWhyOpen(o => !o); }}
-            className="flex items-center gap-1.5 px-1 py-1 text-[13px] font-semibold text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors"
+            className="flex items-center gap-1.5 px-1.5 -mx-1.5 my-1 min-h-[40px] text-[13px] font-semibold text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors"
           >
             {t('nearby.whyTitle')}
             <motion.span animate={{ rotate: whyOpen ? 180 : 0 }} transition={{ duration: 0.2 }} className="inline-flex" aria-hidden>

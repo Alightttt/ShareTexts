@@ -192,7 +192,7 @@ export function DevicePicker({
                 disabled={offline}
                 onClick={() => onToggle(p.id)}
                 className={cn(
-                  'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors',
+                  'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 min-h-[48px] text-left transition-colors',
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[--ember]',
                   isSelected
                     ? 'bg-[--ember]/10 dark:bg-[--ember]/15 ring-1 ring-inset ring-[--ember]/35'
@@ -289,7 +289,7 @@ export function RecipientSummary({
       <button
         type="button"
         onClick={onOpen}
-        className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/70 px-2.5 py-1 text-xs font-medium text-neutral-700 transition-colors hover:bg-white dark:border-white/12 dark:bg-white/8 dark:text-neutral-200 dark:hover:bg-white/12"
+        className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white/70 px-3 -my-2 min-h-[40px] text-xs font-medium text-neutral-700 transition-colors hover:bg-white dark:border-white/12 dark:bg-white/8 dark:text-neutral-200 dark:hover:bg-white/12"
       >
         <Users className="h-3.5 w-3.5 opacity-70" aria-hidden="true" />
         {selected.length === 0
@@ -311,7 +311,7 @@ export function RecipientSummary({
             <button
               type="button"
               onClick={() => onRemove(id)}
-              className="rounded-full p-0.5 hover:bg-black/10 dark:hover:bg-white/15"
+              className="rounded-full p-1.5 -m-1 hover:bg-black/10 dark:hover:bg-white/15"
               aria-label={t('picker.remove', { name: nameOf(id) })}
             >
               <X className="h-3 w-3" aria-hidden="true" />
@@ -323,7 +323,7 @@ export function RecipientSummary({
         <button
           type="button"
           onClick={onOpen}
-          className="rounded-full bg-[--ember]/12 px-2.5 py-1 text-xs font-medium text-[--ember] dark:bg-[--ember]/20"
+          className="rounded-full bg-[--ember]/12 px-3 -my-2 min-h-[40px] text-xs font-medium text-[--ember] dark:bg-[--ember]/20"
         >
           {t('composer.moreDevices', { count: String(rest) })}
         </button>

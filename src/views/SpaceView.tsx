@@ -823,10 +823,12 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
             className="flex-1 min-w-0 min-h-[44px] resize-none max-h-32 rounded-[20px] border border-apple-divider dark:border-white/[0.1] bg-white dark:bg-white/[0.05] px-4 py-2.5 text-[14.5px] text-apple-ink dark:text-white placeholder:text-apple-ink-muted/50 dark:placeholder:text-white/30 outline-none focus:ring-2 focus:ring-azure-500/40"
             data-testid="space-composer"
           />
+          {/* Composer share is a convenience duplicate of the header share —
+              on narrow phones it yields so the textarea keeps its width. */}
           <button
             onClick={() => { void shareSpace(); }}
             aria-label={t('space.share')}
-            className="shrink-0 w-11 h-11 rounded-full bg-white dark:bg-white/[0.06] border border-apple-divider dark:border-white/[0.1] flex items-center justify-center hover:border-apple-ink/30 dark:hover:border-white/30 transition-colors"
+            className="hidden min-[430px]:flex shrink-0 w-11 h-11 rounded-full bg-white dark:bg-white/[0.06] border border-apple-divider dark:border-white/[0.1] items-center justify-center hover:border-apple-ink/30 dark:hover:border-white/30 transition-colors"
             data-testid="space-share-row"
           >
             <Share2 className="w-[18px] h-[18px] text-apple-ink dark:text-white/80" />

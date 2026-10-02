@@ -815,7 +815,7 @@ export function SingleScreenApp() {
                     key={r.spaceId}
                     type="button"
                     onClick={() => { window.location.href = `/space/${r.spaceId}`; }}
-                    className="group w-full flex items-center gap-3 pl-3.5 pr-3 py-2.5 rounded-[14px] bg-white/[0.55] dark:bg-white/[0.04] border border-apple-divider/70 dark:border-white/[0.08] hover:border-apple-ink/25 dark:hover:border-white/25 transition-colors text-left"
+                    className="group w-full flex items-center gap-3 pl-3.5 pr-3 py-2.5 min-h-[44px] rounded-[14px] bg-white/[0.55] dark:bg-white/[0.04] border border-apple-divider/70 dark:border-white/[0.08] hover:border-apple-ink/25 dark:hover:border-white/25 transition-colors text-left"
                   >
                     <Clock3 className="shrink-0 w-4 h-4 text-apple-ink-muted dark:text-white/50" aria-hidden />
                     <span className="flex-1 min-w-0 flex items-center gap-2 text-[13px]">
@@ -831,7 +831,7 @@ export function SingleScreenApp() {
                   <button
                     type="button"
                     onClick={() => setSpaceSheet('create')}
-                    className="inline-flex items-center gap-2 text-[13.5px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors min-h-[36px]"
+                    className="inline-flex items-center gap-2 text-[13.5px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors min-h-[44px]"
                     data-testid="space-create-entry"
                   >
                     <Clock3 className="w-4 h-4" aria-hidden />
@@ -842,7 +842,7 @@ export function SingleScreenApp() {
                   <button
                     type="button"
                     onClick={() => setSpaceSheet('join')}
-                    className="inline-flex items-center gap-2 text-[13.5px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors min-h-[36px]"
+                    className="inline-flex items-center gap-2 text-[13.5px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors min-h-[44px]"
                     data-testid="space-join-entry"
                   >
                     <Link2 className="w-4 h-4" aria-hidden />
@@ -1074,7 +1074,7 @@ export function SingleScreenApp() {
 
           {/* ── CONNECTED: device pair + ready to transfer ───────── */}
           {panelMode === 'connected' && !celebrateConnected && (
-            <motion.div key="connected" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25, ease: EASE }} className="max-w-md 2xl:max-w-lg mx-auto">
+            <motion.div key="connected" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25, ease: EASE }} className="max-w-md 2xl:max-w-lg mx-auto my-auto">
               {/* Desktop connected rail — decluttered. The room header already
                   carries identity (this ⇄ partner + live status) and the room
                   itself is the product; this rail keeps only what the header
@@ -1242,17 +1242,19 @@ export function SingleScreenApp() {
             <a href="/privacy" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.privacy')}</a>
             <a href="/terms" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.terms')}</a>
           </nav>
-          {/* X (Twitter) — logo only, no handle text. Crisp bold glyph,
-              links to the author's X profile. */}
+          {/* X (Twitter) — glyph + handle on ≥sm so an isolated ✕ at the
+              pane's corner can't be misread as a dismiss control; the
+              anchor chip framing (pill border) says "external link". */}
           <a
             href="https://x.com/0xalyt"
             target="_blank"
             rel="noopener noreferrer"
             aria-label={t('footer.followAria')}
             title="x.com/0xalyt"
-            className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] -my-2.5 rounded-full text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
+            className="inline-flex items-center justify-center gap-1.5 min-h-[40px] min-w-[44px] -my-2.5 px-2.5 rounded-full border border-apple-divider/60 dark:border-white/[0.08] text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:border-apple-ink/30 dark:hover:border-white/25 transition-colors"
           >
-            <svg className="w-[17px] h-[17px] shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+            <svg className="w-[15px] h-[15px] shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+            <span className="hidden sm:inline text-[12.5px] font-semibold">x.com/0xalyt</span>
           </a>
         </div>
     </footer>
@@ -1297,8 +1299,14 @@ export function SingleScreenApp() {
       {/* Hero area — the H1 lives INSIDE the hero column (restored): one
           source of truth for the headline on desktop and mobile, sitting in
           the same max-w-md column as the subtitle and actions. */}
-      <div className="flex-1 flex flex-col justify-start px-6 lg:px-10 pt-3 sm:pt-6 lg:pt-12 pb-6 min-h-0 overflow-y-auto overscroll-contain room-scroll">
-        {heroContent}
+      <div className="flex-1 flex flex-col px-6 lg:px-10 pt-3 sm:pt-6 lg:pt-12 pb-6 min-h-0 overflow-y-auto overscroll-contain room-scroll">
+        {/* Vertically center the connected rail in the pane's real height —
+            the column is shorter than the viewport on desktop, and top-
+            anchoring it left a dead zone below. Idle/pairing content is
+            tall enough to top-anchor; only the room rail benefits. */}
+        <div className={panelMode === 'connected' ? "my-auto w-full" : "w-full"}>
+          {heroContent}
+        </div>
       </div>
       {footerNode}
     </div>
