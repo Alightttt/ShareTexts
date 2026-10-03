@@ -138,6 +138,7 @@ const ReactionBar: React.FC<{ msg: ChatMessage; disabled?: boolean }> = ({ msg, 
           aria-pressed={r.mine}
           aria-label={r.mine ? t('msg.removeReaction', { emoji }) : t('msg.reactWith', { emoji })}
           title={r.mine ? t('msg.removeReaction', { emoji }) : t('msg.reactWith', { emoji })}
+          data-testid={`reaction-chip-${emoji}`}
           className="group/chip flex items-center justify-center min-h-[40px] min-w-[40px] px-0.5 transition-motion active:scale-90"
         >
           {/* The hit box is 40px; the VISIBLE pill stays 26px inside it. The
@@ -162,6 +163,7 @@ const ReactionBar: React.FC<{ msg: ChatMessage; disabled?: boolean }> = ({ msg, 
           onPointerDown={(e) => { e.preventDefault(); setOpen(o => !o); }}
           aria-label={t('msg.react')}
           aria-expanded={open}
+          data-testid="add-reaction"
           title={t('msg.react')}
           className="flex items-center justify-center min-h-[40px] min-w-[40px] px-0.5 transition-motion active:scale-90"
         >
@@ -194,6 +196,7 @@ const ReactionBar: React.FC<{ msg: ChatMessage; disabled?: boolean }> = ({ msg, 
                 key={emoji}
                 type="button"
                 aria-label={t('msg.reactWith', { emoji })}
+                data-testid={`reaction-emoji-${emoji}`}
                 onPointerDown={(e) => { e.preventDefault(); setOpen(false); pick(emoji); }}
                 className="flex h-10 w-10 items-center justify-center rounded-full text-[17px] leading-none transition-motion hover:bg-apple-parchment dark:hover:bg-white/10 active:scale-90"
               >

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShareTextsLogo } from '../components/ShareTextsLogo';
-import { BrandLockup } from '../components/BrandLockup';
+import { PageHeader } from '../components/PageHeader';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { FaqSection } from '../components/marketing/FaqSection';
 import { DataFlow } from '../components/marketing/DataFlow';
@@ -697,24 +697,16 @@ export function Docs() {
 
   return (
     <div className="min-h-screen bg-apple-canvas dark:bg-night-900 font-sans">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-apple-canvas/85 dark:bg-night-900/85 backdrop-blur-md border-b border-apple-divider dark:border-white/[0.06]">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">
-          {/* Back arrow and lockup are siblings — BrandLockup is an anchor
-              itself, and an anchor inside an anchor is invalid HTML. */}
-          <div className="flex items-center gap-2 shrink-0">
-            <a href="/" className="flex items-center justify-center min-w-[40px] min-h-[40px] -ml-2 rounded-full text-apple-ink-muted dark:text-white/60 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors" aria-label="ShareTexts, back to home">
-              <ArrowLeft className="w-4 h-4" />
-            </a>
-            <BrandLockup compact />
-          </div>
-          <div className="flex items-center gap-3 sm:gap-4 ml-auto">
-            <a href="/about" className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.about')}</a>
-            <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60">Docs</span>
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+      {/* Header — the shared PageHeader, so Docs, Legal and the 404 share one
+          header instead of three hand-rolled near-copies. */}
+      <PageHeader
+        links={[
+          { href: '/about', label: t('nav.about') },
+          { href: '/privacy', label: t('nav.privacy') },
+          { href: '/terms', label: t('nav.terms') },
+        ]}
+        currentLabel={t('nav.docs')}
+      />
 
       <div className="max-w-6xl mx-auto px-6 py-8 flex gap-8">
         {/* Sidebar Navigation — desktop only */}

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { ShareTextsLogo } from '../components/ShareTextsLogo';
-import { BrandLockup } from '../components/BrandLockup';
+import { PageHeader } from '../components/PageHeader';
 import { ThemeToggle } from '../components/ThemeToggle';
 // Gravity UI icons aliased onto the names this file already uses (Cookie has
 // no Gravity equivalent — it stays on lucide).
@@ -169,22 +169,15 @@ export function Legal({ page }: { page: LegalPage }) {
 
   return (
     <div className="min-h-screen bg-apple-canvas dark:bg-night-900 font-sans">
-      <header className="sticky top-0 z-40 bg-apple-canvas/85 dark:bg-night-900/85 backdrop-blur-md border-b border-apple-divider dark:border-white/[0.06]">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">
-          {/* Back arrow and lockup are siblings — BrandLockup is an anchor
-              itself, and an anchor inside an anchor is invalid HTML. */}
-          <div className="flex items-center gap-2 shrink-0">
-            <a href="/" className="flex items-center justify-center min-w-[40px] min-h-[40px] -ml-2 rounded-full text-apple-ink-muted dark:text-white/60 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors" aria-label="ShareTexts, back to home">
-              <ArrowLeft className="w-4 h-4" />
-            </a>
-            <BrandLockup compact />
-          </div>
-          <div className="flex items-center gap-4 ml-auto">
-            <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60">{title}</span>
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+      {/* The shared PageHeader: Legal used to be the one screen with no way
+          to Docs or About from its header. */}
+      <PageHeader
+        links={[
+          { href: '/docs', label: 'Docs' },
+          { href: '/about', label: 'About' },
+        ]}
+        currentLabel={title}
+      />
 
       <div className="max-w-2xl mx-auto px-6 py-10 sm:py-14">
         <h1 className="text-[30px] sm:text-[36px] font-semibold text-apple-ink dark:text-white tracking-[-0.035em] mb-2" style={{ fontFamily: 'var(--font-display)' }}>

@@ -7,8 +7,9 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { SessionProvider, useSession } from './lib/SessionContext';
 import { I18nProvider, useI18n } from './lib/i18n';
 // Gravity UI icons aliased onto the names this file already uses.
-import { Xmark as X, ArrowRightFromSquare as DoorOpen } from '@gravity-ui/icons';
+import { Xmark as X, ArrowLeft, ArrowRightFromSquare as DoorOpen } from '@gravity-ui/icons';
 import { ShareTextsLogo } from './components/ShareTextsLogo';
+import { PageHeader } from './components/PageHeader';
 import { BrandLockup } from './components/BrandLockup';
 import { TactileButton } from './components/TactileButton';
 import { markAppUsed } from './lib/rating';
@@ -151,12 +152,27 @@ function ErrorFallback({ onReset }: { onReset: () => void }) {
   // explanation, one primary path forward and two quiet alternatives.
   return (
     <div className="min-h-screen flex flex-col bg-apple-canvas dark:bg-[#131315] dot-bg">
-      <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
-        <BrandLockup mono markSize={26} />
-        <a
-          href="/docs"
-          className="px-3 py-2 min-h-[40px] flex items-center rounded-full text-[13px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
-        >Docs</a>
+      {/* Static English, same header geometry as the rest of the product.
+          The theme switch is deliberately absent: the error can fire before
+          the providers mount, and a control that cannot work is worse than
+          no control. */}
+      <header className="shrink-0 bg-apple-canvas/85 dark:bg-night-900/85 backdrop-blur-xl border-b border-apple-divider dark:border-white/[0.06]">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href="/"
+              className="flex items-center justify-center min-w-[40px] min-h-[40px] -ml-2 rounded-full text-apple-ink-muted dark:text-white/60 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
+              aria-label="ShareTexts, back to home"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </a>
+            <BrandLockup compact />
+          </div>
+          <div className="flex items-center gap-4 sm:gap-5 ml-auto">
+            <a href="/docs" className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60 hover:text-apple-ink dark:hover:text-white transition-colors">Docs</a>
+            <a href="/about" className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60 hover:text-apple-ink dark:hover:text-white transition-colors">About</a>
+          </div>
+        </div>
       </header>
       <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
         {/* The state is the icon: the mark mid-"connecting" inside a calm
@@ -256,22 +272,28 @@ function AppContent() {
     // and both ways forward (home primary, docs secondary).
     return (
       <div className="min-h-screen flex flex-col bg-apple-canvas dark:bg-[#131315] dot-bg">
-        <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
-          <BrandLockup mono markSize={26} />
-          <a
-            href="/docs"
-            className="px-3 py-2 min-h-[40px] flex items-center rounded-full text-[13px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
-          >{t('nav.docs')}</a>
-        </header>
+        {/* The same header the rest of the non-room screens use, so a dead
+            link still feels like the product. */}
+        <PageHeader
+          links={[
+            { href: '/docs', label: t('nav.docs') },
+            { href: '/about', label: t('nav.about') },
+          ]}
+        />
         <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
           {/* The missing-room tile: the mark in a mono tile with the page's
               number — the state IS the visual, no illustration needed. */}
-          <div className="relative w-[76px] h-[76px] rounded-[24px] bg-white dark:bg-[#1c1c21] overflow-hidden border border-apple-divider/70 dark:border-white/[0.08] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.18)] flex items-center justify-center mb-7">
-            {/* Sunrise horizon inside the tile: light rising from the bottom
-                edge — the same depth language as the landing and About. */}
-            <span aria-hidden className="st-horizon absolute inset-x-0 bottom-0 h-[56%] opacity-90" />
-            <ShareTextsLogo size={36} mono className="relative text-apple-ink/70 dark:text-white/50" />
-            <span className="absolute -top-1.5 -right-1.5 px-2 py-0.5 rounded-full bg-ember text-white text-[11px] font-bold shadow-sm">404</span>
+          {/* The tile wraps a rounded clip so the horizon gradient can't
+              square off its corners; the badge sits OUTSIDE that clip in a
+              sibling wrapper, otherwise overflow-hidden ate its right half. */}
+          <div className="relative mb-7">
+            <div className="relative w-[76px] h-[76px] rounded-[24px] bg-white dark:bg-[#1c1c21] overflow-hidden border border-apple-divider/70 dark:border-white/[0.08] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.18)] flex items-center justify-center">
+              {/* Sunrise horizon inside the tile: light rising from the bottom
+                  edge — the same depth language as the landing and About. */}
+              <span aria-hidden className="st-horizon absolute inset-x-0 bottom-0 h-[56%] opacity-90" />
+              <ShareTextsLogo size={36} className="relative" />
+            </div>
+            <span className="absolute -top-1.5 -right-2.5 px-2 py-0.5 rounded-full bg-ember text-white text-[11px] font-bold shadow-sm">404</span>
           </div>
           <h2 className="st-display text-[30px] sm:text-[34px] text-apple-ink dark:text-white mb-2.5">{t('app.404.title')}</h2>
           <p className="text-[15px] text-apple-ink-muted dark:text-white/60 max-w-sm mb-8 leading-relaxed">{t('app.404.body')}</p>
