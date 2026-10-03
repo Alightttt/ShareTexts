@@ -845,14 +845,18 @@ export function SingleScreenApp() {
                   caps + a hairline, so the eye can skip it entirely when it
                   only came here to send a file. */}
               <div className="order-4 mt-6 w-full flex flex-col gap-2.5" data-testid="space-entry">
-                <div className="flex items-center gap-2.5 w-full">
-                  <span className="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.09em] text-apple-ink-muted/75 dark:text-white/40">
-                    <Clock3 className="w-3.5 h-3.5" aria-hidden />
-                    {t('space.entryTitle')}
-                  </span>
-                  <span className="h-px flex-1 bg-apple-divider/70 dark:bg-white/[0.07]" aria-hidden />
-                  <span className="hidden sm:inline shrink-0 text-[11.5px] font-medium text-apple-ink-muted/60 dark:text-white/30">{t('space.entryHint')}</span>
-                </div>
+                {/* One sentence, not a section divider. The old treatment —
+                    an ALL-CAPS label, a hairline running to the right edge,
+                    and a trailing hint — is the single most templated thing
+                    on this page: it announces a section instead of saying
+                    something. Same words, same order, no rule, sentence case,
+                    so the line reads as a thought rather than a heading. */}
+                <p className="flex items-center gap-1.5 text-[12.5px] text-apple-ink-muted/70 dark:text-white/40">
+                  <Clock3 className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                  <span className="font-medium text-apple-ink-muted dark:text-white/55">{t('space.entryTitle')}</span>
+                  <span aria-hidden className="opacity-40">·</span>
+                  <span>{t('space.entryHint')}</span>
+                </p>
                 {recent.map(r => {
                   const msLeft = r.expiresAt - Date.now();
                   // Under an hour left, the row says so in ember — the one
