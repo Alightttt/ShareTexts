@@ -19,12 +19,18 @@ import { useSession } from '../lib/SessionContext';
 import { updateRoomBadge, setRoomBadgeActive } from '../lib/roomBadge';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { ShareTextsLogo } from '../components/ShareTextsLogo';
+import { BrandLockup } from '../components/BrandLockup';
+import { IconButton3D } from '../components/IconButton3D';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { LiveCodeDisplay } from '../components/LiveCodeDisplay';
 import { LiveCodeInput } from '../components/LiveCodeInput';
 import { AnimatedIcon } from '../components/AnimatedIcon';
 import { SendCircleIcon, ReceiveCircleIcon, DisconnectGlyph } from '../components/TransferIcons';
 import { TactileButton } from '../components/TactileButton';
+import { SlideToConfirm } from '../components/SlideToConfirm';
+import { ShareMenu } from '../components/ShareMenu';
+import { SystemAlert } from '../components/SystemAlert';
+import { PresenceDock, type PresenceEntry } from '../components/PresenceDock';
 import { InlineConfirm } from '../components/InlineConfirm';
 import { BookOpen } from '@gravity-ui/icons';
 import { ConnectHandshake } from '../components/ConnectHandshake';
@@ -631,27 +637,41 @@ export function SingleScreenApp() {
   // desktops — instead of always drawing a phone.
   const ThisDeviceIcon = isMobileDevice ? Smartphone : Monitor;
   const PartnerDeviceIcon = isMobileDevice ? Monitor : Smartphone;
+  // Presence dock data (rail): this device first — it is always here while
+  // the room is — then every other device with its OWN link state, so a
+  // multi-device room reads as a row of tiles instead of a sentence. The
+  // classic two-device room has no roster rows, so the connected partner
+  // becomes the single peer tile.
+  const peerRows = (session.peers ?? []).filter(p => !p.isSelf);
+  const otherTiles: PresenceEntry[] = peerRows.length > 0
+    ? peerRows.map(p => ({
+        id: p.id,
+        label: p.name,
+        icon: /mobile|phone|ios|android/i.test(p.platform || '') ? <Smartphone className="w-4 h-4" /> : <Monitor className="w-4 h-4" />,
+        state: p.link === 'connected' ? 'connected' : (p.link === 'connecting' || p.link === 'reconnecting') ? 'connecting' : 'offline',
+      }))
+    : (session.partnerName || session.partnerConnected)
+      ? [{
+          id: 'partner',
+          label: session.partnerName ?? t('connect.otherDevice'),
+          icon: <PartnerDeviceIcon className="w-4 h-4" />,
+          state: session.partnerConnected ? 'connected' as const : 'connecting' as const,
+        }]
+      : [];
+  const presenceEntries: PresenceEntry[] = [
+    { id: 'self', label: session.deviceName, icon: <ThisDeviceIcon className="w-4 h-4" />, state: 'connected', isSelf: true },
+    ...otherTiles,
+  ];
+  const roomRosterCount = presenceEntries.length;
   // No ambient blobs: colored blur washes were template decor. The paper
   // canvas and the tile composition carry the screen now — quiet is the
   // luxury.
   const ambientGlow = null;
   const headerNode = (
-    <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
-        {/* Brand lockup — ONE svg (two responsive copies would put the shared
-            gradient defs inside the display:none copy, which browsers refuse
-            to paint — the desktop mark vanished). CSS overrides the intrinsic
-            size for the responsive step. gap-[7px] reads optically even —
-            the mark's right side carries more air than its left, so one px
-            tighter than a plain 8 balances the pair; baseline-nudged name
-            aligns the wordmark's x-height with the mark's optical center. */}
-        <a href="/" className="group flex items-center gap-[7px] shrink-0 min-h-[40px] -my-2" aria-label="ShareTexts — home">
-          {/* The mark gets a whisper of scale on hover (transform only, no
-              layout shift) — the brand invites you in without shouting. */}
-          <span className="transition-transform duration-200 ease-out group-hover:scale-105 group-active:scale-95 motion-reduce:transition-none flex">
-            <ShareTextsLogo size={30} className="w-7 sm:w-[30px] h-auto" />
-          </span>
-          <span className="font-semibold tracking-tight text-[19px] sm:text-[21px] text-apple-ink dark:text-white translate-y-px">ShareTexts</span>
-        </a>
+    <header className="shrink-0 sticky top-0 z-30 flex items-center justify-between px-6 lg:px-10 py-3.5 bg-apple-canvas/85 dark:bg-[#131315]/85 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.06] relative">
+        {/* Brand lockup — the shared BrandLockup: mark + wordmark as ONE
+            equal-height object, display-face wordmark, minimal gap. */}
+        <BrandLockup />
         {/* One rhythm for every header control — desktop AND mobile. Each
             item is a 40px-tall slot on a tight gap grid; icons are uniform
             18px. Docs and language sit closest (one shared cluster), the
@@ -662,23 +682,19 @@ export function SingleScreenApp() {
           {/* Docs sits BETWEEN the language and theme toggles (user request) —
               same 40px slot, same quiet icon style as its neighbors; the
               footer link stays too. */}
-          <a
-            href="/docs"
-            aria-label="Docs"
-            title="Docs"
-            className="flex items-center justify-center w-11 h-10 rounded-full text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.07] active:scale-95 transition-all"
-          >
+          <IconButton3D label="Docs" href="/docs">
             <BookOpen className="w-[18px] h-[18px]" aria-hidden />
-          </a>
+          </IconButton3D>
           <ThemeToggle />
         </div>
+        {/* Spotlight bar: a hairline of brand light where the sticky header
+            meets the page, so the seam reads as intentional depth rather
+            than a border. */}
+        <span aria-hidden className="st-spotlight absolute -bottom-px left-1/2 -translate-x-1/2 h-px w-[min(560px,72%)] opacity-70" />
     </header>
   );
 
-  const heroContent = (
-    <AnimatePresence mode="sync">
-          {/* ── IDLE ──────────────────────────────────────────────── */}
-          {panelMode === 'idle' && (
+  const idleHeroNode = (
             // Deterministic first paint: the hero renders visible immediately;
             // only the swap-out fades. Never gate first paint on animation.
             <motion.div key="idle" exit={{ opacity: 0 }} transition={{ duration: 0.12 }} className="w-full max-w-md mx-auto flex flex-col">
@@ -691,7 +707,7 @@ export function SingleScreenApp() {
               </h1>
               {/* whitespace-pre-line honors the subtitle's deliberate line
                   break ("No app. No account. No cable." / "Just open …"). */}
-              <p className="order-2 mt-3.5 text-[16.5px] sm:text-[18px] lg:text-[19px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[40ch] text-center sm:text-left whitespace-pre-line">
+              <p className="st-h-sub order-2 mt-3.5 text-[16.5px] sm:text-[18px] lg:text-[19px] text-apple-ink-muted dark:text-white/60 font-medium leading-relaxed max-w-[40ch] text-center sm:text-left whitespace-pre-line">
                 {t('home.subtitle')}
               </p>
               {/* Live activity tracker — bare (NO pill): a breathing dot, the
@@ -806,43 +822,49 @@ export function SingleScreenApp() {
                 })()}
               </AnimatePresence>
               {/* Temporary Space (F14) — SECONDARY utility, deliberately quiet:
-                  one row after the rejoin card, never overpowering
-                  Send/Receive or Nearby (§1). Reuses the rejoin card's
-                  geometry so it reads as part of the same family. */}
-              <div className="order-4 mt-2.5 w-full flex flex-col gap-2" data-testid="space-entry">
+                  recent spaces as tactile rows, create/join as ONE segmented
+                  pill (two quiet links read as stray text; a segmented
+                  control reads as a tool). Reuses the rejoin card's geometry
+                  so it reads as part of the same family. */}
+              <div className="order-4 mt-3 w-full flex flex-col gap-2" data-testid="space-entry">
                 {recent.length > 0 && recent.map(r => (
                   <button
                     key={r.spaceId}
                     type="button"
                     onClick={() => { window.location.href = `/space/${r.spaceId}`; }}
-                    className="group w-full flex items-center gap-3 pl-3.5 pr-3 py-2.5 min-h-[44px] rounded-[14px] bg-white/[0.55] dark:bg-white/[0.04] border border-apple-divider/70 dark:border-white/[0.08] hover:border-apple-ink/25 dark:hover:border-white/25 transition-colors text-left"
+                    className="group w-full flex items-center gap-3 pl-3 pr-3 py-2.5 min-h-[44px] rounded-[14px] bg-white/[0.55] dark:bg-white/[0.04] border border-apple-divider/70 dark:border-white/[0.08] hover:border-apple-ink/25 dark:hover:border-white/25 hover:bg-white dark:hover:bg-white/[0.07] active:scale-[0.99] transition-all text-left"
                   >
-                    <Clock3 className="shrink-0 w-4 h-4 text-apple-ink-muted dark:text-white/50" aria-hidden />
+                    <span className="shrink-0 w-7 h-7 rounded-[9px] bg-black/[0.045] dark:bg-white/[0.07] flex items-center justify-center text-apple-ink-muted dark:text-white/50" aria-hidden>
+                      <Clock3 className="w-3.5 h-3.5" />
+                    </span>
                     <span className="flex-1 min-w-0 flex items-center gap-2 text-[13px]">
-                      <span className="font-medium text-apple-ink dark:text-white/85 truncate">{r.name}</span>
+                      <span className="font-semibold text-apple-ink dark:text-white/85 truncate">{r.name}</span>
                       <span className="shrink-0 text-[12px] font-medium tabular-nums text-apple-ink-muted/80 dark:text-white/40">
                         {t('space.closesIn', { time: remainingShortOf(r.expiresAt - Date.now()) })}
                       </span>
                     </span>
-                    <span className="shrink-0 text-[12.5px] font-semibold text-azure-600 dark:text-azure-400">{t('space.reopen')}</span>
+                    <span className="shrink-0 text-[12.5px] font-semibold text-azure-600 dark:text-azure-400 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none">{t('space.reopen')}</span>
                   </button>
                 ))}
-                <div className="flex items-center justify-center gap-5 sm:gap-6">
+                {/* One pill, two entries — plus a 40px floor on each half so the
+                  segmented control honours the same touch contract as every
+                  other control (it shipped at 36px and audit caught it). */}
+              <div className="flex w-fit mx-auto sm:mx-0 items-stretch rounded-full border border-apple-divider/70 dark:border-white/[0.08] bg-white/[0.55] dark:bg-white/[0.04] p-1">
                   <button
                     type="button"
                     onClick={() => setSpaceSheet('create')}
-                    className="inline-flex items-center gap-2 text-[13.5px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors min-h-[44px]"
+                    className="inline-flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-full text-[13px] font-semibold text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.07] active:scale-[0.97] transition-all"
                     data-testid="space-create-entry"
                   >
                     <Clock3 className="w-4 h-4" aria-hidden />
                     {t('space.entryTitle')}
-                    <span className="hidden sm:inline text-apple-ink-muted/50 dark:text-white/30">· {t('space.entryHint')}</span>
+                    <span className="hidden xl:inline text-apple-ink-muted/50 dark:text-white/30 font-medium">· {t('space.entryHint')}</span>
                   </button>
-                  <span className="w-px h-4 bg-apple-divider dark:bg-white/10" aria-hidden />
+                  <span className="w-px my-1.5 bg-apple-divider dark:bg-white/10" aria-hidden />
                   <button
                     type="button"
                     onClick={() => setSpaceSheet('join')}
-                    className="inline-flex items-center gap-2 text-[13.5px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors min-h-[44px]"
+                    className="inline-flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-full text-[13px] font-semibold text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.07] active:scale-[0.97] transition-all"
                     data-testid="space-join-entry"
                   >
                     <Link2 className="w-4 h-4" aria-hidden />
@@ -856,7 +878,7 @@ export function SingleScreenApp() {
                   app's own step copy, which all 9 locales already ship.
                   Pure typography + existing icons; no illustration, no
                   card — it teaches, it doesn't decorate. */}
-              <div className="order-4 lg:hidden mt-5 mb-1 w-full max-w-[360px] mx-auto" aria-hidden>
+              <div className="st-hide-landscape-sm order-4 lg:hidden mt-5 mb-1 w-full max-w-[360px] mx-auto" aria-hidden>
                 <div className="flex items-center justify-center gap-2">
                   {[ThisDeviceIcon, ArrowRightLeft, PartnerDeviceIcon].map((Glyph, i) => (
                     <React.Fragment key={i}>
@@ -882,7 +904,7 @@ export function SingleScreenApp() {
                   bottom margin (not the old negative one) keeps clear air
                   between the image and the "Open ShareTexts in another
                   device" row that follows. */}
-              <div className="order-5 lg:hidden mt-4 sm:mt-8 mb-5 flex justify-center">
+              <div className="st-hide-landscape order-5 lg:hidden mt-4 sm:mt-8 mb-5 flex justify-center">
                 <div className="w-full max-w-[340px] px-1">
                   <HeroTransferScene />
                 </div>
@@ -901,27 +923,22 @@ export function SingleScreenApp() {
                 </div>
               </div>
               {createError && (
-                <motion.div
-                  role="alert"
-                  initial={{ opacity: 0, y: 6, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
-                  className="mt-4 p-3.5 rounded-[14px] bg-status-danger/[0.07] dark:bg-status-danger/10 border border-status-danger/20 flex items-start gap-3"
+                <SystemAlert
+                  className="mt-4"
+                  tone="danger"
+                  icon={createError.icon}
+                  action={{ label: t('home.retry'), onClick: handleSend, testId: 'create-retry' }}
                 >
-                  <span className="shrink-0 w-8 h-8 rounded-full bg-status-danger/15 flex items-center justify-center">
-                    {createError.icon === 'offline' ? <WifiOff className="w-4 h-4 text-status-danger" />
-                      : createError.icon === 'server' ? <ServerOff className="w-4 h-4 text-status-danger" />
-                      : createError.icon === 'time' ? <Info className="w-4 h-4 text-status-danger" />
-                      : <Info className="w-4 h-4 text-status-danger" />}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium text-status-danger leading-relaxed">{createError.text}</p>
-                    <button onClick={handleSend} className="mt-2 px-4 py-1.5 min-h-[36px] rounded-full text-[13px] font-semibold bg-status-danger/10 text-status-danger hover:bg-status-danger/20 transition-colors active:scale-95">{t('home.retry')}</button>
-                  </div>
-                </motion.div>
+                  {createError.text}
+                </SystemAlert>
               )}
             </motion.div>
-          )}
+  );
+
+  const heroContent = (
+    <AnimatePresence mode="sync">
+          {/* ── IDLE ──────────────────────────────────────────────── */}
+          {panelMode === 'idle' && idleHeroNode}
 
           {/* ── SENDING: pair the other device ────────────────────── */}
           {panelMode === 'sending' && (
@@ -1155,6 +1172,16 @@ export function SingleScreenApp() {
                 );
               })()}
 
+              {/* Who is here — the rail answers "who else is in this room"
+                  before it offers any action: tiles for each seated device,
+                  each with its own link state. */}
+              <PresenceDock
+                className="mb-4 px-1"
+                title={roomRosterCount === 1 ? t('room.oneDevice') : t('room.deviceCount', { count: roomRosterCount })}
+                subtitle={session.partnerConnected || roomRosterCount > 1 ? t('room.readyCount', { count: roomRosterCount }) : t('room.waiting')}
+                entries={presenceEntries}
+              />
+
               {/* Room controls — one grouped card, the rail's only action
                   surface. Stay Connected and Copy join link are equal-weight
                   room settings; Disconnect is the single destructive action,
@@ -1177,16 +1204,19 @@ export function SingleScreenApp() {
                   <Link2 className="w-4 h-4 shrink-0 text-apple-ink-muted dark:text-white/50" />
                 </button>
                 <div className="h-px bg-apple-divider/50 dark:bg-white/[0.07]" aria-hidden />
-                <button
-                  type="button"
-                  data-testid="end-session"
-                  onClick={() => setConfirmDisconnect(true)}
-                  className="w-full flex items-center gap-2 px-4 py-3 text-[13px] font-semibold text-status-danger/85 hover:text-status-danger hover:bg-status-danger/[0.06] active:scale-[0.99] transition-colors text-left"
-                >
-                  <DisconnectGlyph size={16} />
-                  {t('common.disconnect')}
-                </button>
               </div>
+              {/* Disconnect is the one irreversible thing on this rail, so it
+                  is no longer a tap: the knob must be carried past the arming
+                  line. Accidental taps can't end a live session. */}
+              <SlideToConfirm
+                className="mt-3"
+                tone="danger"
+                label={t('common.disconnect')}
+                armedLabel={t('end.release')}
+                onConfirm={() => handleDisconnect()}
+                icon={<DisconnectGlyph size={16} />}
+                testId="end-session"
+              />
             </motion.div>
           )}
           {/* ── CONNECTED: the payoff beat — the handshake the user just
@@ -1225,14 +1255,15 @@ export function SingleScreenApp() {
   );
 
   const footerNode = (
-    <footer className="shrink-0 px-6 lg:px-10 pt-3 pb-[max(env(safe-area-inset-bottom),8px)] sm:pb-3 border-t border-apple-divider/60 dark:border-white/[0.06]">
-        {/* One line: links with real gaps, the X mark at the right. Links
-            sit at muted weight (navigation, not shouting) and step up to
-            full ink on hover — quieter than the old always-bold row, and
-            the hover answer makes the affordance obvious. */}
-        {/* Same measure as the hero column above — footer nav shares the
-            content's left edge instead of drifting to the pane edge. */}
-        <div className="max-w-md mx-auto flex items-center justify-between gap-x-5 gap-y-2 flex-wrap">
+    <footer className="shrink-0 px-6 lg:px-10 pt-2.5 pb-[max(env(safe-area-inset-bottom),8px)] sm:pb-2.5 border-t border-apple-divider/60 dark:border-white/[0.06]">
+        {/* One quiet line: brand · links · X. The tiny mark grounds the row —
+            a footer without a brand reads as legal boilerplate; with it, the
+            page still knows whose it is at the very bottom of the scroll. */}
+        <div className="max-w-6xl mx-auto flex items-center justify-between gap-x-5 gap-y-2 flex-wrap">
+          <span className="flex items-center gap-2 text-apple-ink-muted/70 dark:text-white/35" aria-hidden>
+            <ShareTextsLogo size={17} className="opacity-75" />
+            <span className="w-px h-3.5 bg-apple-divider dark:bg-white/10" />
+          </span>
           <nav className="flex items-center gap-5 sm:gap-7 text-[13px] font-medium text-apple-ink-muted dark:text-white/50">
             {/* Each link gets a 40px hit box via symmetric padding + matching
                 negative margin — the visible rhythm is unchanged but the
@@ -1260,6 +1291,32 @@ export function SingleScreenApp() {
     </footer>
   );
 
+  /* Drop-to-send veil — shared by the two-pane left pane and the single-
+      screen landing; the pane answers the drag immediately, so the user
+      knows releasing HERE is the action. pointer-events-none keeps
+      dragleave/drop flowing to the surface beneath. */
+  const homeDropVeil = (
+    <AnimatePresence>
+      {homeDrop && panelMode === 'idle' && (
+        <motion.div
+          key="home-drop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          aria-hidden
+          className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none bg-apple-canvas/85 dark:bg-[#131315]/85 backdrop-blur-[2px]"
+        >
+          <div className="flex flex-col items-center gap-3 px-10 py-8 rounded-[28px] border-2 border-dashed border-[#f06413]/50 dark:border-[#fb9243]/50">
+            <Upload className="w-8 h-8 text-[#f06413] dark:text-[#fb9243]" />
+            <p className="text-[17px] font-semibold text-apple-ink dark:text-white">{t('drop.send')}</p>
+            <p className="text-[13px] font-medium text-apple-ink-muted dark:text-white/50">{t('drop.hint')}</p>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   const leftPanel = (
     <div
       // Drop-to-send lives on the whole idle home pane: release anywhere.
@@ -1276,25 +1333,7 @@ export function SingleScreenApp() {
       {/* Drop-to-send veil — the pane answers the drag immediately, so the
           user knows releasing HERE is the action. pointer-events-none keeps
           dragleave/drop flowing to the pane beneath. */}
-      <AnimatePresence>
-        {homeDrop && panelMode === 'idle' && (
-          <motion.div
-            key="home-drop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            aria-hidden
-            className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none bg-apple-canvas/85 dark:bg-[#131315]/85 backdrop-blur-[2px]"
-          >
-            <div className="flex flex-col items-center gap-3 px-10 py-8 rounded-[28px] border-2 border-dashed border-[#f06413]/50 dark:border-[#fb9243]/50">
-              <Upload className="w-8 h-8 text-[#f06413] dark:text-[#fb9243]" />
-              <p className="text-[17px] font-semibold text-apple-ink dark:text-white">{t('drop.send')}</p>
-              <p className="text-[13px] font-medium text-apple-ink-muted dark:text-white/50">{t('drop.hint')}</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {homeDropVeil}
       {headerNode}
       {/* Hero area — the H1 lives INSIDE the hero column (restored): one
           source of truth for the headline on desktop and mobile, sitting in
@@ -1550,6 +1589,46 @@ export function SingleScreenApp() {
   );
 
   /* ---------------------------------------------------------------- */
+  /*  LANDING — ONE screen (desktop idle only): words left, product right.
+      The old split-pane landing (brand half + how-it-works half) read as
+      two app screens side by side; a landing is one object — header, hero
+      row, footer — that happens to be interactive. */
+  /* ---------------------------------------------------------------- */
+  const landingNode = (
+    <div
+      onDragEnter={onHomeDragEnter}
+      onDragOver={onHomeDragOver}
+      onDragLeave={onHomeDragLeave}
+      onDrop={onHomeDrop}
+      className="relative isolate flex flex-col h-full overflow-hidden bg-apple-canvas dark:bg-[#131315] st-landing"
+    >
+      <div aria-hidden className="st-ambient" />
+      {/* Sunrise horizon: warm light rising from the floor of the hero band.
+          Pointer-transparent and behind the content — it gives the paper
+          canvas a direction to the light instead of an even wash. */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] st-horizon opacity-60" />
+      {homeDropVeil}
+      {headerNode}
+      <main id="main-content" className="relative z-10 flex-1 min-h-0 overflow-y-auto overscroll-contain room-scroll">
+        <div className="mx-auto w-full max-w-[1200px] h-full px-8 2xl:px-12 flex flex-col">
+          <div className="flex-1 min-h-0 grid grid-cols-[minmax(0,10fr)_minmax(0,9fr)] items-center gap-10 xl:gap-16 py-6">
+            {/* Left: the words and the actions (headline → subline → live
+                tracker → Send/Receive → space + nearby). */}
+            <div className="w-full min-w-0">{idleHeroNode}</div>
+            {/* Right: the product itself — the same scene the pairing flow
+                uses, so what you see IS what you'll operate. On a very short
+                window the landing simply scrolls to it (main is scrollable). */}
+            <div className="w-full max-w-[560px] mx-auto">
+              <HeroTransferScene />
+            </div>
+          </div>
+        </div>
+      </main>
+      {footerNode}
+    </div>
+  );
+
+  /* ---------------------------------------------------------------- */
   /*  RENDER                                                          */
   /* ---------------------------------------------------------------- */
   return (
@@ -1559,13 +1638,18 @@ export function SingleScreenApp() {
           so components (ChatView, composer, pairing input) exist exactly once
           in the DOM instead of twice with one hidden copy. */}
       {isDesktopLayout ? (
-        /* Desktop: two panes. Balanced 50/50 at 1024–1279; from 1280 the
-            room gets the wider share (≈44/56) so the active pane never feels
-            like an afterthought next to an airy brand half. */
-        <div className="flex h-full">
-          <div className="w-1/2 xl:w-[44%] h-full overflow-y-auto border-r border-black/[0.06] dark:border-white/[0.06]">{leftPanel}</div>
-          <div className="flex-1 h-full min-w-0">{roomPanel}</div>
-        </div>
+        panelMode === 'idle' ? (
+          /* Idle: ONE landing screen (see landingNode). */
+          landingNode
+        ) : (
+          /* Active: two panes. Balanced 50/50 at 1024–1279; from 1280 the
+              room gets the wider share (≈44/56) so the active pane never feels
+              like an afterthought next to an airy brand half. */
+          <div className="flex h-full">
+            <div className="w-1/2 xl:w-[44%] h-full overflow-y-auto border-r border-black/[0.06] dark:border-white/[0.06]">{leftPanel}</div>
+            <div className="flex-1 h-full min-w-0">{roomPanel}</div>
+          </div>
+        )
       ) : (
         /* Mobile: exactly ONE section on screen at a time.
             · Idle / pairing: header + hero (centered) + footer.
@@ -1587,14 +1671,15 @@ export function SingleScreenApp() {
         ) : (
           <div className="h-full overflow-y-auto overscroll-contain">
             <div className="flex flex-col min-h-full">
-              <div className="relative isolate flex flex-1 flex-col bg-apple-canvas dark:bg-[#131315]">
+              <div className="relative isolate flex flex-1 flex-col bg-apple-canvas dark:bg-[#131315] st-landing">
                 {ambientGlow}
+                <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[46%] st-horizon opacity-55" />
                 {headerNode}
                 {/* TOP-ANCHORED like the desktop pane: justify-center with
                     overflowing content pushes the heading into dead space
                     above (and clips it) — start-anchoring keeps the title
                     right under the header on every phone height. */}
-                <div className="flex-1 flex flex-col justify-start px-6 lg:px-10 pt-3 sm:pt-6 pb-6 min-h-0">
+                <div id="main-content" className="flex-1 flex flex-col justify-start px-6 lg:px-10 pt-3 sm:pt-6 pb-6 min-h-0">
                   {heroContent}
                 </div>
               </div>
@@ -1659,7 +1744,31 @@ export function SingleScreenApp() {
                   <span key={pos} aria-hidden className={`absolute w-5 h-5 border-ember ${pos}`} />
                 ))}
               </div>
-              <button onClick={() => setShowQROverlay(false)} className="w-full py-2.5 min-h-[44px] bg-apple-parchment dark:bg-white/5 hover:bg-apple-divider dark:hover:bg-white/10 rounded-full text-[13px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.98]">{t('qr.close')}</button>
+              {/* Copy + Share, side by side: the two things anyone actually
+                  does with a displayed code. Copy is deliberately the quiet
+                  one (it stays on this device); Share is the branded one
+                  because it leaves. Close keeps the low-emphasis slot below,
+                  so the row never becomes a three-way decision. */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { void copyLink(); }}
+                  data-testid="qr-copy"
+                  className="flex-1 flex items-center justify-center gap-2 h-11 rounded-full bg-apple-parchment dark:bg-white/[0.07] text-[13.5px] font-semibold text-apple-ink dark:text-white transition-colors active:scale-[0.98]"
+                >
+                  {copiedLink ? <Check className="w-4 h-4 text-status-success" /> : <Copy className="w-4 h-4 text-apple-ink-muted dark:text-white/60" />}
+                  {copiedLink ? t('action.copied') : t('action.copy')}
+                </button>
+                <ShareMenu
+                  className="flex-1"
+                  url={shareUrlRef.current}
+                  code={qrCode || null}
+                  variant="pill"
+                  pillTone="brand"
+                  triggerLabel={t('action.share')}
+                  testId="qr-share"
+                />
+              </div>
+              <button onClick={() => setShowQROverlay(false)} className="w-full mt-2 py-2.5 min-h-[44px] rounded-full text-[13px] font-semibold text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white transition-colors">{t('qr.close')}</button>
             </motion.div>
           </motion.div>
         )}

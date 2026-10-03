@@ -90,6 +90,10 @@ export interface ChatMessage {
    *  message on screen (a 'seen' receipt — the message was actually looked
    *  at, not just stored). Set by the sender; never guessed. */
   seen?: boolean;
+  /** Emoji reactions, keyed by emoji glyph. `count` = how many REMOTE
+   *  devices reacted (own reaction is `mine`, kept separate so the two
+   *  counters never fight over one number). Absent = no reactions. */
+  reactions?: Record<string, { count: number; mine: boolean }>;
 }
 
 export interface SessionState {

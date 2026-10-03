@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, X, Infinity as InfinityIcon, Loader2 } from 'lucide-react';
+import { Search, X, Infinity as InfinityIcon } from 'lucide-react';
+import { SpinLoader } from './SpinLoader';
 import { useI18n } from '../lib/i18n';
 import { useFocusTrap } from '../lib/useFocusTrap';
 import { cn } from '../lib/utils';
@@ -218,7 +219,7 @@ export function NearbyDetectOverlay({
                 >
                   {busy ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+                      <SpinLoader size={16} aria-hidden />
                       {t('nearby.overlay.connecting')}
                     </>
                   ) : mode === 'incoming' || armed ? (

@@ -12,6 +12,7 @@ import { FileTypeIcon } from '../components/FileTypeIcon';
 import { DraggableImage } from '../components/DraggableImage';
 import { AnimatedIcon } from '../components/AnimatedIcon';
 import { DisconnectGlyph } from '../components/TransferIcons';
+import { IconButton3D } from '../components/IconButton3D';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { StayConnectedToggle, StayBadge } from '../components/StayConnectedToggle';
 import { cn, formatBytes, sanitizeDeviceName } from '../lib/utils';
@@ -20,7 +21,6 @@ import { Attachment } from '../types';
 import { MessageCard, pureLinkUrl } from '../components/MessageCard';
 import { DeviceLinkIllustration, PacketTrain } from '../components/DeviceLinkIllustration';
 import { ShareTextsLogo } from '../components/ShareTextsLogo';
-import { ThemeToggle } from '../components/ThemeToggle';
 import { SettingsOverlay } from '../components/SettingsOverlay';
 import { Settings as SettingsIcon } from 'lucide-react';
 import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
@@ -1030,17 +1030,12 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           <StayBadge onOpenDetails={() => setShowConnectionDetails(true)} />
           {/* Settings — theme, language, stay connected, reconnection, all in
               one overlay; identical on desktop and mobile. */}
-          <button
-            type="button"
-            data-testid="open-settings"
-            onClick={() => setShowSettings(true)}
-            aria-label={t('settings.title')}
-            title={t('settings.title')}
-            className="flex items-center justify-center w-10 h-10 rounded-full text-apple-ink-muted hover:text-apple-ink dark:text-white/50 dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:scale-95 transition-all"
-          >
+          <IconButton3D label={t('settings.title')} onClick={() => setShowSettings(true)} testId="open-settings">
             <SettingsIcon className="w-[18px] h-[18px]" aria-hidden />
-          </button>
-          <ThemeToggle />
+          </IconButton3D>
+          {/* Theme lives ONLY in Settings now: the header already carried the
+              settings glyph whose sheet owns the theme switch — a second
+              toggle beside it duplicated the same control one slot apart. */}
           {/* Two-press inline confirm replaces the old modal: arm fills the
               pill with a danger countdown, second press disconnects. */}
           <button

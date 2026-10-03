@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Smartphone, Monitor, Tablet, Search, Check, Users, CircleDashed,
-  CircleSlash, RefreshCw, Loader2, X,
+  CircleSlash, RefreshCw, X,
 } from 'lucide-react';
+import { SpinLoader } from './SpinLoader';
 import { useI18n } from '../lib/i18n';
 import { cn } from '../lib/utils';
 import type { PeerDevice } from '../types';
@@ -39,7 +40,7 @@ function LinkBadge({ link }: { link: PeerDevice['link'] }) {
     case 'reconnecting':
       return (
         <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
-          <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+          <SpinLoader size={12} className="text-current" aria-hidden="true" />
           {t('picker.connecting')}
         </span>
       );

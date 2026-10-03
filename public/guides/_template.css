@@ -138,12 +138,15 @@ html.dark .header { background: rgba(8,12,22,.88); }
   gap: 12px;
   height: 52px;
 }
+/* The brand and the back control are the two taps every guide page offers:
+   both honour the same 40px touch floor the app itself is audited against. */
 .header-brand {
   display: flex;
   align-items: center;
   gap: 8px;
   text-decoration: none;
   color: var(--text);
+  min-height: 40px;
 }
 .header-brand svg { width: 20px; height: 20px; color: var(--brand); flex-shrink: 0; }
 .header-brand span { font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
@@ -157,10 +160,14 @@ html.dark .header { background: rgba(8,12,22,.88); }
   font-weight: 500;
   color: var(--text-secondary);
   text-decoration: none;
-  transition: color .15s;
-  min-height: 32px;
+  transition: color .15s, background-color .15s;
+  /* 40px, not 32: this is a tap target, and the guides are read on phones. */
+  min-height: 40px;
+  padding: 0 10px;
+  margin-left: -10px;
+  border-radius: 999px;
 }
-.header-back:hover { color: var(--text); }
+.header-back:hover { color: var(--text); background: var(--bg-secondary); }
 
 /* ── Layout ──────────────────────────────────────────────────────────── */
 .container { max-width: 720px; margin: 0 auto; padding: 0 24px; }

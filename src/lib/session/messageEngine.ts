@@ -57,6 +57,26 @@ export interface MessageEngineDeps {
   ensureLink?: (participantId: string) => Promise<boolean>;
 }
 
+/** Apply one reaction delta to a message's tally. `mine` is our own state
+ *  (toggled locally, never accepted from the wire); `delta` moves the count
+ *  of OTHER devices — the two are independent so a room where both sides
+ *  tapped the same emoji shows 1 + 1 rather than collapsing into one.
+ *  A tally that reaches zero/off is deleted, so the row only exists while
+ *  somebody means it. */
+const applyReaction = (
+  reactions: ChatMessage['reactions'],
+  emoji: string,
+  patch: { mine?: boolean; delta?: number }
+): ChatMessage['reactions'] => {
+  const next: NonNullable<ChatMessage['reactions']> = { ...(reactions ?? {}) };
+  const entry = next[emoji] ?? { count: 0, mine: false };
+  const count = Math.max(0, entry.count + (patch.delta ?? 0));
+  const mine = patch.mine ?? entry.mine;
+  if (count === 0 && !mine) delete next[emoji];
+  else next[emoji] = { count, mine };
+  return Object.keys(next).length ? next : undefined;
+};
+
 export interface MessageEngine {
   updateMessageAttachment(messageId: string, updates: Partial<NonNullable<ChatMessage['attachment']>>): void;
   /** Retry ONE failed recipient of a multi-recipient message (never resends
@@ -64,6 +84,10 @@ export interface MessageEngine {
   retryRecipient(messageId: string, recipientId: string): Promise<void>;
   /** Cancel ONE recipient's leg (others keep moving). */
   cancelRecipient(messageId: string, recipientId: string): void;
+  /** Toggle THIS device's reaction under one message — ours to send, theirs
+   *  to receive — and tell every live link in the room. Tapping the same
+   *  emoji again removes it. */
+  reactToMessage(messageId: string, emoji: string): void;
   /** Assign the message/transfer callbacks onto a PeerManager. */
   wirePeerHandlers(pm: PeerManager): void;
   /** Channel-open consequences: resume interrupted transfers, then honest
@@ -461,6 +485,19 @@ export function useMessageEngine(deps: MessageEngineDeps): MessageEngine {
       setSession(s => ({
         ...s,
         messages: s.messages.map(m => m.id === messageId ? { ...m, delivered: true } : m)
+      }));
+    };
+
+    // A device in the room added or removed a reaction under one message.
+    // The tally counts OTHER devices only; `mine` is ours and is never
+    // written from the wire, so both sides can hold the same emoji and each
+    // sees its own chip lit.
+    pm.onReaction = (messageId, emoji, on) => {
+      setSession(s => ({
+        ...s,
+        messages: s.messages.map(m => m.id === messageId
+          ? { ...m, reactions: applyReaction(m.reactions, emoji, { delta: on ? 1 : -1 }) }
+          : m),
       }));
     };
 
@@ -1098,6 +1135,39 @@ export function useMessageEngine(deps: MessageEngineDeps): MessageEngine {
     if (!ok) setRecipientState({ state: 'cancelled', completedAt: Date.now() });
   };
 
+  /** Toggle our reaction under one message. Reactions are room-wide and
+   *  attach to the message id (shared on the wire), so they land on every
+   *  device's copy of that bubble regardless of who sent it. Returns nothing
+   *  — the local toggle is instant, the wire is best-effort. */
+  const reactToMessage = (messageId: string, emoji: string): void => {
+    if (!messageId || emoji.length < 1 || emoji.length > 8) return;
+    const msg = getRenderMessages().find(m => m.id === messageId);
+    if (!msg) return;
+    const mine = msg.reactions?.[emoji]?.mine ?? false;
+    const on = !mine;
+    setSession(s => ({
+      ...s,
+      messages: s.messages.map(m => m.id === messageId
+        ? { ...m, reactions: applyReaction(m.reactions, emoji, { mine: on }) }
+        : m),
+    }));
+    // Fan the toggle out to every live link — the classic single peer, plus
+    // each seated participant in a multi-device room. Deduplicated by bound
+    // id so a recipient never hears the same reaction twice.
+    const told = new Set<string>();
+    const direct = getPeer();
+    if (direct && !direct.isDestroyed()) {
+      if (direct.boundId) told.add(direct.boundId);
+      try { direct.sendReaction(messageId, emoji, on); } catch { /* best-effort */ }
+    }
+    for (const e of roomRoster.otherEntries()) {
+      if (told.has(e.id)) continue;
+      const pm = getPeerForRecipient(e.id);
+      if (!pm) continue;
+      try { pm.sendReaction(messageId, emoji, on); } catch { /* best-effort */ }
+    }
+  };
+
   /** Cancel ONE recipient's leg of a multi-recipient message. Other legs
    *  keep moving; a slow device never holds the others hostage. */
   const cancelRecipient = (messageId: string, recipientId: string): void => {
@@ -1139,5 +1209,6 @@ export function useMessageEngine(deps: MessageEngineDeps): MessageEngine {
     setPcm,
     retryRecipient,
     cancelRecipient,
+    reactToMessage,
   };
 }

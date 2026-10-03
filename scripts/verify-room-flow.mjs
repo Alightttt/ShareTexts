@@ -70,11 +70,23 @@ try {
   const toastB = await pb.locator(`text=${TOAST}`).count();
   out('no toast re-fire on send', toastA === 0 && toastB === 0, `a=${toastA} b=${toastB}`);
 
-  // --- Disconnect grace: B closes briefly; A must stay calm for 60s ---
+  // --- A GRACEFUL departure is not a blip: closing the tab fires pagehide,
+  //     the client sends a real goodbye (notifyLeaving), and the OTHER side
+  //     is told the truth without waiting out the grace window. The grace
+  //     window exists for SILENT drops (tested at the end of this script) —
+  //     expecting silence here tested the opposite of the contract.
   await pb.close();
-  await pa.waitForTimeout(8000);
-  const bannerCount = await pa.locator('[data-testid="disconnect-banner"]').count();
-  out('no disconnect banner within grace window', bannerCount === 0, `banners=${bannerCount}`);
+  let bannerAppeared = false;
+  for (let i = 0; i < 24; i++) {
+    if ((await pa.locator('[data-testid="disconnect-banner"]').count()) > 0) { bannerAppeared = true; break; }
+    await pa.waitForTimeout(500);
+  }
+  out('graceful tab close shows the true disconnected state', bannerAppeared);
+  const roomSurvives = await pa.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem('sharetext.session.v1') || 'null');
+    return !!s?.roomId;
+  });
+  out('room stays open for the device that remains', roomSurvives);
 
   // --- B returns via stored session (fresh page, same context) ---
   const pb2 = await ctxB.newPage();
@@ -97,6 +109,24 @@ try {
     } catch {}
   }
   out('room reconnects after joiner returns', healed);
+
+  // --- SILENT drop (no goodbye): the 60s grace window must keep A calm.
+  //     Offline-ing context B kills the transport without unloading the
+  //     page, so no notifyLeaving() is sent — exactly the case the grace
+  //     window was built for (a refresh or a dead Wi-Fi minute).
+  await ctxB.setOffline(true);
+  await pa.waitForTimeout(10000);
+  const silentBanner = await pa.locator('[data-testid="disconnect-banner"]').count();
+  out('silent network drop: no banner inside the grace window', silentBanner === 0, `banners=${silentBanner}`);
+  await ctxB.setOffline(false);
+  let healedAgain = (await pa.locator('[data-testid="disconnect-banner"]').count()) === 0;
+  if (!healedAgain) {
+    try {
+      await pa.waitForSelector('[data-testid="disconnect-banner"]', { state: 'detached', timeout: 30000 });
+      healedAgain = true;
+    } catch { /* reported below */ }
+  }
+  out('silent drop heals when the network returns', healedAgain);
 
   const passed = results.filter(Boolean).length;
   console.log(`\n${passed}/${results.length} checks passed`);

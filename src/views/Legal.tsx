@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { ShareTextsLogo } from '../components/ShareTextsLogo';
+import { BrandLockup } from '../components/BrandLockup';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { ArrowLeft, ShieldCheck, FileText, EyeOff, Server, Database, Cookie } from 'lucide-react';
 
@@ -167,11 +168,14 @@ export function Legal({ page }: { page: LegalPage }) {
     <div className="min-h-screen bg-apple-canvas dark:bg-night-900 font-sans">
       <header className="sticky top-0 z-40 bg-apple-canvas/85 dark:bg-night-900/85 backdrop-blur-md border-b border-apple-divider dark:border-white/[0.06]">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center">
-          <a href="/" className="flex items-center gap-2 shrink-0" aria-label="ShareTexts, back to home">
-            <ArrowLeft className="w-4 h-4 text-apple-ink-muted dark:text-white/60" />
-            <ShareTextsLogo size={21} />
-            <span className="font-semibold tracking-tight text-[15px] text-apple-ink dark:text-white translate-y-px">ShareTexts</span>
-          </a>
+          {/* Back arrow and lockup are siblings — BrandLockup is an anchor
+              itself, and an anchor inside an anchor is invalid HTML. */}
+          <div className="flex items-center gap-2 shrink-0">
+            <a href="/" className="flex items-center justify-center min-w-[40px] min-h-[40px] -ml-2 rounded-full text-apple-ink-muted dark:text-white/60 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors" aria-label="ShareTexts, back to home">
+              <ArrowLeft className="w-4 h-4" />
+            </a>
+            <BrandLockup compact />
+          </div>
           <div className="flex items-center gap-4 ml-auto">
             <span className="text-[13px] font-medium text-apple-ink-muted dark:text-white/60">{title}</span>
             <ThemeToggle />

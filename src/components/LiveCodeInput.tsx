@@ -129,11 +129,23 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
                 ? "bg-white dark:bg-apple-tile-3 border border-apple-divider dark:border-apple-tile-3"
                 : "bg-apple-parchment dark:bg-black border border-apple-divider/60 dark:border-apple-tile-3",
               error && "border-status-danger bg-red-50 dark:bg-red-900/20",
+              // The cell the next digit lands in breathes: a soft ember halo
+              // marks the live cell so the eye never has to count boxes.
+              !code[i] && !error && code.length === i && "border-ember/55 dark:border-[#fb9243]/55 ring-2 ring-ember/20 dark:ring-[#fb9243]/15",
               !code[i] && !error && "focus-within:border-apple-blue/50"
             )}>
-              <span className="font-semibold text-apple-ink dark:text-white tracking-tighter font-mono leading-none select-none" style={{ fontSize: 'clamp(22px, 7vw, 40px)' }}>
+              <motion.span
+                // Re-keying per digit replays the settle: the number is
+                // dropped in, not switched on.
+                key={`${i}-${code[i] ?? ''}`}
+                initial={code[i] ? { scale: 0.72, opacity: 0.35 } : false}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 620, damping: 26 }}
+                className="font-semibold text-apple-ink dark:text-white tracking-tighter font-mono leading-none select-none"
+                style={{ fontSize: 'clamp(22px, 7vw, 40px)' }}
+              >
                 {code[i] || ''}
-              </span>
+              </motion.span>
               {/* The typing caret — plain CSS blink so it survives reduced-
                   motion flattening (MotionConfig zeroes keyframe loops);
                   under reduced motion it simply stays visible, steady. */}
@@ -161,9 +173,23 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
         </div>
       )}
 
-      {!error && !validationMsg && !pasteHint && digitCount > 0 && digitCount < 6 && (
-        <div role="status" className="mt-3 sm:mt-4 text-[12px] sm:text-[13px] text-apple-ink-muted dark:text-white/50 font-medium">
-          {t('code.digitsOf', { n: digitCount })}
+      {/* Six ticks, filled as the code is typed — the same information the
+          sentence used to carry, without asking anyone to read a number.
+          The sentence survives for screen readers only. */}
+      {!error && !validationMsg && (
+        <div role="status" className="mt-3 sm:mt-4 w-full flex items-center gap-1.5" aria-hidden={false}>
+          <div className="flex items-center gap-1.5 flex-1" aria-hidden>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <span
+                key={i}
+                className={cn(
+                  'h-[3px] flex-1 rounded-full transition-colors duration-200',
+                  i < digitCount ? 'bg-ember dark:bg-[#fb9243]' : 'bg-apple-divider dark:bg-white/[0.12]'
+                )}
+              />
+            ))}
+          </div>
+          <span className="sr-only">{t('code.digitsOf', { n: digitCount })}</span>
         </div>
       )}
 

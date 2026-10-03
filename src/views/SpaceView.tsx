@@ -15,12 +15,14 @@ import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'rea
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, ArrowUp, Check, Clock, Copy, Download, File as FileIcon, Image as ImageIcon,
-  Link2, Loader2, Pause, Play, Plus, QrCode, Share2, Trash2, UploadCloud, X, XCircle,
+  Link2, Pause, Play, Plus, QrCode, Share2, Trash2, UploadCloud, X, XCircle,
 } from 'lucide-react';
+import { SpinLoader } from '../components/SpinLoader';
 import { useI18n } from '../lib/i18n';
 import { TactileButton } from '../components/TactileButton';
 import type { MsgKey } from '../lib/messages/types';
 import { OverlaySheet } from '../components/OverlaySheet';
+import { ShareMenu } from '../components/ShareMenu';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useSpaceClient, type LocalUpload } from '../lib/space/useSpaceClient';
 import { spaceShareLink, localCreds, joinSpace, parseSpaceShare, SpaceApiError } from '../lib/space/api';
@@ -539,7 +541,7 @@ function ShareSheet({ open, spaceId, token, onClose }: { open: boolean; spaceId:
         </button>
         {showQr && (
           <div className="mt-4 flex justify-center rounded-[16px] bg-white p-4">
-            <Suspense fallback={<Loader2 className="w-6 h-6 animate-spin text-apple-ink-muted" />}>
+            <Suspense fallback={<span className="w-[208px] h-[208px] flex items-center justify-center"><SpinLoader size={24} className="text-apple-ink-muted" /></span>}>
               <QRCode value={link} size={208} />
             </Suspense>
           </div>
@@ -824,15 +826,16 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
             data-testid="space-composer"
           />
           {/* Composer share is a convenience duplicate of the header share —
-              on narrow phones it yields so the textarea keeps its width. */}
-          <button
-            onClick={() => { void shareSpace(); }}
-            aria-label={t('space.share')}
-            className="hidden min-[430px]:flex shrink-0 w-11 h-11 rounded-full bg-white dark:bg-white/[0.06] border border-apple-divider dark:border-white/[0.1] items-center justify-center hover:border-apple-ink/30 dark:hover:border-white/30 transition-colors"
-            data-testid="space-share-row"
-          >
-            <Share2 className="w-[18px] h-[18px] text-apple-ink dark:text-white/80" />
-          </button>
+              on narrow phones it yields so the textarea keeps its width.
+              It opens the share menu rather than guessing: Copy link, the
+              native sheet, or the full invite/QR sheet. */}
+          <ShareMenu
+            className="hidden min-[430px]:block shrink-0"
+            url={spaceShareLink(spaceId, localToken)}
+            onShowQR={() => setShareOpen(true)}
+            testId="space-share-row"
+            ariaLabel={t('space.share')}
+          />
           <button
             onClick={submitText}
             disabled={!composer.trim()}

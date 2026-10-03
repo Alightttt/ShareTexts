@@ -148,6 +148,12 @@
   /* ── Tactile surfaces (theme-aware button gradients) ────────────────── */
   --st-btn-primary-grad: linear-gradient(180deg, #f9743a 0%, #f06413 60%, #e05c0f 100%);
   --st-btn-secondary-grad: linear-gradient(180deg, #ffffff 0%, #f4f1ea 55%, #ebe6dc 100%);
+  /* Keycap edges — the solid bottom lip the button sits on. Pressing
+     compresses the lip (shadow Y 4px → 1px) while the body sinks into it:
+     the "real key" press, in brand colors. */
+  --st-btn-primary-edge: #c04b09;
+  --st-btn-soft-edge: #d96f22;
+  --st-btn-secondary-edge: rgba(30, 28, 24, 0.16);
 }
 
 @layer base {
@@ -213,6 +219,9 @@
     --gradient-ember: var(--gradient-ember-dark);
     --st-btn-primary-grad: linear-gradient(180deg, #fb8447 0%, #f06413 60%, #d9560e 100%);
     --st-btn-secondary-grad: linear-gradient(180deg, #2b2b31 0%, #26262c 55%, #212127 100%);
+    --st-btn-primary-edge: #a83f06;
+    --st-btn-soft-edge: #c25c15;
+    --st-btn-secondary-edge: rgba(0, 0, 0, 0.55);
   }
 
   /* Display face carries headings; system stack carries everything else.
@@ -412,6 +421,40 @@ html.dark .st-dotfield::after {
   .st-caret { animation: none; }
 }
 
+/* Landing (st-landing) — landscape-phone compaction. A phone held sideways
+   gets the same single-screen landing with tightened type and the hero
+   scene yielded to the words, instead of a long blind scroll. Unlayered
+   rules (not in @layer) so they win over utility classes. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .st-landing h1 {
+    font-size: 26px !important;
+    line-height: 1.12;
+  }
+  .st-landing .st-h-sub {
+    font-size: 14.5px !important;
+    margin-top: 8px;
+  }
+  .st-landing .st-hide-landscape {
+    display: none !important;
+  }
+  .st-landing .st-hide-landscape-sm {
+    display: none !important;
+  }
+}
+
+/* SpinLoader — one rotation for the one spinner. The arc's dash array is
+   tuned so the gap visibly chases the cap: momentum, not a wheel. */
+.st-spin {
+  animation: st-rotate 0.9s cubic-bezier(0.45, 0.15, 0.55, 0.85) infinite;
+  transform-origin: 50% 50%;
+}
+@keyframes st-rotate {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-spin { animation: none; }
+}
+
 /* Status dot: the quiet "alive" beat on device tiles (DeviceArt pulse). */
 .st-status-dot {
   animation: st-status-dot 2.2s ease-in-out infinite;
@@ -594,10 +637,89 @@ html.dark {
   background-color: inherit;
 }
 
+/* ── Background primitives ────────────────────────────────────────────────
+   Depth without another card. Each one is pointer-transparent and
+   layout-neutral, and each is used where a surface needs to feel like a
+   MATERIAL rather than a box:
+     .st-dotgrid   printed-paper dots under the hero band
+     .st-softspot  light pooled behind one object (quote, tile)
+     .st-diag      diagonal hairline crosshatch, corner texture only
+     .st-horizon   sunrise horizon — warm light rising from a bottom edge
+     .st-spotlight a hairline bar of brand light under a sticky header
+   All are tuned to whisper: nothing here is allowed to compete with type. */
+.st-dotgrid {
+  background-image: radial-gradient(circle, rgba(33, 31, 26, 0.045) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+html.dark .st-dotgrid {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.st-softspot {
+  background: radial-gradient(circle at 32% 32%, rgba(240, 100, 19, 0.11), transparent 66%);
+}
+
+/* Sunset bloom — honey meeting ember, pooled low and wide. The warmest of
+   the primitives, so it appears exactly once per page at most. */
+.st-bloom {
+  background:
+    radial-gradient(60% 70% at 12% 108%, rgba(254, 171, 48, 0.20), transparent 70%),
+    radial-gradient(52% 64% at 88% 100%, rgba(240, 100, 19, 0.16), transparent 72%);
+}
+html.dark .st-bloom {
+  background:
+    radial-gradient(60% 70% at 12% 108%, rgba(255, 194, 92, 0.14), transparent 70%),
+    radial-gradient(52% 64% at 88% 100%, rgba(251, 146, 67, 0.12), transparent 72%);
+}
+html.dark .st-softspot {
+  background: radial-gradient(circle at 32% 32%, rgba(251, 146, 67, 0.13), transparent 66%);
+}
+
+.st-diag {
+  background-image:
+    repeating-linear-gradient(45deg, rgba(33, 31, 26, 0.05) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(-45deg, rgba(33, 31, 26, 0.05) 0 1px, transparent 1px 9px);
+}
+html.dark .st-diag {
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 9px);
+}
+
+.st-horizon {
+  background: radial-gradient(120% 68% at 50% 118%, rgba(240, 100, 19, 0.18), rgba(254, 171, 48, 0.08) 42%, transparent 72%);
+}
+html.dark .st-horizon {
+  background: radial-gradient(120% 68% at 50% 118%, rgba(251, 146, 67, 0.20), rgba(255, 194, 92, 0.08) 42%, transparent 72%);
+}
+
+.st-spotlight {
+  background: linear-gradient(90deg, transparent, rgba(240, 100, 19, 0.45) 50%, transparent);
+}
+html.dark .st-spotlight {
+  background: linear-gradient(90deg, transparent, rgba(251, 146, 67, 0.5) 50%, transparent);
+}
+
 /* Disconnect toast entrance: settle down from 8px above, no bounce. */
 @keyframes toast-in {
   from { opacity: 0; transform: translate(-50%, -8px); }
   to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* The toast's lifetime bar: the 5.5s auto-dismiss becomes visible instead of
+   surprising. Reduced motion drops the bar entirely — a frozen timer reads
+   as a stuck toast. */
+@keyframes toast-timer {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+.st-toast-timer {
+  transform-origin: left;
+  animation: toast-timer 5.5s linear forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-toast-timer { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {

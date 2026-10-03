@@ -453,6 +453,9 @@ export class PeerManager {
   /** A chat message we sent was SEEN by the peer — their room is open with
    *  it on screen (true read receipt, distinct from mere arrival). */
   public onSeen: ((messageId: string) => void) | null = null;
+  /** The peer reacted to one of OUR messages: emoji toggled on/off.
+   *  `on=false` means the peer withdrew that reaction. */
+  public onReaction: ((messageId: string, emoji: string, on: boolean) => void) | null = null;
   /** The peer sent the final SHA-256 of a finished file transfer — verify.
    *  (Also fires for the legacy path via the metadata route.) */
   public onFileHash: ((transferId: string, sha256: string) => void) | null = null;
@@ -828,6 +831,12 @@ export class PeerManager {
       case 'seen':
         if (typeof inner.messageId === 'string' && this.onSeen) this.onSeen(inner.messageId);
         return;
+      case 'reaction':
+        if (typeof inner.messageId === 'string' && typeof inner.emoji === 'string'
+            && inner.emoji.length > 0 && inner.emoji.length <= 8) {
+          this.onReaction?.(inner.messageId, inner.emoji, inner.on === 1);
+        }
+        return;
       case 'bye':
         // The peer is leaving ON PURPOSE (closed the tab, hit Disconnect).
         // Arrives ~instantly over the still-open channel — far ahead of the
@@ -1062,7 +1071,7 @@ export class PeerManager {
                 // Legacy control packets route through the SAME table as the
                 // dedicated channel — one semantics, two transports.
                 if (inner && typeof inner.type === 'string' &&
-                    ['hello', 'cancel', 'ack', 'pause', 'resume', 'file_hash', 'receipt', 'seen', 'queued_start'].includes(inner.type)) {
+                    ['hello', 'cancel', 'ack', 'pause', 'resume', 'file_hash', 'receipt', 'seen', 'reaction', 'queued_start'].includes(inner.type)) {
                   this.routeControl(inner);
                   return;
                 }
@@ -1447,6 +1456,18 @@ export class PeerManager {
    */
   public sendSeen(messageId: string) {
     void this.sendControl({ type: 'seen', messageId });
+  }
+
+  /**
+   * React to one of the PEER's messages (or withdraw, with on=false).
+   * Rides the encrypted control channel like receipts: tiny, ordered,
+   * and never delayed by bulk traffic. The emoji is a bounded string
+   * (≤ 8 UTF-16 units) — validation lives here so every caller is safe.
+   */
+  public sendReaction(messageId: string, emoji: string, on: boolean) {
+    if (typeof messageId !== 'string' || !messageId) return;
+    if (typeof emoji !== 'string' || !emoji || emoji.length > 8) return;
+    void this.sendControl({ type: 'reaction', messageId, emoji, on: on ? 1 : 0 });
   }
 
   /**

@@ -238,18 +238,19 @@
         </div>
       </noscript>
       <!-- Boot skeleton: the app holding the user's place, not an animation.
-           Mirrors the real home screen's centered hero column (headline →
-           subline → two action buttons) so the swap to live content moves
-           nothing: same tones, same radii, same rhythm. One CSS shimmer
-           sweep, still under prefers-reduced-motion. -->
+           Mirrors the REAL landing composition — brand lockup top-left, hero
+           (headline → subline → action pair) on the left, the product scene
+           card on the right, warm paper canvas — so the swap to live content
+           moves nothing. NO bright white sweep: the old 55%-white shimmer
+           band read as a bold white outline crawling the page. Bars carry a
+           barely-there ember-tinted breath instead; reduced-motion holds
+           them still. -->
       <div id="loading-shell" aria-hidden="true">
         <style>
           #loading-shell {
-            min-height: 100vh;
+            min-height: 100dvh;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
             background: #f7f4ee;
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             transition: opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1);
@@ -258,42 +259,83 @@
           html.dark #loading-shell { background: #131315; }
           #loading-shell .st-bar {
             border-radius: 999px;
-            background: rgba(30, 28, 24, 0.07);
+            background: rgba(30, 28, 24, 0.075);
             position: relative;
             overflow: hidden;
           }
-          html.dark #loading-shell .st-bar { background: rgba(255, 255, 255, 0.08); }
+          html.dark #loading-shell .st-bar { background: rgba(255, 255, 255, 0.075); }
           #loading-shell .st-bar::after {
             content: '';
             position: absolute;
             inset: 0;
             transform: translateX(-101%);
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55) 50%, transparent);
-            animation: st-sweep 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            /* Warm, whisper-quiet breath — ember at 5%: the page feels alive
+               without a white band sweeping across it. */
+            background: linear-gradient(90deg, transparent, rgba(240,100,19,0.07) 50%, transparent);
+            animation: st-sweep 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
           }
-          html.dark #loading-shell .st-bar::after {
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.09) 50%, transparent);
+          #loading-shell .st-card {
+            border-radius: 24px;
+            border: 1px solid rgba(30, 28, 24, 0.07);
+            background: rgba(255, 254, 251, 0.75);
+            position: relative;
+            overflow: hidden;
+          }
+          html.dark #loading-shell .st-card {
+            border-color: rgba(255, 255, 255, 0.07);
+            background: rgba(255, 255, 255, 0.035);
           }
           @keyframes st-sweep { to { transform: translateX(101%); } }
           @media (prefers-reduced-motion: reduce) {
             #loading-shell .st-bar::after { animation: none; content: none; }
           }
+          @media (max-width: 900px) {
+            #loading-shell .st-hero { grid-template-columns: 1fr !important; }
+            #loading-shell .st-scene { display: none !important; }
+          }
         </style>
-        <div style="display:flex;flex-direction:column;align-items:center;width:100%;max-width:560px;padding:0 24px">
-          <div class="st-bar" style="width:78%;max-width:430px;height:34px;border-radius:18px;margin-bottom:16px"></div>
-          <div class="st-bar" style="width:64%;max-width:360px;height:34px;border-radius:18px;margin-bottom:22px"></div>
-          <div class="st-bar" style="width:56%;max-width:300px;height:18px;margin-bottom:34px"></div>
-          <div style="display:flex;gap:14px;justify-content:center;width:100%">
-            <div class="st-bar" style="width:150px;height:56px;border-radius:16px"></div>
-            <div class="st-bar" style="width:150px;height:56px;border-radius:16px"></div>
+        <!-- Header band: the real brand mark (inline, ember gradient) where
+             the live header will sit. -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 28px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <svg width="30" height="30" viewBox="0 0 256 256" fill="none" aria-hidden="true">
+              <defs><linearGradient id="st-boot-ember" x1="24" y1="20" x2="216" y2="236" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#feab30"/><stop offset="0.55" stop-color="#f97b3d"/><stop offset="1" stop-color="#f06413"/>
+              </linearGradient></defs>
+              <rect x="40" y="36" width="84" height="84" rx="24" fill="url(#st-boot-ember)"/>
+              <rect x="132" y="136" width="84" height="84" rx="24" fill="url(#st-boot-ember)"/>
+              <path d="M110 106 L146 142" stroke="url(#st-boot-ember)" stroke-width="28" stroke-linecap="round"/>
+            </svg>
+            <span style="font-size:21px;font-weight:700;letter-spacing:-0.02em;color:#1e1c18">ShareTexts</span>
           </div>
-          <!-- The honest escalation (mirrors the in-app connecting screen):
-               an 8s boot is NOT normal — say so instead of shimmering forever.
-               Removed by main.tsx with the shell; never shown on a healthy boot. -->
-          <p id="st-boot-slow" style="display:none;margin:26px 0 0;font-size:12.5px;font-weight:500;color:#6e6e73;text-align:center;max-width:300px;line-height:1.5">
-            Still loading — your connection is slow. If this doesn't clear, check your network and refresh.
-          </p>
+          <div class="st-bar" style="width:56px;height:26px;border-radius:13px"></div>
         </div>
+        <!-- Hero: the landing's real geometry. -->
+        <div class="st-hero" style="flex:1;display:grid;grid-template-columns:minmax(0,10fr) minmax(0,9fr);align-items:center;gap:40px;width:100%;max-width:1120px;margin:0 auto;padding:0 28px">
+          <div style="max-width:430px">
+            <div class="st-bar" style="width:88%;height:40px;border-radius:16px;margin-bottom:12px"></div>
+            <div class="st-bar" style="width:70%;height:40px;border-radius:16px;margin-bottom:20px"></div>
+            <div class="st-bar" style="width:62%;height:16px;margin-bottom:9px"></div>
+            <div class="st-bar" style="width:48%;height:16px;margin-bottom:30px"></div>
+            <div style="display:flex;gap:12px">
+              <div class="st-bar" style="width:138px;height:52px;border-radius:999px;background:linear-gradient(180deg, rgba(240,100,19,0.32), rgba(240,100,19,0.20))"></div>
+              <div class="st-bar" style="width:138px;height:52px;border-radius:999px"></div>
+            </div>
+            <div class="st-bar" style="width:55%;height:13px;margin-top:26px"></div>
+          </div>
+          <div class="st-card st-scene" style="height:min(52vh,430px)">
+            <div class="st-bar" style="position:absolute;left:14%;top:16%;width:44%;height:14px;opacity:0.7"></div>
+            <div class="st-bar" style="position:absolute;left:14%;top:28%;width:30%;height:14px;opacity:0.5"></div>
+            <div class="st-bar" style="position:absolute;left:14%;top:44%;width:52%;height:52px;border-radius:18px"></div>
+            <div class="st-bar" style="position:absolute;left:14%;top:60%;width:52%;height:52px;border-radius:18px;opacity:0.7"></div>
+          </div>
+        </div>
+        <!-- The honest escalation (mirrors the in-app connecting screen):
+             an 8s boot is NOT normal — say so instead of shimmering forever.
+             Removed by main.tsx with the shell; never shown on a healthy boot. -->
+        <p id="st-boot-slow" style="display:none;margin:0 0 22px;padding:0 24px;font-size:12.5px;font-weight:500;color:#6e6e73;text-align:center;line-height:1.5">
+          Still loading — your connection is slow. If this doesn't clear, check your network and refresh.
+        </p>
       </div>
       <script>
         (function () {

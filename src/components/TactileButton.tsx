@@ -1,6 +1,7 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { motion, useSpring, useMotionValue, useTransform } from 'motion/react';
-import { Loader2, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
+import { SpinLoader } from './SpinLoader';
 import { cn } from '../lib/utils';
 
 // ---------------------------------------------------------------------------
@@ -36,6 +37,8 @@ interface TactileButtonProps {
   loading?: boolean;
   /** Brief confirmation state: check replaces the icon. */
   success?: boolean;
+  /** Renders an <a> instead of a <button> — same anatomy, navigates. */
+  href?: string;
   children: React.ReactNode;
   className?: string;
   disabled?: boolean;
@@ -50,28 +53,32 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
   lg: 'px-7 py-3.5 text-[15px] gap-3 rounded-full min-h-[52px]',
 };
 
-// Bevel language: resting = top-light + bottom-shade insets under a drop
-// shadow; pressed = drop shadow compressed, insets flip into a recess.
+// Bevel language (ThreeD press anatomy): the button is a KEYCAP. Resting =
+// a solid brand-colored lip under the body (var(--st-btn-*-edge)) + inset
+// bevels under a soft ambient drop; pressed = the body SINKS 3px into the
+// lip, the lip compresses to 1px, and the bevels invert into a recess.
+// Hover = the whole key lifts 1px and the ambient drop widens. Edge colors
+// are CSS vars so dark mode retints them without JS.
 const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; shadowHover: string; shadowPress: string; gradient: string }> = {
   primary: {
     base: 'text-white',
-    shadowIdle: '0 1px 2px rgba(150,55,6,0.30), 0 5px 12px -4px rgba(240,100,19,0.42), inset 0 1px 1px rgba(255,255,255,0.30), inset 0 -2px 3px rgba(139,50,5,0.30)',
-    shadowHover: '0 2px 4px rgba(150,55,6,0.26), 0 12px 26px -8px rgba(240,100,19,0.48), inset 0 1px 1px rgba(255,255,255,0.34), inset 0 -2px 3px rgba(139,50,5,0.22)',
-    shadowPress: '0 1px 1px rgba(150,55,6,0.28), inset 0 2px 5px rgba(112,40,4,0.38), inset 0 -1px 1px rgba(255,255,255,0.10)',
+    shadowIdle: '0 4px 0 0 var(--st-btn-primary-edge), 0 6px 14px -6px rgba(240,100,19,0.45), inset 0 1px 1px rgba(255,255,255,0.30), inset 0 -2px 3px rgba(139,50,5,0.24)',
+    shadowHover: '0 4px 0 0 var(--st-btn-primary-edge), 0 8px 18px -6px rgba(240,100,19,0.5), inset 0 1px 1px rgba(255,255,255,0.34), inset 0 -2px 3px rgba(139,50,5,0.18)',
+    shadowPress: '0 1px 0 0 var(--st-btn-primary-edge), inset 0 2px 5px rgba(112,40,4,0.40), inset 0 -1px 1px rgba(255,255,255,0.10)',
     gradient: 'linear-gradient(180deg, #f9743a 0%, #f06413 58%, #de5b0e 100%)',
   },
   soft: {
     base: 'text-white',
-    shadowIdle: '0 1px 2px rgba(150,55,6,0.22), 0 4px 10px -4px rgba(240,100,19,0.30), inset 0 1px 1px rgba(255,255,255,0.28), inset 0 -2px 3px rgba(150,58,8,0.24)',
-    shadowHover: '0 2px 4px rgba(150,55,6,0.2), 0 10px 22px -8px rgba(240,100,19,0.34), inset 0 1px 1px rgba(255,255,255,0.32), inset 0 -2px 3px rgba(150,58,8,0.18)',
-    shadowPress: '0 1px 1px rgba(150,55,6,0.2), inset 0 2px 5px rgba(126,48,6,0.30), inset 0 -1px 1px rgba(255,255,255,0.10)',
+    shadowIdle: '0 4px 0 0 var(--st-btn-soft-edge), 0 5px 12px -6px rgba(240,100,19,0.35), inset 0 1px 1px rgba(255,255,255,0.28), inset 0 -2px 3px rgba(150,58,8,0.20)',
+    shadowHover: '0 4px 0 0 var(--st-btn-soft-edge), 0 8px 16px -6px rgba(240,100,19,0.4), inset 0 1px 1px rgba(255,255,255,0.32), inset 0 -2px 3px rgba(150,58,8,0.14)',
+    shadowPress: '0 1px 0 0 var(--st-btn-soft-edge), inset 0 2px 5px rgba(126,48,6,0.32), inset 0 -1px 1px rgba(255,255,255,0.10)',
     gradient: 'linear-gradient(180deg, #fb9a56 0%, #f98b41 58%, #ef7c30 100%)',
   },
   secondary: {
     base: 'text-apple-ink dark:text-white',
-    shadowIdle: '0 1px 2px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 1px rgba(0,0,0,0.045)',
-    shadowHover: '0 3px 8px rgba(0,0,0,0.07), 0 8px 20px -6px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -1px 1px rgba(0,0,0,0.04)',
-    shadowPress: '0 1px 1px rgba(0,0,0,0.05), inset 0 2px 4px rgba(0,0,0,0.10), inset 0 -1px 0 rgba(255,255,255,0.4)',
+    shadowIdle: '0 4px 0 0 var(--st-btn-secondary-edge), inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 1px rgba(0,0,0,0.045)',
+    shadowHover: '0 4px 0 0 var(--st-btn-secondary-edge), 0 8px 18px -8px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -1px 1px rgba(0,0,0,0.04)',
+    shadowPress: '0 1px 0 0 var(--st-btn-secondary-edge), inset 0 2px 4px rgba(0,0,0,0.10), inset 0 -1px 0 rgba(255,255,255,0.4)',
     gradient: 'var(--st-btn-secondary-grad)',
   },
   ghost: {
@@ -97,6 +104,7 @@ export function TactileButton({
   iconPosition = 'left',
   loading = false,
   success = false,
+  href,
   children,
   className,
   disabled,
@@ -117,9 +125,12 @@ export function TactileButton({
   const lightY = useSpring(py, { stiffness: 150, damping: 15 });
   const lightOpacity = useSpring(0, { stiffness: 200, damping: 20 });
 
-  // Body: rises a breath on hover, sinks 1.5px on press (the keycap press).
+  // Body: lifts 1px on hover, SINKS 3px on press — the body travels down
+  // INTO the solid lip, which compresses from 4px to 1px underneath it
+  // (the ThreeD keycap press, not a flat translate).
   const y = useSpring(0, { stiffness: 420, damping: 24 });
-  // Content: drops WITH the press so the label reads pressed, not floated.
+  // Content: drops WITH the press (slightly less than the body so the label
+  // reads seated, not floating).
   const contentY = useSpring(0, { stiffness: 500, damping: 26 });
 
   const shadowY = useSpring(0, { stiffness: 200, damping: 20 });
@@ -136,7 +147,7 @@ export function TactileButton({
     setIsHovered(true);
     lightOpacity.set(1);
     if (!isPressed) {
-      shadowY.set(4);
+      shadowY.set(5);
       shadowOpacity.set(1);
     }
   }, [lightOpacity, shadowY, shadowOpacity, isPressed]);
@@ -154,18 +165,18 @@ export function TactileButton({
   const handlePointerDown = useCallback(() => {
     if (inactive) return;
     setIsPressed(true);
-    y.set(1.5);
-    contentY.set(1.5);
+    y.set(3);
+    contentY.set(2);
     shadowY.set(0);
-    shadowOpacity.set(0.6);
+    shadowOpacity.set(0.5);
   }, [y, contentY, shadowY, shadowOpacity, inactive]);
 
   const handlePointerUp = useCallback(() => {
     setIsPressed(false);
     if (isHovered) {
-      y.set(-1.5);
+      y.set(-1);
       contentY.set(0);
-      shadowY.set(4);
+      shadowY.set(5);
       shadowOpacity.set(1);
     } else {
       y.set(0);
@@ -180,6 +191,10 @@ export function TactileButton({
     ([lx, ly]: number[]) => `radial-gradient(ellipse at ${lx * 100}% ${ly * 100}%, rgba(255,255,255,0.15) 0%, transparent 55%)`
   );
 
+  // The in-flight spinner tints with its surface: white on the colored
+  // keycaps, ember on the paper ones — never orange-on-orange.
+  const spinnerClass = variant === 'primary' || variant === 'soft' ? 'text-white' : 'text-ember dark:text-[#fb9243]';
+
   const boxShadow = useTransform(
     [shadowY, shadowOpacity],
     ([sy, so]: number[]) => {
@@ -191,11 +206,14 @@ export function TactileButton({
   );
 
   const surfaceFill = SURFACE_FILLS[variant];
+  // Links and buttons share one anatomy: an href renders an anchor with the
+  // identical depth system, so CTA cards never ship a second button style.
+  const Comp: React.ElementType = href ? motion.a : motion.button;
 
   return (
-    <motion.button
-      ref={ref}
-      disabled={inactive}
+    <Comp
+      ref={ref as React.Ref<any>}
+      {...(href ? { href } : { disabled: inactive })}
       aria-busy={loading || undefined}
       className={cn(
         'relative overflow-hidden font-semibold select-none',
@@ -247,7 +265,7 @@ export function TactileButton({
       >
         {(icon || loading || success) && iconPosition === 'left' && (
           <span className="shrink-0 flex items-center justify-center leading-none">
-            {loading ? <Loader2 className="w-[1.15em] h-[1.15em] animate-spin" aria-hidden />
+            {loading ? <SpinLoader size={Math.round(1.15 * 16)} className={spinnerClass} aria-hidden />
               : success ? <Check className="w-[1.15em] h-[1.15em]" strokeWidth={3} aria-hidden />
               : icon}
           </span>
@@ -255,12 +273,12 @@ export function TactileButton({
         <span className="leading-none flex items-center">{children}</span>
         {(icon || loading || success) && iconPosition === 'right' && (
           <span className="shrink-0">
-            {loading ? <Loader2 className="w-[1.15em] h-[1.15em] animate-spin" aria-hidden />
+            {loading ? <SpinLoader size={Math.round(1.15 * 16)} className={spinnerClass} aria-hidden />
               : success ? <Check className="w-[1.15em] h-[1.15em]" strokeWidth={3} aria-hidden />
               : icon}
           </span>
         )}
       </motion.span>
-    </motion.button>
+    </Comp>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Check, Loader2, X, RotateCw, ChevronDown, CircleSlash } from 'lucide-react';
+import { Check, X, RotateCw, ChevronDown, CircleSlash } from 'lucide-react';
+import { SpinLoader } from './SpinLoader';
 import { useI18n } from '../lib/i18n';
 import { cn } from '../lib/utils';
 import type { ChatMessage, RecipientTransfer } from '../types';
@@ -20,7 +21,7 @@ function StateIcon({ state }: { state: RecipientTransfer['state'] }) {
       return <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" strokeWidth={3} aria-hidden="true" />;
     case 'sending':
     case 'waiting':
-      return <Loader2 className="h-3.5 w-3.5 animate-spin text-[--ember]" aria-hidden="true" />;
+      return <SpinLoader size={14} className="text-[--ember]" aria-hidden="true" />;
     case 'failed':
       return <X className="h-3.5 w-3.5 text-red-600 dark:text-red-400" strokeWidth={3} aria-hidden="true" />;
     case 'cancelled':
@@ -71,7 +72,7 @@ export function RecipientStrip({
           'inline-flex items-center gap-1.5 text-xs font-medium',
           noneSent && failed > 0 ? 'text-red-600 dark:text-red-400' : 'text-neutral-600 dark:text-neutral-300'
         )}>
-          {allSent ? <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" /> : active > 0 ? <Loader2 className="h-3.5 w-3.5 animate-spin text-[--ember]" aria-hidden="true" /> : <X className="h-3.5 w-3.5 text-red-600 dark:text-red-400" aria-hidden="true" />}
+          {allSent ? <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" /> : active > 0 ? <SpinLoader size={14} className="text-[--ember]" aria-hidden="true" /> : <X className="h-3.5 w-3.5 text-red-600 dark:text-red-400" aria-hidden="true" />}
           {summary}
         </span>
         <ChevronDown className={cn('h-4 w-4 text-neutral-400 transition-transform', open && 'rotate-180')} aria-hidden="true" />

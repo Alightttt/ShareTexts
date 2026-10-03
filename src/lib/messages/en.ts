@@ -284,6 +284,9 @@ const en = {
   'msg.showFull': 'Show full text',
   'msg.collapse': 'Collapse',
   'msg.copyMessage': 'Copy message',
+  'msg.react': 'React',
+  'msg.reactWith': 'React with {emoji}',
+  'msg.removeReaction': 'Remove {emoji} reaction',
   'msg.copy': 'Copy',
   'action.copy': 'Copy',
   'action.share': 'Share',
@@ -357,6 +360,7 @@ const en = {
 
   // ── inline confirm / message selection ────────────────────────────
   'end.tapAgain': 'Tap again to disconnect',
+  'end.release': 'Release to disconnect',
   'select.title': 'Select messages',
   'select.selectedCount': '{count} selected',
   'select.copySelected': 'Copy selected',

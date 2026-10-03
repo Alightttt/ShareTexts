@@ -8,7 +8,9 @@ import { SessionProvider, useSession } from './lib/SessionContext';
 import { I18nProvider, useI18n } from './lib/i18n';
 import { X, DoorOpen } from 'lucide-react';
 import { ShareTextsLogo } from './components/ShareTextsLogo';
+import { BrandLockup } from './components/BrandLockup';
 import { SkeletonScreen } from './components/SkeletonScreen';
+import { TactileButton } from './components/TactileButton';
 
 // SingleScreenApp (the landing IS the app) loads eagerly — one less network
 // round-trip before the hero is interactive. Docs/Legal stay lazy: they are
@@ -16,6 +18,7 @@ import { SkeletonScreen } from './components/SkeletonScreen';
 import { SingleScreenApp } from './views/SingleScreenApp';
 const Docs = lazy(() => import('./views/Docs').then(m => ({ default: m.Docs })));
 const Legal = lazy(() => import('./views/Legal').then(m => ({ default: m.Legal })));
+const About = lazy(() => import('./views/About').then(m => ({ default: m.About })));
 const SpaceView = lazy(() => import('./views/SpaceView').then(m => ({ default: m.SpaceView })));
 
 /**
@@ -46,7 +49,7 @@ function DisconnectToast({ reason, onDone }: { reason: string, onDone: () => voi
     <div
       role="status"
       data-testid="disconnect-toast"
-      className="fixed top-4 left-1/2 -translate-x-1/2 z-[90] max-w-[min(92vw,460px)] flex items-start gap-3 pl-3.5 pr-2 py-3 rounded-[16px] bg-white/95 dark:bg-[#232327]/95 backdrop-blur border border-black/[0.08] dark:border-white/[0.1] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)] animate-[toast-in_0.28s_cubic-bezier(0.22,1,0.36,1)]"
+      className="fixed top-4 left-1/2 -translate-x-1/2 z-[90] overflow-hidden max-w-[min(92vw,460px)] flex items-start gap-3 pl-3.5 pr-2 py-3 rounded-[16px] bg-white/95 dark:bg-[#232327]/95 backdrop-blur border border-black/[0.08] dark:border-white/[0.1] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)] animate-[toast-in_0.28s_cubic-bezier(0.22,1,0.36,1)]"
     >
       <span className="shrink-0 w-8 h-8 rounded-full bg-apple-parchment dark:bg-white/[0.07] flex items-center justify-center">
         <DoorOpen className="w-4 h-4 text-apple-ink-muted dark:text-white/60" />
@@ -62,6 +65,8 @@ function DisconnectToast({ reason, onDone }: { reason: string, onDone: () => voi
       >
         <X className="w-3.5 h-3.5" />
       </button>
+      {/* Lifetime bar — the toast tells you how long it plans to stay. */}
+      <span aria-hidden className="st-toast-timer absolute bottom-0 left-0 h-[2px] w-full bg-ember/70" />
     </div>
   );
 }
@@ -140,36 +145,32 @@ function CapabilityGate({ children }: { children: React.ReactNode }) {
 function ErrorFallback({ onReset }: { onReset: () => void }) {
   // Rendered by the class boundary, which sits above the providers — static
   // English is intentional (recovery copy must never depend on a broken tree).
-  // Design: calm Apple-style recovery — the mark, one honest headline, one
-  // explanation, one primary path forward and one quiet alternative.
+  // Design: calm recovery — the brand lockup, one honest headline, one
+  // explanation, one primary path forward and two quiet alternatives.
   return (
     <div className="min-h-screen flex flex-col bg-apple-canvas dark:bg-[#131315] dot-bg">
       <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
-        <div className="flex items-center gap-2.5">
-          <ShareTextsLogo size={24} className="text-apple-ink dark:text-white" mono />
-          <span className="font-semibold tracking-tight text-[16px] text-apple-ink dark:text-white">ShareTexts</span>
-        </div>
+        <BrandLockup mono markSize={26} />
         <a
           href="/docs"
           className="px-3 py-2 min-h-[40px] flex items-center rounded-full text-[13px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
         >Docs</a>
       </header>
       <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-        <div className="w-[72px] h-[72px] rounded-[22px] bg-white dark:bg-[#1c1c21] border border-apple-divider/70 dark:border-white/[0.08] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.18)] flex items-center justify-center mb-7">
-          <ShareTextsLogo size={34} motion="connecting" className="opacity-90" />
+        {/* The state is the icon: the mark mid-"connecting" inside a calm
+            tile — a system that hiccuped, not a product that broke. */}
+        <div className="w-[76px] h-[76px] rounded-[24px] bg-white dark:bg-[#1c1c21] border border-apple-divider/70 dark:border-white/[0.08] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.18)] flex items-center justify-center mb-7">
+          <ShareTextsLogo size={36} motion="connecting" className="opacity-90" />
         </div>
-        <h2 className="text-[26px] sm:text-[28px] font-semibold text-apple-ink dark:text-white mb-2 tracking-[-0.02em]">Something went wrong</h2>
+        <h2 className="st-display text-[30px] sm:text-[34px] text-apple-ink dark:text-white mb-2.5">Something went wrong</h2>
         <p className="text-[15px] text-apple-ink-muted dark:text-white/60 max-w-sm mb-8 leading-relaxed">
           ShareTexts couldn't load properly. Your data is safe — nothing was lost.
         </p>
-        <button
-          onClick={onReset}
-          className="px-7 min-h-[50px] bg-ember hover:bg-[#d9560e] text-white rounded-full text-[15px] font-semibold shadow-[0_1px_2px_rgba(240,100,19,0.25),0_4px_10px_-4px_rgba(240,100,19,0.35)] hover:shadow-[0_4px_10px_rgba(240,100,19,0.2),0_12px_26px_-8px_rgba(240,100,19,0.4)] transition-all active:scale-[0.97]"
-        >
-          Return to ShareTexts
-        </button>
-        <div className="mt-4 flex items-center gap-5 text-[13px] font-medium text-apple-ink-muted dark:text-white/45">
+        <TactileButton onClick={onReset} variant="primary" size="lg">Return to ShareTexts</TactileButton>
+        <div className="mt-5 flex items-center gap-5 text-[13px] font-medium text-apple-ink-muted dark:text-white/45">
           <a href="/" className="hover:text-apple-ink dark:hover:text-white transition-colors">Go home</a>
+          <span aria-hidden className="w-1 h-1 rounded-full bg-apple-divider" />
+          <a href="/about" className="hover:text-apple-ink dark:hover:text-white transition-colors">About</a>
           <span aria-hidden className="w-1 h-1 rounded-full bg-apple-divider" />
           <a href="/docs" className="hover:text-apple-ink dark:hover:text-white transition-colors">Open docs</a>
         </div>
@@ -239,14 +240,44 @@ function AppContent() {
     return <Suspense fallback={<RouteSkeleton />}><Legal page="terms" /></Suspense>;
   }
 
+  // About — the "what is this / why trust it" page (a real route now; the
+  // footer's About link used to land on the 404).
+  if (typeof window !== 'undefined' && window.location.pathname === '/about') {
+    return <Suspense fallback={<RouteSkeleton />}><About /></Suspense>;
+  }
+
   if (typeof window !== 'undefined' && window.location.pathname !== '/' && !window.location.pathname.startsWith('/s/')) {
+    // The 404 is a DESIGNED screen, not a dead end: brand, honest state,
+    // and both ways forward (home primary, docs secondary).
     return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center bg-apple-canvas dark:bg-[#131315] p-6 text-center">
-        <h2 className="text-[28px] font-semibold text-apple-ink dark:text-white tracking-tight mb-2">{t('app.404.title')}</h2>
-        <p className="text-[16px] text-apple-ink-muted dark:text-white/60 font-medium max-w-sm mb-9">{t('app.404.body')}</p>
-        <button onClick={() => { window.location.href = '/'; }}
-          className="px-7 py-3.5 bg-apple-ink dark:bg-white text-white dark:text-night-900 rounded-[12px] text-[15px] font-semibold active:scale-[0.97] min-h-[48px]">{t('app.404.cta')}</button>
+      <div className="min-h-screen flex flex-col bg-apple-canvas dark:bg-[#131315] dot-bg">
+        <header className="shrink-0 flex items-center justify-between px-6 lg:px-10 py-4">
+          <BrandLockup mono markSize={26} />
+          <a
+            href="/docs"
+            className="px-3 py-2 min-h-[40px] flex items-center rounded-full text-[13px] font-medium text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
+          >{t('nav.docs')}</a>
+        </header>
+        <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+          {/* The missing-room tile: the mark in a mono tile with the page's
+              number — the state IS the visual, no illustration needed. */}
+          <div className="relative w-[76px] h-[76px] rounded-[24px] bg-white dark:bg-[#1c1c21] overflow-hidden border border-apple-divider/70 dark:border-white/[0.08] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.18)] flex items-center justify-center mb-7">
+            {/* Sunrise horizon inside the tile: light rising from the bottom
+                edge — the same depth language as the landing and About. */}
+            <span aria-hidden className="st-horizon absolute inset-x-0 bottom-0 h-[56%] opacity-90" />
+            <ShareTextsLogo size={36} mono className="relative text-apple-ink/70 dark:text-white/50" />
+            <span className="absolute -top-1.5 -right-1.5 px-2 py-0.5 rounded-full bg-ember text-white text-[11px] font-bold shadow-sm">404</span>
+          </div>
+          <h2 className="st-display text-[30px] sm:text-[34px] text-apple-ink dark:text-white mb-2.5">{t('app.404.title')}</h2>
+          <p className="text-[15px] text-apple-ink-muted dark:text-white/60 max-w-sm mb-8 leading-relaxed">{t('app.404.body')}</p>
+          <div className="flex items-center gap-3 flex-wrap justify-center">
+            <TactileButton onClick={() => { window.location.href = '/'; }} variant="primary" size="lg">{t('app.404.cta')}</TactileButton>
+            <TactileButton href="/docs" variant="secondary" size="lg">{t('nav.docs')}</TactileButton>
+          </div>
+        </main>
+        <footer className="shrink-0 pb-6 text-center text-[12px] font-medium text-apple-ink-muted/60 dark:text-white/30">
+          sharetexts.online
+        </footer>
       </div>
     );
   }

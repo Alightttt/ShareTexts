@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, Zap, Eye, EyeOff, RefreshCw, Search, Check, X, Wifi, QrCode, Link2, Loader2 } from 'lucide-react';
+import { ArrowRight, Zap, Eye, EyeOff, RefreshCw, Search, Check, X, Wifi, QrCode, Link2 } from 'lucide-react';
+import { SpinLoader } from './SpinLoader';
 import { getSocket } from '../lib/socket';
 import { nearbyPresence, isPresenceHidden, setPresenceHidden, type NearbyDevice, type IncomingInvitation } from '../lib/nearby';
 import { getRecentDevices, recordRecentDevice, isTrustedToken, forgetRecentDevice, resolveLiveToken, lastSeenParts } from '../lib/pairing';
@@ -564,7 +565,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
                       </span>
                     </span>
                     {busy ? (
-                      <Loader2 className="shrink-0 w-4 h-4 animate-spin text-[#f06413] dark:text-[#fb9243]" aria-hidden />
+                      <SpinLoader size={16} className="text-[#f06413] dark:text-[#fb9243]" aria-hidden />
                     ) : trusted ? (
                       <span
                         className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[12px] font-semibold text-[#f06413] dark:text-[#fb9243] group-hover:bg-[#f06413] group-hover:text-white dark:group-hover:bg-[#fb9243] dark:group-hover:text-[#1a1208] transition-colors"

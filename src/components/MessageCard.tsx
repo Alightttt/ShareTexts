@@ -13,8 +13,10 @@ import { formatSpeed, formatEta } from '../lib/speedEngine';
 import {
   X, Copy, Check, CheckCheck, Download, Image as ImageIcon, Play, Pause,
   RefreshCw, AlertCircle, ChevronDown, ChevronUp, Share2, ShieldCheck,
-  Terminal, ZoomIn, Link2
+  Terminal, ZoomIn, Link2, Smile
 } from 'lucide-react';
+import { hapticTick } from '../lib/haptics';
+import { AnnotatedHint } from './AnnotatedHint';
 import { FileTypeIcon } from './FileTypeIcon';
 import { DraggableImage } from './DraggableImage';
 import { cn, formatBytes, sanitizeFilename, sanitizeUrl } from '../lib/utils';
@@ -98,6 +100,112 @@ function SelectionRing({ selected }: { selected: boolean }) {
     </motion.span>
   );
 }
+
+/** Emoji reactions — the RareUI "emojireaction" shape with room-wide
+ *  semantics. Chips hang under the bubble: the number is how many OTHER
+ *  devices in the room picked that emoji, and a chip lights ember when it is
+ *  ours. One tap adds, the same tap removes — no long-press menu, no dialog.
+ *  The picker is a quiet dashed smile that opens a six-emoji palette above
+ *  the bubble (inside the column, so the attachment card's clipped bubble
+ *  can never eat it). */
+const REACTION_PALETTE = ['❤️', '👍', '😂', '😮', '🔥', '🙏'];
+
+const ReactionBar: React.FC<{ msg: ChatMessage; disabled?: boolean }> = ({ msg, disabled = false }) => {
+  const { t } = useI18n();
+  const { reactToMessage } = useSession();
+  const [open, setOpen] = useState(false);
+  const entries = Object.entries(msg.reactions ?? {}) as Array<[string, { count: number; mine: boolean }]>;
+  const pick = (emoji: string) => {
+    reactToMessage(msg.id, emoji);
+    hapticTick();
+  };
+  if (disabled && entries.length === 0) return null;
+  return (
+    <div className="relative mt-1.5 flex items-center gap-1 flex-wrap">
+      {entries.map(([emoji, r]) => (
+        <motion.button
+          key={emoji}
+          type="button"
+          initial={{ scale: 0.55, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 520, damping: 24 }}
+          disabled={disabled}
+          onPointerDown={(e) => { e.preventDefault(); if (!disabled) pick(emoji); }}
+          aria-pressed={r.mine}
+          aria-label={r.mine ? t('msg.removeReaction', { emoji }) : t('msg.reactWith', { emoji })}
+          title={r.mine ? t('msg.removeReaction', { emoji }) : t('msg.reactWith', { emoji })}
+          className="group/chip flex items-center justify-center min-h-[40px] min-w-[40px] px-0.5 transition-motion active:scale-90"
+        >
+          {/* The hit box is 40px; the VISIBLE pill stays 26px inside it. The
+              touch contract and the visual weight are both satisfied — a
+              40px pill would out-shout the message it is attached to. */}
+          <span
+            className={cn(
+              'flex items-center gap-1 h-[26px] pl-1.5 pr-2 rounded-full border text-[12px] font-semibold select-none transition-colors',
+              r.mine
+                ? 'bg-[#f06413]/12 border-[#f06413]/40 text-[#b8450a] dark:text-[#ffc79b]'
+                : 'bg-black/[0.035] border-black/[0.08] text-apple-ink-muted dark:bg-white/[0.07] dark:border-white/10 group-hover/chip:border-black/20 dark:group-hover/chip:border-white/25'
+            )}
+          >
+            <span className="text-[13px] leading-none">{emoji}</span>
+            {r.count > 0 && <span className="tnum">{r.count}</span>}
+          </span>
+        </motion.button>
+      ))}
+      {!disabled && (
+        <button
+          type="button"
+          onPointerDown={(e) => { e.preventDefault(); setOpen(o => !o); }}
+          aria-label={t('msg.react')}
+          aria-expanded={open}
+          title={t('msg.react')}
+          className="flex items-center justify-center min-h-[40px] min-w-[40px] px-0.5 transition-motion active:scale-90"
+        >
+          <span
+            className={cn(
+              'flex items-center justify-center w-[26px] h-[26px] rounded-full border border-dashed transition-colors',
+              open
+                ? 'border-[#f06413]/50 text-[#c04b09] dark:text-[#ffc79b] opacity-100'
+                : 'border-black/15 dark:border-white/20 text-apple-ink-muted opacity-50 group-hover/chip:opacity-100 hover:opacity-100'
+            )}
+          >
+            <Smile className="w-3.5 h-3.5" />
+          </span>
+        </button>
+      )}
+      {open && !disabled && (
+        <>
+          {/* Anywhere-else tap closes the palette — a popover that needs a
+              precise outside click is a popover that gets stuck open. */}
+          <div className="fixed inset-0 z-20" onPointerDown={() => setOpen(false)} aria-hidden />
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.94 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ type: 'spring', stiffness: 480, damping: 30 }}
+            className="absolute bottom-full mb-1.5 z-30 flex items-center gap-0.5 rounded-full border border-apple-divider/60 dark:border-white/10 bg-white dark:bg-[#232328] p-1 shadow-[0_12px_34px_-14px_rgba(0,0,0,0.45)]"
+            style={{ [isMeSide(msg) ? 'right' : 'left']: 0 } as React.CSSProperties}
+          >
+            {REACTION_PALETTE.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                aria-label={t('msg.reactWith', { emoji })}
+                onPointerDown={(e) => { e.preventDefault(); setOpen(false); pick(emoji); }}
+                className="flex h-10 w-10 items-center justify-center rounded-full text-[17px] leading-none transition-motion hover:bg-apple-parchment dark:hover:bg-white/10 active:scale-90"
+              >
+                {emoji}
+              </button>
+            ))}
+          </motion.div>
+        </>
+      )}
+    </div>
+  );
+};
+
+/** Which side the palette hangs from — our own bubbles sit right, so the
+ *  palette anchors right; the partner's anchor left, like their bubble. */
+const isMeSide = (msg: ChatMessage) => msg.sender === 'me';
 
 /** Long-press detector shared by both render paths: 500ms hold (touch or
  *  mouse) fires onLongPressStart once; any move >8px cancels (a scroll, not
@@ -414,8 +522,9 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
         onClick={selectMode ? handleBubbleTap : undefined}
       >
         {selectMode && <SelectionRing selected={selected} />}
+        <div className={cn("flex flex-col min-w-0 max-w-[85%] sm:max-w-[65%]", isMe ? "items-end" : "items-start")}>
         <div className={cn(
-          "max-w-[85%] sm:max-w-[65%] px-[14px] py-[10px] rounded-[18px] transition-shadow",
+          "px-[14px] py-[10px] rounded-[18px] transition-shadow",
           selected && "ring-2 ring-azure-500/60",
           isMe
             // Sent items carry a whisper of the brand so the eye instantly
@@ -512,6 +621,8 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
               </>
             )}
           </div>
+        </div>
+        <ReactionBar msg={msg} disabled={selectMode} />
         </div>
       </motion.div>
     );
@@ -711,7 +822,16 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                   ) : isMe ? <DeliveryTick delivered={msg.delivered} seen={msg.seen} onBlue /> : msg.source === 'push' ? (
                     <span className="font-semibold flex items-center gap-1"><Terminal className="w-3 h-3" /> {t('msg.fromPush')}</span>
                   ) : <span className="font-semibold">{t('xfer.receivedShort')}</span>}
-                  {a.verified && <span className="flex items-center gap-0.5" title={t('msg.verifiedTitle')}><ShieldCheck className="w-3 h-3" /> {t('msg.verified')}</span>}
+                  {/* "Verified" explains itself in place — the term carries the
+                      proof, so the footer never grows a footnote line. */}
+                  {a.verified && (
+                    <AnnotatedHint
+                      className="text-status-success font-semibold"
+                      note={t('msg.verifiedTitle')}
+                    >
+                      <ShieldCheck className="w-3 h-3 mr-0.5" /> {t('msg.verified')}
+                    </AnnotatedHint>
+                  )}
                   {/* Original-quality proof: size · exact pixel dimensions ·
                       exact format — read from the bytes that arrived. */}
                   <span className="hidden sm:inline">
@@ -782,6 +902,7 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
               <LiveSpeed transferId={a.id} progressPct={a.progress || 0} />
             </>
           )}
+          <ReactionBar msg={msg} disabled={selectMode} />
         </div>
         {viewerOpen && complete && (
           <ImageViewer src={a.url!} name={a.name} onClose={() => setViewerOpen(false)} />
