@@ -827,9 +827,12 @@ export function SingleScreenApp() {
                             </span>
                           )}
                         </span>
-                        <span className="shrink-0 w-7 h-7 rounded-full bg-apple-ink/[0.05] dark:bg-white/[0.07] flex items-center justify-center transition-colors duration-200 group-hover:bg-[#f06413]/12 dark:group-hover:bg-[#fb9243]/18" aria-hidden>
-                          <ArrowRightLeft className="w-3.5 h-3.5 text-apple-ink-muted dark:text-white/50 group-hover:text-[#f06413] dark:group-hover:text-[#fb9243] transition-transform duration-200 group-hover:translate-x-px motion-reduce:transition-none" />
-                        </span>
+                        {/* The whole card is already the target, so the
+                            trailing glyph is an ARROW, not a second circle.
+                            Two circles in one row (ember glyph left, grey
+                            button right) made the card read as a pair of
+                            buttons rather than one thing you tap. */}
+                        <ArrowRightLeft className="shrink-0 w-4 h-4 text-apple-ink-muted/70 dark:text-white/40 group-hover:text-[#f06413] dark:group-hover:text-[#fb9243] transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
                       </button>
                     </motion.div>
                   );
@@ -1312,13 +1315,18 @@ export function SingleScreenApp() {
 
   const footerNode = (
     <footer className="shrink-0 px-6 lg:px-10 pt-2.5 pb-[max(env(safe-area-inset-bottom),8px)] sm:pb-2.5 border-t border-apple-divider/60 dark:border-white/[0.06]">
-        {/* One quiet line: brand · links · X. The tiny mark grounds the row —
+        {/* One quiet line: brand · links · X. The wordmark grounds the row —
             a footer without a brand reads as legal boilerplate; with it, the
-            page still knows whose it is at the very bottom of the scroll. */}
+            page still knows whose it is at the very bottom of the scroll.
+            It is a WORDMARK, not a glyph beside a rule: the stray divider
+            that used to sit after the mark separated nothing and read as a
+            half-finished row. */}
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-x-5 gap-y-2 flex-wrap">
-          <span className="flex items-center gap-2 text-apple-ink-muted/70 dark:text-white/35" aria-hidden>
-            <ShareTextsLogo size={17} className="opacity-75" />
-            <span className="w-px h-3.5 bg-apple-divider dark:bg-white/10" />
+          <span className="flex items-center gap-1.5 select-none" aria-hidden>
+            <ShareTextsLogo size={16} className="opacity-80" />
+            <span className="font-display font-bold tracking-[-0.03em] leading-none text-[13px] text-apple-ink-muted/70 dark:text-white/35">
+              ShareTexts
+            </span>
           </span>
           <nav className="flex items-center gap-5 sm:gap-7 text-[13px] font-medium text-apple-ink-muted dark:text-white/50">
             {/* Each link gets a 40px hit box via symmetric padding + matching
