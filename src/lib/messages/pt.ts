@@ -510,6 +510,65 @@ const pt: Dict = {
   'space.joinBadLink': 'Isto não parece um link de espaço. Copia o link completo, incluindo a parte depois de #.',
   'space.joinRejected': 'Não foi possível abrir — a chave não corresponde a este espaço.',
   'space.joinClosed': 'Este espaço já fechou.',
+
+  // ── landing: a demo em loop ────────────────────────────────────────
+  'demo.c1': 'Abra o ShareTexts no seu notebook.',
+  'demo.c2': 'Digite o código no seu celular.',
+  'demo.c3': 'Conectados. Sem app, sem conta.',
+  'demo.c4': 'Envie uma nota, uma foto ou um arquivo.',
+  'demo.c5': 'Vai direto entre os dois.',
+  'demo.c6': 'Chega num instante, criptografado.',
+  'demo.c7': 'Feche a sala. Nada é guardado.',
+  'demo.laptopAlt': 'ShareTexts num notebook, dentro de uma sala de demonstração',
+  'demo.phoneAlt': 'ShareTexts num celular, dentro de uma sala de demonstração',
+  'demo.roomCode': 'Código da sala',
+  'demo.thisDevice': 'Este dispositivo',
+  'demo.thatDevice': 'Celular',
+  'demo.ready': 'Pronto',
+  'demo.waiting': 'Aguardando',
+  'demo.connected': 'Conectado',
+  'demo.stay': 'Manter conectado',
+  'demo.room': 'Sala',
+  'demo.twoDevices': '2 dispositivos · conectados',
+  'demo.oneDevice': '1 dispositivo · aguardando',
+  'demo.encrypted': 'Criptografado',
+  'demo.note': 'Aqui está o plano para amanhã.',
+  'demo.reply': 'Recebido — obrigado 👍',
+  'demo.placeholder': 'Mensagem',
+  'demo.receiving': 'Recebendo…',
+  'demo.closed': 'Sala fechada',
+  'demo.joinTitle': 'Digite o código',
+  'demo.joinHint': 'Ele está no outro dispositivo.',
+  'demo.join': 'Entrar',
+  'demo.rail': 'Progresso da demo — pule para qualquer passo',
+  'demo.play': 'Reproduzir a demo',
+  'demo.pause': 'Pausar a demo',
+
+  // ── instalar (PWA): oferecido, nunca empurrado ─────────────────────
+  'install.title': 'Tenha o ShareTexts à mão',
+  'install.body': 'Adicione ao seu dispositivo como um app: um toque na tela inicial. Sem loja, sem conta.',
+  'install.cta': 'Instalar',
+  'install.iosBody': 'Abra o menu Compartilhar e escolha “Adicionar à Tela de Início”. Ele abre como um app, num toque.',
+  'install.later': 'Agora não',
+  'install.never': 'Não perguntar de novo',
+
+  // ── avaliação: pequena, opcional, honesta ──────────────────────────
+  'rate.title': 'Como estamos indo?',
+  'rate.body': 'Sua nota decide o que a gente conserta depois.',
+  'rate.thanks': 'Valeu — anotado.',
+  'rate.average': '{avg} de 5',
+  'rate.votes': '{count} avaliações',
+  'rate.star': 'Avaliar com {n} de 5',
+  'rate.dismiss': 'Agora não',
+
+  // ── compositor: formatação leve ───────────────────────────────────
+  'edit.bold': 'Negrito',
+  'edit.italic': 'Itálico',
+  'edit.code': 'Código',
+  'edit.list': 'Lista',
+  'edit.group': 'Formatação',
+  'net.offline': 'Sem conexão — as transferências precisam de internet.',
+
 };
 
 export default pt;

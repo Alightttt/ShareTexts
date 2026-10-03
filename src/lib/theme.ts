@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { runThemeTransition } from './themeTransition';
 
 /**
  * Manual light/dark theme control.
@@ -49,13 +50,22 @@ export function resolveTheme(choice: ThemeChoice): ResolvedTheme {
 export function applyTheme(choice: ThemeChoice) {
   const resolved = resolveTheme(choice);
   const root = document.documentElement;
+  const isDark = resolved === 'dark';
+  // Already there? Then this is a no-op. That guard matters during a theme
+  // cross-fade: the transition callback flips the class so the snapshot sees
+  // the new theme, and the effect that follows (React state → applyTheme)
+  // must not flip anything a second time.
+  if (root.classList.contains('dark') === isDark) {
+    const metaAlready = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (metaAlready) metaAlready.content = isDark ? '#131315' : '#f7f4ee';
+    return;
+  }
   // INSTANT, single-paint flip: kill every per-element color transition for
   // one frame, swap the class, then drop the kill-switch. Hundreds of
   // elements each tweening at once was the old "laggy" feel; a scheduled
   // two-frame veil flip read as input lag on low-end devices (contract:
   // theme responds within ~40ms). One synchronous repaint is both the
   // fastest and the smoothest path — no ghost states, no delayed class.
-  const isDark = resolved === 'dark';
   const style = document.createElement('style');
   style.textContent = '*,*::before,*::after{transition:none!important;animation-duration:0s!important;animation-delay:0s!important}';
   document.head.appendChild(style);
@@ -90,13 +100,20 @@ export function useTheme() {
   }, [choice]);
 
   const setChoice = useCallback((c: ThemeChoice) => {
+    const before = resolveTheme(getStoredTheme());
     storeTheme(c);
-    setChoiceState(c);
+    // Only the transitions that actually change what is on screen get the
+    // cross-fade; picking "system" while the system already agrees is a
+    // settings change, not a theme change.
+    if (resolveTheme(c) === before) {
+      setChoiceState(c);
+      return;
+    }
+    runThemeTransition(() => setChoiceState(c));
   }, []);
 
   const toggle = useCallback(() => {
-    const next = resolveTheme(getStoredTheme()) === 'dark' ? 'light' : 'dark';
-    setChoice(next);
+    setChoice(resolveTheme(getStoredTheme()) === 'dark' ? 'light' : 'dark');
   }, [setChoice]);
 
   return { choice, resolved, setChoice, toggle };

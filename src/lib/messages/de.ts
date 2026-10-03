@@ -510,6 +510,65 @@ const de: Dict = {
   'space.joinBadLink': 'Das sieht nicht nach einem Bereich-Link aus. Kopiere den ganzen Link, auch den Teil nach #.',
   'space.joinRejected': 'Konnte nicht geöffnet werden – der Schlüssel passt nicht zu diesem Bereich.',
   'space.joinClosed': 'Dieser Bereich ist bereits geschlossen.',
+
+  // ── Landing: die Demo in Schleife ──────────────────────────────────
+  'demo.c1': 'Öffne ShareTexts auf deinem Laptop.',
+  'demo.c2': 'Tippe den Code in dein Handy.',
+  'demo.c3': 'Verbunden. Ohne App, ohne Konto.',
+  'demo.c4': 'Schick eine Notiz, ein Foto oder eine Datei.',
+  'demo.c5': 'Es geht direkt zwischen den beiden.',
+  'demo.c6': 'Es kommt sofort an, verschlüsselt.',
+  'demo.c7': 'Schließe den Raum. Nichts bleibt.',
+  'demo.laptopAlt': 'ShareTexts auf einem Laptop, in einem Demo-Raum',
+  'demo.phoneAlt': 'ShareTexts auf einem Handy, in einem Demo-Raum',
+  'demo.roomCode': 'Raum-Code',
+  'demo.thisDevice': 'Dieses Gerät',
+  'demo.thatDevice': 'Handy',
+  'demo.ready': 'Bereit',
+  'demo.waiting': 'Wartet',
+  'demo.connected': 'Verbunden',
+  'demo.stay': 'Verbunden bleiben',
+  'demo.room': 'Raum',
+  'demo.twoDevices': '2 Geräte · verbunden',
+  'demo.oneDevice': '1 Gerät · wartet',
+  'demo.encrypted': 'Verschlüsselt',
+  'demo.note': 'Hier ist der Plan für morgen.',
+  'demo.reply': 'Alles da — danke 👍',
+  'demo.placeholder': 'Nachricht',
+  'demo.receiving': 'Empfängt…',
+  'demo.closed': 'Raum geschlossen',
+  'demo.joinTitle': 'Code eingeben',
+  'demo.joinHint': 'Er steht auf dem anderen Gerät.',
+  'demo.join': 'Beitreten',
+  'demo.rail': 'Demo-Fortschritt — spring zu jedem Schritt',
+  'demo.play': 'Demo abspielen',
+  'demo.pause': 'Demo anhalten',
+
+  // ── Installieren (PWA): angeboten, nie aufgedrängt ─────────────────
+  'install.title': 'ShareTexts griffbereit',
+  'install.body': 'Leg es wie eine App auf dein Gerät: ein Tipp vom Startbildschirm. Kein Store, kein Konto.',
+  'install.cta': 'Installieren',
+  'install.iosBody': 'Öffne das Teilen-Menü und wähle „Zum Home-Bildschirm“. Es öffnet sich wie eine App, mit einem Tipp.',
+  'install.later': 'Jetzt nicht',
+  'install.never': 'Nicht mehr fragen',
+
+  // ── Bewertung: klein, freiwillig, ehrlich ──────────────────────────
+  'rate.title': 'Wie machen wir uns?',
+  'rate.body': 'Deine Bewertung entscheidet, was wir als Nächstes beheben.',
+  'rate.thanks': 'Danke — notiert.',
+  'rate.average': '{avg} von 5',
+  'rate.votes': '{count} Bewertungen',
+  'rate.star': 'Mit {n} von 5 bewerten',
+  'rate.dismiss': 'Jetzt nicht',
+
+  // ── Composer: leichte Formatierung ─────────────────────────────────
+  'edit.bold': 'Fett',
+  'edit.italic': 'Kursiv',
+  'edit.code': 'Code',
+  'edit.list': 'Liste',
+  'edit.group': 'Formatierung',
+  'net.offline': 'Offline — Übertragungen brauchen eine Verbindung.',
+
 };
 
 export default de;

@@ -510,6 +510,65 @@ const fr: Dict = {
   'space.joinBadLink': 'Cela ne ressemble pas à un lien d’espace. Copiez le lien entier, y compris la partie après #.',
   'space.joinRejected': 'Impossible de l’ouvrir — la clé ne correspond pas à cet espace.',
   'space.joinClosed': 'Cet espace est déjà fermé.',
+
+  // ── landing : la démo en boucle ────────────────────────────────────
+  'demo.c1': 'Ouvre ShareTexts sur ton ordinateur.',
+  'demo.c2': 'Saisis le code sur ton téléphone.',
+  'demo.c3': 'Connectés. Sans appli, sans compte.',
+  'demo.c4': 'Envoie une note, une photo ou un fichier.',
+  'demo.c5': 'Ça passe directement entre les deux.',
+  'demo.c6': 'Ça arrive en un instant, chiffré.',
+  'demo.c7': 'Ferme la salle. Rien n’est gardé.',
+  'demo.laptopAlt': 'ShareTexts sur un ordinateur portable, dans une salle de démonstration',
+  'demo.phoneAlt': 'ShareTexts sur un téléphone, dans une salle de démonstration',
+  'demo.roomCode': 'Code de la salle',
+  'demo.thisDevice': 'Cet appareil',
+  'demo.thatDevice': 'Téléphone',
+  'demo.ready': 'Prêt',
+  'demo.waiting': 'En attente',
+  'demo.connected': 'Connecté',
+  'demo.stay': 'Rester connecté',
+  'demo.room': 'Salle',
+  'demo.twoDevices': '2 appareils · connectés',
+  'demo.oneDevice': '1 appareil · en attente',
+  'demo.encrypted': 'Chiffré',
+  'demo.note': 'Voici le plan pour demain.',
+  'demo.reply': 'Bien reçu — merci 👍',
+  'demo.placeholder': 'Message',
+  'demo.receiving': 'Réception…',
+  'demo.closed': 'Salle fermée',
+  'demo.joinTitle': 'Saisis le code',
+  'demo.joinHint': 'Il est sur l’autre appareil.',
+  'demo.join': 'Rejoindre',
+  'demo.rail': 'Progression de la démo — va à une étape',
+  'demo.play': 'Lancer la démo',
+  'demo.pause': 'Mettre la démo en pause',
+
+  // ── installer (PWA) : proposé, jamais imposé ───────────────────────
+  'install.title': 'Garde ShareTexts sous la main',
+  'install.body': 'Ajoute-le à ton appareil comme une appli : un appui depuis l’écran d’accueil. Sans store, sans compte.',
+  'install.cta': 'Installer',
+  'install.iosBody': 'Ouvre le menu Partager, puis choisis « Sur l’écran d’accueil ». Ça s’ouvre comme une appli, en un appui.',
+  'install.later': 'Plus tard',
+  'install.never': 'Ne plus demander',
+
+  // ── note : petite, optionnelle, honnête ────────────────────────────
+  'rate.title': 'On s’en sort comment ?',
+  'rate.body': 'Ta note décide de ce qu’on corrige ensuite.',
+  'rate.thanks': 'Merci — c’est noté.',
+  'rate.average': '{avg} sur 5',
+  'rate.votes': '{count} notes',
+  'rate.star': 'Noter {n} sur 5',
+  'rate.dismiss': 'Plus tard',
+
+  // ── composeur : mise en forme légère ───────────────────────────────
+  'edit.bold': 'Gras',
+  'edit.italic': 'Italique',
+  'edit.code': 'Code',
+  'edit.list': 'Liste',
+  'edit.group': 'Mise en forme',
+  'net.offline': 'Hors ligne — les transferts nécessitent une connexion.',
+
 };
 
 export default fr;

@@ -10,6 +10,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { useSession } from '../lib/SessionContext';
 import { formatSpeed, formatEta } from '../lib/speedEngine';
+import { renderRichText } from '../lib/richText';
 // Gravity UI icons aliased onto the names this file already uses.
 import {
   Xmark as X, Copy, Check, CheckDouble as CheckCheck, ArrowDownToLine as Download,
@@ -555,7 +556,10 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
                 : "break-words",
             )}
           >
-            {preview}
+            {/* Formatted text renders through an allowlist renderer (no HTML
+                path): structured pastes stay literal, everything else gets
+                the tiny markdown subset the composer's buttons produce. */}
+            {isStructured ? preview : renderRichText(preview)}
             {isLargeText && !expanded && (
               <button
                 onClick={() => setExpanded(true)}

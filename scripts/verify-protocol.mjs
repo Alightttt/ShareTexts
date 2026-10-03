@@ -42,7 +42,8 @@ await A.locator('[data-testid="composer"] textarea, textarea').first().fill('');
 const attachFile = async (page, name, mime, buffer) => {
   const fcP = page.waitForEvent('filechooser', { timeout: 8000 });
   // The + button opens the menu; the File item then clicks the hidden input.
-  await page.locator('button:has(svg.lucide-plus)').first().click();
+  // (Selector by testid — the glyph moved from lucide-plus to Gravity's Plus.)
+  await page.locator('[data-testid="add-attachment"]').first().click();
   await sleep(250);
   await page.locator('button:has-text("File")').first().click();
   const fc = await fcP;

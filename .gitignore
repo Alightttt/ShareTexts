@@ -37,6 +37,11 @@ test-results/
 
 # transient verification screenshots
 scripts/tmp-*.png
+docs/audits/shots-*/
+
+# Temporary Space dev backend: uploaded content lives here at runtime
+# (devSpaceBackend.ts) — data, never source
+.spaces/
 
 # scratch temp test dirs from queue probes
 st-*/

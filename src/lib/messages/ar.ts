@@ -509,6 +509,65 @@ const ar: Dict = {
   'space.joinBadLink': 'لا يبدو هذا رابط مساحة. انسخ الرابط كاملًا بما في ذلك الجزء بعد #.',
   'space.joinRejected': 'تعذّر الفتح — المفتاح لا يطابق هذه المساحة.',
   'space.joinClosed': 'هذه المساحة أُغلقت بالفعل.',
+
+  // ── landing: the looping device demo ────────────────────────────────
+  'demo.c1': 'افتح ShareTexts على حاسوبك.',
+  'demo.c2': 'اكتب الرمز على هاتفك.',
+  'demo.c3': 'تم الاتصال. بلا تطبيق، بلا حساب.',
+  'demo.c4': 'أرسل ملاحظة أو صورة أو ملفًا.',
+  'demo.c5': 'ينتقل مباشرة بين الجهازين.',
+  'demo.c6': 'يصل في لحظة، مشفّرًا.',
+  'demo.c7': 'أغلق الغرفة. لا يبقى شيء.',
+  'demo.laptopAlt': 'ShareTexts يعمل على حاسوب في غرفة تجريبية',
+  'demo.phoneAlt': 'ShareTexts يعمل على هاتف في غرفة تجريبية',
+  'demo.roomCode': 'رمز الغرفة',
+  'demo.thisDevice': 'هذا الجهاز',
+  'demo.thatDevice': 'هاتف',
+  'demo.ready': 'جاهز',
+  'demo.waiting': 'بالانتظار',
+  'demo.connected': 'متصل',
+  'demo.stay': 'ابقَ متصلًا',
+  'demo.room': 'غرفة',
+  'demo.twoDevices': 'جهازان · متصلان',
+  'demo.oneDevice': 'جهاز واحد · بالانتظار',
+  'demo.encrypted': 'مشفّر',
+  'demo.note': 'هذه خطة الغد.',
+  'demo.reply': 'وصلني — شكرًا 👍',
+  'demo.placeholder': 'رسالة',
+  'demo.receiving': 'يستقبل…',
+  'demo.closed': 'أُغلقت الغرفة',
+  'demo.joinTitle': 'أدخل الرمز',
+  'demo.joinHint': 'الرمز على الجهاز الآخر.',
+  'demo.join': 'انضمام',
+  'demo.rail': 'تقدّم العرض — انتقل إلى أي خطوة',
+  'demo.play': 'تشغيل العرض',
+  'demo.pause': 'إيقاف العرض',
+
+  // ── install (PWA) ───────────────────────────────────────────────────
+  'install.title': 'أبقِ ShareTexts في متناولك',
+  'install.body': 'أضفه إلى جهازك كتطبيق: لمسة واحدة من الشاشة الرئيسية. بلا متجر، بلا حساب.',
+  'install.cta': 'تثبيت',
+  'install.iosBody': 'افتح قائمة المشاركة ثم اختر «إضافة إلى الشاشة الرئيسية». يفتح كتطبيق، بلمسة واحدة.',
+  'install.later': 'ليس الآن',
+  'install.never': 'لا تسأل مرة أخرى',
+
+  // ── rating ──────────────────────────────────────────────────────────
+  'rate.title': 'كيف نعمل معك؟',
+  'rate.body': 'تقييمك يحدد ما نصلحه بعد ذلك.',
+  'rate.thanks': 'شكرًا — سُجّل.',
+  'rate.average': '{avg} من 5',
+  'rate.votes': '{count} تقييمًا',
+  'rate.star': 'قيّم {n} من 5',
+  'rate.dismiss': 'ليس الآن',
+
+  // ── composer ────────────────────────────────────────────────────────
+  'edit.bold': 'عريض',
+  'edit.italic': 'مائل',
+  'edit.code': 'شفرة',
+  'edit.list': 'قائمة',
+  'edit.group': 'تنسيق',
+  'net.offline': 'أنت غير متصل — تحتاج عمليات النقل إلى اتصال.',
+
 };
 
 export default ar;

@@ -14,8 +14,10 @@
     <meta name="theme-color" content="#f7f4ee" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#131315" media="(prefers-color-scheme: dark)" />
 
-    <!-- LCP: the landing hero composition image, needed immediately -->
-    <link rel="preload" as="image" href="/hero-composition.webp" fetchpriority="high" />
+    <!-- No hero image preload any more: the landing hero is the live device
+         demo, which is DOM, not a file. Preloading the retired composition
+         image spent the first bytes of the connection on something the first
+         screen no longer asks for. -->
     <!-- The display face paints the hero headline and the wordmark: preload it
          so the first paint is the real type, not a fallback flash. Fonts are
          CORS-fetched, hence crossorigin. -->
@@ -295,7 +297,16 @@
           }
           @media (max-width: 900px) {
             #loading-shell .st-hero { grid-template-columns: 1fr !important; }
-            #loading-shell .st-scene { display: none !important; }
+            /* The live demo collapses to the phone alone on phones, so the
+               placeholder does the same: same shape, same place, no jump. */
+            #loading-shell .st-scene { width: 168px !important; height: 360px !important; margin: 0 auto; }
+            #loading-shell .st-lap { display: none !important; }
+            #loading-shell .st-phone {
+              position: absolute !important;
+              inset: 0 !important;
+              width: 100% !important;
+              height: 100% !important;
+            }
           }
         </style>
         <!-- Header band: the real brand mark (inline, ember gradient) where
@@ -327,11 +338,14 @@
             </div>
             <div class="st-bar" style="width:55%;height:13px;margin-top:26px"></div>
           </div>
-          <div class="st-card st-scene" style="height:min(52vh,430px)">
-            <div class="st-bar" style="position:absolute;left:14%;top:16%;width:44%;height:14px;opacity:0.7"></div>
-            <div class="st-bar" style="position:absolute;left:14%;top:28%;width:30%;height:14px;opacity:0.5"></div>
-            <div class="st-bar" style="position:absolute;left:14%;top:44%;width:52%;height:52px;border-radius:18px"></div>
-            <div class="st-bar" style="position:absolute;left:14%;top:60%;width:52%;height:52px;border-radius:18px;opacity:0.7"></div>
+          <!-- The scene placeholder is the demo's own silhouette: a wide
+               laptop block with a phone standing in front of its right
+               corner. Same shapes, same places as the live component, so the
+               swap lands without the eye catching a rearrangement. -->
+          <div class="st-scene" style="position:relative;height:min(46vh,330px)">
+            <div class="st-bar st-lap" style="position:absolute;left:0;top:1%;width:68%;height:75%;border-radius:13px;opacity:0.55"></div>
+            <div class="st-bar st-lap" style="position:absolute;left:1%;top:78%;width:67%;height:9px;border-radius:6px;opacity:0.4"></div>
+            <div class="st-bar st-phone" style="position:absolute;right:7%;bottom:0;width:19%;height:88%;border-radius:16px;opacity:0.75"></div>
           </div>
         </div>
         <!-- The honest escalation (mirrors the in-app connecting screen):

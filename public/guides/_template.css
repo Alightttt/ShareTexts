@@ -218,6 +218,12 @@ p {
 }
 p strong { color: var(--text); font-weight: 600; }
 
+/* Links inside a sentence need a 40px hit box too, but growing the box
+   with min-height would stretch the paragraph's line. Vertical padding on
+   an inline element expands the clickable area without touching the line
+   height, so the prose keeps its rhythm and the target still clears 40px. */
+article p a, article li a, article .callout a { padding: 11px 0; }
+
 /* ── Callout ─────────────────────────────────────────────────────────── */
 .callout {
   background: var(--brand-light);
@@ -416,6 +422,57 @@ li strong { color: var(--text); }
 }
 .footer a { color: var(--text-secondary); text-decoration: none; }
 .footer a:hover { color: var(--text); }
+
+/* ── Rich footer (About) ───────────────────────────────────────────────
+   The three columns the app's own footer carries — use it, read, terms —
+   because a person at the end of a long page wants the same three things
+   on every page. Plain HTML/CSS only: the guides load no JS beyond
+   theme.js, so this mirrors the React footer without importing it. */
+.footer-rich { border-top: 1px solid var(--border); padding: 40px 24px 28px; }
+.footer-grid {
+  max-width: 760px; margin: 0 auto;
+  display: grid; gap: 28px 32px;
+  grid-template-columns: 1.6fr 1fr 1fr 1fr;
+}
+.footer-brand {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 40px;
+  font-weight: 700; font-size: 15px; color: var(--text); text-decoration: none;
+}
+.footer-brand svg { width: 20px; height: 20px; }
+.footer-blurb {
+  margin: 10px 0 0; font-size: 13px; line-height: 1.55;
+  color: var(--text-secondary); max-width: 30ch;
+}
+.footer-col h2 {
+  margin: 4px 0 8px; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-muted);
+}
+.footer-col ul { list-style: none; margin: 0; padding: 0; }
+.footer-col a {
+  /* 40px hit box both ways — short labels pad outward without shifting
+      the column's visual alignment (same trick as the app's footer). */
+  display: inline-flex; align-items: center; min-height: 40px;
+  padding: 0 8px; margin: 0 -8px;
+  font-size: 13.5px; font-weight: 500; color: var(--text-secondary); text-decoration: none;
+}
+.footer-col a:hover { color: var(--brand); }
+.footer-bottom {
+  max-width: 760px; margin: 28px auto 0; padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between;
+  align-items: center; min-height: 40px;
+  font-size: 12.5px; color: var(--text-muted);
+}
+.footer-bottom a {
+  display: inline-flex; align-items: center; min-height: 40px;
+  color: var(--text-muted); text-decoration: none;
+}
+.footer-bottom a:hover { color: var(--text); }
+@media (max-width: 640px) {
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+  .footer-blurb { max-width: none; grid-column: 1 / -1; }
+}
 
 /* ── Responsive ──────────────────────────────────────────────────────── */
 @media (max-width: 640px) {

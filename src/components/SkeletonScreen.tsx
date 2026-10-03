@@ -77,7 +77,10 @@ export type SkeletonVariant =
 export function SkeletonScreen({ variant = 'home' }: { variant?: SkeletonVariant }) {
   if (variant === 'home') {
     // Mirrors the idle hero: headline, two lines of subtitle, the pair of
-    // action pills with their hint lines, and the discovery block.
+    // action pills with their hint lines — and, where the demo now lives,
+    // the demo's own two shapes: a wide screen and an upright phone, seated
+    // on one baseline. The skeleton-to-content swap lands on geometry the
+    // eye has already met.
     return (
       <Shell label="Loading ShareTexts">
         <div className="w-full flex flex-col items-center">
@@ -95,7 +98,16 @@ export function SkeletonScreen({ variant = 'home' }: { variant?: SkeletonVariant
               <Bar className="h-2.5 w-[70%]" />
             </div>
           </div>
-          <Bar className="mt-7 h-10 w-full !rounded-[14px]" />
+          <div className="mt-7 flex w-full items-end justify-center gap-4" aria-hidden>
+            <div className="flex w-[58%] flex-col items-center gap-1.5">
+              <Bar className="h-[58px] w-full !rounded-[12px]" />
+              <Bar className="h-1.5 w-[72%] !rounded-full" />
+            </div>
+            <div className="flex w-[22%] flex-col items-center gap-1.5">
+              <Bar className="h-[80px] w-full !rounded-[14px]" />
+              <Bar className="h-1.5 w-[60%] !rounded-full" />
+            </div>
+          </div>
         </div>
       </Shell>
     );

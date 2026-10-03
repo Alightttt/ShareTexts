@@ -10,8 +10,10 @@ import { I18nProvider, useI18n } from './lib/i18n';
 import { Xmark as X, ArrowRightFromSquare as DoorOpen } from '@gravity-ui/icons';
 import { ShareTextsLogo } from './components/ShareTextsLogo';
 import { BrandLockup } from './components/BrandLockup';
-import { SkeletonScreen } from './components/SkeletonScreen';
 import { TactileButton } from './components/TactileButton';
+import { markAppUsed } from './lib/rating';
+import { InstallNudge } from './components/InstallNudge';
+import { OfflineBanner } from './components/AnnouncementBar';
 
 // SingleScreenApp (the landing IS the app) loads eagerly — one less network
 // round-trip before the hero is interactive. Docs/Legal stay lazy: they are
@@ -19,7 +21,6 @@ import { TactileButton } from './components/TactileButton';
 import { SingleScreenApp } from './views/SingleScreenApp';
 const Docs = lazy(() => import('./views/Docs').then(m => ({ default: m.Docs })));
 const Legal = lazy(() => import('./views/Legal').then(m => ({ default: m.Legal })));
-const About = lazy(() => import('./views/About').then(m => ({ default: m.About })));
 const SpaceView = lazy(() => import('./views/SpaceView').then(m => ({ default: m.SpaceView })));
 
 /**
@@ -210,6 +211,10 @@ function AppContent() {
   useEffect(() => {
     if (session.closedReason) {
       setDisconnectToast(session.closedReason);
+      // A room that ran and ended is the app being used, which is the only
+      // honest moment to offer a rating. Recorded here (not in the rating
+      // card) so the offer follows the usage, never the other way round.
+      markAppUsed();
       leaveView();
     }
   }, [session.closedReason, leaveView]);
@@ -241,11 +246,10 @@ function AppContent() {
     return <Suspense fallback={<RouteSkeleton />}><Legal page="terms" /></Suspense>;
   }
 
-  // About — the "what is this / why trust it" page (a real route now; the
-  // footer's About link used to land on the 404).
-  if (typeof window !== 'undefined' && window.location.pathname === '/about') {
-    return <Suspense fallback={<RouteSkeleton />}><About /></Suspense>;
-  }
+  // /about is NOT an app route: the server (dev parity with production and
+  // vercel.json) serves the static SEO guide at its canonical URL, so the
+  // app never mounts there. An in-app About component would be a second,
+  // unreachable copy of that page.
 
   if (typeof window !== 'undefined' && window.location.pathname !== '/' && !window.location.pathname.startsWith('/s/')) {
     // The 404 is a DESIGNED screen, not a dead end: brand, honest state,
@@ -286,6 +290,7 @@ function AppContent() {
   return (
     <>
       <SingleScreenApp />
+      <InstallNudge />
       {disconnectToast && <DisconnectToast reason={disconnectToast} onDone={() => setDisconnectToast(null)} />}
     </>
   );
@@ -308,6 +313,7 @@ export default function App() {
         <I18nProvider>
           <SessionProvider>
             <SkipLink />
+            <OfflineBanner />
             <AppContent />
           </SessionProvider>
         </I18nProvider>

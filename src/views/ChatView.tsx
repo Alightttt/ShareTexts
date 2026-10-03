@@ -19,6 +19,7 @@ import { DisconnectGlyph } from '../components/TransferIcons';
 import { IconButton3D } from '../components/IconButton3D';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { StayConnectedToggle, StayBadge } from '../components/StayConnectedToggle';
+import { Tooltip } from '../components/spaceui/tooltip';
 import { cn, formatBytes, sanitizeDeviceName } from '../lib/utils';
 import { hapticSuccess } from '../lib/haptics';
 import { Attachment } from '../types';
@@ -31,6 +32,11 @@ import { generateTOTP, getTOTPRemainingSeconds } from '../lib/totp';
 import { saveDraft, loadDraft, clearDraft, ComposerDraft } from '../lib/draftStore';
 import { useFocusTrap } from '../lib/useFocusTrap';
 import { useI18n } from '../lib/i18n';
+import { applyFormat, type FormatKind } from '../lib/richText';
+
+/** Shortcut hint glyph for tooltips and kbd chips — ⌘ on Apple platforms,
+ *  Ctrl everywhere else (the handlers accept either). */
+const modKey = /Mac|iPhone|iPad|iPod/i.test(typeof navigator !== 'undefined' ? navigator.userAgent : '') ? '⌘' : 'Ctrl';
 import { DevicePicker, RecipientSummary } from '../components/DevicePicker';
 import { hapticArrive } from '../lib/haptics';
 import { RecipientStrip } from '../components/RecipientStrip';
@@ -154,6 +160,27 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   // Composer teaching: once the user has interacted with the composer in any
   // way (typed, pasted, dropped, attached), the hint row never returns.
   const [composerTouched, setComposerTouched] = useState(false);
+
+  /**
+   * Formatting buttons operate on the textarea's OWN value and selection —
+   * the editor stays a plain textarea, so undo, autocorrect, dictation and
+   * paste all keep working natively, and formatting is just text it inserts.
+   * The caret is restored inside the new markers on the next frame.
+   */
+  const applyFormatting = React.useCallback((kind: FormatKind) => {
+    const el = textareaRef.current;
+    const start = el?.selectionStart ?? inputText.length;
+    const end = el?.selectionEnd ?? start;
+    const next = applyFormat(inputText, start, end, kind);
+    setComposerTouched(true);
+    setInputText(next.value);
+    requestAnimationFrame(() => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      ta.focus();
+      try { ta.setSelectionRange(next.selStart, next.selEnd); } catch { /* detached */ }
+    });
+  }, [inputText]);
   // "Other device connected" toast — the alert both sides get when the
   // room opens, so the creator sees the joiner arrive even when the
   // handshake was too fast to catch on the pairing screen.
@@ -1674,6 +1701,48 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 </motion.div>
               )}
             </AnimatePresence>
+            {/* Formatting row: it arrives when there is something to format
+                and leaves with the text, so the composer stays a single quiet
+                pill for the common case (type, send). Four 40px keys, each
+                with its own accessible name; the same four glyphs the demo's
+                laptop screen shows, because it IS this editor. */}
+            <AnimatePresence>
+              {(inputText.length > 0 || composerTouched) && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                  className="overflow-hidden"
+                >
+                  <div
+                    role="group"
+                    aria-label={t('edit.group')}
+                    data-testid="composer-format"
+                    className="flex items-center gap-0.5 px-1.5 pt-1.5"
+                  >
+                    {([
+                      ['bold', t('edit.bold'), <span key="b" className="text-[14px] font-bold leading-none">B</span>, [modKey, 'B']],
+                      ['italic', t('edit.italic'), <span key="i" className="text-[14px] font-semibold italic leading-none">I</span>, [modKey, 'I']],
+                      ['code', t('edit.code'), <span key="c" className="font-mono text-[12px] leading-none">{'</>'}</span>, [modKey, 'E']],
+                      ['list', t('edit.list'), <span key="l" className="text-[15px] leading-none">≡</span>, [modKey, '⇧', 'L']],
+                    ] as const).map(([kind, label, glyph, keys]) => (
+                      <Tooltip key={kind} label={label} keys={[...keys]}>
+                        <button
+                          type="button"
+                          aria-label={label}
+                          data-testid={`format-${kind}`}
+                          onClick={() => applyFormatting(kind)}
+                          className="w-10 h-10 rounded-[10px] flex items-center justify-center text-apple-ink-muted dark:text-white/50 hover:text-ember dark:hover:text-[#fb9243] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:scale-95 transition-all"
+                        >
+                          {glyph}
+                        </button>
+                      </Tooltip>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
             <div className="flex items-center gap-1.5 pl-2.5 pr-[5px] relative">
               <textarea
                 ref={textareaRef}
@@ -1683,6 +1752,14 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 onChange={(e) => { setComposerTouched(true); setInputText(e.target.value); }}
                 onPaste={(e) => { setComposerTouched(true); handlePaste(e); }}
                 onKeyDown={(e) => {
+                  // Formatting shortcuts, the ones every editor shares.
+                  if ((e.metaKey || e.ctrlKey) && !e.altKey) {
+                    const k = e.key.toLowerCase();
+                    if (k === 'b') { e.preventDefault(); applyFormatting('bold'); return; }
+                    if (k === 'i') { e.preventDefault(); applyFormatting('italic'); return; }
+                    if (k === 'e') { e.preventDefault(); applyFormatting('code'); return; }
+                    if (k === 'l' && e.shiftKey) { e.preventDefault(); applyFormatting('list'); return; }
+                  }
                   // Never send while an IME composition is active (Hindi,
                   // Chinese, Japanese, Korean…): Enter there commits the
                   // candidate, it doesn't submit the message.

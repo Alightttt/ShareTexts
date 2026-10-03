@@ -509,6 +509,65 @@ const ja: Dict = {
   'space.joinBadLink': 'スペースのリンクではないようです。# の後ろも含めてリンク全体をコピーしてください。',
   'space.joinRejected': '開けませんでした — キーがこのスペースと一致しません。',
   'space.joinClosed': 'このスペースはすでに閉じています。',
+
+  // ── landing: the looping device demo ────────────────────────────────
+  'demo.c1': 'ノートPCでShareTextsを開きます。',
+  'demo.c2': 'スマホでコードを入力します。',
+  'demo.c3': 'つながりました。アプリもアカウントも不要。',
+  'demo.c4': 'メモも写真もファイルも送れます。',
+  'demo.c5': '2台の間を直接移動します。',
+  'demo.c6': '暗号化されたまま、すぐ届きます。',
+  'demo.c7': 'ルームを閉じれば、何も残りません。',
+  'demo.laptopAlt': 'デモルームのノートPCで動くShareTexts',
+  'demo.phoneAlt': 'デモルームのスマホで動くShareTexts',
+  'demo.roomCode': 'ルームコード',
+  'demo.thisDevice': 'この端末',
+  'demo.thatDevice': 'スマホ',
+  'demo.ready': '準備OK',
+  'demo.waiting': '待機中',
+  'demo.connected': '接続済み',
+  'demo.stay': '接続を保つ',
+  'demo.room': 'ルーム',
+  'demo.twoDevices': '2台 · 接続済み',
+  'demo.oneDevice': '1台 · 待機中',
+  'demo.encrypted': '暗号化',
+  'demo.note': '明日の計画はこちら。',
+  'demo.reply': '受け取りました 👍',
+  'demo.placeholder': 'メッセージ',
+  'demo.receiving': '受信中…',
+  'demo.closed': 'ルームを閉じました',
+  'demo.joinTitle': 'コードを入力',
+  'demo.joinHint': 'コードはもう一方の端末にあります。',
+  'demo.join': '参加',
+  'demo.rail': 'デモの進行 — 好きなステップへ',
+  'demo.play': 'デモを再生',
+  'demo.pause': 'デモを一時停止',
+
+  // ── install (PWA) ───────────────────────────────────────────────────
+  'install.title': 'ShareTextsを手元に',
+  'install.body': 'アプリのように端末に追加できます。ホーム画面からワンタップ。ストアもアカウントも不要です。',
+  'install.cta': 'インストール',
+  'install.iosBody': '共有メニューを開き「ホーム画面に追加」を選びます。アプリのようにワンタップで開きます。',
+  'install.later': 'あとで',
+  'install.never': '今後表示しない',
+
+  // ── rating ──────────────────────────────────────────────────────────
+  'rate.title': '使い心地はいかがですか？',
+  'rate.body': '評価は、次に何を直すかの判断になります。',
+  'rate.thanks': 'ありがとうございます。',
+  'rate.average': '5点中{avg}',
+  'rate.votes': '評価{count}件',
+  'rate.star': '5点中{n}で評価',
+  'rate.dismiss': 'あとで',
+
+  // ── composer ────────────────────────────────────────────────────────
+  'edit.bold': '太字',
+  'edit.italic': '斜体',
+  'edit.code': 'コード',
+  'edit.list': 'リスト',
+  'edit.group': '書式',
+  'net.offline': 'オフラインです。転送には接続が必要です。',
+
 };
 
 export default ja;

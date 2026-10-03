@@ -39,6 +39,8 @@ import { signalingConfigIssue, prewarmSignaling } from '../lib/socket';
 import { loadStoredSession } from '../lib/session/persistence';
 import { ConnectError, describeConnectFailure, errCodeToKey } from '../lib/errors';
 import { HeroTransferScene } from '../components/HeroTransferScene';
+import { HeroDeviceDemo } from '../components/HeroDeviceDemo';
+import { RateCard } from '../components/spaceui/rating';
 import { useLiveStats } from '../lib/useLiveStats';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { SettingsOverlay } from '../components/SettingsOverlay';
@@ -909,6 +911,12 @@ export function SingleScreenApp() {
                   </button>
                 </div>
               </div>
+              {/* The rating, and only for people who have actually used the
+                  app (a room that ended): a quiet one-line row where their
+                  eye already is when they come back. Inline, one tap to
+                  snooze, one tap to never ask again — no modal, no badge, no
+                  interruption of anything else on this screen. */}
+              <RateCard autoShow className="order-[45] mt-5 w-full" />
               {/* Three-glyph teaching strip — mobile only (desktop's right
                   pane already carries the numbered steps). Duolingo's
                   "you always know what's next" in three glyphs and the
@@ -935,15 +943,19 @@ export function SingleScreenApp() {
                   the real connected UI. Scales itself; breaks out of the
                   hero column to use the full half-pane width. Desktop shows
                   the same scene in the room pane, so hide it here. */}
-              {/* Mobile: sized to sit INSIDE the column borders — slightly
-                  narrower than the text above so nothing touches the edges.
-                  order-5 keeps it last inside this ordered flex column. The
-                  bottom margin (not the old negative one) keeps clear air
-                  between the image and the "Open ShareTexts in another
-                  device" row that follows. */}
+              {/* Mobile: the same demo the desktop hero runs, in its
+                  phone-only shape — one story, one component, two sizes. A
+                  laptop mockup at 320px would be unreadable mush; the phone
+                  standing alone is the honest crop. order-5 keeps it last
+                  inside this ordered flex column, and the bottom margin
+                  keeps clear air before the nearby-devices row. */}
               <div className="st-hide-landscape order-5 lg:hidden mt-4 sm:mt-8 mb-5 flex justify-center">
                 <div className="w-full max-w-[340px] px-1">
-                  <HeroTransferScene />
+                  {/* Only mounted when the layout is actually the phone one.
+                      `lg:hidden` alone would leave a second, invisible copy
+                      of the whole demo in the desktop DOM — display:none
+                      hides it from the eye, not from the tree. */}
+                  {!isDesktopLayout && <HeroDeviceDemo variant="phone" />}
                 </div>
               </div>
               {/* Nearby device discovery — an OPTIONAL extra path. The old
@@ -954,7 +966,14 @@ export function SingleScreenApp() {
               {/* On mobile the hero image already carries mb-5 before this
                   row — a second mt-10 stacked on top read as a dead gap.
                   mt-2 keeps one breath of air, nothing more. */}
-              <div className="order-6 mt-8 w-full flex flex-col items-center lg:items-start">
+              {/* Nearby discovery is an OPTIONAL shortcut, and it is the
+                  last block in the column: on a window too short to hold the
+                  whole landing it would be sliced in half at the fold, which
+                  reads as a broken page. Shown when there is room for it,
+                  stepped aside when there is not — the Send/Receive path
+                  above is unaffected, and the pairing screen carries the
+                  same hint anyway. */}
+              <div className="order-6 mt-8 w-full flex flex-col items-center lg:[@media(max-height:999px)]:hidden lg:items-start">
                 <div className="w-full max-w-md lg:max-w-none">
                   <NearbyDevices onStatus={setNearbyStatus} />
                 </div>
@@ -1652,11 +1671,13 @@ export function SingleScreenApp() {
             {/* Left: the words and the actions (headline → subline → live
                 tracker → Send/Receive → space + nearby). */}
             <div className="w-full min-w-0">{idleHeroNode}</div>
-            {/* Right: the product itself — the same scene the pairing flow
-                uses, so what you see IS what you'll operate. On a very short
-                window the landing simply scrolls to it (main is scrollable). */}
+            {/* Right: the product, running. Not a screenshot and not a
+                still: the demo below plays the whole story — open, pair,
+                send, arrive, close — on two live device screens, with a
+                caption on the same clock. On a very short window the
+                landing simply scrolls to it (main is scrollable). */}
             <div className="w-full max-w-[560px] mx-auto">
-              <HeroTransferScene />
+              <HeroDeviceDemo />
             </div>
           </div>
         </div>

@@ -5,6 +5,7 @@ import App from './App.tsx';
 import { installDiagGlobal, diag } from './lib/diag';
 import { prewarmSignaling, signalingHttpBaseForTelemetry } from './lib/socket';
 import { productEvent } from './lib/telemetry';
+import { initInstallCapture } from './lib/pwaInstall';
 import './index.css';
 
 // Product telemetry: one anonymous page_view per load (see lib/telemetry.ts
@@ -32,6 +33,11 @@ window.addEventListener('error', (e) => {
 // joining with a code) skips the cold TLS/upgrade handshake when the user
 // finally commits. The connection is reused as-is by both flows.
 prewarmSignaling();
+
+// Listen for the browser's install offer from the very first tick: Chromium
+// can fire beforeinstallprompt well before React mounts the nudge, and an
+// offer that arrives unattended is an offer we can never show again.
+initInstallCapture();
 
 // Remove the branded loading shell now that React is painting
 const shell = document.getElementById("loading-shell");

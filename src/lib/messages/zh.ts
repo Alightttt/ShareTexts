@@ -509,6 +509,65 @@ const zh: Dict = {
   'space.joinBadLink': '这不像空间链接。请复制完整链接，包括 # 后面的部分。',
   'space.joinRejected': '无法打开——密钥与此空间不匹配。',
   'space.joinClosed': '该空间已经关闭。',
+
+  // ── landing: the looping device demo ────────────────────────────────
+  'demo.c1': '在笔记本上打开 ShareTexts。',
+  'demo.c2': '在手机上输入这串代码。',
+  'demo.c3': '已连接。不用装应用，不用注册。',
+  'demo.c4': '发一段话、一张照片或一个文件。',
+  'demo.c5': '它直接在两台设备之间传输。',
+  'demo.c6': '加密传输，瞬间到达。',
+  'demo.c7': '关闭房间，什么都不留。',
+  'demo.laptopAlt': '演示房间中笔记本上运行的 ShareTexts',
+  'demo.phoneAlt': '演示房间中手机上运行的 ShareTexts',
+  'demo.roomCode': '房间码',
+  'demo.thisDevice': '本机',
+  'demo.thatDevice': '手机',
+  'demo.ready': '就绪',
+  'demo.waiting': '等待中',
+  'demo.connected': '已连接',
+  'demo.stay': '保持连接',
+  'demo.room': '房间',
+  'demo.twoDevices': '2 台设备 · 已连接',
+  'demo.oneDevice': '1 台设备 · 等待中',
+  'demo.encrypted': '已加密',
+  'demo.note': '这是明天的安排。',
+  'demo.reply': '收到了，谢谢 👍',
+  'demo.placeholder': '消息',
+  'demo.receiving': '接收中…',
+  'demo.closed': '房间已关闭',
+  'demo.joinTitle': '输入代码',
+  'demo.joinHint': '代码在另一台设备上。',
+  'demo.join': '加入',
+  'demo.rail': '演示进度 — 跳到任意步骤',
+  'demo.play': '播放演示',
+  'demo.pause': '暂停演示',
+
+  // ── install (PWA) ───────────────────────────────────────────────────
+  'install.title': '把 ShareTexts 放在手边',
+  'install.body': '像应用一样添加到设备上：从主屏幕一点即开。不用商店，不用注册。',
+  'install.cta': '安装',
+  'install.iosBody': '打开分享菜单，选择“添加到主屏幕”。它会像应用一样一点即开。',
+  'install.later': '暂时不用',
+  'install.never': '不再提示',
+
+  // ── rating ──────────────────────────────────────────────────────────
+  'rate.title': '我们做得怎么样？',
+  'rate.body': '你的评分决定我们接下来先修什么。',
+  'rate.thanks': '谢谢 — 已记下。',
+  'rate.average': '5 分中的 {avg}',
+  'rate.votes': '{count} 次评分',
+  'rate.star': '评 {n} 分（满分 5）',
+  'rate.dismiss': '暂时不用',
+
+  // ── composer ────────────────────────────────────────────────────────
+  'edit.bold': '加粗',
+  'edit.italic': '斜体',
+  'edit.code': '代码',
+  'edit.list': '列表',
+  'edit.group': '格式',
+  'net.offline': '已离线 — 传输需要网络连接。',
+
 };
 
 export default zh;

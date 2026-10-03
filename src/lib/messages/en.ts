@@ -539,6 +539,65 @@ const en = {
   'space.joinRejected': "Couldn't open it — the key doesn't match this space.",
   'space.joinClosed': 'This space has already closed.',
 
+
+  // ── landing: the looping device demo ───────────────────────────────
+  'demo.c1': 'Open ShareTexts on your laptop.',
+  'demo.c2': 'Type the code on your phone.',
+  'demo.c3': 'Connected. No app, no account.',
+  'demo.c4': 'Send a note, a photo, or a file.',
+  'demo.c5': 'It travels straight between the two.',
+  'demo.c6': 'It lands in a moment, encrypted.',
+  'demo.c7': 'Close the room. Nothing is kept.',
+  'demo.laptopAlt': 'ShareTexts running on a laptop, inside a demo room',
+  'demo.phoneAlt': 'ShareTexts running on a phone, inside a demo room',
+  'demo.roomCode': 'Room code',
+  'demo.thisDevice': 'This device',
+  'demo.thatDevice': 'Phone',
+  'demo.ready': 'Ready',
+  'demo.waiting': 'Waiting',
+  'demo.connected': 'Connected',
+  'demo.stay': 'Stay connected',
+  'demo.room': 'Room',
+  'demo.twoDevices': '2 devices · connected',
+  'demo.oneDevice': '1 device · waiting',
+  'demo.encrypted': 'Encrypted',
+  'demo.note': "Here's the plan for tomorrow.",
+  'demo.reply': 'Got it — thanks 👍',
+  'demo.placeholder': 'Message',
+  'demo.receiving': 'Receiving…',
+  'demo.closed': 'Room closed',
+  'demo.joinTitle': 'Enter the code',
+  'demo.joinHint': 'It is on the other device.',
+  'demo.join': 'Join',
+  'demo.rail': 'Demo progress — jump to any step',
+  'demo.play': 'Play the demo',
+  'demo.pause': 'Pause the demo',
+
+  // ── install (PWA) — offered, never pushed ──────────────────────────
+  'install.title': 'Keep ShareTexts handy',
+  'install.body': 'Add it to your device like an app — one tap from the home screen. No store, no account.',
+  'install.cta': 'Install',
+  'install.iosBody': 'Open the Share menu, then choose “Add to Home Screen”. It opens like an app, in one tap.',
+  'install.later': 'Not now',
+  'install.never': 'Don\u2019t ask again',
+
+  // ── rating — small, optional, honest ───────────────────────────────
+  'rate.title': 'How are we doing?',
+  'rate.body': 'Your rating shapes what we fix next.',
+  'rate.thanks': 'Thanks — noted.',
+  'rate.average': '{avg} out of 5',
+  'rate.votes': '{count} ratings',
+  'rate.star': 'Rate {n} out of 5',
+  'rate.dismiss': 'Not now',
+
+  // ── composer: light formatting ─────────────────────────────────────
+  'edit.bold': 'Bold',
+  'edit.italic': 'Italic',
+  'edit.code': 'Code',
+  'edit.list': 'List',
+  'edit.group': 'Formatting',
+  'net.offline': 'You\'re offline — transfers need a connection.',
+
 };
 
 export default en;

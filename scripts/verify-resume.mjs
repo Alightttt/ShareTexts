@@ -39,7 +39,8 @@ const TMP = 'scripts/tmp-resume-e2e.bin';
 writeFileSync(TMP, Buffer.alloc(60 * 1024 * 1024, 9));
 const attachFile = async (page, name, path) => {
   const fcP = page.waitForEvent('filechooser', { timeout: 8000 });
-  await page.locator('button:has(svg.lucide-plus)').first().click();
+  // Selector by testid — the + glyph moved from lucide-plus to Gravity's Plus.
+  await page.locator('[data-testid="add-attachment"]').first().click();
   await sleep(250);
   await page.locator('button:has-text("File")').first().click();
   const fc = await fcP;

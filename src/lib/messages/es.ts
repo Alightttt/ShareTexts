@@ -510,6 +510,65 @@ const es: Dict = {
   'space.joinBadLink': 'Eso no parece un enlace de espacio. Copia el enlace completo, incluida la parte después de #.',
   'space.joinRejected': 'No se pudo abrir: la clave no corresponde a este espacio.',
   'space.joinClosed': 'Este espacio ya se cerró.',
+
+  // ── landing: la demo en bucle ──────────────────────────────────────
+  'demo.c1': 'Abre ShareTexts en tu portátil.',
+  'demo.c2': 'Escribe el código en tu móvil.',
+  'demo.c3': 'Conectados. Sin app, sin cuenta.',
+  'demo.c4': 'Envía una nota, una foto o un archivo.',
+  'demo.c5': 'Viaja directo entre los dos.',
+  'demo.c6': 'Llega en un instante, cifrado.',
+  'demo.c7': 'Cierra la sala. No se guarda nada.',
+  'demo.laptopAlt': 'ShareTexts en un portátil, dentro de una sala de demostración',
+  'demo.phoneAlt': 'ShareTexts en un móvil, dentro de una sala de demostración',
+  'demo.roomCode': 'Código de sala',
+  'demo.thisDevice': 'Este dispositivo',
+  'demo.thatDevice': 'Móvil',
+  'demo.ready': 'Listo',
+  'demo.waiting': 'Esperando',
+  'demo.connected': 'Conectado',
+  'demo.stay': 'Mantener conexión',
+  'demo.room': 'Sala',
+  'demo.twoDevices': '2 dispositivos · conectados',
+  'demo.oneDevice': '1 dispositivo · esperando',
+  'demo.encrypted': 'Cifrado',
+  'demo.note': 'Aquí tienes el plan para mañana.',
+  'demo.reply': 'Recibido — gracias 👍',
+  'demo.placeholder': 'Mensaje',
+  'demo.receiving': 'Recibiendo…',
+  'demo.closed': 'Sala cerrada',
+  'demo.joinTitle': 'Introduce el código',
+  'demo.joinHint': 'Está en el otro dispositivo.',
+  'demo.join': 'Unirse',
+  'demo.rail': 'Progreso de la demo — salta a cualquier paso',
+  'demo.play': 'Reproducir la demo',
+  'demo.pause': 'Pausar la demo',
+
+  // ── instalar (PWA): se ofrece, no se impone ─────────────────────────
+  'install.title': 'Ten ShareTexts a mano',
+  'install.body': 'Añádelo a tu dispositivo como una app: un toque desde la pantalla de inicio. Sin tienda, sin cuenta.',
+  'install.cta': 'Instalar',
+  'install.iosBody': 'Abre el menú Compartir y elige «Añadir a pantalla de inicio». Se abre como una app, con un toque.',
+  'install.later': 'Ahora no',
+  'install.never': 'No volver a preguntar',
+
+  // ── valoración: pequeña, opcional, honesta ──────────────────────────
+  'rate.title': '¿Qué tal lo estamos haciendo?',
+  'rate.body': 'Tu valoración decide qué arreglamos después.',
+  'rate.thanks': 'Gracias — anotado.',
+  'rate.average': '{avg} de 5',
+  'rate.votes': '{count} valoraciones',
+  'rate.star': 'Valorar con {n} de 5',
+  'rate.dismiss': 'Ahora no',
+
+  // ── compositor: formato ligero ──────────────────────────────────────
+  'edit.bold': 'Negrita',
+  'edit.italic': 'Cursiva',
+  'edit.code': 'Código',
+  'edit.list': 'Lista',
+  'edit.group': 'Formato',
+  'net.offline': 'Sin conexión — las transferencias necesitan internet.',
+
 };
 
 export default es;

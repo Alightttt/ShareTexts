@@ -509,6 +509,65 @@ const hi: Dict = {
   'space.joinBadLink': 'यह स्पेस लिंक नहीं लगता। पूरा लिंक कॉपी करें, # के बाद वाला हिस्सा भी।',
   'space.joinRejected': 'खुल नहीं सका — यह कुंजी इस स्पेस से मेल नहीं खाती।',
   'space.joinClosed': 'यह स्पेस पहले ही बंद हो चुका है।',
+
+  // ── landing: the looping device demo ────────────────────────────────
+  'demo.c1': 'अपने लैपटॉप पर ShareTexts खोलें।',
+  'demo.c2': 'फ़ोन पर कोड टाइप करें।',
+  'demo.c3': 'कनेक्ट हो गया। न ऐप, न अकाउंट।',
+  'demo.c4': 'नोट, फ़ोटो या फ़ाइल भेजें।',
+  'demo.c5': 'यह सीधे दोनों के बीच जाता है।',
+  'demo.c6': 'पल भर में पहुँचता है, एन्क्रिप्टेड।',
+  'demo.c7': 'रूम बंद करें। कुछ नहीं रहता।',
+  'demo.laptopAlt': 'डेमो रूम में लैपटॉप पर चलता ShareTexts',
+  'demo.phoneAlt': 'डेमो रूम में फ़ोन पर चलता ShareTexts',
+  'demo.roomCode': 'रूम कोड',
+  'demo.thisDevice': 'यह डिवाइस',
+  'demo.thatDevice': 'फ़ोन',
+  'demo.ready': 'तैयार',
+  'demo.waiting': 'इंतज़ार',
+  'demo.connected': 'कनेक्टेड',
+  'demo.stay': 'कनेक्टेड रहें',
+  'demo.room': 'रूम',
+  'demo.twoDevices': '2 डिवाइस · कनेक्टेड',
+  'demo.oneDevice': '1 डिवाइस · इंतज़ार',
+  'demo.encrypted': 'एन्क्रिप्टेड',
+  'demo.note': 'कल का प्लान यह है।',
+  'demo.reply': 'मिल गया — शुक्रिया 👍',
+  'demo.placeholder': 'मैसेज',
+  'demo.receiving': 'रिसीव हो रहा है…',
+  'demo.closed': 'रूम बंद',
+  'demo.joinTitle': 'कोड डालें',
+  'demo.joinHint': 'कोड दूसरे डिवाइस पर है।',
+  'demo.join': 'जॉइन करें',
+  'demo.rail': 'डेमो प्रोग्रेस — किसी भी स्टेप पर जाएँ',
+  'demo.play': 'डेमो चलाएँ',
+  'demo.pause': 'डेमो रोकें',
+
+  // ── install (PWA): offered, never pushed ────────────────────────────
+  'install.title': 'ShareTexts पास रखें',
+  'install.body': 'इसे ऐप की तरह अपने डिवाइस पर जोड़ें — होम स्क्रीन से एक टैप। न स्टोर, न अकाउंट।',
+  'install.cta': 'इंस्टॉल करें',
+  'install.iosBody': 'शेयर मेन्यू खोलें और “Add to Home Screen” चुनें। यह ऐप की तरह, एक टैप में खुलता है।',
+  'install.later': 'अभी नहीं',
+  'install.never': 'दोबारा न पूछें',
+
+  // ── rating ──────────────────────────────────────────────────────────
+  'rate.title': 'हम कैसा कर रहे हैं?',
+  'rate.body': 'आपकी रेटिंग तय करती है कि आगे क्या सुधारें।',
+  'rate.thanks': 'शुक्रिया — नोट कर लिया।',
+  'rate.average': '5 में से {avg}',
+  'rate.votes': '{count} रेटिंग',
+  'rate.star': '5 में से {n} दें',
+  'rate.dismiss': 'अभी नहीं',
+
+  // ── composer: light formatting ──────────────────────────────────────
+  'edit.bold': 'बोल्ड',
+  'edit.italic': 'इटैलिक',
+  'edit.code': 'कोड',
+  'edit.list': 'लिस्ट',
+  'edit.group': 'फ़ॉर्मैटिंग',
+  'net.offline': 'ऑफ़लाइन — ट्रांसफर के लिए कनेक्शन चाहिए।',
+
 };
 
 export default hi;

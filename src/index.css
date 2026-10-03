@@ -540,6 +540,144 @@ html.dark .st-dotfield::after {
   .st-skeleton-brand { animation: none; opacity: 1; }
 }
 
+/* ── Platform marquee ────────────────────────────────────────────────────
+   One transform-only loop on a duplicated track (half the distance, then
+   repeat). Paused on hover/focus so a reader can stop it by looking at it,
+   masked at both ends so items dissolve rather than being cut, and frozen
+   into a wrapped, centred list for reduced motion — the fact stays, the
+   movement goes. */
+.st-marquee-mask {
+  mask-image: linear-gradient(90deg, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 44px, #000 calc(100% - 44px), transparent 100%);
+}
+.st-marquee {
+  animation: st-marquee 48s linear infinite;
+}
+.st-marquee:hover,
+.st-marquee:focus-within {
+  animation-play-state: paused;
+}
+@keyframes st-marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-50%, 0, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-marquee {
+    animation: none;
+    width: auto !important;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .st-reduced-hidden { display: none; }
+}
+
+/* ── Tooltip: one 8px rise, 140ms ────────────────────────────────────────
+   The bubble is positioned with left:50% and centered INSIDE the keyframe
+   (both fill keeps translate(-50%, 0) afterwards), so the animation owns
+   transform outright and never fights a Tailwind translate utility. */
+@keyframes st-tip-in {
+  from { opacity: 0; transform: translate(-50%, 3px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+.st-tooltip {
+  animation: st-tip-in 140ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-tooltip { animation-duration: 1ms; }
+}
+
+/* ── Edge fade: horizontal scrollers that dissolve at their ends ─────────
+   For overflow strips (Docs' section pills) that run to the screen edge:
+   a 24px mask so a cut-off pill reads as "there is more", not "this is
+   broken". Applied to the scroll container — the mask stays fixed at the
+   edges while content slides beneath it. */
+.st-edge-fade {
+  mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+}
+
+/* ── DataFlow: the packet riding the wire ────────────────────────────────
+   The path is declared with pathLength=100 and a 14/86 dash, so animating
+   dashoffset from 0 to −100 slides the dash exactly one full circuit and
+   loops seamlessly — the dash re-enters where it left. Dashoffset is a
+   paint-only change on a ~20px-tall layer, cheap enough to run unguarded.
+   Under reduced motion the dash simply sits at the wire's start: one
+   ember segment on the dotted line, no movement. */
+@keyframes st-flow-pulse {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -100; }
+}
+.st-flow-pulse {
+  animation: st-flow-pulse 2.6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-flow-pulse { animation: none; }
+}
+
+/* ── Hero demo: the beat that is currently playing ───────────────────────
+   One scaleX, origin left, duration set inline from the step's own length.
+   The element is keyed per step, so every beat starts its own fill instead
+   of inheriting a half-drawn one; pausing the demo pauses the fill, because
+   the animation is what the timeline is. Transform-only: no layout, no
+   paint on the track behind it. */
+@keyframes st-demo-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.st-demo-fill {
+  animation: st-demo-fill 2400ms linear both;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* No animation, no fake progress: the beat is simply "here". */
+  .st-demo-fill { animation: none; }
+}
+
+/* ── Theme change: one cross-fade, old layer only ────────────────────────
+   The registry version blurs BOTH snapshots, which means the arriving
+   theme is soft for the whole transition — the page looks out of focus
+   exactly when the user is looking at it. Here only the OUTGOING layer
+   blurs away; the new one arrives crisp, and the blur lives ~240ms instead
+   of half a second. Views drive ::view-transition-old/new(root); browsers
+   without view transitions never see these rules at all, they just get the
+   instant class flip. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  mix-blend-mode: normal;
+}
+::view-transition-image-pair(root) {
+  isolation: auto;
+}
+/* The keyframe NAMES arrive through custom properties, not through a gated
+   selector. A compound selector with an ancestor
+   (`html.st-theme-vt::view-transition-old(root)`) does NOT match the
+   view-transition pseudo tree in Chrome — it fails silently, which is how a
+   "smooth theme cross-fade" quietly becomes a hard flip. Custom properties
+   do inherit into that tree, so the gate lives on <html> and the animation
+   reads it from there. Verified with document.getAnimations(): the two
+   pseudo-element animations are present for exactly the switch, at the
+   duration set by JS (320ms desktop / 240ms low-power). */
+::view-transition-old(root) {
+  z-index: 1;
+  animation: var(--st-vt-out, none) var(--st-vt-dur, 320ms) cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+::view-transition-new(root) {
+  z-index: 2;
+  animation: var(--st-vt-in, none) var(--st-vt-dur, 320ms) cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+html[st-theme-vt] {
+  --st-vt-out: st-theme-out;
+  --st-vt-in: st-theme-in;
+}
+@keyframes st-theme-out {
+  from { opacity: 1; filter: blur(0px); }
+  to { opacity: 0; filter: blur(var(--st-vt-blur, 7px)); }
+}
+@keyframes st-theme-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 
 /* ── Scrollbar — desktop only, quiet ─────────────────────────────────── */
 @media (min-width: 768px) and (hover: hover) and (pointer: fine) {

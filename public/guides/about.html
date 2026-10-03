@@ -166,6 +166,56 @@
     </section>
   </article></main>
 
-  <footer class="footer"><p><a href="/">ShareTexts</a> — The temporary bridge between your devices.</p></footer>
+  <footer class="footer-rich">
+    <div class="footer-grid">
+      <div>
+        <a href="/" class="footer-brand">
+          <svg viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <defs>
+              <linearGradient id="ember-f" x1="24" y1="20" x2="216" y2="236" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#feab30"/>
+                <stop offset="0.55" stop-color="#f97b3d"/>
+                <stop offset="1" stop-color="#f06413"/>
+              </linearGradient>
+            </defs>
+            <rect x="40" y="36" width="84" height="84" rx="24" fill="url(#ember-f)"/>
+            <rect x="132" y="136" width="84" height="84" rx="24" fill="url(#ember-f)"/>
+            <path d="M110 106 L146 142" stroke="url(#ember-f)" stroke-width="28" stroke-linecap="round"/>
+          </svg>
+          ShareTexts
+        </a>
+        <p class="footer-blurb">Move text, photos and files between your own devices — phone to laptop, iPhone to Windows — in the browser you already have.</p>
+      </div>
+      <nav class="footer-col" aria-label="Use it">
+        <h2>Use it</h2>
+        <ul>
+          <li><a href="/">Open ShareTexts</a></li>
+          <li><a href="/#main-content">Share with a code</a></li>
+          <li><a href="/docs">Temporary Space</a></li>
+        </ul>
+      </nav>
+      <nav class="footer-col" aria-label="Read">
+        <h2>Read</h2>
+        <ul>
+          <li><a href="/docs">Docs</a></li>
+          <li><a href="/guides/how-it-works.html">How it works</a></li>
+          <li><a href="/llms.txt">For developers</a></li>
+        </ul>
+      </nav>
+      <nav class="footer-col" aria-label="Terms">
+        <h2>Terms</h2>
+        <ul>
+          <li><a href="/guides/privacy.html">Privacy</a></li>
+          <li><a href="/terms">Terms of use</a></li>
+          <li><a href="https://x.com/0xalyt" target="_blank" rel="noopener noreferrer">Report a problem</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <p style="margin:0">© <span id="st-year">2026</span> ShareTexts · no account · nothing stored</p>
+      <a href="https://x.com/0xalyt" target="_blank" rel="noopener noreferrer">@0xalyt</a>
+    </div>
+    <script>document.getElementById('st-year').textContent = new Date().getFullYear();</script>
+  </footer>
 </body>
 </html>

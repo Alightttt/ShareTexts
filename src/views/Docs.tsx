@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
 import { ShareTextsLogo } from '../components/ShareTextsLogo';
 import { BrandLockup } from '../components/BrandLockup';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { FaqSection } from '../components/marketing/FaqSection';
+import { DataFlow } from '../components/marketing/DataFlow';
+import { PlatformStrip } from '../components/marketing/PlatformStrip';
+import { SiteFooter } from '../components/marketing/SiteFooter';
 import { useI18n } from '../lib/i18n';
 // Gravity UI icons aliased onto the names this file already uses.
 import {
   PaperPlane as Send, ArrowDownToLine as Inbox, Copy, ArrowDownToLine as Download,
   ArrowUpFromSquare as Share2, QrCode, Link as Link2, Shield, Thunderbolt as Zap,
-  Display as Monitor, Smartphone, ChevronRight, ChevronDown, Terminal, Key, Clock,
+  Display as Monitor, Smartphone, Terminal, Key, Clock,
   ArrowRotateRight as RefreshCw, CircleExclamation as AlertCircle, Check, Lock,
   ArrowLeft, Signal as Radio,
 } from '@gravity-ui/icons';
@@ -101,6 +104,12 @@ function OverviewSection() {
           </div>
         ))}
       </div>
+
+      {/* What actually happens to the bytes — the one misconception worth
+          correcting with a picture ("it goes through your servers"). */}
+      <DataFlow />
+
+      <PlatformStrip />
     </div>
   );
 }
@@ -563,9 +572,10 @@ function SecuritySection() {
 }
 
 function FAQSection() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-
-  const faqs = [
+  // The questions live here (the Docs page owns this content, and
+  // index.html publishes the same list as FAQPage structured data);
+  // FaqSection is only the reading experience.
+  const faqs: { q: string; a: string }[] = [
     {
       q: 'What is ShareTexts?',
       a: 'ShareTexts is a temporary bridge between two devices. Move text, links, photos, videos, and files directly from one screen to another. No app, no account, nothing kept.'
@@ -615,47 +625,7 @@ function FAQSection() {
     },
   ];
 
-  return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-[28px] sm:text-[32px] font-semibold text-apple-ink dark:text-white tracking-tight mb-4">
-          Frequently Asked Questions
-        </h2>
-      </div>
-
-      <div className="space-y-2">
-        {faqs.map((faq, i) => (
-          <div
-            key={i}
-            className="rounded-[12px] bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3 overflow-hidden"
-          >
-            <button
-              onClick={() => setOpenIndex(openIndex === i ? null : i)}
-              className="w-full flex items-center justify-between p-4 text-left"
-            >
-              <span className="text-[15px] font-medium text-apple-ink dark:text-white">{faq.q}</span>
-              {openIndex === i ? (
-                <ChevronDown className="w-4 h-4 text-apple-ink-muted shrink-0" />
-              ) : (
-                <ChevronRight className="w-4 h-4 text-apple-ink-muted shrink-0" />
-              )}
-            </button>
-            {openIndex === i && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="px-4 pb-4"
-              >
-                <p className="text-[14px] text-apple-ink-muted dark:text-white/60 leading-relaxed">{faq.a}</p>
-              </motion.div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  return <FaqSection items={faqs} heading="Frequently Asked Questions" />;
 }
 
 const SECTION_IDS = NAV_ITEMS.map(i => i.id) as string[];
@@ -795,8 +765,10 @@ export function Docs() {
 
         {/* Main Content */}
         <main className="flex-1 min-w-0 pb-20 md:pb-8">
-          {/* Mobile Navigation — horizontal scrollable pills at top of content */}
-          <div className="md:hidden -mx-6 px-6 mb-6 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+          {/* Mobile Navigation — horizontal scrollable pills at top of content.
+              The edge mask makes a cut-off pill read as "more this way",
+              not as a broken layout. */}
+          <div className="md:hidden st-edge-fade -mx-6 px-6 mb-6 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
             <div className="flex gap-2 min-w-max">
               {NAV_ITEMS.map((item) => (
                 <button
@@ -819,17 +791,9 @@ export function Docs() {
         </main>
       </div>
 
-      {/* Footer — same quiet links as the app's own footer, so every page
-          speaks the same navigation language. */}
-      <footer className="border-t border-apple-divider dark:border-white/[0.06]">
-        <div className="max-w-6xl mx-auto px-6 py-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px] font-medium text-apple-ink-muted dark:text-white/50">
-          <a href="/" className="hover:text-apple-ink dark:hover:text-white transition-colors">ShareTexts</a>
-          <a href="/about" className="hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.about')}</a>
-          <a href="/privacy" className="hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.privacy')}</a>
-          <a href="/terms" className="hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.terms')}</a>
-          <span className="ml-auto text-apple-ink-muted/50 dark:text-white/30">© {new Date().getFullYear()} ShareTexts</span>
-        </div>
-      </footer>
+      {/* Footer — the same one every long-form page carries, so the site
+          speaks one navigation language from anywhere. */}
+      <SiteFooter />
     </div>
   );
 }
