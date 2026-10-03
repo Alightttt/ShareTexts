@@ -48,7 +48,20 @@
     @media (prefers-color-scheme: dark) {
       .issue-symptom { color: var(--error); }
     }
-  </style>
+      /* ── Tap targets (40px, both axes) ────────────────────────────────────────────────────────
+       Every link clears 40px in BOTH dimensions, and no line moves:
+       · A link inside prose or a footer sentence grows its hit box with
+         vertical padding only. Vertical padding on an inline element expands
+         the clickable area but does NOT affect the line box, so the
+         paragraph keeps its rhythm and the page does not reflow.
+       · The header's back link is a flex item, so it takes min-height plus a
+         matching negative vertical margin: the target is 40px tall while the
+         row keeps the height it always had. */
+    .back { display: inline-flex; align-items: center; min-height: 40px; margin: -10px -6px -10px 0; }
+    article p a, article li a, article .callout a,
+    .steps a { padding: 11px 0; }
+    footer p a, .footer p a { padding: 12px 0; }
+</style>
 </head>
 <body>
   <header class="header"><div class="header-inner">

@@ -222,7 +222,12 @@ p strong { color: var(--text); font-weight: 600; }
    with min-height would stretch the paragraph's line. Vertical padding on
    an inline element expands the clickable area without touching the line
    height, so the prose keeps its rhythm and the target still clears 40px. */
-article p a, article li a, article .callout a { padding: 11px 0; }
+article p a, article li a, article .callout a,
+.steps a { padding: 11px 0; }
+/* The footer's brand link is the shortest text on any page (17px of ink), so
+   11px left it at 39px — a pixel under the contract. 12px clears it. Padding
+   on an inline element costs no layout, so the footer's own line is unmoved. */
+footer p a, .footer p a { padding: 12px 0; }
 
 /* ── Callout ─────────────────────────────────────────────────────────── */
 .callout {

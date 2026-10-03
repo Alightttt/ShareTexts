@@ -59,7 +59,19 @@
     .related-links a:hover { border-color: #f06413; transform: translateY(-1px); }
     footer { border-top: 1px solid rgba(29,29,31,.08); padding: 24px; text-align: center; font-size: 13px; color: #7d8998; }
     @media (max-width: 600px) { h1 { font-size: 26px; } h2 { font-size: 20px; } .vs-card { grid-template-columns: 1fr; } .related-links { grid-template-columns: 1fr; } }
-  </style>
+      /* ── Tap targets (40px, both axes) ────────────────────────────────────────────────────────
+       Every link clears 40px in BOTH dimensions, and no line moves:
+       · A link inside prose or a footer sentence grows its hit box with
+         vertical padding only. Vertical padding on an inline element expands
+         the clickable area but does NOT affect the line box, so the
+         paragraph keeps its rhythm and the page does not reflow.
+       · The header's back link is a flex item, so it takes min-height plus a
+         matching negative vertical margin: the target is 40px tall while the
+         row keeps the height it always had. */
+    .back { display: inline-flex; align-items: center; min-height: 40px; margin: -10px -6px -10px 0; }
+    article p a, article li a, article .callout a,
+    .steps a, footer p a, .footer p a { padding: 11px 0; }
+</style>
 </head>
 <body>
   <header><div class="hdr-inner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span>ShareTexts</span><a href="/" class="back">Home →</a></div></header>
