@@ -189,13 +189,69 @@ try {
     return {
       slide: !!slide,
       knob: slide ? !!slide.querySelector('button') : false,
-      windowRects: document.querySelectorAll('[data-testid="end-session"]').length,
-      dockTiles: document.querySelectorAll('[title] span[class*="rounded-full"]').length,
+      count: document.querySelectorAll('[data-testid="end-session"]').length,
+      toggles: document.querySelectorAll('[data-testid="theme-toggle"]').length,
+      label: slide ? slide.textContent.trim().slice(0, 30) : '',
     };
   });
   out('room rail: slide-to-confirm disconnect mounted', rail.slide && rail.knob);
+  out('room screen carries no theme toggle in its header', rail.toggles === 0, `toggles=${rail.toggles}`);
+  out('other screens still have one (landing header)', (await pb.evaluate(() => document.querySelectorAll('[data-testid="theme-toggle"]').length)) === 0, 'mobile room: 0 expected');
   await pa.screenshot({ path: path.join(OUT, '07-room-rail.png'), fullPage: false });
   await pb.screenshot({ path: path.join(OUT, '08-room-chat.png') });
+
+  // Empty-room starters: the room tells the user what to do instead of
+  // waiting. (Checked on B, which has received nothing yet.)
+  const starters = await pb.evaluate(() => ({
+    hi: !!document.querySelector('[data-testid="chat.suggest.hi"]'),
+    photo: !!document.querySelector('[data-testid="chat.suggest.photo"]'),
+    link: !!document.querySelector('[data-testid="chat.suggest.link"]'),
+  }));
+  out('empty room offers three one-tap starters', starters.hi && starters.photo && starters.link, JSON.stringify(starters));
+
+  // ── The slide has to be DRAGGED: a tap must not disconnect ──────────────
+  const slideBox = await pa.locator('[data-testid="end-session"]').boundingBox();
+  const knobBox = await pa.locator('[data-testid="end-session"] button').boundingBox();
+  if (slideBox && knobBox) {
+    await pa.mouse.move(knobBox.x + knobBox.width / 2, knobBox.y + knobBox.height / 2);
+    await pa.mouse.down();
+    await pa.mouse.up();
+    await sleep(400);
+    const stillHere = await pa.locator('[data-testid="end-session"]').count();
+    out('a tap on the knob does NOT disconnect', stillHere === 1, `slides=${stillHere}`);
+
+    // Now carry it past the arming line and release.
+    await pa.mouse.move(knobBox.x + knobBox.width / 2, knobBox.y + knobBox.height / 2);
+    await pa.mouse.down();
+    const endX = slideBox.x + slideBox.width - 6;
+    const steps = 8;
+    for (let i = 1; i <= steps; i++) {
+      await pa.mouse.move(knobBox.x + knobBox.width / 2 + ((endX - knobBox.x - knobBox.width / 2) * i) / steps, knobBox.y + knobBox.height / 2, { steps: 2 });
+      await sleep(40);
+    }
+    await pa.mouse.up();
+    let ended = false;
+    try {
+      await pa.waitForFunction(() => !document.querySelector('[data-testid="end-session"]'), null, { timeout: 12000 });
+      ended = true;
+    } catch { /* reported below */ }
+    out('dragging past the arming line ends the room', ended);
+    await pa.screenshot({ path: path.join(OUT, '09-after-slide-disconnect.png') });
+  } else {
+    out('dragging past the arming line ends the room', false, 'slide not measurable');
+  }
+
+  // Landing geometry again after the drag — the same one-screen composition.
+  const backHome = await pa.evaluate(() => ({
+    h1: !!document.querySelector('h1'),
+    spaceEntry: !!document.querySelector('[data-testid="space-entry"]'),
+    spaceLabel: document.querySelector('[data-testid="space-entry"]')?.textContent?.includes('Temporary Space') ?? false,
+    create: !!document.querySelector('[data-testid="space-create-entry"]'),
+    join: !!document.querySelector('[data-testid="space-join-entry"]'),
+  }));
+  out('landing returns after the drag with the Space section intact', backHome.h1 && backHome.spaceEntry && backHome.create && backHome.join, JSON.stringify(backHome));
+  out('Temporary Space reads as a labelled section', backHome.spaceLabel);
+  await pa.screenshot({ path: path.join(OUT, '10-landing-space-section.png') });
 
   const realErrors = errors.filter(e => !/favicon|Download the React DevTools|ResizeObserver loop/i.test(e));
   out('no console errors across all surfaces', realErrors.length === 0, realErrors.slice(0, 3).join(' | '));

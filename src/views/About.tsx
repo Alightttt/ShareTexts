@@ -8,11 +8,15 @@
  * localization of long-form content is a later project).
  */
 import React, { useEffect } from 'react';
+// Gravity UI icons aliased onto the names this file already uses; the pace
+// glyphs Gravity doesn't carry (wifi, slashed server) stay on lucide.
 import {
-  ArrowLeft, Smartphone, ArrowRightLeft, Inbox, ShieldCheck, Clock3,
-  Wifi, ServerOff, EyeOff, Check, BookOpen, FileText, ScrollText, ChevronRight,
-  Quote, BadgeCheck, AtSign,
-} from 'lucide-react';
+  ArrowLeft, Smartphone, ArrowRightArrowLeft as ArrowRightLeft,
+  ArrowDownToLine as Inbox, ShieldCheck, Clock as Clock3, EyeSlash as EyeOff,
+  Check, BookOpen, FileText, FileCheck, ChevronRight, QuoteOpen as Quote,
+  CircleCheck as BadgeCheck, At as AtSign,
+} from '@gravity-ui/icons';
+import { Wifi, ServerOff } from 'lucide-react';
 import { BrandLockup } from '../components/BrandLockup';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { TactileButton } from '../components/TactileButton';
@@ -183,8 +187,7 @@ export function About() {
             {[
               { href: '/docs', icon: <BookOpen className="w-4 h-4" />, title: 'How it works', hint: 'Pairing, transfers, Spaces, and the protocol in plain words.' },
               { href: '/privacy', icon: <ShieldCheck className="w-4 h-4" />, title: 'Privacy', hint: 'What we never collect, and the little we do.' },
-              { href: '/terms', icon: <ScrollText className="w-4 h-4" />, title: 'Terms', hint: 'The short version: your files are yours.' },
-              { href: '/about', icon: <FileText className="w-4 h-4" />, title: 'This page', hint: 'What ShareTexts is, in one screen.' },
+              { href: '/terms', icon: <FileCheck className="w-4 h-4" />, title: 'Terms', hint: 'The short version: your files are yours.' },
             ].map(row => (
               <a key={row.href} href={row.href} className="flex items-center gap-3.5 px-4 py-3.5 min-h-[44px] hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors">
                 <span className="shrink-0 w-8 h-8 rounded-[10px] bg-apple-parchment dark:bg-white/[0.07] text-apple-ink-muted dark:text-white/70 flex items-center justify-center" aria-hidden>{row.icon}</span>

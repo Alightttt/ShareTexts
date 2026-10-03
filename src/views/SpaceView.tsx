@@ -397,13 +397,25 @@ export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): 
               key={d.ms}
               role="radio" aria-checked={duration === d.ms}
               onClick={() => setDuration(d.ms)}
-              className={`rounded-[10px] px-2 py-2 text-[13.5px] font-semibold tabular-nums border transition-colors ${
+              className={`rounded-[12px] px-1.5 py-2.5 min-h-[52px] flex flex-col items-center justify-center border transition-colors ${
                 duration === d.ms
                   ? 'bg-apple-ink text-white dark:bg-white dark:text-night-900 border-apple-ink dark:border-white'
                   : 'bg-white dark:bg-white/[0.04] border-apple-divider dark:border-white/[0.1] text-apple-ink dark:text-white/80 hover:border-apple-ink/30 dark:hover:border-white/30'
               }`}
             >
-              {d.label}
+              <span className="text-[13.5px] font-semibold tabular-nums leading-none">{d.label}</span>
+              {/* "6 hours" is an amount; the CLOCK TIME is the decision. Each
+                  option carries when it would actually end (time only inside a
+                  day, weekday + time within three, date beyond) — no words to
+                  translate, just the honest timestamp. */}
+              <span className="mt-1 text-[10px] font-medium tabular-nums leading-none opacity-60 whitespace-nowrap">
+                {(() => {
+                  const end = new Date(Date.now() + d.ms);
+                  if (d.ms <= 24 * HOUR) return end.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+                  if (d.ms <= 72 * HOUR) return end.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+                  return end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                })()}
+              </span>
             </button>
           ))}
         </div>

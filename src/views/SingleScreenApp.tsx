@@ -49,11 +49,18 @@ import { productEvent } from '../lib/telemetry';
 import { useI18n } from '../lib/i18n';
 import { LanguageMenu } from '../components/LanguageMenu';
 import { cn, shortCodeOf, sanitizeDeviceName, formatBytes } from '../lib/utils';
+// Icons: Gravity UI's set, aliased onto the local names this file already
+// uses — one import line changes, no JSX churn. The three it has no
+// equivalent for (a slashed wifi, a slashed server, an infinity glyph) stay
+// on lucide, which is exactly the rule the house style asks for.
 import {
-  LogOut, QrCode, Link2, Copy, Check,
-  Smartphone, Monitor, X, Wifi, ArrowRightLeft, ArrowLeft, Info, Pencil, WifiOff, ServerOff,
-  Infinity as InfinityIcon, Upload, RotateCcw, Settings as SettingsIcon, Clock3
-} from 'lucide-react';
+  ArrowRightFromSquare as LogOut, QrCode, Link as Link2, Copy, Check,
+  Smartphone, Display as Monitor, Xmark as X, ArrowRightArrowLeft as ArrowRightLeft,
+  ArrowLeft, CircleInfo as Info, Pencil, FileArrowUp as Upload,
+  ArrowRotateRight as RotateCcw, Gear as SettingsIcon, Clock as Clock3,
+  Plus, ChevronRight,
+} from '@gravity-ui/icons';
+import { Wifi, WifiOff, ServerOff, Infinity as InfinityIcon } from 'lucide-react';
 import { SpaceCreateSheet, SpaceJoinSheet } from './SpaceView';
 import { recentSpaces } from '../lib/space/api';
 import { remainingShort as remainingShortOf } from '../lib/space/time';
@@ -685,7 +692,12 @@ export function SingleScreenApp() {
           <IconButton3D label="Docs" href="/docs">
             <BookOpen className="w-[18px] h-[18px]" aria-hidden />
           </IconButton3D>
-          <ThemeToggle />
+          {/* In the ROOM the header carries no theme switch: the room already
+              has a settings sheet whose first row IS the theme control, and a
+              second switch beside it — looking exactly like the Stay
+              Connected pill below — made "which toggle is which" a puzzle on
+              a screen the user is supposed to be sharing files from. */}
+          {panelMode !== 'connected' && <ThemeToggle />}
         </div>
         {/* Spotlight bar: a hairline of brand light where the sticky header
             meets the page, so the seam reads as intentional depth rather
@@ -821,53 +833,78 @@ export function SingleScreenApp() {
                   );
                 })()}
               </AnimatePresence>
-              {/* Temporary Space (F14) — SECONDARY utility, deliberately quiet:
-                  recent spaces as tactile rows, create/join as ONE segmented
-                  pill (two quiet links read as stray text; a segmented
-                  control reads as a tool). Reuses the rejoin card's geometry
-                  so it reads as part of the same family. */}
-              <div className="order-4 mt-3 w-full flex flex-col gap-2" data-testid="space-entry">
-                {recent.length > 0 && recent.map(r => (
-                  <button
-                    key={r.spaceId}
-                    type="button"
-                    onClick={() => { window.location.href = `/space/${r.spaceId}`; }}
-                    className="group w-full flex items-center gap-3 pl-3 pr-3 py-2.5 min-h-[44px] rounded-[14px] bg-white/[0.55] dark:bg-white/[0.04] border border-apple-divider/70 dark:border-white/[0.08] hover:border-apple-ink/25 dark:hover:border-white/25 hover:bg-white dark:hover:bg-white/[0.07] active:scale-[0.99] transition-all text-left"
-                  >
-                    <span className="shrink-0 w-7 h-7 rounded-[9px] bg-black/[0.045] dark:bg-white/[0.07] flex items-center justify-center text-apple-ink-muted dark:text-white/50" aria-hidden>
-                      <Clock3 className="w-3.5 h-3.5" />
-                    </span>
-                    <span className="flex-1 min-w-0 flex items-center gap-2 text-[13px]">
-                      <span className="font-semibold text-apple-ink dark:text-white/85 truncate">{r.name}</span>
-                      <span className="shrink-0 text-[12px] font-medium tabular-nums text-apple-ink-muted/80 dark:text-white/40">
-                        {t('space.closesIn', { time: remainingShortOf(r.expiresAt - Date.now()) })}
+              {/* Temporary Space — a SECTION now, not two stray links. The
+                  label row carries the promise ("up to 7 days"), the buttons
+                  carry the two verbs, and a space that is nearly over says so
+                  on its own row. One heading level below the hero: quiet
+                  caps + a hairline, so the eye can skip it entirely when it
+                  only came here to send a file. */}
+              <div className="order-4 mt-6 w-full flex flex-col gap-2.5" data-testid="space-entry">
+                <div className="flex items-center gap-2.5 w-full">
+                  <span className="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.09em] text-apple-ink-muted/75 dark:text-white/40">
+                    <Clock3 className="w-3.5 h-3.5" aria-hidden />
+                    {t('space.entryTitle')}
+                  </span>
+                  <span className="h-px flex-1 bg-apple-divider/70 dark:bg-white/[0.07]" aria-hidden />
+                  <span className="hidden sm:inline shrink-0 text-[11.5px] font-medium text-apple-ink-muted/60 dark:text-white/30">{t('space.entryHint')}</span>
+                </div>
+                {recent.map(r => {
+                  const msLeft = r.expiresAt - Date.now();
+                  // Under an hour left, the row says so in ember — the one
+                  // moment a temporary shelf deserves your attention.
+                  const urgent = msLeft < 3_600_000;
+                  return (
+                    <button
+                      key={r.spaceId}
+                      type="button"
+                      onClick={() => { window.location.href = `/space/${r.spaceId}`; }}
+                      className="group w-full flex items-center gap-3 pl-3 pr-3 py-2.5 min-h-[48px] rounded-[14px] bg-white/[0.55] dark:bg-white/[0.04] border border-apple-divider/70 dark:border-white/[0.08] hover:border-apple-ink/25 dark:hover:border-white/25 hover:bg-white dark:hover:bg-white/[0.07] active:scale-[0.99] transition-all text-left"
+                    >
+                      <span className={cn(
+                        'shrink-0 w-8 h-8 rounded-[10px] flex items-center justify-center',
+                        urgent
+                          ? 'bg-ember/12 dark:bg-ember/18 text-ember dark:text-[#fb9243]'
+                          : 'bg-black/[0.045] dark:bg-white/[0.07] text-apple-ink-muted dark:text-white/50'
+                      )} aria-hidden>
+                        <Clock3 className="w-4 h-4" />
                       </span>
-                    </span>
-                    <span className="shrink-0 text-[12.5px] font-semibold text-azure-600 dark:text-azure-400 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none">{t('space.reopen')}</span>
-                  </button>
-                ))}
-                {/* One pill, two entries — plus a 40px floor on each half so the
-                  segmented control honours the same touch contract as every
-                  other control (it shipped at 36px and audit caught it). */}
-              <div className="flex w-fit mx-auto sm:mx-0 items-stretch rounded-full border border-apple-divider/70 dark:border-white/[0.08] bg-white/[0.55] dark:bg-white/[0.04] p-1">
+                      <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+                        <span className="text-[13.5px] font-semibold text-apple-ink dark:text-white/85 truncate">{r.name}</span>
+                        <span className={cn(
+                          'text-[11.5px] font-medium tabular-nums',
+                          urgent ? 'text-ember dark:text-[#fb9243] font-semibold' : 'text-apple-ink-muted/80 dark:text-white/40'
+                        )}>
+                          {t('space.closesIn', { time: remainingShortOf(msLeft) })}
+                        </span>
+                      </span>
+                      <span className="shrink-0 inline-flex items-center gap-0.5 text-[12.5px] font-semibold text-azure-600 dark:text-azure-400">
+                        {t('space.reopen')}
+                        <ChevronRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
+                      </span>
+                    </button>
+                  );
+                })}
+                {/* One pill, two verbs — each half keeps a real 40px floor so
+                    the segmented control honours the same touch contract as
+                    every other control (it shipped at 36px; audit caught it). */}
+                <div className="flex w-full sm:w-fit items-stretch rounded-full border border-apple-divider/70 dark:border-white/[0.08] bg-white/[0.55] dark:bg-white/[0.04] p-1">
                   <button
                     type="button"
                     onClick={() => setSpaceSheet('create')}
-                    className="inline-flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-full text-[13px] font-semibold text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.07] active:scale-[0.97] transition-all"
+                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 min-h-[40px] rounded-full text-[13px] font-semibold text-apple-ink/75 dark:text-white/65 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.07] active:scale-[0.97] transition-all"
                     data-testid="space-create-entry"
                   >
-                    <Clock3 className="w-4 h-4" aria-hidden />
-                    {t('space.entryTitle')}
-                    <span className="hidden xl:inline text-apple-ink-muted/50 dark:text-white/30 font-medium">· {t('space.entryHint')}</span>
+                    <Plus className="w-4 h-4 text-ember dark:text-[#fb9243]" aria-hidden />
+                    {t('space.createCta')}
                   </button>
                   <span className="w-px my-1.5 bg-apple-divider dark:bg-white/10" aria-hidden />
                   <button
                     type="button"
                     onClick={() => setSpaceSheet('join')}
-                    className="inline-flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-full text-[13px] font-semibold text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.07] active:scale-[0.97] transition-all"
+                    className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 min-h-[40px] rounded-full text-[13px] font-semibold text-apple-ink/75 dark:text-white/65 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.07] active:scale-[0.97] transition-all"
                     data-testid="space-join-entry"
                   >
-                    <Link2 className="w-4 h-4" aria-hidden />
+                    <Link2 className="w-4 h-4 text-apple-ink-muted dark:text-white/45" aria-hidden />
                     {t('space.joinTitle')}
                   </button>
                 </div>
@@ -1633,7 +1670,7 @@ export function SingleScreenApp() {
   /* ---------------------------------------------------------------- */
   return (
     <div className="h-dvh lg:h-dvh overflow-hidden bg-apple-canvas dark:bg-[#131315] dot-bg">
-      <CommandBar open={cmdOpen} onOpenChange={setCmdOpen} />
+      <CommandBar open={cmdOpen} onOpenChange={setCmdOpen} onSpace={(which) => setSpaceSheet(which)} />
       {/* Only the ACTIVE layout is mounted — the other branch stays unmounted
           so components (ChatView, composer, pairing input) exist exactly once
           in the DOM instead of twice with one hidden copy. */}

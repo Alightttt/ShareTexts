@@ -4,11 +4,14 @@ import { ShareTextsLogo } from '../components/ShareTextsLogo';
 import { BrandLockup } from '../components/BrandLockup';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useI18n } from '../lib/i18n';
+// Gravity UI icons aliased onto the names this file already uses.
 import {
-  Send, Inbox, Copy, Download, Share2, QrCode, Link2,
-  Shield, Zap, Monitor, Smartphone, ChevronRight, ChevronDown,
-  Terminal, Key, Clock, RefreshCw, AlertCircle, Check, Lock, ArrowLeft, Radio
-} from 'lucide-react';
+  PaperPlane as Send, ArrowDownToLine as Inbox, Copy, ArrowDownToLine as Download,
+  ArrowUpFromSquare as Share2, QrCode, Link as Link2, Shield, Thunderbolt as Zap,
+  Display as Monitor, Smartphone, ChevronRight, ChevronDown, Terminal, Key, Clock,
+  ArrowRotateRight as RefreshCw, CircleExclamation as AlertCircle, Check, Lock,
+  ArrowLeft, Signal as Radio,
+} from '@gravity-ui/icons';
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 

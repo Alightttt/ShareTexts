@@ -10,11 +10,14 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { useSession } from '../lib/SessionContext';
 import { formatSpeed, formatEta } from '../lib/speedEngine';
+// Gravity UI icons aliased onto the names this file already uses.
 import {
-  X, Copy, Check, CheckCheck, Download, Image as ImageIcon, Play, Pause,
-  RefreshCw, AlertCircle, ChevronDown, ChevronUp, Share2, ShieldCheck,
-  Terminal, ZoomIn, Link2, Smile
-} from 'lucide-react';
+  Xmark as X, Copy, Check, CheckDouble as CheckCheck, ArrowDownToLine as Download,
+  Picture as ImageIcon, Play, Pause, ArrowRotateRight as RefreshCw,
+  CircleExclamation as AlertCircle, ChevronDown, ChevronUp,
+  ArrowUpFromSquare as Share2, ShieldCheck, Terminal, MagnifierPlus as ZoomIn,
+  Link as Link2, FaceSmile as Smile,
+} from '@gravity-ui/icons';
 import { hapticTick } from '../lib/haptics';
 import { AnnotatedHint } from './AnnotatedHint';
 import { FileTypeIcon } from './FileTypeIcon';

@@ -487,9 +487,16 @@ html.dark .st-dotfield::after {
 }
 
 /* ── Skeleton shimmer ────────────────────────────────────────────────────
-   One soft light band sweeps each bar; transform-only (compositor-safe).
-   Under prefers-reduced-motion the bars hold still — the shape alone
-   still communicates the screen's structure. */
+   One soft band sweeps each bar; transform-only (compositor-safe).
+
+   NO WHITE on light: a 45%-white sweep over warm-paper bars read as a bold
+   white outline crawling across the screen — the single loudest thing on a
+   page that is supposed to be quiet. On light the band is EMBER at 6%, which
+   reads as warmth moving, not as a flash; dark keeps a faint light band
+   because there the skeleton IS a light shape on a dark canvas.
+
+   Under prefers-reduced-motion the bars hold still — the shape alone still
+   communicates the screen's structure. */
 .st-skeleton {
   position: relative;
   overflow: hidden;
@@ -502,7 +509,7 @@ html.dark .st-dotfield::after {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.45) 50%,
+    rgba(240, 100, 19, 0.07) 50%,
     transparent 100%
   );
   animation: st-shimmer 1.6s cubic-bezier(0.23, 1, 0.32, 1) infinite;
@@ -511,7 +518,7 @@ html.dark .st-dotfield::after {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.07) 50%,
+    rgba(255, 255, 255, 0.06) 50%,
     transparent 100%
   );
 }

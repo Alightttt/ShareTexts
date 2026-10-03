@@ -16,6 +16,10 @@
 
     <!-- LCP: the landing hero composition image, needed immediately -->
     <link rel="preload" as="image" href="/hero-composition.webp" fetchpriority="high" />
+    <!-- The display face paints the hero headline and the wordmark: preload it
+         so the first paint is the real type, not a fallback flash. Fonts are
+         CORS-fetched, hence crossorigin. -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/Geist-Variable.woff2" crossorigin />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

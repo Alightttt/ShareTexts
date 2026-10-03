@@ -4,10 +4,15 @@ import { useSession } from '../lib/SessionContext';
 import { useTheme } from '../lib/theme';
 import { LANGS, useI18n } from '../lib/i18n';
 import { cn, shortCodeOf } from '../lib/utils';
+// Gravity UI icons aliased onto the names this file already uses; the few
+// Gravity has no equivalent for (slashed-logo disconnect, gauge) stay lucide.
 import {
-  Send, Download, QrCode, Link2, Copy, RefreshCw, LogOut, Smartphone,
-  Sun, Moon, Languages, FileText, ChevronLeft, Check, Search, Info, Gauge, Activity
-} from 'lucide-react';
+  PaperPlane as Send, ArrowDownToLine as Download, QrCode, Link as Link2, Copy,
+  ArrowRotateRight as RefreshCw, ArrowRightFromSquare as LogOut, Smartphone,
+  Sun, Moon, FileText, ChevronLeft, Check, Magnifier as Search,
+  CircleInfo as Info, Clock,
+} from '@gravity-ui/icons';
+import { Gauge, Activity, Languages } from 'lucide-react';
 import { generateTOTP } from '../lib/totp';
 import { metricsSnapshot, clearTransferMetrics, type TransferRecord } from '../lib/transferMetrics';
 import { formatBytes } from '../lib/utils';
@@ -52,9 +57,13 @@ export interface CommandBarProps {
   /** Controlled open state; uncontrolled when omitted. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** Temporary Spaces are owned by the landing screen's own state, so the
+   *  palette asks for them through a real callback instead of guessing at
+   *  the DOM (the file's contract: every action is a real handler). */
+  onSpace?: (which: 'create' | 'join') => void;
 }
 
-export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {}) {
+export function CommandBar({ open: openProp, onOpenChange, onSpace }: CommandBarProps = {}) {
   const { t, lang, setLang } = useI18n();
   const { session, createSession, requestReconnect, abandonSession } = useSession();
   const { resolved, setChoice } = useTheme();
@@ -229,6 +238,20 @@ export function CommandBar({ open: openProp, onOpenChange }: CommandBarProps = {
         opensSub: true,
         run: () => setSubOpen(true),
       },
+      // Spaces from anywhere: the feature only had one door (the landing
+      // page), so the palette opens it too — same two verbs, same sheets.
+      ...(onSpace ? [
+        {
+          id: 'space-create', label: t('space.createCta'), group: t('command.group.actions'),
+          icon: <Clock className="w-4 h-4" />, keywords: 'temporary space shelf 7 days create share',
+          run: () => onSpace('create'),
+        },
+        {
+          id: 'space-join', label: t('space.joinTitle'), group: t('command.group.actions'),
+          icon: <Link2 className="w-4 h-4" />, keywords: 'temporary space link code join open',
+          run: () => onSpace('join'),
+        },
+      ] : []),
       {
         id: 'docs', label: t('nav.docs'), group: t('command.group.settings'),
         icon: <FileText className="w-4 h-4" />, keywords: 'help about how it works',

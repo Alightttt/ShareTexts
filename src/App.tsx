@@ -6,7 +6,8 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { SessionProvider, useSession } from './lib/SessionContext';
 import { I18nProvider, useI18n } from './lib/i18n';
-import { X, DoorOpen } from 'lucide-react';
+// Gravity UI icons aliased onto the names this file already uses.
+import { Xmark as X, ArrowRightFromSquare as DoorOpen } from '@gravity-ui/icons';
 import { ShareTextsLogo } from './components/ShareTextsLogo';
 import { BrandLockup } from './components/BrandLockup';
 import { SkeletonScreen } from './components/SkeletonScreen';

@@ -3,11 +3,15 @@ import { useSession } from '../lib/SessionContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { AttachmentPanel } from '../components/AttachmentPanel';
 import { TransferFlight } from '../components/TransferFlight';
+// Gravity UI icons aliased onto the names this file already uses (see the
+// note in SingleScreenApp): only what Gravity genuinely lacks stays on lucide.
 import {
-  X, Plus, Copy, Check, Play, AlertCircle, ChevronDown, ArrowUp, ShieldCheck,
-  Smartphone, Monitor, Pencil, ArrowRightLeft, Info, RefreshCw, Link2,
-  FileText, ClipboardPaste, Download
-} from 'lucide-react';
+  Xmark as X, Plus, Copy, Check, Play, CircleExclamation as AlertCircle,
+  ChevronDown, ArrowUp, ShieldCheck, Smartphone, Display as Monitor, Pencil,
+  ArrowRightArrowLeft as ArrowRightLeft, CircleInfo as Info,
+  ArrowRotateRight as RefreshCw, Link as Link2, FileText, ArrowDownToLine as Download,
+} from '@gravity-ui/icons';
+import { ClipboardPaste } from 'lucide-react';
 import { FileTypeIcon } from '../components/FileTypeIcon';
 import { DraggableImage } from '../components/DraggableImage';
 import { AnimatedIcon } from '../components/AnimatedIcon';
@@ -1328,6 +1332,30 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                   <p className="text-[13px] text-apple-ink-muted max-w-[280px] leading-relaxed mt-1.5 text-center">
                     {t('chat.empty.body')}
                   </p>
+                  {/* Three one-tap starters. An empty room is the moment the
+                      user has nothing to do, so the room offers the three
+                      things people actually open it for — and each chip does
+                      exactly what it says: the greeting is TYPED into the
+                      composer for them to edit (never auto-sent), the photo
+                      chip opens the image picker, the link chip puts the
+                      caret in the field. No dead ends, no surprises. */}
+                  <div className="mt-5 flex flex-wrap items-center justify-center gap-2 max-w-[320px]">
+                    {([
+                      { key: 'chat.suggest.hi', run: () => { setInputText(t('chat.suggest.hi')); requestAnimationFrame(() => textareaRef.current?.focus()); } },
+                      { key: 'chat.suggest.photo', run: () => imageInputRef.current?.click() },
+                      { key: 'chat.suggest.link', run: () => textareaRef.current?.focus() },
+                    ] as const).map(s => (
+                      <button
+                        key={s.key}
+                        type="button"
+                        data-testid={s.key}
+                        onClick={s.run}
+                        className="inline-flex items-center min-h-[36px] px-3.5 rounded-full border border-apple-divider dark:border-white/[0.12] bg-white/70 dark:bg-white/[0.05] text-[12.5px] font-semibold text-apple-ink/80 dark:text-white/70 hover:border-ember/40 hover:text-ember dark:hover:text-[#fb9243] active:scale-[0.97] transition-all"
+                      >
+                        {t(s.key)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

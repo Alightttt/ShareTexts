@@ -2,7 +2,10 @@ import React, { useEffect } from 'react';
 import { ShareTextsLogo } from '../components/ShareTextsLogo';
 import { BrandLockup } from '../components/BrandLockup';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { ArrowLeft, ShieldCheck, FileText, EyeOff, Server, Database, Cookie } from 'lucide-react';
+// Gravity UI icons aliased onto the names this file already uses (Cookie has
+// no Gravity equivalent — it stays on lucide).
+import { ArrowLeft, ShieldCheck, FileText, EyeSlash as EyeOff, Server, Database } from '@gravity-ui/icons';
+import { Cookie } from 'lucide-react';
 
 /**
  * Legal — Privacy Policy and Terms of Use, one quiet page each.

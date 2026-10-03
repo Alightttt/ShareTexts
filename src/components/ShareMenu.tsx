@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Share2, Link2, Check, Copy, QrCode, Share } from 'lucide-react';
+import { ArrowUpFromSquare, Link as Link2, Check, Copy, QrCode } from '@gravity-ui/icons';
+
+/** Gravity UI has one "share" glyph in two shapes — the square-with-arrow is
+ *  the same mark the app's share actions already used, so both aliases point
+ *  at it and every share affordance in the product stays one symbol. */
+const Share2 = ArrowUpFromSquare;
+const Share = ArrowUpFromSquare;
 import { cn } from '../lib/utils';
 import { useI18n } from '../lib/i18n';
 
