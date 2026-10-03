@@ -48,16 +48,23 @@ const alpha = (p) => p[3] < 10;
 const checks = [];
 const check = (name, cond) => checks.push([name, cond]);
 
-// ── OG card 1200x630 (v10 — the user-supplied artwork: logo + wordmark on
-// top, laptop + phone product shot below, white background) ──
-const og = await sample('/og/sharetext-og-v10.png');
+// ── OG card 1200x630 — the canonical share image every page points at.
+// Sampled from the path the meta tags actually serve, so this check cannot
+// pass against a retired file while the real one is broken. Artwork: logo +
+// wordmark above, laptop + phone product shot below, light background.
+// ──
+const og = await sample('/og/sharetext-og.jpg');
 check('og is 1200x630', og.w === 1200 && og.h === 630);
 {
-  // Background is white in v10; the brand glyph is ember; the laptop bezel
-  // and wordmark are ink. Sample generously — exact coordinates would couple
-  // the check to the artwork's layout.
-  const p = at(og.data, og.w, 600, 315);
-  check(`og point (600,315) light`, p[0] > 200 && p[1] > 200 && p[2] > 200);
+  // The card's background is the light field the text sits on; the product
+  // shot (laptop + phone) occupies roughly the right half, so the sample
+  // point has to be a real background pixel. (40,300) is the left margin,
+  // clear of the wordmark block and the device artwork — verified pure white
+  // (255,255,255) against the current card. The old (600,315) point landed on
+  // the laptop's dark screen once the artwork changed, so the assertion was
+  // measuring the product shot, not the background it was written to check.
+  const p = at(og.data, og.w, 40, 300);
+  check(`og background margin (40,300) light`, p[0] > 200 && p[1] > 200 && p[2] > 200);
   const anyInk = count(og.data, og.w, 0, 0, og.w, og.h, ink, 6);
   check(`og ink artwork present (${anyInk} px)`, anyInk > 50);
   const anyEmber = count(og.data, og.w, 0, 0, og.w, og.h, ember, 4);
