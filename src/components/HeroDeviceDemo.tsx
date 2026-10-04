@@ -932,7 +932,11 @@ function RoomClosedVeil({ closed }: { closed: boolean }) {
           transition={{ duration: 0.4, ease: EASE }}
           className="absolute inset-0 flex items-center justify-center bg-apple-canvas/70 backdrop-blur-[1.5px] dark:bg-night-950/70"
         >
-          <span className="rounded-full bg-apple-ink/85 px-[8px] py-[4px] text-[8px] font-semibold text-white dark:bg-white/90 dark:text-apple-ink">
+          {/* Dark side: a white stamp needs INK-dark text — but --color-apple-ink
+              FLIPS to near-white inside .dark, so the token here is the canvas
+              (which stays #131315 in dark scope). text-apple-ink here rendered
+              white-on-white: a blank pill where "Room closed" should read. */}
+          <span className="rounded-full bg-apple-ink/85 px-[8px] py-[4px] text-[8px] font-semibold text-white dark:bg-white/90 dark:text-apple-canvas">
             {t('demo.closed')}
           </span>
         </motion.div>
