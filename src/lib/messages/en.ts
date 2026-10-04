@@ -327,6 +327,7 @@ const en = {
   'code.enterAll': 'Enter all 6 digits to continue.',
   'code.numericOnly': 'Use six numbers, not text.',
   'code.digitsOf': '{n} of 6 digits entered',
+  'code.digitOf': 'Digit {n} of 6',
   'code.verifying': 'Verifying code…',
 
   // ── image viewer ───────────────────────────────────────────────────
@@ -460,6 +461,7 @@ const en = {
   'settings.darkLight': 'Dark / Light',
   'settings.dark': 'Dark',
   'settings.light': 'Light',
+  'settings.system': 'System',
   'settings.language': 'Language',
   'settings.room': 'Room',
   'settings.reconnect': 'Reconnection',

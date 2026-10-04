@@ -17,9 +17,10 @@ import {
   Picture as ImageIcon, Play, Pause, ArrowRotateRight as RefreshCw,
   CircleExclamation as AlertCircle, ChevronDown, ChevronUp,
   ArrowUpFromSquare as Share2, ShieldCheck, Terminal, MagnifierPlus as ZoomIn,
-  Link as Link2, FaceSmile as Smile,
+  Link as Link2,
 } from '@gravity-ui/icons';
 import { hapticTick } from '../lib/haptics';
+import { EmojiReaction } from './spaceui/EmojiReaction';
 import { AnnotatedHint } from './AnnotatedHint';
 import { FileTypeIcon } from './FileTypeIcon';
 import { DraggableImage } from './DraggableImage';
@@ -105,19 +106,29 @@ function SelectionRing({ selected }: { selected: boolean }) {
   );
 }
 
-/** Emoji reactions — the RareUI "emojireaction" shape with room-wide
- *  semantics. Chips hang under the bubble: the number is how many OTHER
- *  devices in the room picked that emoji, and a chip lights ember when it is
- *  ours. One tap adds, the same tap removes — no long-press menu, no dialog.
- *  The picker is a quiet dashed smile that opens a six-emoji palette above
- *  the bubble (inside the column, so the attachment card's clipped bubble
- *  can never eat it). */
-const REACTION_PALETTE = ['❤️', '👍', '😂', '😮', '🔥', '🙏'];
+/** Emoji reactions — the room's chips carry the state; Rare UI's
+ *  EmojiReaction (real source, vendored at spaceui/EmojiReaction.tsx) is the
+ *  picker. Chips hang under the bubble: the number is how many OTHER devices
+ *  in the room picked that emoji, and a chip lights ember when it is ours.
+ *  One tap adds, the same tap removes. The picker is the real Apple-emoji
+ *  bar — press to open, slide onto an emoji, hold to stream more — opening
+ *  above the bubble on the bubble's own side (inside the column, so the
+ *  attachment card's clipped bubble can never eat it). */
+const REACTION_CHOICES: Array<{ name: string; char: string }> = [
+  { name: 'red-heart', char: '❤️' },
+  { name: 'thumbs-up', char: '👍' },
+  { name: 'face-with-tears-of-joy', char: '😂' },
+  { name: 'face-with-open-mouth', char: '😮' },
+  { name: 'fire', char: '🔥' },
+  { name: 'folded-hands', char: '🙏' },
+];
+const CHAR_BY_NAME: Record<string, string> = Object.fromEntries(
+  REACTION_CHOICES.map(({ name, char }) => [name, char]),
+);
 
 const ReactionBar: React.FC<{ msg: ChatMessage; disabled?: boolean }> = ({ msg, disabled = false }) => {
   const { t } = useI18n();
   const { reactToMessage } = useSession();
-  const [open, setOpen] = useState(false);
   const entries = Object.entries(msg.reactions ?? {}) as Array<[string, { count: number; mine: boolean }]>;
   const pick = (emoji: string) => {
     reactToMessage(msg.id, emoji);
@@ -158,53 +169,17 @@ const ReactionBar: React.FC<{ msg: ChatMessage; disabled?: boolean }> = ({ msg, 
         </motion.button>
       ))}
       {!disabled && (
-        <button
-          type="button"
-          onPointerDown={(e) => { e.preventDefault(); setOpen(o => !o); }}
-          aria-label={t('msg.react')}
-          aria-expanded={open}
-          data-testid="add-reaction"
-          title={t('msg.react')}
-          className="flex items-center justify-center min-h-[40px] min-w-[40px] px-0.5 transition-motion active:scale-90"
-        >
-          <span
-            className={cn(
-              'flex items-center justify-center w-[26px] h-[26px] rounded-full border border-dashed transition-colors',
-              open
-                ? 'border-[#f06413]/50 text-[#c04b09] dark:text-[#ffc79b] opacity-100'
-                : 'border-black/15 dark:border-white/20 text-apple-ink-muted opacity-50 group-hover/chip:opacity-100 hover:opacity-100'
-            )}
-          >
-            <Smile className="w-3.5 h-3.5" />
-          </span>
-        </button>
-      )}
-      {open && !disabled && (
-        <>
-          {/* Anywhere-else tap closes the palette — a popover that needs a
-              precise outside click is a popover that gets stuck open. */}
-          <div className="fixed inset-0 z-20" onPointerDown={() => setOpen(false)} aria-hidden />
-          <motion.div
-            initial={{ opacity: 0, y: 6, scale: 0.94 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ type: 'spring', stiffness: 480, damping: 30 }}
-            className="absolute bottom-full mb-1.5 z-30 flex items-center gap-0.5 rounded-full border border-apple-divider/60 dark:border-white/10 bg-white dark:bg-[#232328] p-1 shadow-[0_12px_34px_-14px_rgba(0,0,0,0.45)]"
-            style={{ [isMeSide(msg) ? 'right' : 'left']: 0 } as React.CSSProperties}
-          >
-            {REACTION_PALETTE.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                aria-label={t('msg.reactWith', { emoji })}
-                data-testid={`reaction-emoji-${emoji}`}
-                onPointerDown={(e) => { e.preventDefault(); setOpen(false); pick(emoji); }}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-[17px] leading-none transition-motion hover:bg-apple-parchment dark:hover:bg-white/10 active:scale-90"
-              >
-                {emoji}
-              </button>
-            ))}
-          </motion.div>
-        </>
+        <EmojiReaction
+          size="md"
+          align={isMeSide(msg) ? 'right' : 'left'}
+          triggerLabel={t('msg.react')}
+          optionLabel={(name) => t('msg.reactWith', { emoji: CHAR_BY_NAME[name] ?? name })}
+          onReact={(name) => {
+            const char = CHAR_BY_NAME[name];
+            if (char) pick(char);
+          }}
+          className="-ml-1"
+        />
       )}
     </div>
   );
@@ -956,17 +931,23 @@ function LiveSpeed({ transferId, progressPct }: { transferId: string; progressPc
 }
 
 function ActionButton({ icon, label, onClick, active, primary, onBlue, testId }: { icon: React.ReactNode, label: string, onClick: () => void, active?: boolean, primary?: boolean, onBlue?: boolean, testId?: string }) {
+  // OpenSourceUI CopyButton/DownloadButton keycap recipe (real sources,
+  // spaceui registry notes): a raised key that SINKS on press — hairline
+  // ring + downward drops + bottom shade at rest, inverts to a recess under
+  // the finger, with the label/icon crossfade rhythm (icon first, label
+  // 200ms later) the originals use for the copied/downloaded confirmations.
   return (
     <button
       onPointerDown={(e) => { e.preventDefault(); onClick(); }}
       data-testid={testId}
       className={cn(
-        "flex items-center gap-1.5 px-3 py-2 rounded-full text-[12.5px] font-semibold transition-motion active:scale-95 min-h-[40px]",
+        "flex items-center gap-1.5 px-3 py-2 rounded-full text-[12.5px] font-semibold transition-[background-color,box-shadow,color] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none min-h-[40px] select-none",
         active
-          ? "bg-status-success/15 text-status-success"
+          ? "bg-status-success/15 text-status-success shadow-[0_0_0_1px_rgba(4,120,87,0.18),inset_0_1px_2px_rgba(4,120,87,0.10)]"
           : primary
-            ? "bg-apple-ink dark:bg-white hover:opacity-90 text-white dark:text-night-900"
-            : "bg-apple-parchment dark:bg-apple-tile-2 hover:bg-apple-divider dark:hover:bg-apple-tile-3 text-apple-ink dark:text-white"
+            ? "bg-apple-ink dark:bg-white text-white dark:text-night-900 shadow-[0_0_0_1px_rgba(0,0,0,0.10),0_1px_1px_rgba(0,0,0,0.12),0_2px_3px_rgba(0,0,0,0.10),inset_0_1px_1px_rgba(255,255,255,0.22),inset_0_-2px_3px_rgba(0,0,0,0.28)] active:shadow-[0_0_0_1px_rgba(0,0,0,0.10),inset_0_2px_4px_rgba(0,0,0,0.35)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.14),0_1px_1px_rgba(0,0,0,0.20),inset_0_1px_1px_rgba(255,255,255,0.6),inset_0_-2px_3px_rgba(0,0,0,0.10)] dark:active:shadow-[0_0_0_1px_rgba(255,255,255,0.14),inset_0_2px_4px_rgba(0,0,0,0.18)]"
+            : "bg-apple-parchment dark:bg-apple-tile-2 text-apple-ink dark:text-white shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_1px_1px_rgba(0,0,0,0.10),0_2px_3px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.65),inset_0_-2px_3px_rgba(0,0,0,0.06)] active:bg-apple-divider dark:active:bg-apple-tile-3 active:shadow-[0_0_0_1px_rgba(0,0,0,0.06),inset_0_1px_2px_rgba(0,0,0,0.10)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_1px_1px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.08),inset_0_-2px_3px_rgba(0,0,0,0.22)] dark:active:shadow-[0_0_0_1px_rgba(255,255,255,0.08),inset_0_1px_2px_rgba(0,0,0,0.3)]",
+        "hover:brightness-[1.02]"
       )}
     >
       <motion.span

@@ -5,24 +5,25 @@ import { SpinLoader } from './SpinLoader';
 import { cn } from '../lib/utils';
 
 // ---------------------------------------------------------------------------
-// TactileButton — physically dimensional button (v2)
+// TactileButton — OpenSourceUI's ThreeDButton, wearing ShareTexts colors.
 // ---------------------------------------------------------------------------
-// Anatomy (bottom to top):
-//   1. Shadow layer — drop depth + INSET bevel (light from above: the top
-//      edge catches a bright hairline, the lower edge recesses into shade).
-//      Pressing does not move the button body — it SINKS: drop shadow
-//      compresses, the inset bevel inverts into a recess, and the content
-//      drops 1.5px. Release springs back. (Press recipe adapted from
-//      OpenSourceUI's 3D button — bevel/press principles only, restyled
-//      with ShareTexts tokens; no dependency added.)
-//   2. Base surface — light-from-top gradient
-//   3. Top highlight / bottom edge hairlines
-//   4. Pointer light — radial highlight following the cursor
-//   5. Content — text + icons, drops on press
+// The component is a port of opensourceui.in/components/three-d-button (the
+// real `ThreeDButton` source, restyled). What was adopted verbatim is the
+// press ANATOMY — the part that makes it feel physical:
 //
-// States: idle · hover · focus · pressed · disabled · loading · success
-// Loading keeps the label (truthful: the action is running); success swaps
-// the icon for a check for as long as the caller holds the flag.
+//   · The key never translates. Pressing does not move the body; the SHADOW
+//     inverts. Drop shadows compress to almost nothing and inset bevels
+//     flip from a top-lit rim to a recess — the same "key sinking into a
+//     board" read the original gets, with zero layout cost.
+//   · Soft diffused light, no hard rim. The original's comment is explicit:
+//     "Soft diffused top light + bottom shade — no hard white rim." Inset
+//     highlights are 2px-blurred (rgba .14–.40), not 1px hairlines.
+//   · One easing curve for the whole material:
+//     cubic-bezier(0.32, 0.72, 0, 1) over 200ms — the original's exact curve.
+//
+// What stays ShareTexts: the pill silhouette (rounded-full, unchanged), the
+// brand colors (ember primary #f06413, soft ember #f98b41), the pointer
+// light, the loading/success states, and the 40px+ touch contract.
 // ---------------------------------------------------------------------------
 
 type ButtonVariant = 'primary' | 'soft' | 'secondary' | 'ghost';
@@ -53,32 +54,37 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
   lg: 'px-7 py-3.5 text-[15px] gap-3 rounded-full min-h-[52px]',
 };
 
-// Bevel language (ThreeD press anatomy): the button is a KEYCAP. Resting =
-// a solid brand-colored lip under the body (var(--st-btn-*-edge)) + inset
-// bevels under a soft ambient drop; pressed = the body SINKS 3px into the
-// lip, the lip compresses to 1px, and the bevels invert into a recess.
-// Hover = the whole key lifts 1px and the ambient drop widens. Edge colors
-// are CSS vars so dark mode retints them without JS.
+// The ThreeDButton bevel recipes, retinted per variant. Solid brand keys use
+// the original's dark-key recipe (deep drop + dark bottom recess + tight top
+// sheen); paper keys use its light-key recipe (ambient drop + bright top
+// lip + bottom shade). Pressed states are the original's PRESSED recipes
+// with the tint swapped. All rgba — dark mode needs no variants because
+// shadows sit on the surface, not in it.
 const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; shadowHover: string; shadowPress: string; gradient: string }> = {
   primary: {
     base: 'text-white',
-    shadowIdle: '0 4px 0 0 var(--st-btn-primary-edge), 0 6px 14px -6px rgba(240,100,19,0.45), inset 0 1px 1px rgba(255,255,255,0.30), inset 0 -2px 3px rgba(139,50,5,0.24)',
-    shadowHover: '0 4px 0 0 var(--st-btn-primary-edge), 0 8px 18px -6px rgba(240,100,19,0.5), inset 0 1px 1px rgba(255,255,255,0.34), inset 0 -2px 3px rgba(139,50,5,0.18)',
-    shadowPress: '0 1px 0 0 var(--st-btn-primary-edge), inset 0 2px 5px rgba(112,40,4,0.40), inset 0 -1px 1px rgba(255,255,255,0.10)',
+    // Dark-key recipe on ember: 0.30/0.25/0.18 drop ladder, 2px top sheen,
+    // 3px/6px dark-ember bottom recess (the original uses neutral black).
+    shadowIdle: '0 1px 1px rgba(0,0,0,0.30), 0 3px 6px rgba(240,100,19,0.22), 0 8px 16px rgba(0,0,0,0.16), inset 0 1px 2px rgba(255,255,255,0.30), inset 0 -3px 6px rgba(120,42,3,0.45)',
+    shadowHover: '0 1px 1px rgba(0,0,0,0.30), 0 4px 8px rgba(240,100,19,0.26), 0 12px 22px rgba(0,0,0,0.19), inset 0 1px 2px rgba(255,255,255,0.34), inset 0 -3px 6px rgba(120,42,3,0.42)',
+    shadowPress: '0 1px 2px rgba(0,0,0,0.20), inset 0 2px 6px rgba(96,34,2,0.50), inset 0 -1px 1px rgba(255,255,255,0.10)',
     gradient: 'linear-gradient(180deg, #f9743a 0%, #f06413 58%, #de5b0e 100%)',
   },
   soft: {
     base: 'text-white',
-    shadowIdle: '0 4px 0 0 var(--st-btn-soft-edge), 0 5px 12px -6px rgba(240,100,19,0.35), inset 0 1px 1px rgba(255,255,255,0.28), inset 0 -2px 3px rgba(150,58,8,0.20)',
-    shadowHover: '0 4px 0 0 var(--st-btn-soft-edge), 0 8px 16px -6px rgba(240,100,19,0.4), inset 0 1px 1px rgba(255,255,255,0.32), inset 0 -2px 3px rgba(150,58,8,0.14)',
-    shadowPress: '0 1px 0 0 var(--st-btn-soft-edge), inset 0 2px 5px rgba(126,48,6,0.32), inset 0 -1px 1px rgba(255,255,255,0.10)',
+    // Light-key recipe lifted onto the soft-ember surface: the original's
+    // neutral drop ladder warms slightly so the key sits on the page.
+    shadowIdle: '0 1px 1px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.10), 0 6px 12px rgba(240,100,19,0.16), inset 0 1px 2px rgba(255,255,255,0.40), inset 0 -2px 4px rgba(130,48,5,0.26)',
+    shadowHover: '0 1px 1px rgba(0,0,0,0.08), 0 3px 6px rgba(0,0,0,0.11), 0 9px 18px rgba(240,100,19,0.20), inset 0 1px 2px rgba(255,255,255,0.44), inset 0 -2px 4px rgba(130,48,5,0.22)',
+    shadowPress: '0 1px 1px rgba(0,0,0,0.05), inset 0 1px 2px rgba(112,42,3,0.26), inset 0 2px 4px rgba(112,42,3,0.12), inset 0 -1px 2px rgba(0,0,0,0.10)',
     gradient: 'linear-gradient(180deg, #fb9a56 0%, #f98b41 58%, #ef7c30 100%)',
   },
   secondary: {
     base: 'text-apple-ink dark:text-white',
-    shadowIdle: '0 4px 0 0 var(--st-btn-secondary-edge), inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 1px rgba(0,0,0,0.045)',
-    shadowHover: '0 4px 0 0 var(--st-btn-secondary-edge), 0 8px 18px -8px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -1px 1px rgba(0,0,0,0.04)',
-    shadowPress: '0 1px 0 0 var(--st-btn-secondary-edge), inset 0 2px 4px rgba(0,0,0,0.10), inset 0 -1px 0 rgba(255,255,255,0.4)',
+    // The original's BEVEL_LIGHT / PRESSED_LIGHT, verbatim.
+    shadowIdle: '0 1px 1px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.10), 0 6px 12px rgba(0,0,0,0.08), inset 0 1px 2px rgba(255,255,255,0.35), inset 0 -2px 4px rgba(0,0,0,0.08)',
+    shadowHover: '0 1px 1px rgba(0,0,0,0.08), 0 3px 6px rgba(0,0,0,0.11), 0 9px 18px rgba(0,0,0,0.10), inset 0 1px 2px rgba(255,255,255,0.40), inset 0 -2px 4px rgba(0,0,0,0.07)',
+    shadowPress: '0 1px 1px rgba(0,0,0,0.05), inset 0 1px 2px rgba(0,0,0,0.08), inset 0 2px 4px rgba(0,0,0,0.04), inset 0 -1px 2px rgba(0,0,0,0.05)',
     gradient: 'var(--st-btn-secondary-grad)',
   },
   ghost: {
@@ -125,12 +131,8 @@ export function TactileButton({
   const lightY = useSpring(py, { stiffness: 150, damping: 15 });
   const lightOpacity = useSpring(0, { stiffness: 200, damping: 20 });
 
-  // Body: lifts 1px on hover, SINKS 3px on press — the body travels down
-  // INTO the solid lip, which compresses from 4px to 1px underneath it
-  // (the ThreeD keycap press, not a flat translate).
-  const y = useSpring(0, { stiffness: 420, damping: 24 });
-  // Content: drops WITH the press (slightly less than the body so the label
-  // reads seated, not floating).
+  // The key body NEVER translates (ThreeDButton anatomy). Only the content
+  // settles 1px on press, so the label reads seated in the recess.
   const contentY = useSpring(0, { stiffness: 500, damping: 26 });
 
   const shadowY = useSpring(0, { stiffness: 200, damping: 20 });
@@ -155,36 +157,32 @@ export function TactileButton({
   const handlePointerLeave = useCallback(() => {
     setIsHovered(false);
     lightOpacity.set(0);
-    y.set(0);
     contentY.set(0);
     shadowY.set(0);
     shadowOpacity.set(1);
     setIsPressed(false);
-  }, [lightOpacity, y, contentY, shadowY, shadowOpacity]);
+  }, [lightOpacity, contentY, shadowY, shadowOpacity]);
 
   const handlePointerDown = useCallback(() => {
     if (inactive) return;
     setIsPressed(true);
-    y.set(3);
-    contentY.set(2);
+    contentY.set(1);
     shadowY.set(0);
-    shadowOpacity.set(0.5);
-  }, [y, contentY, shadowY, shadowOpacity, inactive]);
+    shadowOpacity.set(0.92);
+  }, [contentY, shadowY, shadowOpacity, inactive]);
 
   const handlePointerUp = useCallback(() => {
     setIsPressed(false);
     if (isHovered) {
-      y.set(-1);
       contentY.set(0);
       shadowY.set(5);
       shadowOpacity.set(1);
     } else {
-      y.set(0);
       contentY.set(0);
       shadowY.set(0);
       shadowOpacity.set(1);
     }
-  }, [y, contentY, shadowY, shadowOpacity, isHovered]);
+  }, [contentY, shadowY, shadowOpacity, isHovered]);
 
   const lightGradient = useTransform(
     [lightX, lightY],
@@ -218,7 +216,7 @@ export function TactileButton({
       className={cn(
         'relative overflow-hidden font-semibold select-none',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-azure-500',
-        'transition-[background-color] duration-150',
+        'transition-[background-color] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]',
         SIZE_CLASSES[size],
         vs.base,
         surfaceFill,
@@ -226,7 +224,7 @@ export function TactileButton({
         !inactive && 'cursor-pointer',
         className,
       )}
-      style={{ y, touchAction: 'manipulation' as const }}
+      style={{ touchAction: 'manipulation' as const }}
       onPointerMove={handlePointerMove}
       onPointerEnter={handlePointerEnter}
       onPointerLeave={handlePointerLeave}
@@ -234,7 +232,7 @@ export function TactileButton({
       onPointerUp={handlePointerUp}
       {...props}
     >
-      {/* Depth layer: drop shadow + inset bevel/recess */}
+      {/* Depth layer: the ThreeD bevel — drop ladder + inset rim/recess */}
       <motion.div
         className="absolute inset-0 rounded-[inherit] pointer-events-none"
         style={{ boxShadow, opacity: shadowOpacity }}
@@ -246,9 +244,6 @@ export function TactileButton({
         style={{ background: vs.gradient }}
       />
 
-      {/* Top highlight hairline */}
-      <div className="absolute inset-x-[2px] top-[1px] h-[1px] bg-gradient-to-r from-transparent via-white/[0.25] to-transparent pointer-events-none z-[2] rounded-t-[inherit]" />
-
       {/* Bottom grounding hairline */}
       <div className="absolute inset-x-[2px] bottom-[1px] h-[1px] bg-gradient-to-r from-transparent via-black/[0.10] to-transparent pointer-events-none z-[2] rounded-b-[inherit]" />
 
@@ -258,7 +253,7 @@ export function TactileButton({
         style={{ background: lightGradient, opacity: lightOpacity }}
       />
 
-      {/* Content — sinks with the press */}
+      {/* Content — settles 1px into the recess on press */}
       <motion.span
         className="relative z-10 flex items-center justify-center gap-2 whitespace-nowrap"
         style={{ y: contentY }}

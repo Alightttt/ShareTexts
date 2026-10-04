@@ -19,9 +19,10 @@
  *      (4px, 240ms) instead of the desktop one (7px, 320ms).
  *   3. ONE AT A TIME. A second toggle during a transition applies instantly
  *      instead of throwing InvalidStateError or queueing frames.
- *   4. THE NEW THEME IS CRISP. Only the OUTGOING snapshot blurs (see the
- *      keyframes in index.css) — blurring both leaves the arriving theme
- *      soft for the whole transition, which is the opposite of the point.
+ *   4. THE CROSS-FADE IS SYMMETRIC (great-ui blur-fade recipe). The outgoing
+ *      snapshot blurs away and the incoming one resolves FROM the same blur
+ *      (keyframes in index.css) — a two-sided dissolve that reads as one
+ *      soft breath rather than a blur-then-pop.
  *
  * The duration/blur are passed as custom properties on <html>, so the CSS
  * is static: no <style> element is created per switch.
@@ -64,6 +65,10 @@ function isLowPower(): boolean {
  * flushSync, where React will surface a thrown error by failing the update.
  */
 export function runThemeTransition(apply: () => void) {
+  // great-ui's blur-fade-theme-transition clears any active text selection
+  // before snapshotting: a selected passage would stay highlighted in the
+  // outgoing frame and read as a ghost through the cross-fade.
+  try { window.getSelection()?.removeAllRanges(); } catch { /* not focusable */ }
   if (!canTransition()) {
     apply();
     return;

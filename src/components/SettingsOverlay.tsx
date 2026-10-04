@@ -2,7 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Moon, Sun, RefreshCw, WifiOff, Languages } from 'lucide-react';
-import { ThemeToggle } from './ThemeToggle';
+import { SegmentedToggleButton } from './spaceui/SegmentedToggleButton';
 import { LanguageMenu } from './LanguageMenu';
 import { StayConnectedToggle } from './StayConnectedToggle';
 import { useI18n } from '../lib/i18n';
@@ -36,8 +36,11 @@ export function SettingsOverlay({
   onClose: () => void;
 }) {
   const { t } = useI18n();
-  const { resolved } = useTheme();
+  const { resolved, choice, setChoice } = useTheme();
   const isDark = resolved === 'dark';
+  // Light — System — Dark: system sits BETWEEN the two poles, because
+  // "follow the OS" is a real answer, not a position on the light/dark line.
+  const THEME_ORDER = ['light', 'system', 'dark'] as const;
   const { session, requestReconnect } = useSession();
   const inRoom = !!session.roomId;
   const trapRef = useFocusTrap(open, onClose);
@@ -105,18 +108,19 @@ export function SettingsOverlay({
                   >
                     {isDark ? <Moon className="w-4 h-4" strokeWidth={2} /> : <Sun className="w-4 h-4" strokeWidth={2} />}
                   </span>
-                  <span className="flex-1 flex flex-col min-w-0 leading-tight">
-                    <span className="text-[13.5px] font-semibold text-apple-ink dark:text-white">
-                      {t('settings.darkLight')}
-                    </span>
-                    {/* The label states the CURRENT side of the toggle — the
-                        theme toggle itself stays exactly as it is. */}
-                    <span className="text-[12.5px] font-medium text-apple-ink-muted dark:text-white/45" data-testid="settings-theme-label">
-                      {isDark ? t('settings.dark') : t('settings.light')}
-                    </span>
-                  </span>
-                  {/* THE standard toggle of this website — untouched. */}
-                  <ThemeToggle />
+                  {/* The real OpenSourceUI SegmentedToggleButton. A switch can
+                      only say "the other side" — the theme has THREE honest
+                      answers, and System is the one most people actually want.
+                      The sliding thumb states which is live; nothing else on
+                      the row needs to repeat it. */}
+                  <SegmentedToggleButton
+                    className="flex-1 min-w-0"
+                    ariaLabel={t('settings.theme')}
+                    options={[t('settings.light'), t('settings.system'), t('settings.dark')]}
+                    value={Math.max(THEME_ORDER.indexOf(choice as typeof THEME_ORDER[number]), 0)}
+                    onChange={(i) => setChoice(THEME_ORDER[i] ?? 'system')}
+                    data-testid="settings-theme-segmented"
+                  />
                 </div>
 
                 {/* ── Language ───────────────────────────────────── */}

@@ -1,182 +1,62 @@
-import React, { useState, useEffect, useRef, useId } from 'react';
-import { motion } from 'motion/react';
+import React, { useState, useId } from 'react';
 import { cn } from '../lib/utils';
 import { ShareTextsLogo } from './ShareTextsLogo';
+import { OtpInput } from './spaceui/OtpInput';
 import { useI18n } from '../lib/i18n';
 
+/**
+ * LiveCodeInput — the join-code screen, on Rare UI's OtpInput.
+ *
+ * The real OtpInput (vendored at spaceui/OtpInput.tsx) owns the slot
+ * mechanics: per-slot hidden inputs, the rolling digit settle, the sliding
+ * caret, paste/SMS-autofill fill-forward, the contiguity guard, and the
+ * error shake. This wrapper keeps the join flow around it: the six-tick
+ * progress strip, the numeric-only validation note, the paste hint, the
+ * retry row on a bad code, and the joining state.
+ */
 export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (code: string) => void, isJoining: boolean, error?: string | null }) {
   const { t } = useI18n();
   const [code, setCode] = useState('');
-  const [shake, setShake] = useState(false);
-  const [pasteHint, setPasteHint] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+
   // The desktop and mobile layouts both render this component (CSS picks the
   // visible one), so a hardcoded id would appear twice in the DOM — breaking
   // label association and letting autoFocus land on the hidden copy. useId
   // keeps every instance's id unique.
   const inputId = useId();
 
-  useEffect(() => {
-    if (!isJoining && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isJoining]);
-
-  useEffect(() => {
-    if (error) {
-      setCode('');
-      setShake(true);
-      setTimeout(() => setShake(false), 500);
-      if (inputRef.current) inputRef.current.focus();
-    }
-  }, [error]);
-
-  const [validationMsg, setValidationMsg] = useState<string | null>(null);
-
-  const normalizeCode = (raw: string): string => {
-    return raw.replace(/\D/g, '').slice(0, 6);
+  const handleComplete = (val: string) => {
+    if (val.length === 6) onComplete(val);
   };
 
-  const showValidation = (msg: string) => {
-    setValidationMsg(msg);
-    setTimeout(() => setValidationMsg(null), 3000);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (isJoining) return;
-    const raw = e.target.value;
-    if (/\D/.test(raw) && raw.length > code.length) {
-      showValidation(t('code.numericOnly'));
-      return;
-    }
-    const val = normalizeCode(raw);
+  const handleChange = (val: string) => {
     setCode(val);
-    setPasteHint(false);
-    if (val.length === 6) {
-      onComplete(val);
-    }
+    if (val.length === 6) handleComplete(val);
   };
 
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    if (isJoining) return;
-    e.preventDefault();
-    const pasted = e.clipboardData.getData('text');
-    const hasNonDigit = /\D/.test(pasted.trim());
-    const normalized = normalizeCode(pasted);
-    if (normalized.length === 0 && hasNonDigit) {
-      showValidation(t('code.numericOnly'));
-      return;
-    }
-    if (normalized.length > 0) {
-      setCode(normalized);
-      setPasteHint(false);
-      if (normalized.length === 6) {
-        onComplete(normalized);
-      } else {
-        setPasteHint(true);
-        setTimeout(() => setPasteHint(false), 2000);
-      }
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && code.length === 6 && !isJoining) {
-      onComplete(code);
-    }
-  };
+  const status: 'idle' | 'error' = error ? 'error' : 'idle';
 
   const digitCount = code.length;
 
   return (
     <div className="flex flex-col items-center relative w-full">
-      <label htmlFor={inputId} className="sr-only">{t('code.sixDigits')}</label>
-      <input
-        id={inputId}
-        ref={inputRef}
-        type="text"
-        inputMode="numeric"
-        pattern="[0-9]*"
-        maxLength={10}
+      <span id={inputId} className="sr-only">{t('code.sixDigits')}</span>
+
+      <OtpInput
+        length={6}
         value={code}
         onChange={handleChange}
-        onPaste={handlePaste}
-        onKeyDown={handleKeyDown}
+        onComplete={handleComplete}
         disabled={isJoining}
         autoFocus
-        autoComplete="one-time-code"
-        data-testid="join-code-input"
-        aria-label={t('code.sixDigits')}
-        aria-describedby={error ? 'live-code-error' : pasteHint ? 'live-code-hint' : undefined}
-        aria-invalid={!!error}
-        aria-current={isJoining ? 'step' : undefined}
-        className="absolute inset-0 opacity-0 cursor-default"
-        style={{ fontSize: '16px', caretColor: 'transparent' }}
+        status={status}
+        size="md"
+        slotLabel={(index) => t('code.digitOf', { n: index + 1 })}
       />
-      
-      <motion.div 
-        animate={shake ? { x: [-8, 8, -8, 8, 0] } : {}}
-        transition={{ duration: 0.4 }}
-        className="flex w-full gap-1.5 sm:gap-2"
-        onClick={() => inputRef.current?.focus()}
-        aria-hidden="true"
-      >
-        {Array.from({ length: 6 }).map((_, i) => (
-          <React.Fragment key={i}>
-            <div className={cn(
-              "flex-1 min-w-0 rounded-[10px] sm:rounded-[14px] flex items-center justify-center overflow-hidden transition-colors relative",
-              "h-[52px] sm:h-[64px]",
-              code[i]
-                ? "bg-white dark:bg-apple-tile-3 border border-apple-divider dark:border-apple-tile-3"
-                : "bg-apple-parchment dark:bg-black border border-apple-divider/60 dark:border-apple-tile-3",
-              error && "border-status-danger bg-red-50 dark:bg-red-900/20",
-              // The cell the next digit lands in breathes: a soft ember halo
-              // marks the live cell so the eye never has to count boxes.
-              !code[i] && !error && code.length === i && "border-ember/55 dark:border-[#fb9243]/55 ring-2 ring-ember/20 dark:ring-[#fb9243]/15",
-              !code[i] && !error && "focus-within:border-apple-blue/50"
-            )}>
-              <motion.span
-                // Re-keying per digit replays the settle: the number is
-                // dropped in, not switched on.
-                key={`${i}-${code[i] ?? ''}`}
-                initial={code[i] ? { scale: 0.72, opacity: 0.35 } : false}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 620, damping: 26 }}
-                className="font-semibold text-apple-ink dark:text-white tracking-tighter font-mono leading-none select-none"
-                style={{ fontSize: 'clamp(22px, 7vw, 40px)' }}
-              >
-                {code[i] || ''}
-              </motion.span>
-              {/* The typing caret — plain CSS blink so it survives reduced-
-                  motion flattening (MotionConfig zeroes keyframe loops);
-                  under reduced motion it simply stays visible, steady. */}
-              {!isJoining && code.length === i && (
-                <span
-                  aria-hidden="true"
-                  className="st-caret absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[2px] h-7 sm:h-9 bg-ember dark:bg-[#fb9243] rounded-full"
-                />
-              )}
-            </div>
-            {i === 2 && <div className="w-2 sm:w-3 shrink-0" />}
-          </React.Fragment>
-        ))}
-      </motion.div>
-
-      {!error && !validationMsg && pasteHint && (
-        <div id="live-code-hint" role="status" className="mt-3 sm:mt-4 text-[12px] sm:text-[13px] text-apple-ink-muted dark:text-white/50 font-medium">
-          {t('code.enterAll')}
-        </div>
-      )}
-
-      {validationMsg && (
-        <div role="alert" className="mt-3 sm:mt-4 text-[12px] sm:text-[13px] text-status-warning font-medium">
-          {validationMsg}
-        </div>
-      )}
 
       {/* Six ticks, filled as the code is typed — the same information the
           sentence used to carry, without asking anyone to read a number.
           The sentence survives for screen readers only. */}
-      {!error && !validationMsg && (
+      {!error && (
         <div role="status" className="mt-3 sm:mt-4 w-full flex items-center gap-1.5" aria-hidden={false}>
           <div className="flex items-center gap-1.5 flex-1" aria-hidden>
             {Array.from({ length: 6 }).map((_, i) => (
@@ -194,10 +74,10 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
       )}
 
       {error && (
-        <div id="live-code-error" role="alert" className="mt-4 sm:mt-6 flex flex-col items-center gap-3">
+        <div role="alert" className="mt-4 sm:mt-6 flex flex-col items-center gap-3">
           <p className="text-[13px] sm:text-[14px] text-status-danger font-medium">{error}</p>
           <button
-            onClick={() => { setCode(''); if (inputRef.current) inputRef.current.focus(); }}
+            onClick={() => setCode('')}
             className="px-4 py-1.5 rounded-full text-[12px] font-semibold bg-status-danger/10 text-status-danger hover:bg-status-danger/20 transition-colors active:scale-95"
           >
             {t('home.retry')}
