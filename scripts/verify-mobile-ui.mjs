@@ -50,7 +50,10 @@ const code = await readLiveCode(D);
 
 await M.getByRole('button', { name: 'Receive' }).click();
 await M.waitForTimeout(500);
-await M.locator('input[inputmode="numeric"]').fill(code);
+// The join code is now Rare UI's OtpInput: six slots, six inputs. Fill the
+// first slot — its paste/fill-forward path distributes the code across all
+// six and completes, which is exactly what a human paste does.
+await M.locator('[data-testid="join-code-input"] input[inputmode="numeric"]').first().fill(code);
 await M.waitForTimeout(3500);
 
 const connected = await M.evaluate(() => !!document.querySelector('[data-app-state="connected"]'));
