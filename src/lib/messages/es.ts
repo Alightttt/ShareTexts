@@ -514,13 +514,20 @@ const es: Dict = {
   'space.joinClosed': 'Este espacio ya se cerró.',
 
   // ── landing: la demo en bucle ──────────────────────────────────────
-  'demo.c1': 'Abre ShareTexts en tu portátil.',
-  'demo.c2': 'Escribe el código en tu móvil.',
-  'demo.c3': 'Conectados. Sin app, sin cuenta.',
-  'demo.c4': 'Envía una nota, una foto o un archivo.',
-  'demo.c5': 'Viaja directo entre los dos.',
-  'demo.c6': 'Llega en un instante, cifrado.',
-  'demo.c7': 'Cierra la sala. No se guarda nada.',
+  'demo.h1': 'Abre ShareTexts.',
+  'demo.s1': 'En tu portátil, desde el navegador.',
+  'demo.h2': 'Busca tu otro dispositivo.',
+  'demo.s2': 'Escribe el código de seis dígitos.',
+  'demo.h3': 'Conecta con un toque.',
+  'demo.s3': 'Cifrado de extremo a extremo.',
+  'demo.h4': 'Suelta lo que quieras.',
+  'demo.s4': 'Texto, una foto, un archivo, un enlace.',
+  'demo.h5': 'Va directo.',
+  'demo.s5': 'De dispositivo a dispositivo. Sin subidas.',
+  'demo.h6': 'Ha llegado.',
+  'demo.s6': 'Ya está en el otro dispositivo.',
+  'demo.h7': 'Listo.',
+  'demo.s7': 'Cierra la sala. No queda nada.',
   'demo.laptopAlt': 'ShareTexts en un portátil, dentro de una sala de demostración',
   'demo.phoneAlt': 'ShareTexts en un móvil, dentro de una sala de demostración',
   'demo.roomCode': 'Código de sala',
@@ -545,6 +552,9 @@ const es: Dict = {
   'demo.rail': 'Progreso de la demo — salta a cualquier paso',
   'demo.play': 'Reproducir la demo',
   'demo.pause': 'Pausar la demo',
+  'demo.title': 'Cómo funciona ShareTexts — la demo, paso a paso',
+  'demo.step': 'Paso {n} de {total}',
+  'demo.sendingTag': 'Enviando',
 
   // ── instalar (PWA): se ofrece, no se impone ─────────────────────────
   'install.title': 'Ten ShareTexts a mano',
@@ -570,6 +580,16 @@ const es: Dict = {
   'edit.list': 'Lista',
   'edit.group': 'Formato',
   'net.offline': 'Sin conexión — las transferencias necesitan internet.',
+
+
+  // ── pie de página del sitio (Docs) ─────────────────────────────────
+  'footer.useIt': 'Úsalo',
+  'footer.read': 'Leer',
+  'footer.terms': 'Términos',
+  'footer.open': 'Abrir ShareTexts',
+  'footer.withCode': 'Compartir con un código',
+  'footer.devs': 'Para desarrolladores',
+  'footer.report': 'Informar de un problema',
 
 };
 

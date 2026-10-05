@@ -513,13 +513,20 @@ const zh: Dict = {
   'space.joinClosed': '该空间已经关闭。',
 
   // ── landing: the looping device demo ────────────────────────────────
-  'demo.c1': '在笔记本上打开 ShareTexts。',
-  'demo.c2': '在手机上输入这串代码。',
-  'demo.c3': '已连接。不用装应用，不用注册。',
-  'demo.c4': '发一段话、一张照片或一个文件。',
-  'demo.c5': '它直接在两台设备之间传输。',
-  'demo.c6': '加密传输，瞬间到达。',
-  'demo.c7': '关闭房间，什么都不留。',
+  'demo.h1': '打开 ShareTexts。',
+  'demo.s1': '在笔记本电脑的浏览器里。',
+  'demo.h2': '找到另一台设备。',
+  'demo.s2': '输入六位数代码。',
+  'demo.h3': '一点即连。',
+  'demo.s3': '端到端加密。',
+  'demo.h4': '放入任何内容。',
+  'demo.s4': '文字、照片、文件、链接。',
+  'demo.h5': '直接送达。',
+  'demo.s5': '设备对设备，不经上传。',
+  'demo.h6': '已到达。',
+  'demo.s6': '已经在另一台设备上。',
+  'demo.h7': '完成。',
+  'demo.s7': '关闭房间，不留任何痕迹。',
   'demo.laptopAlt': '演示房间中笔记本上运行的 ShareTexts',
   'demo.phoneAlt': '演示房间中手机上运行的 ShareTexts',
   'demo.roomCode': '房间码',
@@ -544,6 +551,9 @@ const zh: Dict = {
   'demo.rail': '演示进度 — 跳到任意步骤',
   'demo.play': '播放演示',
   'demo.pause': '暂停演示',
+  'demo.title': 'ShareTexts 的用法 — 演示，逐步进行',
+  'demo.step': '第 {n} 步，共 {total} 步',
+  'demo.sendingTag': '发送中',
 
   // ── install (PWA) ───────────────────────────────────────────────────
   'install.title': '把 ShareTexts 放在手边',
@@ -569,6 +579,16 @@ const zh: Dict = {
   'edit.list': '列表',
   'edit.group': '格式',
   'net.offline': '已离线 — 传输需要网络连接。',
+
+
+  // ── 网站页脚（Docs）────────────────────────────────────────────────
+  'footer.useIt': '使用',
+  'footer.read': '阅读',
+  'footer.terms': '条款',
+  'footer.open': '打开 ShareTexts',
+  'footer.withCode': '用代码共享',
+  'footer.devs': '开发者',
+  'footer.report': '报告问题',
 
 };
 

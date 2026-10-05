@@ -1327,8 +1327,8 @@ export function SingleScreenApp() {
             half-finished row. */}
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-x-5 gap-y-2 flex-wrap">
           <span className="flex items-center gap-1.5 select-none" aria-hidden>
-            <ShareTextsLogo size={16} className="opacity-80" />
-            <span className="font-display font-bold tracking-[-0.03em] leading-none text-[13px] text-apple-ink-muted/70 dark:text-white/35">
+            <ShareTextsLogo size={16} className="opacity-90" />
+            <span className="font-display font-bold tracking-[-0.03em] leading-none text-[13px] text-apple-ink-muted/85 dark:text-white/50">
               ShareTexts
             </span>
           </span>

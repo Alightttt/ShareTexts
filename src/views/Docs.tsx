@@ -4,6 +4,7 @@ import { PageHeader } from '../components/PageHeader';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { FaqSection } from '../components/marketing/FaqSection';
 import { DataFlow } from '../components/marketing/DataFlow';
+import { IsometricShareIllustration } from '../components/isometric/IsometricIllustrations';
 import { PlatformStrip } from '../components/marketing/PlatformStrip';
 import { SiteFooter } from '../components/marketing/SiteFooter';
 import { useI18n } from '../lib/i18n';
@@ -88,8 +89,7 @@ function OverviewSection() {
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {[
+      <div className="grid gap-3 sm:grid-cols-2">        {[
           { icon: <Zap className="w-5 h-5" />, title: 'Instant', desc: 'Direct device-to-device. No cloud.' },
           { icon: <Shield className="w-5 h-5" />, title: 'Private', desc: 'Encrypted. Temporary. Gone when you close the tab.' },
           { icon: <Monitor className="w-5 h-5" />, title: 'Universal', desc: 'Any browser, any device. No install.' },
@@ -104,6 +104,17 @@ function OverviewSection() {
           </div>
         ))}
       </div>
+
+      {/* The flagship isometric view of the product's one spatial idea:
+          two devices, one desk, a direct wire, an object mid-flight. It
+          carries the "no clouds, no relays" story in geometry, before a
+          word of DataFlow is read. */}
+      <figure className="m-0" data-testid="docs-iso-share">
+        <IsometricShareIllustration
+          className="mx-auto w-full max-w-[520px]"
+          label="Isometric drawing: a laptop and a phone on one desk, a direct connection drawn between them, a file crossing it."
+        />
+      </figure>
 
       {/* What actually happens to the bytes — the one misconception worth
           correcting with a picture ("it goes through your servers"). */}

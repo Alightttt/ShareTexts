@@ -45,14 +45,14 @@ import {
  *     screen — and the rail doubles as manual stepping, so a paused demo is
  *     still a usable explainer.
  */
-const STEPS: { key: MsgKey; ms: number }[] = [
-  { key: 'demo.c1', ms: 2400 },
-  { key: 'demo.c2', ms: 3000 },
-  { key: 'demo.c3', ms: 2600 },
-  { key: 'demo.c4', ms: 3000 },
-  { key: 'demo.c5', ms: 2800 },
-  { key: 'demo.c6', ms: 2800 },
-  { key: 'demo.c7', ms: 2600 },
+const STEPS: { key: MsgKey; sub: MsgKey; ms: number }[] = [
+  { key: 'demo.h1', sub: 'demo.s1', ms: 2400 },
+  { key: 'demo.h2', sub: 'demo.s2', ms: 3000 },
+  { key: 'demo.h3', sub: 'demo.s3', ms: 2600 },
+  { key: 'demo.h4', sub: 'demo.s4', ms: 3000 },
+  { key: 'demo.h5', sub: 'demo.s5', ms: 2800 },
+  { key: 'demo.h6', sub: 'demo.s6', ms: 2800 },
+  { key: 'demo.h7', sub: 'demo.s7', ms: 2600 },
 ];
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -158,6 +158,7 @@ export function HeroDeviceDemo({
   }, [w, h]);
 
   const caption = t(STEPS[step].key);
+  const captionSub = t(STEPS[step].sub);
 
   /** Click-to-seek on the scrubber: the beat under the pointer, clamped. */
   const seek = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -273,29 +274,46 @@ export function HeroDeviceDemo({
 
       {/* ── The captions, wired to the same index ──────────────────────── */}
       <div className="mt-4 sm:mt-5">
-        {/* aria-hidden: the visible line loops by design, so it is the wrong
-            thing to read to assistive tech. The sr-only list below carries
-            all seven beats once, in order, as real content. */}
-        <div className="relative min-h-[2.9em]" aria-hidden>
+        {/* Caption anatomy, wired to the same index as everything else:
+            a step marker, a short headline, and one quiet explanation line.
+            aria-hidden: the visible caption loops by design, so it is the
+            wrong thing to read to assistive tech. The sr-only list below
+            carries all seven beats once, in order, as real content. */}
+        <div className="relative min-h-[4.2em]" aria-hidden>
           <AnimatePresence initial={false}>
-            <motion.p
+            <motion.div
               key={step}
               initial={{ opacity: 0, y: 4, filter: 'blur(3px)' }}
               animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
               exit={{ opacity: 0, y: -4, filter: 'blur(3px)' }}
               transition={{ duration: reduced ? 0 : 0.32, ease: EASE }}
-              className="absolute inset-x-0 top-0 text-[15px] font-medium leading-snug text-apple-ink dark:text-white sm:text-[16px]"
+              className="absolute inset-x-0 top-0"
               data-testid="demo-caption"
             >
-              {caption}
-            </motion.p>
+              <span
+                aria-hidden
+                className="mb-1 block text-[10px] font-bold uppercase tracking-[0.09em] text-ember"
+              >
+                {t('demo.step', { n: step + 1, total: STEPS.length })}
+              </span>
+              <p className="text-[15px] font-medium leading-snug text-apple-ink dark:text-white sm:text-[16px]">
+                {caption}
+              </p>
+              <p className="mt-0.5 text-[13px] leading-snug text-apple-ink-muted dark:text-white/50 sm:text-[13.5px]">
+                {captionSub}
+              </p>
+            </motion.div>
           </AnimatePresence>
         </div>
 
-        <ol className="sr-only" data-testid="demo-caption-list">
+        <ol
+          className="sr-only"
+          data-testid="demo-caption-list"
+          aria-label={t('demo.title')}
+        >
           {STEPS.map((s, i) => (
-            <li key={s.key} className={i === step ? '' : undefined}>
-              {t(s.key)}
+            <li key={s.key}>
+              {t('demo.step', { n: i + 1, total: STEPS.length })} {t(s.key)} {t(s.sub)}
             </li>
           ))}
         </ol>
@@ -872,6 +890,7 @@ function FileChip({
   side?: 'out' | 'in';
   compact?: boolean;
 }) {
+  const { t } = useI18n();
   const out = side === 'out';
   return (
     <span
@@ -893,15 +912,19 @@ function FileChip({
         PDF
       </span>
       <span className={cn('font-semibold leading-none', compact ? 'text-[8px]' : 'text-[8.5px]')}>plan.pdf</span>
-      <span
-        className={cn(
-          'leading-none',
-          compact ? 'text-[7px]' : 'text-[7.5px]',
-          out ? 'opacity-70' : 'text-apple-ink-muted dark:text-white/45',
-        )}
-      >
-        2.4 MB
-      </span>
+      {/* No invented byte count — this is a controlled demo, not a transfer
+          log. The sender's chip says what the state IS; the receiver's chip
+          says nothing, because arrival is already told by the thread. */}
+      {out && !arrived && (
+        <span
+          className={cn(
+            'leading-none opacity-70',
+            compact ? 'text-[7px]' : 'text-[7.5px]',
+          )}
+        >
+          {t('demo.sendingTag')}
+        </span>
+      )}
       {out && (
         <AnimatePresence mode="wait" initial={false}>
           {arrived ? (
@@ -919,7 +942,11 @@ function FileChip({
   );
 }
 
-/** The close beat: the room empties and dims, then the loop starts over. */
+/** The close beat: the room empties and dims, then the loop starts over.
+ *  A RESTING veil, not a whiteout: the first cut (canvas at 70% + blur)
+ *  erased the room underneath, so the closed beat read as a rendering glitch
+ *  on light screens. Half-strength, no blur — the room stays legible while
+ *  the pill does the talking. */
 function RoomClosedVeil({ closed }: { closed: boolean }) {
   const { t } = useI18n();
   return (
@@ -928,10 +955,8 @@ function RoomClosedVeil({ closed }: { closed: boolean }) {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.4, ease: EASE }}
-          className="absolute inset-0 flex items-center justify-center bg-apple-canvas/70 backdrop-blur-[1.5px] dark:bg-night-950/70"
-        >
+          exit={{ opacity: 0 }}          transition={{ duration: 0.4, ease: EASE }}
+          className="absolute inset-0 flex items-center justify-center bg-apple-canvas/45 dark:bg-night-950/55">
           {/* Dark side: a white stamp needs INK-dark text — but --color-apple-ink
               FLIPS to near-white inside .dark, so the token here is the canvas
               (which stays #131315 in dark scope). text-apple-ink here rendered

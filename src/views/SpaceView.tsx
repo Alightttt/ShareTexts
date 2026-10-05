@@ -18,6 +18,7 @@ import {
   Link2, Pause, Play, Plus, QrCode, Share2, Trash2, UploadCloud, X, XCircle,
 } from 'lucide-react';
 import { SpinLoader } from '../components/SpinLoader';
+import { IsometricSpaceIllustration } from '../components/isometric/IsometricIllustrations';
 import { useI18n } from '../lib/i18n';
 import { TactileButton } from '../components/TactileButton';
 import type { MsgKey } from '../lib/messages/types';
@@ -761,7 +762,14 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
             ))}
           </div>
         ) : items.length === 0 && uploads.length === 0 ? (
-          <div className="rounded-[20px] border border-dashed border-apple-divider dark:border-white/[0.12] py-14 text-center" data-testid="space-empty">
+          <div className="rounded-[20px] border border-dashed border-apple-divider dark:border-white/[0.12] py-10 sm:py-12 text-center" data-testid="space-empty">
+            {/* The empty shelf, drawn in the isometric system: a temporary
+                surface receiving whatever a device drops on it — with legs,
+                so it never reads as cloud storage. */}
+            <IsometricSpaceIllustration
+              className="mx-auto mb-4 w-full max-w-[280px]"
+              label="Isometric drawing: an empty shelf standing on legs, with a dashed drop zone on it."
+            />
             <p className="text-[15px] font-medium text-apple-ink-muted dark:text-white/55">{t('space.empty')}</p>
             <p className="mt-1 text-[13.5px] text-apple-ink-muted/70 dark:text-white/40">{t('space.emptyHint')}</p>
           </div>

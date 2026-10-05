@@ -116,6 +116,21 @@
   --color-night-900: #131316;
   --color-night-950: #0e0e11;
 
+  /* Isometric illustration palette — one artwork, re-lit per theme. Tops
+     are the lightest face, right faces the darkest; the ember accent is
+     the single saturated object any drawing may carry. */
+  --iso-top: #fffdf8;
+  --iso-left: #efe9dd;
+  --iso-right: #ddd5c5;
+  --iso-line: #8f8a80;
+  --iso-dim: #b3ada1;
+  --iso-screen: #e5efec;
+  --iso-photo: #f7e9d4;
+  --iso-shadow: rgba(60, 52, 38, 0.10);
+  --iso-accent: #f06413;
+  --iso-accent-soft: #f97b3d;
+  --iso-accent-deep: #c25310;
+
   /* ── Radius ─────────────────────────────────────────────────────────── */
   --radius-xs: 8px;
   --radius-sm: 12px;
@@ -222,6 +237,20 @@
     --st-btn-primary-edge: #a83f06;
     --st-btn-soft-edge: #c25c15;
     --st-btn-secondary-edge: rgba(0, 0, 0, 0.55);
+
+    /* Isometric illustration palette, night relight: same geometry, the
+       paper becomes graphite. Line weights and accents are unchanged. */
+    --iso-top: #26262c;
+    --iso-left: #1d1d22;
+    --iso-right: #151519;
+    --iso-line: #55555e;
+    --iso-dim: #6a6a74;
+    --iso-screen: #1a2321;
+    --iso-photo: #2e2820;
+    --iso-shadow: rgba(0, 0, 0, 0.42);
+    --iso-accent: #f06413;
+    --iso-accent-soft: #d95a0f;
+    --iso-accent-deep: #a84409;
   }
 
   /* Display face carries headings; system stack carries everything else.

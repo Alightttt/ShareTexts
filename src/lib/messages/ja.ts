@@ -513,13 +513,20 @@ const ja: Dict = {
   'space.joinClosed': 'このスペースはすでに閉じています。',
 
   // ── landing: the looping device demo ────────────────────────────────
-  'demo.c1': 'ノートPCでShareTextsを開きます。',
-  'demo.c2': 'スマホでコードを入力します。',
-  'demo.c3': 'つながりました。アプリもアカウントも不要。',
-  'demo.c4': 'メモも写真もファイルも送れます。',
-  'demo.c5': '2台の間を直接移動します。',
-  'demo.c6': '暗号化されたまま、すぐ届きます。',
-  'demo.c7': 'ルームを閉じれば、何も残りません。',
+  'demo.h1': 'ShareTextsを開く。',
+  'demo.s1': 'ノートPCで、ブラウザから。',
+  'demo.h2': 'もう一方のデバイスを探す。',
+  'demo.s2': '6桁のコードを入力。',
+  'demo.h3': 'ワンタップで接続。',
+  'demo.s3': 'エンドツーエンドで暗号化。',
+  'demo.h4': '何でも置く。',
+  'demo.s4': 'テキスト、写真、ファイル、リンク。',
+  'demo.h5': '直接渡る。',
+  'demo.s5': 'デバイスからデバイスへ。アップロードなし。',
+  'demo.h6': '届いた。',
+  'demo.s6': 'もう相手のデバイスに。',
+  'demo.h7': '完了。',
+  'demo.s7': 'ルームを閉じれば、 何も残らない。',
   'demo.laptopAlt': 'デモルームのノートPCで動くShareTexts',
   'demo.phoneAlt': 'デモルームのスマホで動くShareTexts',
   'demo.roomCode': 'ルームコード',
@@ -544,6 +551,9 @@ const ja: Dict = {
   'demo.rail': 'デモの進行 — 好きなステップへ',
   'demo.play': 'デモを再生',
   'demo.pause': 'デモを一時停止',
+  'demo.title': 'ShareTextsの使い方 — デモ、手順ごとに',
+  'demo.step': 'ステップ {n} / {total}',
+  'demo.sendingTag': '送信中',
 
   // ── install (PWA) ───────────────────────────────────────────────────
   'install.title': 'ShareTextsを手元に',
@@ -569,6 +579,16 @@ const ja: Dict = {
   'edit.list': 'リスト',
   'edit.group': '書式',
   'net.offline': 'オフラインです。転送には接続が必要です。',
+
+
+  // ── サイトフッター（Docs）──────────────────────────────────────────
+  'footer.useIt': '使う',
+  'footer.read': '読む',
+  'footer.terms': '利用規約',
+  'footer.open': 'ShareTextsを開く',
+  'footer.withCode': 'コードで共有',
+  'footer.devs': '開発者向け',
+  'footer.report': '問題を報告',
 
 };
 

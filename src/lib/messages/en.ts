@@ -543,13 +543,20 @@ const en = {
 
 
   // ── landing: the looping device demo ───────────────────────────────
-  'demo.c1': 'Open ShareTexts on your laptop.',
-  'demo.c2': 'Type the code on your phone.',
-  'demo.c3': 'Connected. No app, no account.',
-  'demo.c4': 'Send a note, a photo, or a file.',
-  'demo.c5': 'It travels straight between the two.',
-  'demo.c6': 'It lands in a moment, encrypted.',
-  'demo.c7': 'Close the room. Nothing is kept.',
+  'demo.h1': 'Open ShareTexts.',
+  'demo.s1': 'On your laptop, in the browser.',
+  'demo.h2': 'Find your other device.',
+  'demo.s2': 'Type the six-digit code.',
+  'demo.h3': 'Connect with one tap.',
+  'demo.s3': 'Encrypted end to end.',
+  'demo.h4': 'Drop in anything.',
+  'demo.s4': 'Text, a photo, a file, a link.',
+  'demo.h5': 'It goes straight across.',
+  'demo.s5': 'Device to device. No upload.',
+  'demo.h6': 'Arrived.',
+  'demo.s6': 'Already on the other device.',
+  'demo.h7': 'Done.',
+  'demo.s7': 'Close the room. Nothing is kept.',
   'demo.laptopAlt': 'ShareTexts running on a laptop, inside a demo room',
   'demo.phoneAlt': 'ShareTexts running on a phone, inside a demo room',
   'demo.roomCode': 'Room code',
@@ -574,6 +581,9 @@ const en = {
   'demo.rail': 'Demo progress — jump to any step',
   'demo.play': 'Play the demo',
   'demo.pause': 'Pause the demo',
+  'demo.title': 'How ShareTexts works — the demo, step by step',
+  'demo.step': 'Step {n} of {total}',
+  'demo.sendingTag': 'Sending',
 
   // ── install (PWA) — offered, never pushed ──────────────────────────
   'install.title': 'Keep ShareTexts handy',
@@ -599,6 +609,16 @@ const en = {
   'edit.list': 'List',
   'edit.group': 'Formatting',
   'net.offline': 'You\'re offline — transfers need a connection.',
+
+
+  // ── site footer (Docs) ──────────────────────────────────────────────
+  'footer.useIt': 'Use it',
+  'footer.read': 'Read',
+  'footer.terms': 'Terms',
+  'footer.open': 'Open ShareTexts',
+  'footer.withCode': 'Share with a code',
+  'footer.devs': 'For developers',
+  'footer.report': 'Report a problem',
 
 };
 
