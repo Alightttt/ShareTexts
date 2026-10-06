@@ -152,6 +152,13 @@ function emit(route, { head, body, jsonLd = '' }) {
   const html = swapBody(head.replace('</head>', `${SHELL_CSS}${jsonLd}</head>`), body);
   writeFileSync(path.join(seoDir, route), html);
   console.log(`seo-routes: wrote dist/seo/${route} (${(html.length / 1024).toFixed(1)} kB)`);
+  // 404.html ALSO goes to the dist root: Vercel serves a root-level 404.html
+  // with a real 404 status for paths that match no static file and no
+  // rewrite — the node server path does the same via server.ts.
+  if (route === '404.html') {
+    writeFileSync(path.join(dist, '404.html'), html);
+    console.log('seo-routes: wrote dist/404.html (Vercel auto-404 page)');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -323,6 +330,7 @@ emit('404.html', {
     canonicalPath: '/404.html',
     robots: 'noindex, follow',
   }),
+  // (also emitted to dist root for Vercel — see emit())
   body: shellBody({
     overline: '404',
     h1: 'Page not found',

@@ -41,7 +41,15 @@
       "destination": "/seo/terms.html"
     },
     {
-      "source": "/(.*)",
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/s/:code",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/space/:uuid",
       "destination": "/index.html"
     }
   ],
