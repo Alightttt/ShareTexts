@@ -13,7 +13,7 @@
  *     the cache on first fetch. Cross-origin requests (the signaling
  *     Worker's /health, /lookup, /ws) are never intercepted.
  */
-const CACHE = 'sharetexts-v18';
+const CACHE = 'sharetexts-v19';
 const SHELL = [
   '/',
   '/index.html',
@@ -55,25 +55,24 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === 'navigate') {
-    // STALE-WHILE-REVALIDATE: the cached shell paints INSTANTLY — on a slow
-    // 3G link network-first meant seconds of white browser chrome before our
-    // boot skeleton could even render ("loading screen never goes away"),
-    // because respondWith() held the navigation until the network answered.
-    // The boot skeleton inside the shell IS the loading state; it now shows
-    // at once, while the fresh HTML is fetched in the background and cached
-    // for the next visit.
+    // PER-URL STALE-WHILE-REVALIDATE: cache each navigated URL under its OWN
+    // key and answer from that key. (The previous handler cached every page
+    // under '/' — the first public route visited poisoned all others, and the
+    // new prerendered route shells (/docs, /privacy, /terms) would never have
+    // been served.) The cached copy still paints instantly; fresh HTML is
+    // fetched in the background and cached for the next visit.
     event.respondWith(
-      caches.match('/').then((cached) => {
+      caches.match(request).then((cached) => {
         const network = fetch(request)
           .then((response) => {
             if (response && response.ok) {
               const copy = response.clone();
-              caches.open(CACHE).then((cache) => cache.put('/', copy));
+              caches.open(CACHE).then((cache) => cache.put(request, copy));
             }
             return response;
           })
           .catch(() => cached || caches.match('/index.html'));
-        // Cached shell answers immediately when present; offline falls back
+        // Cached copy answers immediately when present; offline falls back
         // to it too. No cache (first ever visit) waits for the network.
         return cached || network;
       })

@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
     <!-- Primary -->
-    <title>ShareTexts — AirDrop for Any Device: Share Text, Files & Photos Online</title>
-    <meta name="keywords" content="airdrop for android, airdrop for pc, airdrop for windows, online airdrop, share texts, sharetext, text sharing, share text online, online xender, online file transfer, send files online, transfer files between devices, phone to pc transfer, share photos online, file sharing app, web share, cross device transfer, sharetexts.online" />
-    <meta name="description" content="Send text, photos, and files between any two devices, phone to laptop, iPhone to Windows, straight from your browser. No app, no account, nothing to install. Rooms close when you're done." />
+    <title>ShareTexts — Share Text, Files & Photos Between Devices</title>
+    <meta name="description" content="Send text, links, photos, and files between any two devices — phone to PC, iPhone to Windows — right in your browser. No app, no account, nothing stored." />
     <meta name="robots" content="index, follow" />
     <meta name="author" content="ShareTexts" />
     <meta name="application-name" content="ShareTexts" />
@@ -31,7 +30,7 @@
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="ShareTexts" />
     <meta property="og:title" content="ShareTexts — AirDrop for Any Device" />
-    <meta property="og:description" content="Send text, photos, and files between any two devices, phone to laptop, iPhone to Windows, straight from your browser. No app, no account, nothing to install." />
+    <meta property="og:description" content="Send text, links, photos, and files between any two devices — phone to PC, iPhone to Windows — right in your browser. No app, no account, nothing stored." />
     <meta property="og:url" content="https://sharetexts.online/" />
     <!-- ?v=17 busts X/WhatsApp/LinkedIn caches: the same artwork, freshly
          fetched. Bump the query whenever the artwork file changes. -->
@@ -44,7 +43,7 @@
     <!-- Twitter/X -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="ShareTexts — AirDrop for Any Device" />
-    <meta name="twitter:description" content="Send text, photos, and files between any two devices, phone to laptop, iPhone to Windows, straight from your browser. No app, no account, nothing to install." />
+    <meta name="twitter:description" content="Send text, links, photos, and files between any two devices — phone to PC, iPhone to Windows — right in your browser. No app, no account, nothing stored." />
     <meta name="twitter:image" content="https://sharetexts.online/og/sharetext-og.jpg" />
     <meta name="twitter:image:src" content="https://sharetexts.online/og/sharetext-og.jpg" />
     <meta name="twitter:image:alt" content="ShareTexts — AirDrop for any Device. The app running on a laptop and iPhone, connected." />
@@ -61,23 +60,15 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png?v=17" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=17" />
 
-    <!-- Structured data: Organization + WebApplication graph -->
+    <!-- Structured data: Organization + WebApplication graph. One graph,
+         stable @ids; HowTo/FAQPage JSON-LD lives only on pages whose visible
+         content actually matches it (/docs serves the FAQ both pre- and
+         post-hydration; Google retired HowTo rich results in 2023, so no
+         HowTo block is shipped where its steps can't stay visible). -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@graph": [
-        {
-          "@type": "HowTo",
-          "@id": "https://sharetexts.online/#howto",
-          "name": "How to move text and files between two devices with ShareTexts",
-          "description": "Share text, photos, and files between any two devices — phone to laptop, iPhone to Windows — straight from the browser. No app, no account.",
-          "totalTime": "PT1M",
-          "step": [
-            { "@type": "HowToStep", "position": 1, "name": "Open ShareTexts on both devices", "text": "Open sharetexts.online in a browser on both devices. No app, no account, nothing to install." },
-            { "@type": "HowToStep", "position": 2, "name": "Connect the two devices", "text": "Tap your other device in the Nearby list when it appears — or use a six-digit code, scan a QR code, or open a share link." },
-            { "@type": "HowToStep", "position": 3, "name": "Send anything", "text": "Type, paste, or attach anything — it transfers directly between the devices, end-to-end encrypted, and is never stored on a server." }
-          ]
-        },
         {
           "@type": "Organization",
           "@id": "https://sharetexts.online/#organization",
@@ -88,7 +79,11 @@
             "url": "https://sharetexts.online/icon-512.png?v=17",
             "width": 512,
             "height": 512
-          }
+          },
+          "sameAs": [
+            "https://x.com/0xalyt",
+            "https://github.com/Alightttt/ShareTexts"
+          ]
         },
         {
           "@type": "WebApplication",
@@ -133,88 +128,6 @@
       ]
     }
     </script>
-    <!-- FAQPage markup — kept for content clarity; Google limits rich results to
-         authoritative government/health sites, so this is not a ranking lever. -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "How do I move text between two devices?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Open ShareTexts on both devices. On the first device, tap Send and share the six-digit code. Enter the code on the second device, then paste or type anything — it appears on the other device, encrypted."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Do I need to install an app or create an account?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "No. ShareTexts runs in the browser — no app, no account, no installation. It works between an iPhone and a Windows PC, or any two devices with a browser."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I send photos and files, not just text?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. ShareTexts transfers text, links, photos, videos, audio, and files between your devices. Tested transfer sizes vary by browser and connection."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Why can't I see my other device in the Nearby list?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Your other device appears in the Nearby list when ShareTexts is open on it with Nearby visibility turned on; discovery needs a working internet connection on both devices. If nothing appears, connect with a six-digit code, a QR code, or a share link instead — these work over any internet connection."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How do I transfer files from an iPhone to a Windows PC without an app?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Open sharetexts.online in a browser on the iPhone and on the Windows PC. Connect them — via the Nearby list, a six-digit code, a QR code, or a link — then attach the files and send. The transfer goes directly between the two devices, encrypted, with no app or account required."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is ShareTexts private?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Transfers are encrypted between devices. ShareTexts keeps no account, no permanent chat history, and no copies of your content. Temporary rooms close automatically."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is ShareTexts safe to use?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. Every transfer is end-to-end encrypted between the two devices with WebRTC (DTLS) plus an additional AES-GCM layer, rooms are protected by a 128-bit secret, and nothing you send is stored on the server. Only someone with your code, QR, or link can join your room."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I use ShareTexts between an iPhone and an Android phone?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes. ShareTexts works between any two devices with a browser — iPhone to Android, Android to Windows, iPhone to Mac, anything else. It is a cross-platform AirDrop alternative that runs entirely in the browser."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I keep a room open between my devices?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes — turn on Stay Connected inside the room. The room stays alive until you disconnect it yourself, rejoining is one tap from the landing page, and reconnects after a refresh or network drop happen automatically."
-          }
-        }
-      ]
-    }
-    </script>
     <!-- Apply the saved theme before first paint (no flash): default to the
          system preference; a manual choice in localStorage wins. The same
          logic lives in src/lib/theme.ts for runtime changes. -->
@@ -227,22 +140,21 @@
           var meta = document.querySelector('meta[name="theme-color"]');
           if (meta) meta.content = dark ? '#131315' : '#f7f4ee';
         } catch (e) { /* storage unavailable — system default applies */ }
+        // Slow-boot honesty (mirrors the in-app connecting screen): an 8s boot
+        // is NOT normal — say so instead of shimmering forever. Folded into
+        // this whitelisted script so the strict CSP keeps exactly ONE inline
+        // script (the old second inline block violated script-src by hash).
+        try {
+          setTimeout(function () {
+            var el = document.getElementById('st-boot-slow');
+            if (el && document.getElementById('loading-shell')) el.style.display = 'block';
+          }, 8000);
+        } catch (e) { /* never block boot */ }
       })();
     </script>
   </head>
   <body>
     <div id="root">
-      <noscript>
-        <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f3f0;color:#1d1d1f">
-          <div style="text-align:center;padding:2rem">
-            <svg width="40" height="40" viewBox="0 0 256 256" fill="none" style="margin-bottom:1rem">
-              <rect x="40" y="36" width="84" height="84" rx="24" fill="currentColor"/><rect x="132" y="136" width="84" height="84" rx="24" fill="currentColor"/><path d="M110 106 L146 142" stroke="currentColor" stroke-width="28" stroke-linecap="round"/>
-            </svg>
-            <p style="font-size:16px;font-weight:600;margin:0 0 8px">ShareTexts requires JavaScript.</p>
-            <p style="font-size:14px;color:#6e6e73;margin:0">Please enable JavaScript in your browser settings.</p>
-          </div>
-        </div>
-      </noscript>
       <!-- Boot skeleton: the app holding the user's place, not an animation.
            Mirrors the REAL landing composition — brand lockup top-left, hero
            (headline → subline → action pair) on the left, the product scene
@@ -251,7 +163,7 @@
            band read as a bold white outline crawling the page. Bars carry a
            barely-there ember-tinted breath instead; reduced-motion holds
            them still. -->
-      <div id="loading-shell" aria-hidden="true">
+      <div id="loading-shell">
         <style>
           #loading-shell {
             min-height: 100dvh;
@@ -295,6 +207,74 @@
           @media (prefers-reduced-motion: reduce) {
             #loading-shell .st-bar::after { animation: none; content: none; }
           }
+          /* Real content in the shell: the crawlable copy doubles as the boot
+             screen, so no-JS visitors and crawlers read the actual product
+             while JS users see it only for the boot instant before React
+             replaces it with the same words in the same places. */
+          #loading-shell .st-h1 {
+            margin: 0 0 16px;
+            font-size: clamp(34px, 5.2vw, 52px);
+            line-height: 1.04;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            color: #1e1c18;
+          }
+          html.dark #loading-shell .st-h1 { color: #f5f4f0; }
+          #loading-shell .st-sub {
+            margin: 0 0 22px;
+            font-size: 17px;
+            line-height: 1.55;
+            font-weight: 500;
+            color: #6e6e73;
+            max-width: 46ch;
+          }
+          html.dark #loading-shell .st-sub { color: rgba(255,255,255,0.62); }
+          #loading-shell .st-note {
+            margin: 14px 0 0;
+            font-size: 12.5px;
+            line-height: 1.5;
+            color: #6e6e73;
+          }
+          html.dark #loading-shell .st-note { color: rgba(255,255,255,0.5); }
+          #loading-shell .st-section { max-width: 1120px; margin: 0 auto; padding: 36px 28px 0; width: 100%; }
+          #loading-shell .st-section h2 {
+            margin: 0 0 14px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+            color: rgba(99,95,87,0.9);
+          }
+          html.dark #loading-shell .st-section h2 { color: rgba(176,171,162,0.85); }
+          #loading-shell .st-section ol {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 14.5px;
+            line-height: 1.75;
+            color: #3d3a34;
+          }
+          html.dark #loading-shell .st-section ol { color: rgba(245,244,240,0.75); }
+          #loading-shell .st-section ol strong { color: #1e1c18; font-weight: 600; }
+          html.dark #loading-shell .st-section ol strong { color: #f5f4f0; }
+          #loading-shell .st-faq h3 { margin: 18px 0 4px; font-size: 14.5px; font-weight: 600; color: #1e1c18; }
+          html.dark #loading-shell .st-faq h3 { color: #f5f4f0; }
+          #loading-shell .st-faq p { margin: 0; font-size: 14px; line-height: 1.65; color: #6e6e73; }
+          html.dark #loading-shell .st-faq p { color: rgba(255,255,255,0.6); }
+          #loading-shell .st-foot {
+            border-top: 1px solid rgba(30,28,24,0.08);
+            margin-top: 36px;
+            padding: 18px 28px 26px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 22px;
+            align-items: center;
+            font-size: 13px;
+          }
+          html.dark #loading-shell .st-foot { border-top-color: rgba(255,255,255,0.08); }
+          #loading-shell .st-foot a { color: #6e6e73; text-decoration: none; font-weight: 500; }
+          html.dark #loading-shell .st-foot a { color: rgba(255,255,255,0.55); }
+          #loading-shell .st-foot a:hover { color: #1e1c18; }
+          html.dark #loading-shell .st-foot a:hover { color: #fff; }
           @media (max-width: 900px) {
             #loading-shell .st-hero { grid-template-columns: 1fr !important; }
             /* The live demo collapses to the phone alone on phones, so the
@@ -311,7 +291,7 @@
         </style>
         <!-- Header band: the real brand mark (inline, ember gradient) where
              the live header will sit. -->
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 28px">
+        <header style="display:flex;align-items:center;justify-content:space-between;padding:18px 28px">
           <div style="display:flex;align-items:center;gap:8px">
             <svg width="30" height="30" viewBox="0 0 256 256" fill="none" aria-hidden="true">
               <defs><linearGradient id="st-boot-ember" x1="24" y1="20" x2="216" y2="236" gradientUnits="userSpaceOnUse">
@@ -323,31 +303,74 @@
             </svg>
             <span style="font-size:21px;font-weight:700;letter-spacing:-0.02em;color:#1e1c18">ShareTexts</span>
           </div>
-          <div class="st-bar" style="width:56px;height:26px;border-radius:13px"></div>
-        </div>
+          <div class="st-bar" aria-hidden="true" style="width:56px;height:26px;border-radius:13px"></div>
+        </header>
         <!-- Hero: the landing's real geometry. -->
         <div class="st-hero" style="flex:1;display:grid;grid-template-columns:minmax(0,10fr) minmax(0,9fr);align-items:center;gap:40px;width:100%;max-width:1120px;margin:0 auto;padding:0 28px">
-          <div style="max-width:430px">
-            <div class="st-bar" style="width:88%;height:40px;border-radius:16px;margin-bottom:12px"></div>
-            <div class="st-bar" style="width:70%;height:40px;border-radius:16px;margin-bottom:20px"></div>
-            <div class="st-bar" style="width:62%;height:16px;margin-bottom:9px"></div>
-            <div class="st-bar" style="width:48%;height:16px;margin-bottom:30px"></div>
-            <div style="display:flex;gap:12px">
+          <div style="max-width:470px">
+            <h1 class="st-h1">Move anything between your devices.</h1>
+            <p class="st-sub">ShareTexts sends text, links, photos, videos, and files directly between any two devices — phone to PC, iPhone to Windows — straight from your browser. No app, no account, no cable.</p>
+            <!-- The two pills stay boot bars: a button that does nothing
+                 without JavaScript would be a fake affordance. The product
+                 facts live in the real copy and the guide below. -->
+            <div aria-hidden="true" style="display:flex;gap:12px">
               <div class="st-bar" style="width:138px;height:52px;border-radius:999px;background:linear-gradient(180deg, rgba(240,100,19,0.32), rgba(240,100,19,0.20))"></div>
               <div class="st-bar" style="width:138px;height:52px;border-radius:999px"></div>
             </div>
-            <div class="st-bar" style="width:55%;height:13px;margin-top:26px"></div>
+            <p class="st-note">Send on one device, Receive on the other — free to use, no sign-up. How it works, below.</p>
           </div>
           <!-- The scene placeholder is the demo's own silhouette: a wide
                laptop block with a phone standing in front of its right
                corner. Same shapes, same places as the live component, so the
                swap lands without the eye catching a rearrangement. -->
-          <div class="st-scene" style="position:relative;height:min(46vh,330px)">
+          <div class="st-scene" aria-hidden="true" style="position:relative;height:min(46vh,330px)">
             <div class="st-bar st-lap" style="position:absolute;left:0;top:1%;width:68%;height:75%;border-radius:13px;opacity:0.55"></div>
             <div class="st-bar st-lap" style="position:absolute;left:1%;top:78%;width:67%;height:9px;border-radius:6px;opacity:0.4"></div>
             <div class="st-bar st-phone" style="position:absolute;right:7%;bottom:0;width:19%;height:88%;border-radius:16px;opacity:0.75"></div>
           </div>
         </div>
+        <!-- Crawlable product content, in source HTML: the same facts the
+             app teaches. Removed with the shell once React mounts; no-JS
+             visitors and crawlers read the real product copy here. -->
+        <main>
+          <section class="st-section" aria-labelledby="st-how-h">
+            <h2 id="st-how-h">How ShareTexts works</h2>
+            <ol>
+              <li><strong>Open</strong> sharetexts.online on both devices — in the browser. Nothing to install.</li>
+              <li><strong>Find your other device.</strong> It appears in Nearby while ShareTexts is open on both devices; otherwise connect with a six-digit code, a QR code, or a share link.</li>
+              <li><strong>Connect with one tap.</strong> The room is end-to-end encrypted between your devices.</li>
+              <li><strong>Send anything</strong> — text, links, photos, videos, audio, any file. It moves directly between the devices and is never stored on a server.</li>
+              <li><strong>Receive it on the other device</strong> — then close the room. Nothing is kept.</li>
+            </ol>
+          </section>
+          <section class="st-section st-faq" aria-labelledby="st-faq-h">
+            <h2 id="st-faq-h">Frequently asked questions</h2>
+            <h3>What is ShareTexts?</h3>
+            <p>ShareTexts is a temporary bridge between two devices. Move text, links, photos, videos, and files directly from one screen to another. No app, no account, nothing kept.</p>
+            <h3>Do I need to install an app or create an account?</h3>
+            <p>No. ShareTexts runs in the browser — no app, no account, nothing to install. It works between an iPhone and a Windows PC, or any two devices with a modern browser.</p>
+            <h3>What can I send?</h3>
+            <p>Text, links, photos, videos, audio, documents — any file type, transferred as the original bytes. Transfers are end-to-end encrypted and never stored on a server.</p>
+            <h3>How do devices find each other?</h3>
+            <p>Four ways: Nearby discovery (the other device appears automatically while ShareTexts is open on both), a six-digit code, a QR code, or a share link. The code, QR, and link work over any internet connection.</p>
+            <h3>Is Nearby discovery private?</h3>
+            <p>Yes. Your device appears only while ShareTexts is open on it, and other devices see a temporary label like “Windows PC” — never your IP, accounts, or any permanent identifier.</p>
+            <h3>Is ShareTexts private?</h3>
+            <p>Transfers are encrypted between devices. ShareTexts keeps no account, no permanent history, and no copies of your content. Rooms close automatically.</p>
+            <h3>What happens if my internet drops mid-transfer?</h3>
+            <p>ShareTexts tells you whether the transfer can be retried. For large files, a stable connection is recommended.</p>
+            <h3>Can I use ShareTexts between an iPhone and an Android phone?</h3>
+            <p>Yes. ShareTexts works between any two devices with a modern browser — iPhone to Android, Android to Windows, iPhone to Mac.</p>
+          </section>
+        </main>
+        <footer class="st-foot">
+          <a href="/docs">Docs</a>
+          <a href="/about">About</a>
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+          <a href="https://x.com/0xalyt" rel="noopener">x.com/0xalyt</a>
+          <a href="https://github.com/Alightttt/ShareTexts" rel="noopener">GitHub</a>
+        </footer>
         <!-- The honest escalation (mirrors the in-app connecting screen):
              an 8s boot is NOT normal — say so instead of shimmering forever.
              Removed by main.tsx with the shell; never shown on a healthy boot. -->
@@ -355,16 +378,6 @@
           Still loading — your connection is slow. If this doesn't clear, check your network and refresh.
         </p>
       </div>
-      <script>
-        (function () {
-          try {
-            setTimeout(function () {
-              var el = document.getElementById('st-boot-slow');
-              if (el && document.getElementById('loading-shell')) el.style.display = 'block';
-            }, 8000);
-          } catch (e) { /* never block boot */ }
-        })();
-      </script>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

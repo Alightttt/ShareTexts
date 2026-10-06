@@ -9,9 +9,11 @@ Disallow: /api/
 Disallow: /room/
 Disallow: /connect/
 Disallow: /s/
+Disallow: /space/
+Disallow: /seo/
 
 Sitemap: https://sharetexts.online/sitemap.xml
 
 # AI assistants and search crawlers: welcome. llms.txt summarizes the
-# product for you; the FAQ structured data in index.html answers common
-# questions verbatim.
+# product; /docs carries the FAQ both as visible HTML and as matching
+# structured data. Session routes (/room, /s, /space) are never indexable.

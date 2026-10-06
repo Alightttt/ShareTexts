@@ -18,12 +18,14 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      // The hash whitelists ONLY the index.html pre-paint theme script
-      // (sha256 of its exact body) — it must run before first paint or dark
-      // users get a white flash on every reload. Hash-pinning keeps the CSP
-      // strict; 'unsafe-inline' would defeat the whole policy.
+      // The hash whitelists ONLY the index.html pre-paint script (sha256 of
+      // its exact body — theme bootstrap + slow-boot escalation). It must run
+      // before first paint or dark users get a white flash on every reload.
+      // Hash-pinning keeps the CSP strict; 'unsafe-inline' would defeat the
+      // whole policy. If index.html's inline script changes, re-pin this hash
+      // (scripts/verify-seo.mjs catches a mismatch as a console error).
       scriptSrc: isProd
-        ? ["'self'", "'sha256-WnOGbazC10O+AKn1bjO+3nE034tegoTXq+cdeQ0IsYI='"]
+        ? ["'self'", "'sha256-dlnEh4mZw5JxaCkg9Kk//YTm0YKXquqYsUswRzAfToM='"]
         : ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
@@ -1563,6 +1565,11 @@ async function start() {
     app.get('/about', (_req, res) => {
       res.sendFile(path.join(process.cwd(), 'public', 'guides', 'about.html'));
     });
+    // Dev parity note: /docs, /privacy and /terms fall through to Vite and
+    // render the React views, exactly like production after hydration. The
+    // prerendered shells (scripts/seo-routes.mjs → dist/seo/) matter only
+    // for crawlers, and crawlers hit production; verify-seo.mjs runs the
+    // full raw-HTML audit against a production build instead.
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
@@ -1585,12 +1592,24 @@ async function start() {
       if (req.path === '/about') {
         return res.sendFile(path.join(distPath, 'guides', 'about.html'));
       }
+      // Prerendered route shells (scripts/seo-routes.mjs): crawlers and
+      // no-JS visitors get real content with per-route metadata; the same
+      // files boot the React views on top of themselves.
+      if (req.path === '/docs') {
+        return res.sendFile(path.join(distPath, 'seo', 'docs.html'));
+      }
+      if (req.path === '/privacy') {
+        return res.sendFile(path.join(distPath, 'seo', 'privacy.html'));
+      }
+      if (req.path === '/terms') {
+        return res.sendFile(path.join(distPath, 'seo', 'terms.html'));
+      }
       // Known SPA routes that should get the app shell
-      if (req.path === '/' || req.path === '/docs' || req.path === '/privacy' || req.path === '/terms' || /^\/s\/[0-9a-f]{8}$/i.test(req.path) || /^\/space\/[0-9a-f-]{36}$/i.test(req.path)) {
+      if (req.path === '/' || /^\/s\/[0-9a-f]{8}$/i.test(req.path) || /^\/space\/[0-9a-f-]{36}$/i.test(req.path)) {
         return res.sendFile(path.join(distPath, 'index.html'));
       }
-      // Everything else is a 404
-      res.status(404).sendFile(path.join(distPath, 'index.html'));
+      // Everything else is a real 404: designed noindex page, correct status.
+      res.status(404).sendFile(path.join(distPath, 'seo', '404.html'));
     });
   }
 

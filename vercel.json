@@ -29,6 +29,18 @@
       "destination": "/guides/about.html"
     },
     {
+      "source": "/docs",
+      "destination": "/seo/docs.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/seo/privacy.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/seo/terms.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
@@ -59,7 +71,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'sha256-WnOGbazC10O+AKn1bjO+3nE034tegoTXq+cdeQ0IsYI='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' blob: https: wss: ws:; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+          "value": "default-src 'self'; script-src 'self' 'sha256-dlnEh4mZw5JxaCkg9Kk//YTm0YKXquqYsUswRzAfToM='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' blob: https: wss: ws:; worker-src 'self' blob:; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
         }
       ]
     }

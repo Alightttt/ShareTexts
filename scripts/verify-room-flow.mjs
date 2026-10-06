@@ -3,7 +3,7 @@
 // device's room (60s server-side disconnect grace).
 import { chromium } from 'playwright';
 
-const BASE = 'http://localhost:3010';
+const BASE = process.env.URL || 'http://localhost:3010';
 const TOAST = 'Connected. You can start sending';
 const results = [];
 const out = (name, ok, extra = '') => { results.push(ok); console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`); };
