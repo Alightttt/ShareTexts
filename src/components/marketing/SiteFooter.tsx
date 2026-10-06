@@ -66,7 +66,7 @@ export function SiteFooter({ className }: { className?: string }) {
 
           {COLUMNS.map((col) => (
             <nav key={col.title} aria-label={t(col.title)} className="min-w-0">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.09em] text-apple-ink-muted/70 dark:text-white/35">
+              <h2 className="st-eyebrow">
                 {t(col.title)}
               </h2>
               <ul className="mt-3 space-y-0.5">

@@ -7,7 +7,7 @@
 // delete/close permissions, expiry semantics.
 //
 // Run: node scripts/verify-space.mjs
-import { spawn } from 'node:child_process';
+import { spawn, execSync } from 'node:child_process';
 import crypto from 'node:crypto';
 
 const PORT = process.env.SPACE_TEST_PORT || 3311;
@@ -197,7 +197,16 @@ try {
   const rem6h = cr.data.reminderAt - cr.data.createdAt;
   check('6h space reminds 1h before', Math.round(rem6h / 3.6e6) === 5, `${rem6h / 3.6e6}h before close`);
 } finally {
-  child.kill();
+  // Windows: `npx` under shell:true wraps the real server in cmd.exe → node;
+  // child.kill() would only take the wrapper, leaving the server orphaned
+  // and still bound to PORT — every later run then collides (EADDRINUSE) or
+  // reads a wedged zombie. Tree-kill the whole process group synchronously:
+  // an async kill here races process.exit and never lands.
+  if (process.platform === 'win32' && child.pid) {
+    try { execSync(`taskkill /pid ${child.pid} /T /F`, { stdio: 'ignore' }); } catch { /* best effort */ }
+  } else {
+    child.kill();
+  }
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

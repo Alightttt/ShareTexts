@@ -1221,7 +1221,7 @@ export function SingleScreenApp() {
                 const stat = (label: string, value: string) => (
                   <div key={label} className="flex-1 flex flex-col items-center gap-1 py-1">
                     <span className="text-[16px] font-bold text-apple-ink dark:text-white tnum leading-none">{value}</span>
-                    <span className="text-[10.5px] font-medium uppercase tracking-[0.06em] text-apple-ink-muted/85 dark:text-white/40 leading-none">{label}</span>
+                    <span className="st-eyebrow">{label}</span>
                   </div>
                 );
                 return (
@@ -1315,32 +1315,79 @@ export function SingleScreenApp() {
             </motion.div>
           )}
     </AnimatePresence>
-  );
-
-  const footerNode = (
-    <footer className="shrink-0 px-6 lg:px-10 pt-2.5 pb-[max(env(safe-area-inset-bottom),8px)] sm:pb-2.5 border-t border-apple-divider/60 dark:border-white/[0.06]">
-        {/* One quiet line: brand · links · X. The wordmark grounds the row —
-            a footer without a brand reads as legal boilerplate; with it, the
-            page still knows whose it is at the very bottom of the scroll.
-            It is a WORDMARK, not a glyph beside a rule: the stray divider
-            that used to sit after the mark separated nothing and read as a
-            half-finished row. */}
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-x-5 gap-y-2 flex-wrap">
-          <span className="flex items-center gap-1.5 select-none" aria-hidden>
-            <ShareTextsLogo size={16} className="opacity-90" />
-            <span className="font-display font-bold tracking-[-0.03em] leading-none text-[13px] text-apple-ink-muted/85 dark:text-white/50">
-              ShareTexts
+  );  const footerNode = (
+    <footer className="shrink-0 px-6 lg:px-10 pt-3 pb-[max(env(safe-area-inset-bottom),10px)] sm:pb-3.5 border-t border-apple-divider/60 dark:border-white/[0.06]">
+        {/* A product footer for the LANDING only: the brand states the deal once, then three tiny groups answer "what next?" — use it,
+            read it, the legal words — and the project link lives at the end.
+            Groups are INLINE on desktop (the landing must stay one screen,
+            so the footer stays one band tall) and stack on mobile. */}
+        <div className="max-w-6xl mx-auto flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+          <div className="flex flex-col gap-1 min-w-[170px]">
+            <span className="flex items-center gap-1.5" aria-hidden>
+              <ShareTextsLogo size={18} />
+              <span className="font-display font-bold tracking-[-0.03em] leading-none text-[14.5px] text-apple-ink dark:text-white/90">
+                ShareTexts
+              </span>
             </span>
-          </span>
-          <nav className="flex items-center gap-5 sm:gap-7 text-[13px] font-medium text-apple-ink-muted dark:text-white/50">
-            {/* Each link gets a 40px hit box via symmetric padding + matching
-                negative margin — the visible rhythm is unchanged but the
-                touch target meets the app's 40px contract on phones. */}
-            <a href="/docs" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.docs')}</a>
-            <a href="/about" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.about')}</a>
-            <a href="/privacy" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.privacy')}</a>
-            <a href="/terms" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.terms')}</a>
-          </nav>
+            <span className="text-[12px] font-medium leading-none text-apple-ink-muted/75 dark:text-white/40">
+              {t('footer.noApp')} · {t('footer.noAccount')} · {t('footer.temporary')}
+            </span>
+          </div>
+          {/* Three tiny groups, one band tall: the label carries the
+              meaning, the links stay honest (each goes somewhere real or
+              does something real — the space entry opens the same sheet the
+              hero pill opens; no invented sitemap on a nine-page product). */}
+          {[
+            {
+              title: t('footer.useIt'),
+              items: [
+                { label: t('space.title'), onClick: () => setSpaceSheet('create') },
+                { label: t('nav.docs'), href: '/docs' },
+              ],
+            },
+            {
+              title: t('footer.read'),
+              items: [
+                { label: t('nav.about'), href: '/about' },
+                { label: t('footer.devs'), href: '/llms.txt' },
+              ],
+            },
+            {
+              title: t('footer.terms'),
+              items: [
+                { label: t('nav.privacy'), href: '/privacy' },
+                { label: t('nav.terms'), href: '/terms' },
+              ],
+            },
+          ].map((group) => (
+            <div key={group.title} className="flex flex-col gap-1">
+              <h2 className="st-eyebrow">
+                {group.title}
+              </h2>
+              <div className="flex items-center gap-x-4">
+                {group.items.map((item) =>
+                  item.onClick ? (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={item.onClick}
+                      className="inline-flex items-center min-h-[40px] min-w-[40px] justify-center -my-2 text-[13px] font-medium text-apple-ink-muted dark:text-white/55 hover:text-apple-ink dark:hover:text-white transition-colors"
+                    >
+                      {item.label}
+                    </button>
+                  ) : (
+                    <a
+                      key={item.label}
+                      href={item.href}
+                      className="inline-flex items-center min-h-[40px] min-w-[40px] justify-center -my-2 text-[13px] font-medium text-apple-ink-muted dark:text-white/55 hover:text-apple-ink dark:hover:text-white transition-colors"
+                    >
+                      {item.label}
+                    </a>
+                  )
+                )}
+              </div>
+            </div>
+          ))}
           {/* X (Twitter) — glyph + handle on ≥sm so an isolated ✕ at the
               pane's corner can't be misread as a dismiss control; the
               anchor chip framing (pill border) says "external link". */}
@@ -1350,12 +1397,46 @@ export function SingleScreenApp() {
             rel="noopener noreferrer"
             aria-label={t('footer.followAria')}
             title="x.com/0xalyt"
-            className="inline-flex items-center justify-center gap-1.5 min-h-[40px] min-w-[44px] -my-2.5 px-2.5 rounded-full border border-apple-divider/60 dark:border-white/[0.08] text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:border-apple-ink/30 dark:hover:border-white/25 transition-colors"
+            className="inline-flex items-center justify-center gap-1.5 min-h-[40px] min-w-[40px] -my-2 px-2.5 self-center rounded-full border border-apple-divider/60 dark:border-white/[0.08] text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:border-apple-ink/30 dark:hover:border-white/25 transition-colors"
           >
             <svg className="w-[15px] h-[15px] shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
             <span className="hidden sm:inline text-[12.5px] font-semibold">x.com/0xalyt</span>
           </a>
         </div>
+    </footer>
+  );
+
+  /* The compact footer for APP surfaces (desktop room left panel, pairing,
+      mobile single-screen): one quiet line — brand · links · X. The grouped
+      landing footer below would eat a third of the room rail and read as
+      marketing inside a tool; app surfaces keep the one-band footer. */
+  const compactFooterNode = (
+    <footer className="shrink-0 px-6 lg:px-10 pt-2.5 pb-[max(env(safe-area-inset-bottom),8px)] sm:pb-2.5 border-t border-apple-divider/60 dark:border-white/[0.06]">
+      <div className="max-w-6xl mx-auto flex items-center justify-between gap-x-5 gap-y-2 flex-wrap">
+        <span className="flex items-center gap-1.5 select-none" aria-hidden>
+          <ShareTextsLogo size={16} className="opacity-90" />
+          <span className="font-display font-bold tracking-[-0.03em] leading-none text-[13px] text-apple-ink-muted/85 dark:text-white/50">
+            ShareTexts
+          </span>
+        </span>
+        <nav className="flex items-center gap-5 sm:gap-7 text-[13px] font-medium text-apple-ink-muted dark:text-white/50">
+          <a href="/docs" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.docs')}</a>
+          <a href="/about" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.about')}</a>
+          <a href="/privacy" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.privacy')}</a>
+          <a href="/terms" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.terms')}</a>
+        </nav>
+        <a
+          href="https://x.com/0xalyt"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={t('footer.followAria')}
+          title="x.com/0xalyt"
+          className="inline-flex items-center justify-center gap-1.5 min-h-[40px] min-w-[40px] -my-2.5 px-2.5 rounded-full border border-apple-divider/60 dark:border-white/[0.08] text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:border-apple-ink/30 dark:hover:border-white/25 transition-colors"
+        >
+          <svg className="w-[15px] h-[15px] shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+          <span className="hidden sm:inline text-[12.5px] font-semibold">x.com/0xalyt</span>
+        </a>
+      </div>
     </footer>
   );
 
@@ -1415,7 +1496,7 @@ export function SingleScreenApp() {
           {heroContent}
         </div>
       </div>
-      {footerNode}
+      {compactFooterNode}
     </div>
   );
 
@@ -1625,7 +1706,7 @@ export function SingleScreenApp() {
                     aria-hidden
                     className="w-full rounded-[18px] border border-dashed border-black/[0.12] dark:border-white/[0.12] bg-white/[0.55] dark:bg-white/[0.03] p-4 flex flex-col gap-2.5"
                   >
-                    <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-apple-ink-muted/60 dark:text-white/30">
+                    <span className="st-eyebrow">
                       {t('room.previewTitle')}
                     </span>
                     <div className="flex items-center gap-2.5">
@@ -1753,7 +1834,7 @@ export function SingleScreenApp() {
                   {heroContent}
                 </div>
               </div>
-              {footerNode}
+              {compactFooterNode}
             </div>
           </div>
         )

@@ -1,135 +1,240 @@
-// F19 visual pass: proof shots for this round's surfaces — Docs (DataFlow,
-// PlatformStrip, FaqSection, SiteFooter), the static About's rich footer,
-// the home skeleton's device-pair block, the format keys' tooltip, the
-// offline banner, and the landing demo in light/dark/mobile/landscape.
-// Saves to docs/audits/shots-f19/ and asserts overflow + console cleanliness.
-import fs from 'fs';
-import { launchBrowser, sleep, tapTargetIssues, TAP_TARGET_MIN } from './lib.mjs';
+// F19 visual foundation reset: BEFORE/AFTER baseline with identical framing.
+// Real product state everywhere: a real two-device room with a real message,
+// the real pairing screen, the real QR overlay, the real settings overlay,
+// the real empty space, the real error fallback (lazy-chunk abort).
+// Output: docs/audits/shots-f19-{before,after}/ (untracked by convention).
+// Run: F19_PHASE=after node scripts/shots-f19.mjs
+import { launchBrowser, URL, sleep } from './lib.mjs';
+import { mkdirSync } from 'node:fs';
+import crypto from 'node:crypto';
 
-const BASE = process.env.URL || 'http://localhost:3010';
-const OUT = 'docs/audits/shots-f19';
-fs.mkdirSync(OUT, { recursive: true });
+const PHASE = process.env.F19_PHASE === 'after' ? 'after' : 'before';
+const OUT = `docs/audits/shots-f19-${PHASE}`;
+mkdirSync(OUT, { recursive: true });
 
-const errors = [];
-const watch = (page, tag) => {
-  page.on('console', m => { if (m.type() === 'error') errors.push(`[${tag}] ${m.text().slice(0, 200)}`); });
-  page.on('pageerror', e => errors.push(`[${tag} pageerror] ${e.message.slice(0, 200)}`));
-};
-const overflow = (page) => page.evaluate(() => {
-  const de = document.documentElement;
-  return [...document.querySelectorAll('*')]
-    .filter(el => { const r = el.getBoundingClientRect(); return r.width > 0 && (r.right > de.clientWidth + 1 || r.left < -1); })
-    .slice(0, 3)
-    .map(el => (el.tagName + '.' + (el.className || '').toString().split(' ').slice(0, 3).join('.')).slice(0, 80));
-});
+const DESK = { width: 1440, height: 900 };
+const DESK2 = { width: 1280, height: 800 };
+const MOB = (w) => ({ width: w, height: 812, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+const LAND = { width: 844, height: 390, isMobile: true, hasTouch: true };
 
-const browser = await launchBrowser();
-try {
-  // ── Desktop 1440×900 ──────────────────────────────────────────────────
-  const ctxD = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  const D = await ctxD.newPage();
-  watch(D, 'desktop');
-
-  await D.goto(BASE, { waitUntil: 'domcontentloaded' });
-  await D.locator('[data-testid="hero-demo"]').first().waitFor({ timeout: 20000 });
-  await D.evaluate(() => document.querySelector('[data-testid="hero-demo"]').scrollIntoView({ block: 'center' }));
-  await sleep(1400); // let the demo reach a mid-loop beat
-  await D.screenshot({ path: `${OUT}/01-landing-demo-light.png` });
-
-  // Theme cross-fade end state (dark)
-  await D.evaluate(() => { document.querySelector('button[aria-label*="theme" i], button[aria-label*="mode" i]')?.click(); });
-  await sleep(700);
-  await D.screenshot({ path: `${OUT}/02-landing-demo-dark.png` });
-
-  // Docs: overview with DataFlow + PlatformStrip
-  await D.goto(`${BASE}/docs`, { waitUntil: 'domcontentloaded' });
-  await D.getByRole('heading', { level: 1 }).waitFor({ timeout: 20000 });
-  await D.evaluate(() => document.querySelector('[aria-labelledby="flow-title"]')?.scrollIntoView({ block: 'start' }));
-  await sleep(400);
-  await D.screenshot({ path: `${OUT}/03-docs-dataflow.png` });
-
-  // Docs: FAQ
-  await D.goto(`${BASE}/docs#faq`, { waitUntil: 'domcontentloaded' });
-  await sleep(600);
-  await D.screenshot({ path: `${OUT}/04-docs-faq.png` });
-
-  // Static About: rich footer (dark carries over via theme.js)
-  await D.goto(`${BASE}/about`, { waitUntil: 'domcontentloaded' });
-  await sleep(500);
-  await D.evaluate(() => document.querySelector('.footer-rich')?.scrollIntoView({ block: 'end' }));
-  await sleep(300);
-  await D.screenshot({ path: `${OUT}/05-about-footer.png` });
-  const aboutTap = await D.evaluate(tapTargetIssues, { minTarget: TAP_TARGET_MIN });
-  console.log('about tap targets ≥40px:', aboutTap.length === 0 ? 'ok' : JSON.stringify(aboutTap.slice(0, 3)));
-
-  // Offline banner (dispatch the event the window listener hears)
-  await D.goto(BASE, { waitUntil: 'domcontentloaded' });
-  await sleep(600);
-  await D.evaluate(() => window.dispatchEvent(new Event('offline')));
-  await sleep(500);
-  const bannerUp = await D.locator('[data-testid="offline-banner"]').count();
-  console.log('offline banner rendered on event:', bannerUp > 0 ? 'ok' : 'MISSING');
-  await D.screenshot({ path: `${OUT}/06-offline-banner.png` });
-  await D.evaluate(() => window.dispatchEvent(new Event('online')));
-  await sleep(500);
-  const bannerGone = await D.locator('[data-testid="offline-banner"]').count();
-  console.log('offline banner clears on reconnect:', bannerGone === 0 ? 'ok' : 'STILL VISIBLE');
-
-  // ── Room: format keys + tooltip ───────────────────────────────────────
-  // A room's composer exists only once a peer has joined, so create a room
-  // and join it from a second page — the same entry verify-room-flow uses.
-  await D.getByRole('button', { name: 'Send', exact: true }).click();
-  await D.waitForFunction(() => !!localStorage.getItem('sharetext.session.v1'), null, { timeout: 20000 });
-  const { roomId } = await D.evaluate(() => JSON.parse(localStorage.getItem('sharetext.session.v1')));
-  const short = roomId.replace(/-/g, '').slice(0, 8);
-  const ctxR = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-  const R = await ctxR.newPage();
-  watch(R, 'joiner');
-  await R.goto(`${BASE}/s/${short}`, { waitUntil: 'domcontentloaded' });
-  await R.locator('[data-testid="composer"]').waitFor({ timeout: 20000 });
-  await D.locator('[data-testid="composer"]').waitFor({ timeout: 20000 });
-  await D.locator('[data-testid="composer"]').fill('Formatting **works** here');
-  await sleep(300);
-  await D.locator('[data-testid="format-bold"]').hover();
-  await sleep(650); // past the 350ms tooltip delay
-  const tip = await D.locator('[role="tooltip"]').count();
-  console.log('format tooltip appears on hover:', tip > 0 ? 'ok' : 'MISSING');
-  await D.screenshot({ path: `${OUT}/07-format-tooltip.png` });
-  await ctxR.close();
-
-  // ── Mobile 375×812 ────────────────────────────────────────────────────
-  const ctxM = await browser.newContext({ viewport: { width: 375, height: 812 } });
-  const M = await ctxM.newPage();
-  watch(M, 'mobile');
-  await M.goto(BASE, { waitUntil: 'domcontentloaded' });
-  await M.locator('[data-testid="hero-demo"]').first().waitFor({ timeout: 20000 });
-  await M.evaluate(() => document.querySelector('[data-testid="hero-demo"]').scrollIntoView({ block: 'center' }));
-  await sleep(1200);
-  await M.screenshot({ path: `${OUT}/08-mobile-demo-light.png` });
-  await M.evaluate(() => {
-    document.documentElement.classList.add('st-dark');
-    document.documentElement.setAttribute('data-theme', 'dark');
-    document.documentElement.style.colorScheme = 'dark';
-  });
-  await sleep(400);
-  await M.screenshot({ path: `${OUT}/09-mobile-demo-dark.png` });
-  const mOver = await overflow(M);
-  console.log('mobile overflow:', mOver.length === 0 ? 'none' : JSON.stringify(mOver));
-
-  // ── Landscape 740×360 ─────────────────────────────────────────────────
-  const ctxL = await browser.newContext({ viewport: { width: 740, height: 360 } });
-  const L = await ctxL.newPage();
-  watch(L, 'landscape');
-  await L.goto(BASE, { waitUntil: 'domcontentloaded' });
-  await sleep(900);
-  await L.screenshot({ path: `${OUT}/10-landscape-landing.png` });
-  const lOver = await overflow(L);
-  console.log('landscape overflow:', lOver.length === 0 ? 'none' : JSON.stringify(lOver));
-
-  await ctxD.close(); await ctxM.close(); await ctxL.close();
-} finally {
-  await browser.close();
+let failures = 0;
+async function shot(page, name) {
+  try { await page.screenshot({ path: `${OUT}/${name}.png` }); console.log('shot', name); }
+  catch (e) { failures++; console.log('FAIL', name, e.message.split('\n')[0]); }
 }
 
-console.log('console/page errors:', errors.length === 0 ? 'none' : errors.slice(0, 5));
-process.exit(errors.length === 0 ? 0 : 1);
+async function setDark(page, on) {
+  await page.evaluate((d) => {
+    document.documentElement.classList.toggle('dark', d);
+    try { localStorage.setItem('sharetext.theme', JSON.stringify(d ? 'dark' : 'light')); } catch {}
+  }, on);
+  await sleep(420);
+}
+
+async function setLang(page, lang) {
+  await page.evaluate((l) => { try { localStorage.setItem('sharetext.locale', l); } catch {} }, lang);
+}
+
+// Deterministic demo frame: seek to the transfer beat, then pause.
+async function pinDemo(page, fraction) {
+  await page.evaluate((f) => {
+    const rail = document.querySelector('[data-testid="demo-scrubber"]');
+    if (!rail) return;
+    const r = rail.getBoundingClientRect();
+    rail.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: r.left + r.width * f, clientY: r.top + r.height / 2 }));
+  }, fraction);
+  await sleep(700);
+  await page.evaluate(() => {
+    const b = document.querySelector('[data-testid="demo-play"]');
+    if (b) b.click();
+  });
+  await sleep(500);
+}
+
+async function seedSpace() {
+  const spaceId = crypto.randomUUID();
+  const deviceKey = crypto.randomBytes(8).toString('hex');
+  const H = { 'content-type': 'application/json', 'x-device-key': deviceKey, 'x-device-name': 'Seed' };
+  const cr = await fetch(`${URL}/space/${spaceId}/create`, { method: 'POST', headers: H, body: JSON.stringify({ name: 'Weekend trip', durationMs: 86400000 }) }).then(r => r.json());
+  return { spaceId, token: cr.token };
+}
+
+async function main() {
+  const browser = await launchBrowser();
+  const errs = [];
+  const pageErrors = (tag) => (e) => errs.push(`${tag}: ${e.message}`);
+
+  // ── HOME: 375 light · 390 dark · 430 light · 1280 light · 1440 dark/light ──
+  const homeShots = [
+    [MOB(375), '375-light', false],
+    [MOB(390), '390-dark', true],
+    [MOB(430), '430-light', false],
+    [DESK2, '1280-light', false],
+    [DESK, '1440-dark', true],
+    [DESK, '1440-light', false],
+  ];
+  for (const [vp, tag, dark] of homeShots) {
+    const ctx = await browser.newContext({ viewport: vp });
+    const p = await ctx.newPage();
+    p.on('pageerror', pageErrors(`home-${tag}`));
+    await p.goto(URL, { waitUntil: 'networkidle' }); await sleep(1100);
+    if (dark) await setDark(p, true);
+    await pinDemo(p, 0.62);
+    await shot(p, `home-${tag}`);
+    if (!vp.isMobile) { // landscape proof on the home as well
+      await p.setViewportSize({ width: 844, height: 390 });
+      await sleep(700); await pinDemo(p, 0.62);
+      await shot(p, `home-landscape-${tag}`);
+    }
+    await ctx.close();
+  }
+
+  // ── PAIRING + QR (real Send flow) ──────────────────────────────────────
+  for (const [vp, tag] of [[DESK2, '1280'], [MOB(375), '375']]) {
+    const ctx = await browser.newContext({ viewport: vp });
+    const p = await ctx.newPage();
+    p.on('pageerror', pageErrors(`pairing-${tag}`));
+    await p.goto(URL, { waitUntil: 'networkidle' }); await sleep(900);
+    await p.getByRole('button', { name: 'Send', exact: true }).click();
+    await p.waitForTimeout(1800);
+    await shot(p, `pairing-${tag}`);
+    // QR overlay: the real "Show QR" control.
+    const qr = p.locator('[data-testid="show-qr"]').first();
+    if (await qr.count()) {
+      await qr.click(); await sleep(800);
+      await shot(p, `qr-${tag}`);
+    }
+    await ctx.close();
+  }
+
+  // ── ROOM: real two-device room with a real message ─────────────────────
+  {
+    const ctxA = await browser.newContext({ viewport: DESK });
+    const ctxB = await browser.newContext({ viewport: MOB(375) });
+    const pa = await ctxA.newPage(); const pb = await ctxB.newPage();
+    pa.on('pageerror', pageErrors('room-a')); pb.on('pageerror', pageErrors('room-b'));
+
+    await pa.goto(URL, { waitUntil: 'domcontentloaded' });
+    await pa.getByRole('button', { name: 'Send', exact: true }).click();
+    await pa.waitForFunction(() => !!localStorage.getItem('sharetext.session.v1'), null, { timeout: 20000 });
+    const { roomId } = await pa.evaluate(() => JSON.parse(localStorage.getItem('sharetext.session.v1')));
+    const short = roomId.replace(/-/g, '').slice(0, 8);
+    await sleep(1500);
+    await shot(pa, `pairing-1440`);
+
+    await pb.goto(URL, { waitUntil: 'domcontentloaded' }); await pb.waitForTimeout(1200);
+    await pb.evaluate((code) => { location.href = '/s/' + code; }, short);
+    await pb.waitForTimeout(3500);
+    await pa.waitForTimeout(3500);
+
+    // Real content: a message from the creator.
+    await pa.getByTestId('composer').first().fill('hello room');
+    await pa.getByTestId('composer').first().press('Enter');
+    await pb.waitForTimeout(2500);
+    await pa.waitForTimeout(1500);
+
+    await shot(pa, `room-1440-light`);
+    await setDark(pa, true);
+    await shot(pa, `room-1440-dark`);
+    await shot(pb, `room-375-light`);
+    await setDark(pb, true);
+    await shot(pb, `room-390-dark`);
+
+    // Settings overlay: real control, real surface.
+    const gear = pa.locator('[data-testid="open-settings"]').first();
+    if (await gear.count()) {
+      await setDark(pa, false);
+      await gear.click(); await sleep(900);
+      await shot(pa, `settings-1440`);
+    }
+    await ctxA.close(); await ctxB.close();
+  }
+
+  // ── SPACE (empty state, real backend) ──────────────────────────────────
+  {
+    const { spaceId, token } = await seedSpace();
+    const url = `${URL}/space/${spaceId}#k=${token}`;
+    for (const [vp, tag] of [[DESK2, '1280'], [MOB(375), '375']]) {
+      const ctx = await browser.newContext({ viewport: vp });
+      const p = await ctx.newPage();
+      p.on('pageerror', pageErrors(`space-${tag}`));
+      await p.goto(url, { waitUntil: 'networkidle' });
+      await p.getByTestId('space-empty').first().waitFor({ timeout: 12000 }).catch(() => {});
+      await sleep(1200);
+      await shot(p, `space-${tag}`);
+      await ctx.close();
+    }
+  }
+
+  // ── DOCS / ABOUT / 404: desktop 1280 + mobile 375, light ──────────────
+  for (const route of ['docs', 'about', 'no-such-page']) {
+    const name = route === 'no-such-page' ? '404' : route;
+    for (const [vp, tag] of [[DESK2, '1280'], [MOB(375), '375']]) {
+      const ctx = await browser.newContext({ viewport: vp });
+      const p = await ctx.newPage();
+      p.on('pageerror', pageErrors(`${name}-${tag}`));
+      await p.goto(`${URL}/${route}`, { waitUntil: 'networkidle' }); await sleep(900);
+      await shot(p, `${name}-${tag}`);
+      await ctx.close();
+    }
+  }
+
+  // ── ERROR: abort the lazy Docs chunk — the real ErrorFallback ─────────
+  for (const dark of [false, true]) {
+    const ctx = await browser.newContext({ viewport: DESK2 });
+    const p = await ctx.newPage();
+    p.on('pageerror', pageErrors('error'));
+    if (dark) await p.addInitScript(() => { try { localStorage.setItem('sharetext.theme', JSON.stringify('dark')); } catch {} });
+    await p.route('**/src/views/Docs.tsx*', r => r.abort());
+    await p.goto(`${URL}/docs`, { waitUntil: 'domcontentloaded' });
+    await sleep(2000);
+    const isError = await p.evaluate(() => document.body.textContent.includes('Something went wrong'));
+    if (isError) await shot(p, `error-1280-${dark ? 'dark' : 'light'}`);
+    else console.log('error screen did not trigger for', dark ? 'dark' : 'light');
+    await ctx.close();
+  }
+
+  // ── RTL: home · room · docs (desktop, ar) ──────────────────────────────
+  {
+    const ctxA = await browser.newContext({ viewport: DESK });
+    const pa = await ctxA.newPage();
+    pa.on('pageerror', pageErrors('rtl-home'));
+    await pa.goto(URL, { waitUntil: 'networkidle' }); await sleep(900);
+    await setLang(pa, 'ar'); await pa.reload({ waitUntil: 'networkidle' }); await sleep(1100);
+    await pinDemo(pa, 0.62);
+    await shot(pa, `rtl-home-1440`);
+    // Real RTL room: create + self-join in the same context is not the real
+    // path; reuse the short-link join with a second context.
+    await pa.getByRole('button', { name: 'إرسال', exact: true }).click().catch(async () => {
+      await pa.getByRole('button', { name: 'Send', exact: true }).click().catch(() => {});
+    });
+    await pa.waitForFunction(() => !!localStorage.getItem('sharetext.session.v1'), null, { timeout: 20000 });
+    const { roomId } = await pa.evaluate(() => JSON.parse(localStorage.getItem('sharetext.session.v1')));
+    const short = roomId.replace(/-/g, '').slice(0, 8);
+    const ctxB = await browser.newContext({ viewport: DESK });
+    const pb = await ctxB.newPage();
+    pb.on('pageerror', pageErrors('rtl-room'));
+    await pb.goto(URL, { waitUntil: 'domcontentloaded' });
+    await pb.evaluate((l) => { try { localStorage.setItem('sharetext.locale', l); } catch {} }, 'ar');
+    await pb.evaluate((code) => { location.href = '/s/' + code; }, short);
+    await pb.waitForTimeout(4000);
+    await shot(pb, `rtl-room-1440`);
+    await ctxA.close(); await ctxB.close();
+
+    const ctxC = await browser.newContext({ viewport: DESK2 });
+    const pc = await ctxC.newPage();
+    pc.on('pageerror', pageErrors('rtl-docs'));
+    await pc.goto(`${URL}/docs`, { waitUntil: 'domcontentloaded' });
+    await pc.evaluate((l) => { try { localStorage.setItem('sharetext.locale', l); } catch {} }, 'ar');
+    await pc.reload({ waitUntil: 'networkidle' }); await sleep(1000);
+    await shot(pc, `rtl-docs-1280`);
+    await ctxC.close();
+  }
+
+  console.log('page errors:', errs.length ? errs.join(' | ') : '(none)');
+  await browser.close();
+  console.log(`F19 ${PHASE} shots → ${OUT}/ (failures: ${failures})`);
+  if (failures > 0) process.exit(1);
+}
+
+main().catch(e => { console.error('SHOTS FAILED', e); process.exit(1); });

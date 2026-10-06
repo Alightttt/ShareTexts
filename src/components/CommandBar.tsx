@@ -13,6 +13,7 @@ import {
   CircleInfo as Info, Clock,
 } from '@gravity-ui/icons';
 import { Gauge, Activity, Languages } from 'lucide-react';
+import { IconButton3D } from './IconButton3D';
 import { generateTOTP } from '../lib/totp';
 import { metricsSnapshot, clearTransferMetrics, type TransferRecord } from '../lib/transferMetrics';
 import { formatBytes } from '../lib/utils';
@@ -611,16 +612,12 @@ function TransferStatsPanel({ onBack }: { onBack: () => void }) {
 /** Quiet header chip advertising the shortcut (desktop pointers only). */
 export function CommandBarChip({ onClick }: { onClick: () => void }) {
   const { t } = useI18n();
+  // The chip wears the SAME geometry as every other header control —
+  // IconButton3D's 44×40 keycap circle. It used to be a flat bordered pill,
+  // which made the header read as two different design systems in one row.
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={t('command.openAria')}
-      title={t('command.openAria')}
-      className="hidden lg:flex items-center gap-1.5 h-10 px-3 rounded-full border border-black/[0.08] dark:border-white/10 bg-white/70 dark:bg-white/[0.04] text-apple-ink-muted dark:text-white/50 hover:text-apple-ink dark:hover:text-white hover:border-black/[0.16] dark:hover:border-white/20 hover:bg-black/[0.04] dark:hover:bg-white/[0.07] transition-colors"
-    >
-      <Search className="w-3.5 h-3.5" />
-      <kbd className="text-[12px] font-semibold font-sans">⌘K</kbd>
-    </button>
+    <IconButton3D label={t('command.openAria')} onClick={onClick} className="hidden lg:flex">
+      <Search className="w-4 h-4" />
+    </IconButton3D>
   );
 }
