@@ -239,6 +239,18 @@ function AppContent() {
     return <Suspense fallback={<RouteSkeleton wide />}><Docs /></Suspense>;
   }
 
+  // Temporary Space entry points (F21): the code IS the invitation, so
+  // /space/create and /space/join must land somewhere real — the app with
+  // the matching sheet open (join pre-filled from ?code=, as QR scans are).
+  if (typeof window !== 'undefined') {
+    const sm = window.location.pathname.match(/^\/space\/(create|join)\/?$/i);
+    if (sm) {
+      const kind = sm[1].toLowerCase() as 'create' | 'join';
+      const code = new URLSearchParams(window.location.search).get('code') || undefined;
+      return <SingleScreenApp initialSpaceSheet={kind} initialSpaceCode={code} />;
+    }
+  }
+
   // Temporary Space (F14): /space/<uuid>#k=<token> — the access token rides
   // in the URL FRAGMENT so it never reaches server logs or Referer headers.
   if (typeof window !== 'undefined') {

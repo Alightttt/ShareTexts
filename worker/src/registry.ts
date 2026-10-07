@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { validateTOTP } from './totp';
 import { json, type Env } from './types';
+import { normalizeSpaceCode, isValidSpaceCode, generateSpaceCode } from './spaceCode';
 
 interface RegistryEntry {
   secret: string;
@@ -20,6 +21,11 @@ export function shortCodeOf(roomId: string): string {
 }
 
 export const SHORT_CODE_RE = /^[0-9a-f]{8}$/;
+
+async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 /**
  * Maps roomId → {secret, expiresAt} so a 6-digit TOTP code can locate the
@@ -51,6 +57,7 @@ const RATE_LIMITS: Record<string, { limit: number; windowMs: number }> = {
   push: { limit: 30, windowMs: 60_000 },
   ws: { limit: 30, windowMs: 60_000 },
   space: { limit: 40, windowMs: 60_000 },
+  'space-code': { limit: 30, windowMs: 60_000 }, // code checks + join-by-code
 };
 
 export class Registry extends DurableObject<Env> {
@@ -69,6 +76,21 @@ export class Registry extends DurableObject<Env> {
     }
     if (url.pathname === '/rate-check' && request.method === 'POST') {
       return this.rateCheck(request);
+    }
+    // ── Space-code index (F21) ────────────────────────────────────────
+    // Runs on the dedicated singleton instance (idFromName('space-codes'));
+    // see index.ts for the public endpoints that call these.
+    if (url.pathname === '/space-code/register' && request.method === 'POST') {
+      return this.spaceCodeRegister(request);
+    }
+    if (url.pathname === '/space-code/check' && request.method === 'GET') {
+      return this.spaceCodeCheck(url);
+    }
+    if (url.pathname === '/space-code/lookup' && request.method === 'POST') {
+      return this.spaceCodeLookup(request);
+    }
+    if (url.pathname === '/space-code/unregister' && request.method === 'POST') {
+      return this.spaceCodeUnregister(request);
     }
     return json({ error: 'not found' }, 404);
   }
@@ -166,5 +188,58 @@ export class Registry extends DurableObject<Env> {
       secret: roomEntry.secret,
       createdAt: roomEntry.createdAt,
     });
+  }
+
+  // ── Space-code index (F21) ────────────────────────────────────────────
+  // Keyed by sha256(normalizedCode) — the plaintext code is never stored.
+  // Entries carry the space's absolute expiresAt so stale codes self-sweep
+  // during lookups. Registered by the Space DO at create; removed by the DO
+  // at expiry/close AND lazily swept here.
+
+  private async spaceCodeRegister(request: Request): Promise<Response> {
+    let body: { code?: string; spaceId?: string; expiresAt?: number };
+    try { body = (await request.json()) as typeof body; } catch { return json({ error: 'bad request' }, 400); }
+    if (!body.code || !body.spaceId || typeof body.expiresAt !== 'number') return json({ error: 'bad request' }, 400);
+    const code = normalizeSpaceCode(body.code);
+    if (!isValidSpaceCode(code)) return json({ error: 'bad request' }, 400);
+    const key = 'scode:' + (await sha256Hex(code));
+    const existing = await this.ctx.storage.get<{ spaceId: string; expiresAt: number }>(key);
+    const now = Date.now();
+    if (existing && existing.expiresAt > now && existing.spaceId !== body.spaceId) {
+      return json({ ok: false, suggestion: generateSpaceCode() }); // collision — never overwrite
+    }
+    await this.ctx.storage.put(key, { spaceId: body.spaceId, expiresAt: body.expiresAt });
+    return json({ ok: true });
+  }
+
+  private async spaceCodeCheck(url: URL): Promise<Response> {
+    const code = normalizeSpaceCode(url.searchParams.get('code') || '');
+    if (!isValidSpaceCode(code)) return json({ available: false, reason: 'invalid' });
+    const entry = await this.ctx.storage.get<{ spaceId: string; expiresAt: number }>('scode:' + (await sha256Hex(code)));
+    const taken = !!entry && entry.expiresAt > Date.now();
+    return json({ available: !taken, suggestion: taken ? generateSpaceCode() : undefined });
+  }
+
+  private async spaceCodeLookup(request: Request): Promise<Response> {
+    let body: { code?: string };
+    try { body = (await request.json()) as typeof body; } catch { return json({ error: 'bad request' }, 400); }
+    const code = normalizeSpaceCode(typeof body.code === 'string' ? body.code : '');
+    if (!isValidSpaceCode(code)) return json({ error: 'not found' }, 404);
+    const key = 'scode:' + (await sha256Hex(code));
+    const entry = await this.ctx.storage.get<{ spaceId: string; expiresAt: number }>(key);
+    if (!entry) return json({ error: 'not found' }, 404);
+    if (entry.expiresAt < Date.now()) {
+      await this.ctx.storage.delete(key); // lazy sweep
+      return json({ error: 'not found' }, 404);
+    }
+    return json({ spaceId: entry.spaceId });
+  }
+
+  private async spaceCodeUnregister(request: Request): Promise<Response> {
+    let body: { code?: string };
+    try { body = (await request.json()) as typeof body; } catch { return json({ error: 'bad request' }, 400); }
+    if (typeof body.code !== 'string') return json({ error: 'bad request' }, 400);
+    await this.ctx.storage.delete('scode:' + (await sha256Hex(normalizeSpaceCode(body.code))));
+    return json({ ok: true });
   }
 }

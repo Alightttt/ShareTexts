@@ -634,6 +634,14 @@ function FAQSection() {
       q: 'Can I transfer between iPhone and Android?',
       a: 'Yes. ShareTexts works across all platforms and devices with a modern browser.'
     },
+    {
+      q: 'What is a Temporary Space?',
+      a: 'A Temporary Space is a shared shelf that lives for a set time — 6 hours up to 7 days. You create it, get an 8-character space code, and share that code instead of files. Anyone with the code can add text, links, photos, or files, and everyone in the space sees them. When the time is up, the space closes and the content is deleted.'
+    },
+    {
+      q: 'How do I join a Temporary Space with a code?',
+      a: 'Open sharetexts.online/space/join, enter the 8-character code the creator gave you, and tap Join space. You can also paste a full space link — it carries the same access. Both the code and the link stop working when the space closes.'
+    },
   ];
 
   return <FaqSection items={faqs} heading="Frequently Asked Questions" />;

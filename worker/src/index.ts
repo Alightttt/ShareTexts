@@ -136,6 +136,50 @@ export default {
     // One Durable Object per space, named by the space id in the path.
     // Every space request is origin-checked and rate-limited (per-scope
     // limits in registry.ts); the Space DO authorizes the bearer token.
+    // ── Space codes (F21) ────────────────────────────────────────────────
+    // Availability check for the create flow. Lives on a dedicated Registry
+    // singleton; rate-limited with its own generous-but-bounded scope.
+    if (path === '/space-code/check' && request.method === 'GET') {
+      if (!(await rateLimited(env, 'space-code', clientIp(request)))) {
+        return json({ error: 'Too many attempts. Wait a moment and try again.' }, 429, cors);
+      }
+      const code = url.searchParams.get('code') || '';
+      const stub = env.REGISTRY.get(env.REGISTRY.idFromName('space-codes'));
+      const res = await stub.fetch(new Request('https://internal/space-code/check?code=' + encodeURIComponent(code)));
+      return new Response(res.body, { status: res.status, headers: { 'content-type': 'application/json', ...cors } });
+    }
+
+    // Join by human code: resolve the code in the Registry (no oracle —
+    // invalid shape, unknown code, and expired space answer identically),
+    // then hand off to the space's DO /code-join which completes the join
+    // with the stored access token and returns the same snapshot a link
+    // join produces (+ x-space-token so the device can rejoin later).
+    if (path === '/space/join-code' && request.method === 'POST') {
+      if (!(await rateLimited(env, 'space-code', clientIp(request)))) {
+        return json({ error: 'Too many attempts. Wait a moment and try again.' }, 429, cors);
+      }
+      let body: { code?: unknown };
+      try { body = (await request.json()) as typeof body; } catch { body = {}; }
+      if (typeof body.code !== 'string') {
+        return json({ error: 'No space with that code is open right now.' }, 404, cors);
+      }
+      const stub = env.REGISTRY.get(env.REGISTRY.idFromName('space-codes'));
+      const lookup = await stub.fetch(new Request('https://internal/space-code/lookup', {
+        method: 'POST',
+        body: JSON.stringify({ code: body.code }),
+      }));
+      if (lookup.status !== 200) {
+        return json({ error: 'No space with that code is open right now.' }, 404, cors);
+      }
+      const found = (await lookup.json()) as { spaceId?: string };
+      if (!found.spaceId || !UUID_RE.test(found.spaceId)) {
+        return json({ error: 'No space with that code is open right now.' }, 404, cors);
+      }
+      const internal = new Request('https://internal/space/' + found.spaceId + '/code-join', request);
+      const id = env.SPACES.idFromName(found.spaceId.toLowerCase());
+      return env.SPACES.get(id).fetch(internal);
+    }
+
     if (path.startsWith('/space/')) {
       if (!(await rateLimited(env, 'space', clientIp(request)))) {
         return json({ error: 'Too many attempts. Wait a moment and try again.' }, 429, cors);
@@ -174,7 +218,7 @@ export default {
       if (!(await rateLimited(env, 'push', clientIp(request)))) {
         return json({ error: 'Too many attempts. Wait a moment and try again.' }, 429, cors);
       }
-      const CLIENT_EVENTS = /^product\.(page_view|first_interaction|activation|transfer_completed|transfer_failed|method_nearby|method_code|method_qr|method_link|qr_opened|docs_opened|diagnostics_opened)$/;
+      const CLIENT_EVENTS = /^product\.(page_view|first_interaction|activation|transfer_completed|transfer_failed|method_nearby|method_code|method_qr|method_link|qr_opened|docs_opened|diagnostics_opened|space_created|space_joined|space_item_uploaded)$/;
       let name = '';
       try { name = (await request.text()).trim(); } catch { /* keep empty */ }
       if (!CLIENT_EVENTS.test(name)) return json({ error: 'Bad request' }, 400, cors);

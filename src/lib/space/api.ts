@@ -10,7 +10,16 @@
 
 import { SPACE_CREDS_KEY, SPACE_DEVICE_KEY, spaceShareLink, parseSpaceShare } from './constants';
 import { signalingHttpBase } from '../socket';
+import { normalizeSpaceCode } from './spaceCode';
 import type { CreateResult, FileInitResult, SpaceItem, SpaceSnapshot, UploadStatus } from './types';
+
+/** Per-space human code, remembered so the creator can re-show it. */
+export const SPACE_CODE_KEY = 'sharetext.space.code.';
+
+/** The code a device knows for a space, if any. */
+export function localCode(spaceId: string): string | null {
+  try { return localStorage.getItem(SPACE_CODE_KEY + spaceId); } catch { return null; }
+}
 
 export { spaceShareLink, parseSpaceShare };
 
@@ -156,18 +165,57 @@ export function newSpaceId(): string {
   return crypto.randomUUID();
 }
 
-export async function createSpace(opts: { name?: string; durationMs: number; manage?: boolean }): Promise<CreateResult> {
+export async function createSpace(opts: { name?: string; durationMs: number; code?: string; manage?: boolean }): Promise<CreateResult> {
   const spaceId = newSpaceId();
   const base = spaceApiBase();
   const res = await fetch(`${base}/space/${spaceId}/create`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...headers(null) },
-    body: JSON.stringify({ name: opts.name || undefined, durationMs: opts.durationMs }),
+    body: JSON.stringify({ name: opts.name || undefined, durationMs: opts.durationMs, code: opts.code || undefined }),
   });
   if (!res.ok) await readError(res);
   const out = (await res.json()) as CreateResult;
   saveCreds(out.spaceId, { token: out.token, manageKey: out.manageKey, name: out.name, expiresAt: out.expiresAt });
+  if (out.code) {
+    try { localStorage.setItem(SPACE_CODE_KEY + out.spaceId, out.code); } catch { /* private mode */ }
+  }
   return out;
+}
+
+/** Is a candidate code free? Shown inline while the creator types. The
+ *  server answers { available, suggestion? } — a taken code comes back with
+ *  a fresh generated suggestion, so the fix is one tap. */
+export async function checkCode(code: string): Promise<{ available: boolean; suggestion?: string; reason?: string }> {
+  const base = spaceApiBase();
+  const res = await fetch(`${base}/space-code/check?code=${encodeURIComponent(code)}`);
+  if (!res.ok) {
+    if (res.status === 429) throw new SpaceApiError(429, 'Too many attempts. Wait a minute and try again.');
+    throw new SpaceApiError(res.status, 'Request failed');
+  }
+  return res.json() as Promise<{ available: boolean; suggestion?: string; reason?: string }>;
+}
+
+/** Join by human code (F21 primary path). Resolves the code server-side and
+ *  hands back the same snapshot a link join produces, plus the spaceId and
+ *  access token to keep locally. Server errors carry honest reasons:
+ *  404 unknown/expired/closed (indistinguishable — no oracle), 429 rate. */
+export async function joinByCode(rawCode: string): Promise<{ snapshot: SpaceSnapshot; spaceId: string; token: string; code: string }> {
+  const base = spaceApiBase();
+  const res = await fetch(`${base}/space/join-code`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...headers(null) },
+    body: JSON.stringify({ code: rawCode }),
+  });
+  if (!res.ok) await readError(res);
+  const snapshot = (await res.json()) as SpaceSnapshot;
+  // The joining device proves itself with its OWN token — which the
+  // join-code handoff just supplied via the Authorization header echo.
+  // Recover it from the creds the join request just saved, or fall back to
+  // re-reading the response header the server sets.
+  const token = res.headers.get('x-space-token') || localCreds(snapshot.spaceId)?.token || '';
+  const code = normalizeSpaceCode(rawCode);
+  try { localStorage.setItem(SPACE_CODE_KEY + snapshot.spaceId, code); } catch { /* private mode */ }
+  return { snapshot, spaceId: snapshot.spaceId, token, code };
 }
 
 export async function joinSpace(spaceId: string, token: string): Promise<SpaceSnapshot> {

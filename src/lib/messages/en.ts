@@ -541,6 +541,27 @@ const en = {
   'space.joinRejected': "Couldn't open it — the key doesn't match this space.",
   'space.joinClosed': 'This space has already closed.',
 
+  // ── space codes (F21): code-first joining ─────────────────────
+  'space.codeLabel': 'Space code',
+  'space.codeHint': 'This is the code the other person will enter. Pick your own or generate one.',
+  'space.codeGenerate': 'Generate',
+  'space.codeChecking': 'Checking…',
+  'space.codeAvailable': 'Code available.',
+  'space.codeTakenShort': 'Already in use — generate another or change it.',
+  'space.codeTaken': 'This code is already in use. Try another one.',
+  'space.codeInvalid': 'Use 8 letters or numbers — no 0, O, 1, I, L, 5, S or B.',
+  'space.codeShareHint': 'Tell the code to whoever should join — they enter it on their device. Codes close with the space.',
+  'space.codeDisplayLabel': 'Space code',
+  'space.copyCode': 'Copy code',
+  'space.joinSub': 'Enter the code from the other device.',
+  'space.joinCta': 'Join space',
+  'space.joining': 'Joining…',
+  'space.joinBadCode': "That doesn't look like a space code. Use the 8-character code, or paste the full link.",
+  'space.joinNotFound': 'No space with that code is open right now. Check the code — or ask for a new one if the space closed.',
+  'space.joinRate': 'Too many attempts. Wait a minute and try again.',
+  'space.joinLinkFallback': 'Got a link instead? Paste it here — it works too.',
+  'space.shareLinkSecondary': 'Share a link instead',
+
 
   // ── landing: the looping device demo ───────────────────────────────
   'demo.h1': 'Open ShareTexts.',

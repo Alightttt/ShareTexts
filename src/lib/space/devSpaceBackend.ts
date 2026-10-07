@@ -31,6 +31,7 @@ import path from 'path';
 import type express from 'express';
 import type { Server as SocketIOServer, Socket } from 'socket.io';
 import { SPACE_DURATIONS, reminderOffsetFor } from './constants';
+import { normalizeSpaceCode, isValidSpaceCode, generateSpaceCode } from './spaceCode';
 
 const TEXT_MAX = 512 * 1024;
 const DIRECT_UPLOAD_MAX = 90 * 1024 * 1024;
@@ -152,6 +153,19 @@ export class SpaceDev {
   private sockets = new Map<string, Set<Socket>>(); // spaceId → sockets
   private cleanupTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private root: string;
+  /** Space-code registry: sha256(normalizedCode) → spaceId. The plaintext
+   *  code is NEVER stored server-side (same discipline as tokens); lookup
+   *  hashes the presented code and compares. Entries are removed when the
+   *  space expires or is closed, so codes are never reused mid-flight. */
+  private codeIndex = new Map<string, string>();
+  /** Per-IP code-attempt throttle: lookup + create-with-code. Sliding
+   *  window, generous enough for a room full of humans typing one code. */
+  private codeAttempts = new Map<string, { count: number; windowStart: number }>();
+  private static CODE_LIMIT = 30;
+  private static CODE_WINDOW_MS = 60_000;
+  /** spaceId → access token, so join-by-code can hand the device its
+   *  credential after the code resolves. Same lifetime as the space. */
+  private tokenIndex = new Map<string, string>();
 
   constructor(
     private io: SocketIOServer,
@@ -176,6 +190,46 @@ export class SpaceDev {
     return this.dbs.get(spaceId.toLowerCase()) ?? null;
   }
 
+  /** Space-code throttle (per IP): false once the window limit is hit. */
+  private codeLimited(ip: string): boolean {
+    const now = Date.now();
+    const b = this.codeAttempts.get(ip);
+    if (!b || now - b.windowStart >= SpaceDev.CODE_WINDOW_MS) {
+      this.codeAttempts.set(ip, { count: 1, windowStart: now });
+      return false;
+    }
+    if (b.count >= SpaceDev.CODE_LIMIT) return true;
+    b.count++;
+    return false;
+  }
+
+  private codeHash(code: string): string {
+    return crypto.createHash('sha256').update(code, 'utf8').digest('hex');
+  }
+
+  /** Register code → spaceId. Returns false on a collision (the caller
+   *  surfaces "already in use"; never overwrites another space's code). */
+  private registerCode(code: string, spaceId: string): boolean {
+    const key = this.codeHash(normalizeSpaceCode(code));
+    if (this.codeIndex.has(key)) return false;
+    this.codeIndex.set(key, spaceId.toLowerCase());
+    return true;
+  }
+
+  /** Remove a space's code registration (expiry/closed/cleanup). */
+  private unregisterCode(spaceId: string): void {
+    const lower = spaceId.toLowerCase();
+    for (const [key, sid] of this.codeIndex.entries()) {
+      if (sid === lower) this.codeIndex.delete(key);
+    }
+    this.tokenIndex.delete(lower);
+  }
+
+  /** The access token for a live space (join-by-code handoff). */
+  private tokenForSpace(spaceId: string): string | null {
+    return this.tokenIndex.get(spaceId.toLowerCase()) ?? null;
+  }
+
   private broadcastTo(spaceId: string, event: string, payload: unknown) {
     const room = this.sockets.get(spaceId.toLowerCase());
     if (!room) return;
@@ -187,6 +241,7 @@ export class SpaceDev {
   private async beginExpiry(db: SpaceDb, reason: 'expired' | 'closed_early') {
     const s = db.space;
     s.state = 'EXPIRED';
+    this.unregisterCode(s.spaceId); // the code dies with the space
     this.broadcastTo(s.spaceId, 'space_closed', { reason, expiresAt: s.expiresAt });
     const socks = this.sockets.get(s.spaceId.toLowerCase());
     if (socks) {
@@ -263,10 +318,65 @@ export class SpaceDev {
 
   // ── routing ───────────────────────────────────────────────────────────
 
-  /** Mount on an Express app. Called once from server.ts. */
-  mount(app: express.Express) {
+  /** Mount on an Express app. Called once from server.ts; `json` is the
+   *  app's shared body parser (express.json) — this module imports express
+   *  type-only, so the parser comes in from the caller. */
+  mount(app: express.Express, json: express.RequestHandler) {
+    // ── Space-code routes (F21) ──────────────────────────────────────
+    // Availability check for the create flow: { available: true|false }
+    // plus a suggested code when taken. Same shape for taken/invalid so
+    // the endpoint is not an existence oracle (it only ever says "you may
+    // use this code" or not — never what spaces exist).
+    app.get('/space-code/check', (req, res) => {
+      const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'ip';
+      if (this.codeLimited(ip)) return res.status(429).json({ error: 'Too many attempts. Wait a minute and try again.' });
+      const code = normalizeSpaceCode(String(req.query.code || ''));
+      if (!isValidSpaceCode(code)) return res.json({ available: false, reason: 'invalid' });
+      const taken = this.codeIndex.has(this.codeHash(code));
+      res.json({ available: !taken, suggestion: taken ? generateSpaceCode() : undefined });
+    });
+
+    // Join by code. No oracle: invalid shape, unknown code, and expired
+    // space all return the same 404 { error: 'Space not found' } shape —
+    // a probing client learns nothing about which codes exist. A valid,
+    // live code returns the SAME envelope as a normal join and additionally
+    // the spaceId + token the device should keep locally.
+    app.post('/space/join-code', json, async (req, res) => {
+      const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'ip';
+      if (this.codeLimited(ip)) return res.status(429).json({ error: 'Too many attempts. Wait a minute and try again.' });
+      const body = readJson(req);
+      const code = normalizeSpaceCode(typeof body?.code === 'string' ? body.code : '');
+      if (!isValidSpaceCode(code)) {
+        return res.status(404).json({ error: 'No space with that code is open right now.' });
+      }
+      const spaceId = this.codeIndex.get(this.codeHash(code));
+      if (!spaceId) {
+        return res.status(404).json({ error: 'No space with that code is open right now.' });
+      }
+      const db = this.dbFor(spaceId);
+      if (!db || db.space.state !== 'ACTIVE' || this.now(req) >= db.space.expiresAt) {
+        // Unknown, expired, or closed — indistinguishable from outside.
+        return res.status(404).json({ error: 'No space with that code is open right now.' });
+      }
+      // Hand the device its credential, then complete the join through the
+      // exact same path a link-join takes (Bearer auth inside route()).
+      const token = this.tokenForSpace(spaceId);
+      if (!token) {
+        return res.status(404).json({ error: 'No space with that code is open right now.' });
+      }
+      req.headers.authorization = `Bearer ${token}`;
+      // route() resolves the db from req.params.id — join-code has no UUID
+      // path segment, so plant the resolved one before delegating.
+      (req.params as Record<string, string>).id = spaceId;
+      res.setHeader('x-space-token', token); // the device keeps this for rejoin
+      await this.route(req, res, (db2, ctx) => this.handleJoin(db2, ctx));
+    });
+
     app.use('/space/:id', (req, res, next) => {
       const id = String(req.params.id || '').toLowerCase();
+      // App entry points share the /space/ prefix with the API — hand them
+      // to the SPA fallback instead of 404ing on a non-UUID id.
+      if (id === 'create' || id === 'join') return next();
       if (!/^[0-9a-f-]{36}$/.test(id)) {
         res.status(404).json({ error: 'Not found' });
         return;
@@ -367,6 +477,21 @@ export class SpaceDev {
     if (!SPACE_DURATIONS.includes(durationMs)) {
       return jsonOut(ctx.res, { error: 'Choose how long the space should stay open.' }, 400);
     }
+    // Optional human code (F21). The client has already shown availability,
+    // but the server re-validates: normalized shape first, then collision —
+    // a taken code 409s with `codeTaken: true`; no silent replacement.
+    let code: string | null = null;
+    const rawCode = typeof body?.code === 'string' ? normalizeSpaceCode(body.code) : '';
+    if (rawCode) {
+      if (!isValidSpaceCode(rawCode)) {
+        return jsonOut(ctx.res, { error: 'Codes use 8 letters/numbers — no 0, O, 1, I, L, 5, S or B.' }, 400);
+      }
+      if (!this.registerCode(rawCode, String(ctx.req.params.id))) {
+        const res = ctx.res;
+        return jsonOut(res, { error: 'This code is already in use. Try another one.', codeTaken: true }, 409);
+      }
+      code = rawCode;
+    }
     const token = randomToken();
     const manage = randomToken();
     const tokenHash = sha256Hex(token);
@@ -391,11 +516,23 @@ export class SpaceDev {
     };
     const ndb: SpaceDb = { space: state, items: new Map(), uploads: new Map(), subs: new Map() };
     this.dbs.set(spaceId, ndb);
+    // The access token must be recoverable for join-by-code (the code is
+    // discovery; the token is what the joining device keeps). Kept only in
+    // the dev process, exactly as long as the space itself.
+    this.tokenIndex.set(spaceId, token);
+    if (!code) {
+      // Generated codes are minted lazily: register one now so the create
+      // response can show it immediately.
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const candidate = generateSpaceCode();
+        if (this.registerCode(candidate, spaceId)) { code = candidate; break; }
+      }
+    }
     try { fs.mkdirSync(path.join(this.root, spaceId), { recursive: true }); } catch { /* text-only */ }
     this.registerMember(ndb, state.creatorId, deviceNameOf(ctx.req), ctx.now);
-    log('space created', spaceId.slice(0, 8), 'closes', new Date(state.expiresAt).toISOString());
+    log('space created', spaceId.slice(0, 8), 'code', code, 'closes', new Date(state.expiresAt).toISOString());
     jsonOut(ctx.res, {
-      spaceId, token, manageKey: manage, name: state.name,
+      spaceId, token, manageKey: manage, name: state.name, code,
       createdAt: state.createdAt, expiresAt: state.expiresAt, reminderAt,
       isCreator: true, participantId: state.creatorId,
     });

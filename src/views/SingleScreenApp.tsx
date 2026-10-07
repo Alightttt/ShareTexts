@@ -117,7 +117,7 @@ function useIsDesktopLayout() {
 /* ------------------------------------------------------------------ */
 /*  Main component                                                    */
 /* ------------------------------------------------------------------ */
-export function SingleScreenApp() {
+export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initialSpaceSheet?: 'create' | 'join'; initialSpaceCode?: string } = {}) {
   const { t } = useI18n();
   const { session, createSession, abandonSession, joinWithCode, joinWithShortCode, setDeviceName, rejoinStayRoom, requestReconnect, refreshCode } = useSession();
   const isDesktopLayout = useIsDesktopLayout();
@@ -145,7 +145,9 @@ export function SingleScreenApp() {
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   // Settings — one overlay for theme / language / stay connected / reconnect.
   const [showSettings, setShowSettings] = useState(false);
-  const [spaceSheet, setSpaceSheet] = useState<null | 'create' | 'join'>(null);
+  // /space/create and /space/join land here with the right sheet already
+  // open — the code entry point IS the app, not a dead end.
+  const [spaceSheet, setSpaceSheet] = useState<null | 'create' | 'join'>(initialSpaceSheet ?? null);
   const [recent, setRecent] = useState(() => { try { return recentSpaces(); } catch { return []; } });
   const [createError, setCreateError] = useState<{ text: string; icon: 'offline' | 'server' | 'time' | 'info' } | null>(null);
   const [showQROverlay, setShowQROverlay] = useState(false);
@@ -1927,7 +1929,7 @@ export function SingleScreenApp() {
       {/* Settings — theme, language, stay connected, reconnection. */}
       <SettingsOverlay open={showSettings} onClose={() => setShowSettings(false)} />
       <SpaceCreateSheet open={spaceSheet === 'create'} onClose={() => setSpaceSheet(null)} />
-      <SpaceJoinSheet open={spaceSheet === 'join'} onClose={() => setSpaceSheet(null)} />
+      <SpaceJoinSheet open={spaceSheet === 'join'} onClose={() => setSpaceSheet(null)} initialCode={initialSpaceCode} />
       {/* Apple-style bottom-sheet confirmation before really ending the session. */}
       <ConfirmSheet
         open={confirmDisconnect}

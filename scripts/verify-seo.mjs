@@ -125,7 +125,7 @@ async function faqHonestyCheck() {
   const strip = s => s.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
   let matched = 0;
   for (const q of faq.mainEntity) {
-    const pattern = new RegExp(`<h3>\\s*${q.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*<\\/h3>\\s*<p>\\s*${strip(q.acceptedAnswer.text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*<\\/p>`);
+      const pattern = new RegExp(`<h3>\\s*${q.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*<\\/h3>\\s*<p>\\s*${strip(q.acceptedAnswer.text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*<\\/p>`);
     if (pattern.test(html)) matched++;
     else console.log(`    ✗ no visible match for: ${q.name}`);
   }
@@ -176,11 +176,44 @@ async function sitemapAndRobots() {
   ok('robots declares sitemap', rb.html.includes('Sitemap: https://sharetexts.online/sitemap.xml'));
 }
 
+// --- F21 new content: Temporary Spaces guide + llms.txt ---------------------
+async function newContentChecks() {
+  console.log('\n[NEW CONTENT] temporary-spaces guide + llms.txt');
+  const g = await get('/guides/temporary-spaces.html');
+  ok('guide 200', g.status === 200, String(g.status));
+  const title = g.html.match(/<title>([^<]*)<\/title>/)?.[1] ?? '';
+  ok('guide title mentions Temporary Spaces', title.includes('Temporary Spaces'), title);
+  ok('guide canonical route-correct', (g.html.match(/<link rel="canonical" href="([^"]+)"/)?.[1] ?? '') === ORIGIN + '/guides/temporary-spaces.html');
+  ok('guide exactly one H1', count(g.html, /<h1[\s>]/g) === 1, String(count(g.html, /<h1[\s>]/g)));
+  const ld = parseLd(g.html);
+  ok('guide JSON-LD has HowTo + FAQPage', ld.some(n => n['@type'] === 'HowTo') && ld.some(n => n['@type'] === 'FAQPage'));
+  const faq = ld.find(n => n['@type'] === 'FAQPage');
+  if (faq) {
+    const strip = s => s.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    let matched = 0;
+    for (const q of faq.mainEntity) {
+      const pattern = new RegExp(`<h3>\\s*${q.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*<\\/h3>\\s*<p>\\s*${strip(q.acceptedAnswer.text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*<\\/p>`);
+      if (pattern.test(g.html)) matched++;
+      else console.log(`    ✗ no visible match for: ${q.name}`);
+    }
+    ok(`guide FAQ visible verbatim (${matched}/${faq.mainEntity.length})`, matched === faq.mainEntity.length);
+  }
+  const lm = await get('/llms.txt');
+  ok('llms.txt 200 & mentions Temporary Spaces', lm.status === 200 && lm.html.includes('Temporary Spaces'));
+  ok('llms.txt links the guide', lm.html.includes('/guides/temporary-spaces.html'));
+  const sm = await get('/sitemap.xml');
+  ok('sitemap lists the guide', sm.html.includes('/guides/temporary-spaces.html'));
+  const d = await get('/docs');
+  ok('docs shell shows Temporary Space FAQ', d.html.includes('What is a Temporary Space?'));
+  ok('robots still blocks /space/ session routes', (await get('/robots.txt')).html.includes('Disallow: /space/'));
+}
+
 // --- Run ----------------------------------------------------------------------
 let failed = false;
 for (const audit of audits) { try { await audit(); } catch (e) { failed = true; console.log('  ✗ audit crashed:', e.message); } }
 try { await entityChecks(); } catch (e) { failed = true; console.log('  ✗ entity crashed:', e.message); }
 try { await faqHonestyCheck(); } catch (e) { failed = true; console.log('  ✗ faq crashed:', e.message); }
+try { await newContentChecks(); } catch (e) { failed = true; console.log('  ✗ new-content crashed:', e.message); }
 try { await sitemapAndRobots(); } catch (e) { failed = true; console.log('  ✗ sitemap crashed:', e.message); }
 try { await browserChecks(); } catch (e) { failed = true; console.log('  ✗ browser crashed:', e.message); }
 

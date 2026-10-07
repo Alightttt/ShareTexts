@@ -34,6 +34,10 @@ export interface CreateResult {
   token: string;
   manageKey?: string;
   name: string;
+  /** The space's human code (F21) — chosen by the creator or generated
+   *  server-side. Always present in modern responses; optional in the type
+   *  so older cached responses keep parsing. */
+  code?: string;
   createdAt: number;
   expiresAt: number;
   reminderAt?: number;

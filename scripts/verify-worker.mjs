@@ -665,7 +665,13 @@ async function runSpace() {
   const shaHex = async (s) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2, '0')).join('');
   const bearer = (t) => ({ authorization: `Bearer ${t}`, 'x-device-key': 'wk' + t.slice(0, 4), 'x-device-name': 'W ' + t.slice(0, 3) });
 
-  const env = { SPACE_TEST_CLOCK: '1' };
+  // F21: create/join-code reach the Registry singleton for the space-code
+  // index. Bind a REAL Registry DO (its own FakeCtx storage) through a
+  // minimal stub of the binding API, so the harness exercises the same
+  // register → lookup → unregister path production uses.
+  const regDo = new Registry(new FakeCtx(), {});
+  const REGISTRY = { idFromName: (n) => n, get: () => ({ fetch: (req) => regDo.fetch(req) }) };
+  const env = { SPACE_TEST_CLOCK: '1', REGISTRY };
   const sid = uuid();
   const doFetch = (p, init) => space.fetch(new Request('https://internal/space/' + sid + p, init));
   const mk = () => new Space(new FakeCtx(), env);
@@ -716,7 +722,7 @@ async function runSpace() {
 
   // expiry via test clock: create, then read with a future x-space-test-now
   const sid2 = uuid();
-  const s2 = new Space(new FakeCtx(), env);
+  const s2 = new Space(new FakeCtx(), { SPACE_TEST_CLOCK: '1', REGISTRY });
   const cr2 = await s2.fetch(new Request('https://internal/space/' + sid2 + '/create', { method: 'POST', headers: { 'content-type': 'application/json', 'x-device-key': 'wk' }, body: JSON.stringify({ durationMs: 6 * 3600_000 }) }));
   const cr2j = await cr2.json();
   const future = cr2j.expiresAt + 1000;

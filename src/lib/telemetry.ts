@@ -36,7 +36,11 @@ type ProductEvent =
   // surfaces opened
   | 'product.qr_opened'
   | 'product.docs_opened'
-  | 'product.diagnostics_opened';
+  | 'product.diagnostics_opened'
+  // temporary spaces (F21)
+  | 'product.space_created'
+  | 'product.space_joined'
+  | 'product.space_item_uploaded';
 
 const ALLOWED: ReadonlySet<string> = new Set<string>([
   'product.page_view',
@@ -51,6 +55,9 @@ const ALLOWED: ReadonlySet<string> = new Set<string>([
   'product.qr_opened',
   'product.docs_opened',
   'product.diagnostics_opened',
+  'product.space_created',
+  'product.space_joined',
+  'product.space_item_uploaded',
 ]);
 
 /** Local de-dup: some events must fire once per install (activation). */

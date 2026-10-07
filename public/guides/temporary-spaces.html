@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Temporary Spaces — Share Files With an 8-Character Code — ShareTexts</title>
+  <meta name="description" content="Create a Temporary Space, get an 8-character code, and let anyone with the code add text, links, photos, and files. The space closes and deletes itself — no accounts." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://sharetexts.online/guides/temporary-spaces.html" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="ShareTexts" />
+  <meta property="og:title" content="Temporary Spaces — Share Files With an 8-Character Code" />
+  <meta property="og:description" content="Create a Temporary Space, share the 8-character code, and collect text, links, photos, and files. It deletes itself when it closes." />
+  <meta property="og:url" content="https://sharetexts.online/guides/temporary-spaces.html" />
+  <meta property="og:image" content="https://sharetexts.online/og/sharetext-og.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/jpeg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Temporary Spaces — Share Files With an 8-Character Code" />
+  <meta name="twitter:description" content="Create a Temporary Space, share the 8-character code, and collect text, links, photos, and files. It deletes itself when it closes." />
+  <meta name="twitter:image" content="https://sharetexts.online/og/sharetext-og.jpg" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "How to share files with a Temporary Space code",
+    "description": "Create a Temporary Space on ShareTexts, share its 8-character code, and let others join and add content. The space deletes itself when it expires.",
+    "totalTime": "PT2M",
+    "step": [
+      { "@type": "HowToStep", "name": "Create the space", "text": "Open sharetexts.online/space, name the space if you want, pick how long it should live (6 hours to 7 days), and tap Create space." },
+      { "@type": "HowToStep", "name": "Get the code", "text": "ShareTexts shows an 8-character space code like K7QT-2M4X. Keep it visible in the space header." },
+      { "@type": "HowToStep", "name": "Share the code", "text": "Tell the code to whoever should join — by message, call, or a QR code. They type it into sharetexts.online/space/join." },
+      { "@type": "HowToStep", "name": "Add content", "text": "Everyone in the space can add text, links, photos, videos, and files. Everything appears on every device in the space." },
+      { "@type": "HowToStep", "name": "Let it close", "text": "When the time is up, the space closes and its code stops working. The content is deleted — nothing stays on a server." }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What is a Temporary Space?",
+        "acceptedAnswer": { "@type": "Answer", "text": "A Temporary Space is a shared shelf that lives for a set time — 6 hours up to 7 days. You create it, get an 8-character space code, and share that code instead of files. Anyone with the code can add text, links, photos, or files, and everyone in the space sees them. When the time is up, the space closes and the content is deleted." }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I join a Temporary Space with a code?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Open sharetexts.online/space/join, enter the 8-character code the creator gave you, and tap Join space. You can also paste a full space link — it carries the same access. Both the code and the link stop working when the space closes." }
+      },
+      {
+        "@type": "Question",
+        "name": "Is a space code the same as the 6-digit pairing code?",
+        "acceptedAnswer": { "@type": "Answer", "text": "No. The 6-digit code connects two devices for a live transfer that happens right now. An 8-character space code opens a temporary shared shelf that many people can use over hours or days. The 6-digit code changes every 90 seconds; the space code stays the same until the space closes." }
+      },
+      {
+        "@type": "Question",
+        "name": "What happens to a Temporary Space when it expires?",
+        "acceptedAnswer": { "@type": "Answer", "text": "The space closes, its code is retired, and the stored content is deleted. Anyone who still has the code or link sees that the space is closed — not an error, just a closed space." }
+      }
+    ]
+  }
+  </script>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <script src="/guides/theme.js"></script>
+  <meta name="theme-color" content="#f7f4ee" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#131315" media="(prefers-color-scheme: dark)" />
+  <link rel="stylesheet" href="/guides/_template.css" />
+  <style>
+    .code-sample {
+      font-family: ui-monospace, 'SF Mono', Consolas, monospace;
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      background: var(--brand-light);
+      border: 1px solid var(--brand-border);
+      color: var(--brand);
+      border-radius: var(--radius-sm);
+      padding: 10px 16px;
+      display: inline-block;
+      margin: 4px 0;
+    }
+      /* ── Tap targets (40px, both axes) ────────────────────────────────────────────────────────
+       Every link clears 40px in BOTH dimensions, and no line moves:
+       · A link inside prose or a footer sentence grows its hit box with
+         vertical padding only. Vertical padding on an inline element expands
+         the clickable area but does NOT affect the line box, so the
+         paragraph keeps its rhythm and the page does not reflow.
+       · The header's back link is a flex item, so it takes min-height plus a
+         matching negative vertical margin: the target is 40px tall while the
+         row keeps the height it always had. */
+    .back { display: inline-flex; align-items: center; min-height: 40px; margin: -10px -6px -10px 0; }
+    article p a, article li a, article .callout a,
+    .steps a { padding: 11px 0; }
+    footer p a, .footer p a { padding: 12px 0; }
+  </style>
+</head>
+<body>
+  <header class="header"><div class="header-inner">
+    <a href="/" class="header-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      <span>ShareTexts</span>
+    </a>
+    <a href="/" class="header-back">Home →</a>
+  </div></header>
+
+  <main class="container"><article>
+    <p class="overline">Guide</p>
+    <h1>Temporary Spaces</h1>
+    <p class="subtitle">A shared shelf with its own 8-character code — create it, share the code, let everyone add what's needed. It deletes itself when time is up.</p>
+
+    <div class="callout"><p><strong>The short version:</strong> Create a Temporary Space, get an 8-character code like <span class="code-sample">K7QT-2M4X</span>, and give the code to whoever should join. They enter it at <a href="/space/join">sharetexts.online/space/join</a> and can add text, links, photos, and files — visible to everyone in the space. When the space expires, the code stops working and the content is deleted.</p></div>
+
+    <h2>When a Temporary Space is the right tool</h2>
+    <p>A live transfer (<a href="/guides/how-to-transfer-files-between-devices.html">the two-device room</a>) moves something <em>now</em>: phone to laptop, this minute. A Temporary Space is for <em>over time</em> and <em>more than two devices</em>:</p>
+    <ul>
+      <li><strong>Family trip planning</strong> — everyone adds photos, tickets, and addresses to one shelf for the week.</li>
+      <li><strong>Class or workshop</strong> — the organizer creates one space; students join with the code and grab the files.</li>
+      <li><strong>Event group</strong> — a code announced at the event collects everyone's pictures, with no app and no group chat.</li>
+      <li><strong>Neighborly handoff</strong> — leave a space open for the day with the Wi-Fi details, a document, and a link; people dip in when they can.</li>
+    </ul>
+
+    <h2>Create a space and get the code</h2>
+    <ol class="steps">
+      <li><div><h3>Open the Spaces screen</h3><p>Go to <a href="/space/create">sharetexts.online/space/create</a> and tap <strong>Create a space</strong>.</p></div></li>
+      <li><div><h3>Pick a code or generate one</h3><p>The code field comes first. Type your own 8 characters or tap <strong>Generate</strong>. ShareTexts checks live availability as you type — if a code is taken, it suggests a free alternative.</p></div></li>
+      <li><div><h3>Choose a lifetime</h3><p>From 6 hours up to 7 days. The countdown starts when you create the space, and you can close it earlier anytime.</p></div></li>
+      <li><div><h3>Tap Create space</h3><p>The space opens with its code pinned in the header — tap the code chip to copy it.</p></div></li>
+    </ol>
+
+    <h2>Share the code — that's the whole handoff</h2>
+    <p>The code <em>is</em> the invitation. Read it out, text it, or show the QR code from the space's share sheet. Whoever should join opens <a href="/space/join">the join screen</a>, types the 8 characters, and taps <strong>Join space</strong>. A full share link works too — it carries the same access — and the share sheet keeps it under "Share a link instead," because for most people the code is easier to say and remember than a URL.</p>
+    <div class="callout"><p><strong>What the code can and can't do:</strong> the code <em>finds</em> the space — that's all. It contains no keys and stores no content. Anyone with the code and an internet connection can join while the space is open, so share it only with people you want inside. Closing the space or letting it expire retires the code everywhere.</p></div>
+
+    <h2>What goes in a space</h2>
+    <ul>
+      <li><strong>Text and links</strong> — addresses, notes, passwords for the weekend guest. Links become tappable preview cards.</li>
+      <li><strong>Photos and videos</strong> — original quality, no compression.</li>
+      <li><strong>Any file type</strong> — PDFs, documents, archives, code. Large files upload in resumable parts, so a dropped connection doesn't restart from zero.</li>
+      <li><strong>From any device</strong> — phone, tablet, laptop; everyone with the code sees the same shelf, newest first, with one-tap download.</li>
+    </ul>
+
+    <h2>What happens when the time runs out</h2>
+    <p>Every space shows a live countdown. When it reaches zero the space closes: the code is retired, the stored content is deleted, and anyone arriving with the old code or link sees a calm "no space with that code is open right now" message. The creator can also close the space early from its menu. Temporary means temporary — there is no archive and no account to keep it alive.</p>
+
+    <h2>Temporary Space vs. two-device room</h2>
+    <div class="card">
+      <p style="margin-bottom:8px;"><strong>Two-device room (the classic flow):</strong> one sender, one receiver, live WebRTC transfer happening right now. Nothing waits on a server.</p>
+      <p style="margin-bottom:8px;"><strong>Temporary Space:</strong> one shared shelf, many devices, content waits for people to arrive during the space's lifetime.</p>
+      <p style="margin:0;"><strong>Same privacy model:</strong> no accounts, no permanent history, content deleted when the room or space closes.</p>
+    </div>
+
+    <section class="related">
+      <h2>Frequently asked questions</h2>
+      <h3>What is a Temporary Space?</h3>
+      <p>A Temporary Space is a shared shelf that lives for a set time — 6 hours up to 7 days. You create it, get an 8-character space code, and share that code instead of files. Anyone with the code can add text, links, photos, or files, and everyone in the space sees them. When the time is up, the space closes and the content is deleted.</p>
+      <h3>How do I join a Temporary Space with a code?</h3>
+      <p>Open sharetexts.online/space/join, enter the 8-character code the creator gave you, and tap Join space. You can also paste a full space link — it carries the same access. Both the code and the link stop working when the space closes.</p>
+      <h3>Is a space code the same as the 6-digit pairing code?</h3>
+      <p>No. The 6-digit code connects two devices for a live transfer that happens right now. An 8-character space code opens a temporary shared shelf that many people can use over hours or days. The 6-digit code changes every 90 seconds; the space code stays the same until the space closes.</p>
+      <h3>What happens to a Temporary Space when it expires?</h3>
+      <p>The space closes, its code is retired, and the stored content is deleted. Anyone who still has the code or link sees that the space is closed — not an error, just a closed space.</p>
+    </section>
+
+    <section class="related">
+      <h2>Learn More</h2>
+      <div class="related-links">
+        <a href="/guides/how-it-works.html">How It Works</a>
+        <a href="/guides/security.html">Security</a>
+        <a href="/guides/privacy.html">Privacy</a>
+        <a href="/guides/how-to-transfer-files-between-devices.html">Transfer Files Between Devices</a>
+      </div>
+    </section>
+
+    <div style="text-align:center; margin: 48px 0 0"><a href="/" class="cta">Try ShareTexts Free →</a></div>
+  </article></main>
+
+  <footer class="footer"><p><a href="/">ShareTexts</a> — The temporary bridge between your devices.</p></footer>
+</body>
+</html>

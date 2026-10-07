@@ -26,7 +26,9 @@ import { OverlaySheet } from '../components/OverlaySheet';
 import { ShareMenu } from '../components/ShareMenu';
 import { ConfirmSheet } from '../components/ConfirmSheet';
 import { useSpaceClient, type LocalUpload } from '../lib/space/useSpaceClient';
-import { spaceShareLink, localCreds, joinSpace, parseSpaceShare, SpaceApiError } from '../lib/space/api';
+import { productEvent } from '../lib/telemetry';
+import { spaceShareLink, localCreds, localCode, joinSpace, parseSpaceShare, SpaceApiError } from '../lib/space/api';
+import { normalizeSpaceCode, formatSpaceCode, isValidSpaceCode, generateSpaceCode, CODE_LENGTH } from '../lib/space/spaceCode';
 import type { SpaceItem } from '../lib/space/types';
 import { closingTime, remainingShort, urgencyTier } from '../lib/space/time';
 import { isRunningOut } from '../lib/space/lifetime';
@@ -351,11 +353,43 @@ function UploadRow({
 export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): void }) {
   const { t } = useI18n();
   const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+  const [codeState, setCodeState] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
   const [duration, setDuration] = useState(24 * HOUR);
   const [remind, setRemind] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const support = useMemo(() => reminderSupport(), []);
+
+  // Normalize as the user types: uppercase, separators stripped, ≤8 chars.
+  const setCodeTyped = (raw: string) => {
+    const next = normalizeSpaceCode(raw).slice(0, CODE_LENGTH);
+    setCode(next);
+    if (!next) setCodeState('idle');
+  };
+
+  // Live availability: debounced check once the shape is valid. The server
+  // answers { available, suggestion? } — a taken code offers a fresh
+  // generated code one tap away (no form submit to discover the collision).
+  useEffect(() => {
+    if (!open) return;
+    if (!code) { setCodeState('idle'); return; }
+    if (!isValidSpaceCode(code)) { setCodeState('invalid'); return; }
+    setCodeState('checking');
+    let dead = false;
+    const timer = setTimeout(() => {
+      import('../lib/space/api')
+        .then(({ checkCode }) => checkCode(code))
+        .then(out => { if (!dead) setCodeState(out.available ? 'available' : 'taken'); })
+        .catch(() => { if (!dead) setCodeState('idle'); }); // network shy — let create() decide
+    }, 350);
+    return () => { dead = true; clearTimeout(timer); };
+  }, [code, open]);
+
+  const generateCode = () => {
+    setCode(generateSpaceCode());
+    setCodeState('checking');
+  };
 
   const create = async () => {
     if (busy) return;
@@ -363,13 +397,19 @@ export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): 
     setError(null);
     try {
       const { createSpace } = await import('../lib/space/api');
-      const out = await createSpace({ name: name.trim() || undefined, durationMs: duration });
+      const out = await createSpace({ name: name.trim() || undefined, durationMs: duration, code: code || undefined });
+      productEvent('product.space_created');
       if (remind && support === 'supported') {
         await enableReminder(out.spaceId).catch(() => { /* countdown still works */ });
       }
       window.location.href = `/space/${out.spaceId}#k=${out.token}`;
-    } catch {
-      setError(t('space.errCreate'));
+    } catch (e) {
+      if (e instanceof SpaceApiError && e.message.includes('already in use')) {
+        setError(t('space.codeTaken'));
+        setCodeState('taken');
+      } else {
+        setError(t('space.errCreate'));
+      }
       setBusy(false);
     }
   };
@@ -379,7 +419,45 @@ export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): 
       <h2 className="text-[16.5px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">{t('space.createHeading')}</h2>
         <p className="mt-1.5 text-[13.5px] leading-relaxed text-apple-ink-muted dark:text-white/55">{t('space.createSub')}</p>
 
-        <label className="block mt-5 text-[13px] font-medium text-apple-ink dark:text-white/80" htmlFor="space-name">{t('space.nameLabel')}</label>
+        {/* The code IS the share: whoever types it joins. Available codes
+            confirm inline; taken codes suggest a replacement. */}
+        <label className="block mt-5 text-[13px] font-medium text-apple-ink dark:text-white/80" htmlFor="space-code">
+          {t('space.codeLabel')}
+        </label>
+        <div className="mt-1.5 flex gap-2">
+          <input
+            id="space-code"
+            value={formatSpaceCode(code)}
+            onChange={e => setCodeTyped(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void create(); } }}
+            placeholder="ABCD-72QK"
+            inputMode="text"
+            autoCapitalize="characters"
+            autoComplete="off"
+            spellCheck={false}
+            maxLength={9}
+            autoFocus
+            aria-describedby="space-code-hint"
+            className="flex-1 min-w-0 rounded-[12px] border border-apple-divider dark:border-white/[0.12] bg-white dark:bg-white/[0.04] px-3.5 py-2.5 text-[16px] font-mono font-semibold tracking-[0.12em] uppercase text-apple-ink dark:text-white placeholder:text-apple-ink-muted/40 dark:placeholder:text-white/25 outline-none focus:ring-2 focus:ring-azure-500/40"
+            data-testid="space-code-input"
+          />
+          <button
+            type="button"
+            onClick={generateCode}
+            className="shrink-0 min-h-[44px] px-3.5 rounded-[12px] text-[13px] font-semibold text-apple-ink dark:text-white/80 bg-white dark:bg-white/[0.05] border border-apple-divider dark:border-white/[0.1] hover:border-apple-ink/25 dark:hover:border-white/25 transition-colors"
+          >
+            {t('space.codeGenerate')}
+          </button>
+        </div>
+        <p id="space-code-hint" className="mt-1.5 text-[12.5px] leading-relaxed text-apple-ink-muted/80 dark:text-white/40" aria-live="polite" data-testid="space-code-status">
+          {codeState === 'idle' ? t('space.codeHint')
+            : codeState === 'checking' ? t('space.codeChecking')
+            : codeState === 'available' ? t('space.codeAvailable')
+            : codeState === 'taken' ? t('space.codeTakenShort')
+            : t('space.codeInvalid')}
+        </p>
+
+        <label className="block mt-4 text-[13px] font-medium text-apple-ink dark:text-white/80" htmlFor="space-name">{t('space.nameLabel')}</label>
         <input
           id="space-name"
           value={name}
@@ -387,7 +465,6 @@ export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): 
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void create(); } }}
           placeholder={t('space.namePlaceholder')}
           maxLength={80}
-          autoFocus
           className="mt-1.5 w-full rounded-[12px] border border-apple-divider dark:border-white/[0.12] bg-white dark:bg-white/[0.04] px-3.5 py-2.5 text-[14.5px] text-apple-ink dark:text-white placeholder:text-apple-ink-muted/50 dark:placeholder:text-white/30 outline-none focus:ring-2 focus:ring-azure-500/40"
         />
 
@@ -448,7 +525,7 @@ export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): 
           {busy ? t('space.creating') : t('space.createCta')}
         </TactileButton>
         <p className="mt-3 text-[12px] leading-relaxed text-apple-ink-muted/70 dark:text-white/35">
-          {t('space.shareHint')}
+          {t('space.codeShareHint')}
         </p>
     </OverlaySheet>
   );
@@ -456,32 +533,63 @@ export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): 
 
 // ── join sheet ────────────────────────────────────────────────────────────
 
-export function SpaceJoinSheet({ open, onClose }: { open: boolean; onClose(): void }) {
+export function SpaceJoinSheet({ open, onClose, initialCode }: { open: boolean; onClose(): void; initialCode?: string }) {
   const { t } = useI18n();
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // One honest error per failure: unparsable link / wrong key / already
-  // closed / anything else. No token surgery — parseSpaceShare owns the
-  // grammar, and the redirect reuses exactly what was parsed.
-  const go = async () => {
-    const raw = code.trim();
+  // Arriving from a QR scan or a /space/join?code=… link: skip the typing
+  // and join directly — same auto-submit path as typing the 8th character.
+  const autoJoined = useRef(false);
+  useEffect(() => {
+    if (!open || autoJoined.current || !initialCode) return;
+    const norm = normalizeSpaceCode(initialCode);
+    if (isValidSpaceCode(norm)) {
+      autoJoined.current = true;
+      setCode(norm);
+      void go(norm);
+    }
+  }, [open, initialCode]);
+
+  // Normalize as the user types (uppercase, separators stripped, ≤8). When
+  // the shape is complete, join automatically — one fewer tap, and the CTA
+  // stays for retries and link pastes.
+  const setCodeTyped = (raw: string) => {
+    const next = normalizeSpaceCode(raw).slice(0, CODE_LENGTH);
+    setCode(next);
+    setError(null);
+    if (isValidSpaceCode(next)) void go(next);
+  };
+
+  // One honest message per failure state, each with its way forward:
+  // unknown/expired/closed share one no-oracle answer; 429 throttles; link
+  // pastes fall back to the existing link parser.
+  const go = async (rawArg?: string) => {
+    const raw = (rawArg ?? code).trim();
     if (!raw || busy) return;
     setBusy(true);
     setError(null);
-    const parsed = parseSpaceShare(raw);
-    if (!parsed) {
-      setError(t('space.joinBadLink'));
-      setBusy(false);
-      return;
-    }
     try {
+      if (isValidSpaceCode(normalizeSpaceCode(raw))) {
+        const { joinByCode } = await import('../lib/space/api');
+        const out = await joinByCode(raw);
+        window.location.href = `/space/${out.spaceId}#k=${out.token}`;
+        return; // navigation owns the rest
+      }
+      // Not a code — accept a full share link / compact form as fallback.
+      const parsed = parseSpaceShare(raw);
+      if (!parsed) {
+        setError(t('space.joinBadCode'));
+        setBusy(false);
+        return;
+      }
       await joinSpace(parsed.spaceId, parsed.token);
       window.location.href = `/space/${parsed.spaceId}#k=${parsed.token}`;
     } catch (e) {
-      if (e instanceof SpaceApiError && e.closed) setError(t('space.joinClosed'));
-      else if (e instanceof SpaceApiError && (e.status === 401 || e.status === 403)) setError(t('space.joinRejected'));
+      if (e instanceof SpaceApiError && e.status === 404) setError(t('space.joinNotFound'));
+      else if (e instanceof SpaceApiError && e.status === 429) setError(t('space.joinRate'));
+      else if (e instanceof SpaceApiError && e.closed) setError(t('space.joinClosed'));
       else setError((e as Error)?.message || t('space.errGeneric'));
       setBusy(false);
     }
@@ -490,15 +598,21 @@ export function SpaceJoinSheet({ open, onClose }: { open: boolean; onClose(): vo
   return (
     <OverlaySheet open={open} onClose={onClose} label={t('space.joinTitle')} maxWidth={420} testId="space-join">
       <h2 className="text-[16.5px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">{t('space.joinTitle')}</h2>
-        <p className="mt-1.5 text-[13.5px] text-apple-ink-muted dark:text-white/55">{t('space.entryHint')}</p>
+        <p className="mt-1.5 text-[13.5px] text-apple-ink-muted dark:text-white/55">{t('space.joinSub')}</p>
         <input
-          value={code}
-          onChange={e => setCode(e.target.value)}
+          value={formatSpaceCode(code)}
+          onChange={e => setCodeTyped(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && code.trim() && !busy) void go(); }}
-          placeholder={t('space.joinPlaceholder')}
+          placeholder="ABCD-72QK"
+          inputMode="text"
+          autoCapitalize="characters"
+          autoComplete="off"
           spellCheck={false}
-          autoCapitalize="off"
-          className="mt-4 w-full rounded-[12px] border border-apple-divider dark:border-white/[0.12] bg-white dark:bg-white/[0.04] px-3.5 py-2.5 text-[14px] text-apple-ink dark:text-white placeholder:text-apple-ink-muted/50 dark:placeholder:text-white/30 outline-none focus:ring-2 focus:ring-azure-500/40"
+          maxLength={9}
+          aria-label={t('space.codeLabel')}
+          aria-describedby="space-join-status"
+          className="mt-4 w-full rounded-[14px] border border-apple-divider dark:border-white/[0.12] bg-white dark:bg-white/[0.04] px-4 py-3.5 text-[20px] font-mono font-semibold tracking-[0.14em] uppercase text-center text-apple-ink dark:text-white placeholder:text-apple-ink-muted/40 dark:placeholder:text-white/25 outline-none focus:ring-2 focus:ring-azure-500/40"
+          data-testid="space-join-code-input"
           autoFocus
         />
         {error && <p className="mt-3 text-[13px] text-red-600 dark:text-red-400" role="alert">{error}</p>}
@@ -511,41 +625,67 @@ export function SpaceJoinSheet({ open, onClose }: { open: boolean; onClose(): vo
           className="mt-5 w-full"
           data-testid="space-join-cta"
         >
-          {t('space.reopen')}
+          {busy ? t('space.joining') : t('space.joinCta')}
         </TactileButton>
+        <p className="mt-3 text-[12px] leading-relaxed text-apple-ink-muted/70 dark:text-white/35">
+          {t('space.joinLinkFallback')}
+        </p>
     </OverlaySheet>
   );
 }
 
 // ── share sheet ───────────────────────────────────────────────────────────
 
-function ShareSheet({ open, spaceId, token, onClose }: { open: boolean; spaceId: string; token: string; onClose(): void }) {
+function ShareSheet({ open, spaceId, token, code, onClose }: { open: boolean; spaceId: string; token: string; code: string | null; onClose(): void }) {
   const { t } = useI18n();
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'code' | 'link' | null>(null);
   const [showQr, setShowQr] = useState(false);
   const link = spaceShareLink(spaceId, token);
-  const copy = async () => {
+  const copy = async (what: 'code' | 'link') => {
     try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
+      await navigator.clipboard.writeText(what === 'code' ? formatSpaceCode(code || '') : link);
+      setCopied(what);
+      setTimeout(() => setCopied(null), 1600);
     } catch { /* clipboard blocked */ }
   };
   return (
     <OverlaySheet open={open} onClose={onClose} label={t('space.share')} maxWidth={420} testId="space-share">
       <h2 className="text-[16.5px] font-semibold text-apple-ink dark:text-white">{t('space.share')}</h2>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-apple-ink-muted dark:text-white/55">{t('space.shareHint')}</p>
-        <div className="mt-4 flex items-center gap-2">
-          <input
-            readOnly value={link}
-            onFocus={e => e.currentTarget.select()}
-            className="flex-1 min-w-0 rounded-[12px] border border-apple-divider dark:border-white/[0.12] bg-white dark:bg-white/[0.04] px-3 py-2.5 text-[12.5px] text-apple-ink-muted dark:text-white/70 font-mono truncate"
-          />
-          <button onClick={copy} className="shrink-0 inline-flex items-center gap-1.5 min-h-[42px] px-4 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[13.5px] font-semibold active:scale-[0.97] transition-transform">
-            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            {copied ? t('space.copied') : t('space.copyLink')}
-          </button>
-        </div>
+        {code ? (
+          <>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-apple-ink-muted dark:text-white/55">{t('space.codeShareHint')}</p>
+            <div className="mt-4 rounded-[16px] border border-apple-divider dark:border-white/[0.1] bg-white dark:bg-white/[0.04] px-4 py-3.5 text-center">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-apple-ink-muted/80 dark:text-white/45">{t('space.codeDisplayLabel')}</p>
+              <p className="mt-1 font-mono text-[30px] font-bold tracking-[0.1em] text-apple-ink dark:text-white leading-none" data-testid="space-share-code">{formatSpaceCode(code)}</p>
+            </div>
+            <button
+              onClick={() => void copy('code')}
+              className="mt-3 w-full min-h-[46px] rounded-full inline-flex items-center justify-center gap-2 bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[14px] font-semibold active:scale-[0.97] transition-transform"
+              data-testid="space-share-copy-code"
+            >
+              {copied === 'code' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied === 'code' ? t('space.copied') : t('space.copyCode')}
+            </button>
+          </>
+        ) : (
+          <p className="mt-1.5 text-[13px] leading-relaxed text-apple-ink-muted dark:text-white/55">{t('space.shareHint')}</p>
+        )}
+        <details className="mt-3 group">
+          <summary className="cursor-pointer list-none min-h-[44px] rounded-[12px] inline-flex w-full items-center justify-center gap-2 text-[13.5px] font-medium text-apple-ink-muted dark:text-white/60 bg-white dark:bg-white/[0.05] border border-apple-divider dark:border-white/[0.1] hover:border-apple-ink/25 dark:hover:border-white/25 transition-colors">
+            <Link2 className="w-4 h-4" /> {t('space.shareLinkSecondary')}
+          </summary>
+          <div className="mt-3 flex items-center gap-2">
+            <input
+              readOnly value={link}
+              onFocus={e => e.currentTarget.select()}
+              className="flex-1 min-w-0 rounded-[12px] border border-apple-divider dark:border-white/[0.12] bg-white dark:bg-white/[0.04] px-3 py-2.5 text-[12.5px] text-apple-ink-muted dark:text-white/70 font-mono truncate"
+            />
+            <button onClick={() => void copy('link')} className="shrink-0 inline-flex items-center gap-1.5 min-h-[42px] px-4 rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[13.5px] font-semibold active:scale-[0.97] transition-transform">
+              {copied === 'link' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied === 'link' ? t('space.copied') : t('space.copyLink')}
+            </button>
+          </div>
+        </details>
         <button
           onClick={() => setShowQr(v => !v)}
           className="mt-3 w-full min-h-[44px] rounded-[12px] inline-flex items-center justify-center gap-2 text-[13.5px] font-semibold text-apple-ink dark:text-white/80 bg-white dark:bg-white/[0.05] border border-apple-divider dark:border-white/[0.1] hover:border-apple-ink/25 dark:hover:border-white/25 transition-colors"
@@ -555,7 +695,7 @@ function ShareSheet({ open, spaceId, token, onClose }: { open: boolean; spaceId:
         {showQr && (
           <div className="mt-4 flex justify-center rounded-[16px] bg-white p-4">
             <Suspense fallback={<span className="w-[208px] h-[208px] flex items-center justify-center"><SpinLoader size={24} className="text-apple-ink-muted" /></span>}>
-              <QRCode value={link} size={208} />
+              <QRCode value={code ? `${window.location.origin}/space/join?code=${formatSpaceCode(code)}` : link} size={208} />
             </Suspense>
           </div>
         )}
@@ -569,6 +709,10 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
   const { t } = useI18n();
   const client = useSpaceClient(spaceId, token);
   const { snapshot, items, uploads, conn, nowMs } = client;
+  // The space's human code (F21): remembered locally at create/join so the
+  // code display and share sheet always have it, even after a refresh.
+  const [spaceCode, setSpaceCode] = useState<string | null>(() => localCode(spaceId));
+  useEffect(() => { setSpaceCode(localCode(spaceId)); }, [spaceId]);
   const [shareOpen, setShareOpen] = useState(false);
   const [closeConfirm, setCloseConfirm] = useState(false);
   const [removeId, setRemoveId] = useState<string | null>(null);
@@ -706,6 +850,20 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
               <Countdown expiresAt={snapshot.expiresAt} now={nowMs} createdAt={snapshot.createdAt} />
             )}
           </div>
+          {snapshot && spaceCode && (
+            <button
+              onClick={async () => {
+                try { await navigator.clipboard.writeText(formatSpaceCode(spaceCode)); showNotice(t('space.copied')); } catch { /* clipboard blocked */ }
+              }}
+              title={t('space.copyCode')}
+              aria-label={`${t('space.codeDisplayLabel')}: ${formatSpaceCode(spaceCode)}. ${t('space.copyCode')}`}
+              className="shrink-0 hidden sm:inline-flex items-center gap-1.5 min-h-[36px] px-3 rounded-full text-[12.5px] font-mono font-semibold tracking-[0.08em] text-apple-ink dark:text-white/80 bg-black/[0.04] dark:bg-white/[0.06] hover:bg-black/[0.07] dark:hover:bg-white/[0.1] transition-colors"
+              data-testid="space-code-chip"
+            >
+              {formatSpaceCode(spaceCode)}
+              <Copy className="w-3 h-3 opacity-60" />
+            </button>
+          )}
           {snapshot && (
             <span className="shrink-0 text-[12.5px] font-medium text-apple-ink-muted dark:text-white/45 tabular-nums" data-testid="space-members">
               {snapshot.memberCount === 1
@@ -878,7 +1036,7 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
         </div>
       )}
 
-      <ShareSheet open={shareOpen} spaceId={spaceId} token={localToken} onClose={() => setShareOpen(false)} />
+      <ShareSheet open={shareOpen} spaceId={spaceId} token={localToken} code={spaceCode} onClose={() => setShareOpen(false)} />
       <ConfirmSheet
         open={closeConfirm}
         title={t('space.closeConfirmTitle')}

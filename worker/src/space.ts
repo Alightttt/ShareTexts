@@ -1,6 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { json, type Env } from './types';
 import { sendSpaceReminderPush } from './vapid';
+import { normalizeSpaceCode, isValidSpaceCode, generateSpaceCode } from './spaceCode';
 
 /**
  * Space — one Durable Object per Temporary Space: authoritative metadata,
@@ -234,6 +235,10 @@ export class Space extends DurableObject<Env> {
     try {
       if (path === '/create' && method === 'POST') return await this.handleCreate(request, now);
       if (path === '/join' && method === 'POST') return await this.handleJoin(request, now);
+      // Internal: join-by-code handoff. index.ts has already resolved the
+      // code through the Registry (rate-limited there); this completes the
+      // join with the stored access token — the same path a link join takes.
+      if (path === '/code-join' && method === 'POST') return await this.handleCodeJoin(request, now);
 
       const auth = await this.ensureAuthorized(request, now);
       if ('response' in auth) return auth.response;
@@ -274,6 +279,21 @@ export class Space extends DurableObject<Env> {
 
   private async saveSpace() {
     if (this.space) await this.ctx.storage.put('space', this.space);
+  }
+
+  /** Call into the Registry singleton that owns the space-code index. */
+  private registryRequest(path: string, body: unknown, method = 'POST'): Promise<Response> {
+    const id = this.env.REGISTRY.idFromName('space-codes');
+    const stub = this.env.REGISTRY.get(id);
+    return stub.fetch(new Request('https://internal' + path, {
+      method,
+      ...(method === 'GET'
+        ? undefined
+        : { body: JSON.stringify(body) }),
+      ...(method === 'GET' && body
+        ? undefined
+        : { headers: { 'content-type': 'application/json' } }),
+    }));
   }
 
   private nowMs(): number {
@@ -463,13 +483,30 @@ export class Space extends DurableObject<Env> {
 
   private async handleCreate(request: Request, now: number): Promise<Response> {
     if (this.space) return json({ error: 'This space already exists.' }, 409);
-    let body: { name?: unknown; durationMs?: unknown };
+    let body: { name?: unknown; durationMs?: unknown; code?: unknown };
     try { body = await request.json() as typeof body; } catch {
       return json({ error: 'Bad request' }, 400);
     }
     const durationMs = Number(body.durationMs);
     if (!SPACE_DURATIONS.includes(durationMs)) {
       return json({ error: 'Choose how long the space should stay open.' }, 400);
+    }
+    // Optional human code (F21): re-validated server-side (shape + global
+    // collision in the Registry). A taken code 409s with codeTaken — no
+    // silent replacement, ever.
+    let code: string | null = null;
+    const rawCode = typeof body.code === 'string' ? normalizeSpaceCode(body.code) : '';
+    const expiresAt = now + durationMs;
+    if (rawCode) {
+      if (!isValidSpaceCode(rawCode)) {
+        return json({ error: 'Codes use 8 letters/numbers — no 0, O, 1, I, L, 5, S or B.' }, 400);
+      }
+      const reg = await this.registryRequest('/space-code/register', { code: rawCode, spaceId: this.urlSpaceId, expiresAt });
+      if (!reg.ok) {
+        const out = (await reg.json().catch(() => ({}))) as { suggestion?: string };
+        return json({ error: 'This code is already in use. Try another one.', codeTaken: true, suggestion: out.suggestion }, 409);
+      }
+      code = rawCode;
     }
     const token = randomToken();
     const manage = randomToken();
@@ -484,7 +521,7 @@ export class Space extends DurableObject<Env> {
       tokenHash,
       manageHash,
       createdAt: now,
-      expiresAt: now + durationMs,
+      expiresAt,
       durationMs,
       state: 'ACTIVE',
       creatorId,      // token identity — manage key only authorizes
@@ -495,11 +532,23 @@ export class Space extends DurableObject<Env> {
     };
     await this.saveSpace();
     await this.ctx.storage.setAlarm(reminderAt);
+    // join-by-code needs the ACCESS TOKEN (discovery hands the joiner the
+    // credential it will present). Stored DO-side only; the Registry never
+    // sees it. Generated when the creator didn't pick one.
+    if (!code) {
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const candidate = generateSpaceCode();
+        const reg = await this.registryRequest('/space-code/register', { code: candidate, spaceId, expiresAt });
+        if (reg.ok) { code = candidate; break; }
+      }
+    }
+    await this.ctx.storage.put('access-token', token);
+    if (code) await this.ctx.storage.put('space-code', code);
     // Creator joins as the first member under their manage identity.
     await this.registerMember(this.space.creatorId, sanitizeMemberName(request.headers.get('x-device-name')), now);
-    log('space created', spaceId.slice(0, 8), 'closes', new Date(this.space.expiresAt).toISOString());
+    log('space created', spaceId.slice(0, 8), 'code', code, 'closes', new Date(this.space.expiresAt).toISOString());
     return json({
-      spaceId, token, manageKey: manage, name: this.space.name,
+      spaceId, token, manageKey: manage, name: this.space.name, code,
       createdAt: this.space.createdAt, expiresAt: this.space.expiresAt, reminderAt,
       isCreator: true, participantId: this.space.creatorId,
     });
@@ -884,10 +933,33 @@ export class Space extends DurableObject<Env> {
   // ── expiry + cleanup ──────────────────────────────────────────────────
 
   /** Mark the space closed authoritatively and tell live clients. */
+  /** Join via the code handoff: the Registry already validated the code
+   *  (rate-limited, no oracle). This completes the join with the stored
+   *  access token — identical to a link join from here on. */
+  private async handleCodeJoin(request: Request, now: number): Promise<Response> {
+    const token = await this.ctx.storage.get<string>('access-token');
+    if (!token || !this.space) return json({ error: 'No space with that code is open right now.' }, 404);
+    if (this.space.state !== 'ACTIVE' || now >= this.space.expiresAt) {
+      return json({ error: 'No space with that code is open right now.' }, 404);
+    }
+    const inner = new Request('https://internal/join', request);
+    inner.headers.set('authorization', `Bearer ${token}`);
+    const res = await this.handleJoin(inner, now);
+    res.headers.set('x-space-token', token); // the device keeps this for rejoin
+    return res;
+  }
+
   private async beginExpiry(reason: 'expired' | 'closed_early') {
     const s = this.space;
     if (!s) return;
     s.state = 'EXPIRED';
+    // The code dies with the space — unregister it so the code index never
+    // answers for a closed space (the lookup would 404 anyway via expiresAt,
+    // but explicit removal frees the code for reuse and keeps the index lean).
+    const code = await this.ctx.storage.get<string>('space-code');
+    if (code) await this.registryRequest('/space-code/unregister', { code }).catch(() => undefined);
+    await this.ctx.storage.delete('access-token');
+    await this.ctx.storage.delete('space-code');
     await this.saveSpace();
     this.broadcast('space_closed', { reason, expiresAt: s.expiresAt });
     for (const cid of [...this.conns.keys()]) {

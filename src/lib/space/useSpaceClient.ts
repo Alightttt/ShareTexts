@@ -11,6 +11,7 @@ import { addText, closeSpace, deleteItem, downloadItem, forgetSpace, joinSpace, 
 import { connectSpaceLive } from './live';
 import { abortUpload, uploadFile, type UploadHandle, type UploadProgress } from './uploader';
 import type { SpaceItem, SpaceSnapshot } from './types';
+import { productEvent } from '../telemetry';
 
 export type ConnState = 'connecting' | 'live' | 'offline' | 'closed' | 'error';
 
@@ -74,6 +75,7 @@ export function useSpaceClient(spaceId: string, token: string): SpaceClient {
         seqRef.current = Math.max(seqRef.current, ...snap.items.map(i => i.seq), 0);
         upsertSorted([...snap.items]);
         setConn('live');
+        productEvent('product.space_joined');
         disposeLive = connectSpaceLive(spaceId, authToken, snap.name, {
           onStatus: (s) => { if (!disposed) setConn(s); },
           onEvent: (e) => {
@@ -180,6 +182,7 @@ export function useSpaceClient(spaceId: string, token: string): SpaceClient {
 
     done
       .then((item) => {
+        productEvent('product.space_item_uploaded');
         uploadsRef.current.delete(key);
         setUploads([...uploadsRef.current.values()]);
         seqRef.current = Math.max(seqRef.current, item.seq);

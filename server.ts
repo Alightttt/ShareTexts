@@ -282,6 +282,9 @@ const CLIENT_EVENTS: ReadonlySet<string> = new Set([
   'product.qr_opened',
   'product.docs_opened',
   'product.diagnostics_opened',
+  'product.space_created',
+  'product.space_joined',
+  'product.space_item_uploaded',
 ]);
 app.post('/api/event', express.text({ type: () => true, limit: '256b' }), (req, res) => {
   const name = typeof req.body === 'string' ? req.body.trim() : '';
@@ -964,7 +967,7 @@ spaceDev.start();
     if (rawPaths.has(tail)) return next(); // body stays a stream for the backend
     next();
   });
-  spaceDev.mount(app);
+  spaceDev.mount(app, j);
 })();
 
 // --- Socket handlers -------------------------------------------------------
@@ -1604,8 +1607,10 @@ async function start() {
       if (req.path === '/terms') {
         return res.sendFile(path.join(distPath, 'seo', 'terms.html'));
       }
-      // Known SPA routes that should get the app shell
-      if (req.path === '/' || /^\/s\/[0-9a-f]{8}$/i.test(req.path) || /^\/space\/[0-9a-f-]{36}$/i.test(req.path)) {
+      // Known SPA routes that should get the app shell (incl. the F21
+      // code entry points — the code IS the invitation, so /space/join
+      // and /space/create must land in the app, not a 404).
+      if (req.path === '/' || /^\/s\/[0-9a-f]{8}$/i.test(req.path) || /^\/space\/[0-9a-f-]{36}$/i.test(req.path) || /^\/space\/(create|join)\/?$/i.test(req.path)) {
         return res.sendFile(path.join(distPath, 'index.html'));
       }
       // Everything else is a real 404: designed noindex page, correct status.
