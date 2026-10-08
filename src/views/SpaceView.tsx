@@ -139,7 +139,7 @@ function ItemCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.18 }}
-      className="group relative rounded-[16px] bg-white dark:bg-[#1c1c21] border border-apple-divider/70 dark:border-white/[0.08] shadow-card dark:shadow-none overflow-hidden"
+      className="group relative rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/70 dark:border-white/[0.08] shadow-card dark:shadow-none overflow-hidden"
       data-testid="space-item"
       data-kind={item.kind}
     >
@@ -267,7 +267,7 @@ function UploadRow({
   const active = phase === 'uploading' || phase === 'preparing';
 
   return (
-    <div className="rounded-[16px] bg-white dark:bg-[#1c1c21] border border-apple-divider/70 dark:border-white/[0.08] shadow-card dark:shadow-none p-3.5" data-testid="space-upload" data-phase={phase}>
+    <div className="rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/70 dark:border-white/[0.08] shadow-card dark:shadow-none p-3.5" data-testid="space-upload" data-phase={phase}>
       <div className="flex items-center gap-3">
         <span className="shrink-0 w-10 h-10 rounded-[12px] bg-apple-parchment dark:bg-white/[0.06] flex items-center justify-center">
           <UploadCloud className={`w-5 h-5 ${done ? 'text-emerald-600 dark:text-emerald-400' : failed || cancelled ? 'text-red-500' : 'text-apple-ink-muted dark:text-white/55'}`} />
@@ -790,8 +790,8 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
 
   if (conn === 'closed') {
     return (
-      <div className="min-h-dvh flex flex-col items-center justify-center px-6 text-center bg-apple-canvas dark:bg-[#131315]">
-        <div className="w-[64px] h-[64px] rounded-[20px] bg-white dark:bg-[#1c1c21] border border-apple-divider/70 dark:border-white/[0.08] flex items-center justify-center mb-5">
+      <div className="min-h-dvh flex flex-col items-center justify-center px-6 text-center bg-apple-canvas dark:bg-night-900">
+        <div className="w-[64px] h-[64px] rounded-[20px] bg-white dark:bg-surface-dark border border-apple-divider/70 dark:border-white/[0.08] flex items-center justify-center mb-5">
           <Clock className="w-7 h-7 text-apple-ink-muted dark:text-white/50" />
         </div>
         <h1 className="text-[21px] font-semibold text-apple-ink dark:text-white">{t('space.closedTitle')}</h1>
@@ -805,7 +805,7 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
 
   if (conn === 'error' || (!snapshot && conn === 'offline')) {
     return (
-      <div className="min-h-dvh flex flex-col items-center justify-center px-6 text-center bg-apple-canvas dark:bg-[#131315]">
+      <div className="min-h-dvh flex flex-col items-center justify-center px-6 text-center bg-apple-canvas dark:bg-night-900">
         <h1 className="text-[21px] font-semibold text-apple-ink dark:text-white">{t('space.errTitle')}</h1>
         <p className="mt-2 text-[14.5px] text-apple-ink-muted dark:text-white/55 max-w-sm">{t('space.errGeneric')}</p>
         <button onClick={() => window.location.reload()} className="mt-7 px-6 min-h-[46px] rounded-full bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[14.5px] font-semibold">
@@ -819,7 +819,7 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
 
   return (
     <div
-      className="min-h-dvh bg-apple-canvas dark:bg-[#131315] font-sans flex flex-col"
+      className="min-h-dvh bg-apple-canvas dark:bg-night-900 font-sans flex flex-col"
       onDragOver={e => { e.preventDefault(); if (e.dataTransfer.types.includes('Files')) setDragOver(true); }}
       onDragLeave={e => { if (e.currentTarget === e.target) setDragOver(false); }}
       onDrop={e => {
@@ -829,7 +829,7 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
       }}
     >
       {/* ── header ── */}
-      <header className="shrink-0 sticky top-0 z-40 bg-apple-canvas/85 dark:bg-[#131315]/85 backdrop-blur border-b border-apple-divider/50 dark:border-white/[0.06]">
+      <header className="shrink-0 sticky top-0 z-40 bg-apple-canvas/85 dark:bg-night-900/85 backdrop-blur border-b border-apple-divider/50 dark:border-white/[0.06]">
         {/* Lifetime hairline — time actually spent of the promised window.
             Renders only once the shelf is genuinely running out (≥60% spent
             or the last hour); calm metadata before that, no fake urgency. */}
@@ -913,7 +913,7 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
              use — shape first, words never. */
           <div className="space-y-2.5" aria-label={t('space.contentLabel')} data-testid="space-loading">
             {[64, 44, 52].map((h, i) => (
-              <div key={i} className="rounded-[16px] bg-white dark:bg-[#1c1c21] border border-apple-divider/70 dark:border-white/[0.08] p-3.5">
+              <div key={i} className="rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/70 dark:border-white/[0.08] p-3.5">
                 <span className="st-skeleton block rounded-[8px]" style={{ height: h / 2 + 8 }} />
                 <span className="st-skeleton mt-2 block h-2.5 w-1/3 rounded-full" />
               </div>
@@ -968,7 +968,7 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
       </main>
 
       {/* ── composer ── */}
-      <footer className="shrink-0 sticky bottom-0 z-40 bg-apple-canvas/90 dark:bg-[#131315]/90 backdrop-blur border-t border-apple-divider/50 dark:border-white/[0.06]">
+      <footer className="shrink-0 sticky bottom-0 z-40 bg-apple-canvas/90 dark:bg-night-900/90 backdrop-blur border-t border-apple-divider/50 dark:border-white/[0.06]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-end gap-2">
           <button
             onClick={() => fileInput.current?.click()}
@@ -1030,7 +1030,7 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
       {dragOver && (
         <div className="fixed inset-0 z-[70] pointer-events-none flex items-center justify-center">
           <div className="absolute inset-0 bg-azure-600/[0.06] dark:bg-azure-400/[0.08] border-2 border-dashed border-azure-500/50 rounded-none" />
-          <span className="relative rounded-full bg-white dark:bg-[#1c1c21] shadow-lg px-5 py-2.5 text-[14px] font-semibold text-apple-ink dark:text-white">
+          <span className="relative rounded-full bg-white dark:bg-surface-dark shadow-lg px-5 py-2.5 text-[14px] font-semibold text-apple-ink dark:text-white">
             {t('space.dropToAdd')}
           </span>
         </div>

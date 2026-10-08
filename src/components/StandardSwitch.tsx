@@ -34,7 +34,9 @@ const RADIUS_THUMB = 11;
 /* iOS settle: quick ease-out without overshoot. */
 const SPRING = { type: 'spring', stiffness: 550, damping: 38 } as const;
 
-/* ── Colors: ember when on (the app's action color), gray when off ── */
+/* ── Colors: ember when on (the app's action color), gray when off ──
+   SVG fill literals: MUST mirror the @theme tokens — EMBER_ON =
+   --color-ember, EMBER_ON_DARK = --color-azure-400, GRAY_* = iOS grays. */
 const EMBER_ON = '#f06413';
 const EMBER_ON_DARK = '#fb9243';
 const GRAY_OFF = '#e9e9ea';

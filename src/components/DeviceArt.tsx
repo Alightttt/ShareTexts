@@ -15,6 +15,9 @@
  * stays clean. Empty always beats fake.
  */
 
+// Raw vendor brand colors by design (SVG-const rule, same contract as
+// DeviceLinkIllustration): NVIDIA/AMD/Intel blues/greens/reds are the actual
+// vendor marks — deliberately NOT tokens, deliberately NOT "the brand".
 const VENDOR_STYLE: Record<string, string> = {
   NVIDIA: 'bg-[#76b900]/15 text-[#5a8f00] dark:text-[#a3e635]',
   AMD: 'bg-[#ed1c24]/12 text-[#c81e24] dark:text-[#f87171]',
@@ -113,19 +116,19 @@ export function DeviceArt({ kind, model, gpu, size = 56, mark = true, pulse = fa
       {/* GPU vendor badge — desktops only, only when the browser TOLD us. */}
       {kind === 'desktop' && gpu && size >= 48 && (
         <span
-          className={`absolute -bottom-1.5 -right-1.5 px-1.5 h-[15px] min-w-[15px] rounded-[5px] flex items-center justify-center text-[8.5px] font-extrabold tracking-wide ${VENDOR_STYLE[gpu] ?? VENDOR_STYLE.Apple}`}
+          className={`absolute -bottom-1.5 -right-1.5 px-1.5 h-[15px] min-w-[15px] rounded-[4px] flex items-center justify-center text-[8.5px] font-extrabold tracking-wide ${VENDOR_STYLE[gpu] ?? VENDOR_STYLE.Apple}`}
         >
           {gpu === 'Intel' ? 'i' : gpu.charAt(0)}
         </span>
       )}
       {kind !== 'desktop' && accent && size >= 48 && (
         <span
-          className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white dark:border-[#1c1c21]"
+          className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white dark:border-surface-dark"
           style={{ background: accent }}
         />
       )}
       {pulse && (
-        <span className="absolute bottom-0.5 left-0.5 w-2 h-2 rounded-full bg-[#f06413] dark:bg-[#fb9243] st-status-dot" />
+        <span className="absolute bottom-0.5 left-0.5 w-2 h-2 rounded-full bg-[#f06413] dark:bg-azure-400 st-status-dot" />
       )}
     </span>
   );

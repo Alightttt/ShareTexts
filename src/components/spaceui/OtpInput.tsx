@@ -32,7 +32,9 @@ const RING = {
   error: 'ring-2 ring-status-danger/70 delay-150',
 } as const;
 
-const SUCCESS = '#34C759';
+// var()-with-fallback: this const feeds style/attr props where a token
+// class cannot; mirrors --color-status-success in @theme.
+const SUCCESS = 'var(--color-status-success, #34C759)';
 
 const SIZES = {
   sm: {
@@ -397,7 +399,7 @@ export function OtpInput({
               opacity: BLINK,
             }}
             className={cn(
-              'pointer-events-none absolute left-0 top-1/2 w-[2px] rounded-full bg-ember dark:bg-[#fb9243]',
+              'pointer-events-none absolute left-0 top-1/2 w-[2px] rounded-full bg-ember dark:bg-azure-400',
               scale.caret,
             )}
           />

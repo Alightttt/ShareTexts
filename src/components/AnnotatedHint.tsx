@@ -58,7 +58,7 @@ export function AnnotatedHint({ children, note, className, noteClassName }: Anno
           transition={{ type: 'spring', stiffness: 480, damping: 30 }}
           className={cn(
             'pointer-events-none absolute bottom-full left-0 mb-2 z-40 w-[248px] px-3 py-2 rounded-[12px]',
-            'bg-apple-ink text-white dark:bg-[#2c2c33] text-[12px] font-medium leading-snug text-left normal-case',
+            'bg-apple-ink text-white dark:bg-apple-tile-3 text-[12px] font-medium leading-snug text-left normal-case',
             'shadow-[0_14px_34px_-14px_rgba(0,0,0,0.5)]',
             noteClassName
           )}

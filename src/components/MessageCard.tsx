@@ -89,7 +89,7 @@ function SelectionRing({ selected }: { selected: boolean }) {
       className={cn(
         'absolute top-1/2 -translate-y-1/2 w-[22px] h-[22px] rounded-full border-2 flex items-center justify-center shrink-0 pointer-events-none',
         selected
-          ? 'bg-[#f06413] border-[#f06413]'
+          ? 'bg-ember border-ember'
           : 'bg-transparent border-apple-ink-muted/40 dark:border-white/35'
       )}
     >
@@ -159,7 +159,7 @@ const ReactionBar: React.FC<{ msg: ChatMessage; disabled?: boolean }> = ({ msg, 
             className={cn(
               'flex items-center gap-1 h-[26px] pl-1.5 pr-2 rounded-full border text-[12px] font-semibold select-none transition-colors',
               r.mine
-                ? 'bg-[#f06413]/12 border-[#f06413]/40 text-[#b8450a] dark:text-[#ffc79b]'
+                ? 'bg-ember/12 border-ember/40 text-brand-strong dark:text-azure-400'
                 : 'bg-black/[0.035] border-black/[0.08] text-apple-ink-muted dark:bg-white/[0.07] dark:border-white/10 group-hover/chip:border-black/20 dark:group-hover/chip:border-white/25'
             )}
           >
@@ -506,13 +506,13 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
         {selectMode && <SelectionRing selected={selected} />}
         <div className={cn("flex flex-col min-w-0 max-w-[85%] sm:max-w-[65%]", isMe ? "items-end" : "items-start")}>
         <div className={cn(
-          "px-[14px] py-[10px] rounded-[18px] transition-shadow",
+          "px-[14px] py-[10px] rounded-[16px] transition-shadow",
           selected && "ring-2 ring-azure-500/60",
           isMe
             // Sent items carry a whisper of the brand so the eye instantly
             // separates what left this device from what arrived.
-            ? "bg-[#fdeee2] dark:bg-[#2b2018] text-apple-ink dark:text-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
-            : "bg-white dark:bg-[#1f1f24] border border-apple-divider/40 dark:border-white/[0.06] text-apple-ink dark:text-white",
+            ? "bg-brand-light dark:bg-apple-tile-3 text-apple-ink dark:text-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+            : "bg-white dark:bg-apple-tile-2 border border-apple-divider/40 dark:border-white/[0.06] text-apple-ink dark:text-white",
           isMe && isGroupEnd && "rounded-br-[4px]",
           !isMe && isGroupEnd && "rounded-bl-[4px]",
           isMe && !isGroupEnd && "rounded-br-[14px]",
@@ -660,16 +660,16 @@ export const MessageCard: React.FC<MessageCardProps> = ({ msg, isGroupStart = tr
       {selectMode && <SelectionRing selected={selected} />}
       <div className={cn(
         "flex flex-col gap-0 max-w-[85%] sm:max-w-[65%] w-full transition-shadow",
-        selected && "ring-2 ring-[#f06413]/60",
+        selected && "ring-2 ring-ember/60",
         isMe ? "items-end" : "items-start"
       )}>
         <div className={cn(
-          "flex flex-col w-full overflow-hidden rounded-[18px]",
+          "flex flex-col w-full overflow-hidden rounded-[16px]",
           // Sent bubbles carry the brand tint; received stay neutral — the
           // color tells you whose message it is before you read a word.
           isMe
-            ? "bg-[#fdeee2] dark:bg-[#2b2018] border border-[#f06413]/20 dark:border-[#fb9243]/20 shadow-[0_1px_3px_rgba(240,100,19,0.10)]"
-            : "bg-white dark:bg-[#1c1c21] border border-apple-divider/40 dark:border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
+            ? "bg-brand-light dark:bg-apple-tile-3 border border-ember/20 dark:border-azure-400/20 shadow-[0_1px_3px_rgba(240,100,19,0.10)]"
+            : "bg-white dark:bg-surface-dark border border-apple-divider/40 dark:border-white/[0.06] shadow-[0_1px_3px_rgba(0,0,0,0.06)]",
           isMe && isGroupEnd && "rounded-br-[4px]",
           !isMe && isGroupEnd && "rounded-bl-[4px]",
           isMe && !isGroupEnd && "rounded-br-[14px]",

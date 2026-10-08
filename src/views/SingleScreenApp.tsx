@@ -149,6 +149,19 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
   // open — the code entry point IS the app, not a dead end.
   const [spaceSheet, setSpaceSheet] = useState<null | 'create' | 'join'>(initialSpaceSheet ?? null);
   const [recent, setRecent] = useState(() => { try { return recentSpaces(); } catch { return []; } });
+  // Rows tick with a shared clock so the countdowns stay truthful while the
+  // landing stays open, and a row whose space has expired prunes itself (§9-B):
+  // recentSpaces() only prunes at mount, so without this a stale row offers
+  // "Open" on a space the server has already closed.
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 15_000); // ms resolution not needed at row level
+    return () => clearInterval(t);
+  }, []);
+  useEffect(() => {
+    const alive = recent.filter(r => nowTick < r.expiresAt);
+    if (alive.length !== recent.length) setRecent(alive);
+  }, [nowTick, recent]);
   const [createError, setCreateError] = useState<{ text: string; icon: 'offline' | 'server' | 'time' | 'info' } | null>(null);
   const [showQROverlay, setShowQROverlay] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -679,7 +692,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
   // luxury.
   const ambientGlow = null;
   const headerNode = (
-    <header className="shrink-0 sticky top-0 z-30 flex items-center justify-between px-6 lg:px-10 py-3.5 bg-apple-canvas/85 dark:bg-[#131315]/85 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.06] relative">
+    <header className="shrink-0 sticky top-0 z-30 flex items-center justify-between px-6 lg:px-10 py-3.5 bg-apple-canvas/85 dark:bg-night-900/85 backdrop-blur-xl border-b border-black/[0.05] dark:border-white/[0.06] relative">
         {/* Brand lockup — the shared BrandLockup: mark + wordmark as ONE
             equal-height object, display-face wordmark, minimal gap. */}
         <BrandLockup />
@@ -803,11 +816,11 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
                         data-testid="stay-rejoin"
                         onClick={handleStayRejoin}
                         disabled={isRejoining}
-                        className="group w-full flex items-center gap-3.5 pl-3.5 pr-3 py-3 rounded-[16px] bg-white dark:bg-[#232329] border border-apple-divider dark:border-[#2c2c33] shadow-sm hover:shadow-card hover:border-[#f06413]/35 dark:hover:border-[#fb9243]/40 active:scale-[0.985] transition-all duration-200 text-left disabled:opacity-60"
+                        className="group w-full flex items-center gap-3.5 pl-3.5 pr-3 py-3 rounded-[16px] bg-white dark:bg-apple-tile-2 border border-apple-divider dark:border-apple-tile-3 shadow-sm hover:shadow-card hover:border-ember/35 dark:hover:border-azure-400/40 active:scale-[0.985] transition-all duration-200 text-left disabled:opacity-60"
                       >
-                        <span className="relative shrink-0 w-9 h-9 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/15 flex items-center justify-center text-[#f06413] dark:text-[#fb9243]" aria-hidden>
+                        <span className="relative shrink-0 w-9 h-9 rounded-full bg-ember/10 dark:bg-azure-400/15 flex items-center justify-center text-ember dark:text-azure-400" aria-hidden>
                           {/* Live pulse: this room is still breathing upstream. */}
-                          <span className="absolute inset-0 rounded-full bg-[#f06413]/20 dark:bg-[#fb9243]/20 st-halo-ring motion-reduce:animate-none" />
+                          <span className="absolute inset-0 rounded-full bg-ember/20 dark:bg-azure-400/20 st-halo-ring motion-reduce:animate-none" />
                           <InfinityIcon className="relative w-4 h-4" strokeWidth={2} />
                         </span>
                         <span className="flex-1 flex flex-col min-w-0 gap-0.5 leading-tight">
@@ -834,7 +847,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
                             Two circles in one row (ember glyph left, grey
                             button right) made the card read as a pair of
                             buttons rather than one thing you tap. */}
-                        <ArrowRightLeft className="shrink-0 w-4 h-4 text-apple-ink-muted/70 dark:text-white/40 group-hover:text-[#f06413] dark:group-hover:text-[#fb9243] transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
+                        <ArrowRightLeft className="shrink-0 w-4 h-4 text-apple-ink-muted/70 dark:text-white/40 group-hover:text-ember dark:group-hover:text-azure-400 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
                       </button>
                     </motion.div>
                   );
@@ -860,7 +873,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
                   <span>{t('space.entryHint')}</span>
                 </p>
                 {recent.map(r => {
-                  const msLeft = r.expiresAt - Date.now();
+                  const msLeft = r.expiresAt - nowTick;
                   // Under an hour left, the row says so in ember — the one
                   // moment a temporary shelf deserves your attention.
                   const urgent = msLeft < 3_600_000;
@@ -874,7 +887,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
                       <span className={cn(
                         'shrink-0 w-8 h-8 rounded-[10px] flex items-center justify-center',
                         urgent
-                          ? 'bg-ember/12 dark:bg-ember/18 text-ember dark:text-[#fb9243]'
+                          ? 'bg-ember/12 dark:bg-ember/18 text-ember dark:text-azure-400'
                           : 'bg-black/[0.045] dark:bg-white/[0.07] text-apple-ink-muted dark:text-white/50'
                       )} aria-hidden>
                         <Clock3 className="w-4 h-4" />
@@ -883,7 +896,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
                         <span className="text-[13.5px] font-semibold text-apple-ink dark:text-white/85 truncate">{r.name}</span>
                         <span className={cn(
                           'text-[11.5px] font-medium tabular-nums',
-                          urgent ? 'text-ember dark:text-[#fb9243] font-semibold' : 'text-apple-ink-muted/80 dark:text-white/40'
+                          urgent ? 'text-ember dark:text-azure-400 font-semibold' : 'text-apple-ink-muted/80 dark:text-white/40'
                         )}>
                           {t('space.closesIn', { time: remainingShortOf(msLeft) })}
                         </span>
@@ -905,7 +918,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
                     className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 min-h-[40px] rounded-full text-[13px] font-semibold text-apple-ink/75 dark:text-white/65 hover:text-apple-ink dark:hover:text-white hover:bg-black/[0.05] dark:hover:bg-white/[0.07] active:scale-[0.97] transition-all"
                     data-testid="space-create-entry"
                   >
-                    <Plus className="w-4 h-4 text-ember dark:text-[#fb9243]" aria-hidden />
+                    <Plus className="w-4 h-4 text-ember dark:text-azure-400" aria-hidden />
                     {t('space.createCta')}
                   </button>
                   <span className="w-px my-1.5 bg-apple-divider dark:bg-white/10" aria-hidden />
@@ -1096,7 +1109,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
                   </motion.div>
                 ) : (
                   <motion.div key="code-entry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-                    <div className="p-6 bg-white dark:bg-[#1a1a1e] border border-apple-divider dark:border-white/10 rounded-[20px] shadow-card">
+                    <div className="p-6 bg-white dark:bg-surface-dark border border-apple-divider dark:border-white/10 rounded-[20px] shadow-card">
                       <LiveCodeInput onComplete={handleCodeComplete} isJoining={isJoining} error={joinError} />
                     </div>
                     <p className="mt-4 text-[12px] text-apple-ink-muted/60 dark:text-white/35 text-center">{t('receive.note')}</p>
@@ -1169,8 +1182,8 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
               {/* Your device: name row (tap to rename) — the only identity
                   element here; the pair visual lives in the room header. */}
               <div className="flex items-center gap-2.5 mb-5">
-                <span className="flex items-center justify-center w-9 h-9 rounded-[11px] bg-[#f06413]/10 dark:bg-[#fb9243]/10 border border-[#f06413]/15 dark:border-[#fb9243]/15 shrink-0" aria-hidden>
-                  <ThisDeviceIcon className="w-4.5 h-4.5 text-[#f06413] dark:text-[#fb9243]" />
+                <span className="flex items-center justify-center w-9 h-9 rounded-[10px] bg-ember/10 dark:bg-azure-400/10 border border-ember/15 dark:border-azure-400/15 shrink-0" aria-hidden>
+                  <ThisDeviceIcon className="w-4.5 h-4.5 text-ember dark:text-azure-400" />
                 </span>
                 {editingName ? (
                   <input
@@ -1184,7 +1197,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
                     }}
                     aria-label={t('pair.renameField')}
                     maxLength={32}
-                    className="min-w-0 flex-1 text-[14px] font-semibold text-apple-ink dark:text-white bg-transparent border-b border-[#f06413]/50 dark:border-[#fb9243]/50 outline-none px-0.5 py-1"
+                    className="min-w-0 flex-1 text-[14px] font-semibold text-apple-ink dark:text-white bg-transparent border-b border-ember/50 dark:border-azure-400/50 outline-none px-0.5 py-1"
                   />
                 ) : (
                   <button
@@ -1201,8 +1214,8 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
 
               {/* One-time notice when the auto-disambiguation renamed us. */}
                 {session.nameAutoAdjusted && !dismissedNameNotice && (
-                  <div role="status" className="w-full sm:max-w-[340px] flex items-start gap-2 px-3 py-2 rounded-[12px] bg-[#f06413]/8 dark:bg-[#fb9243]/10 border border-[#f06413]/15 dark:border-[#fb9243]/15 text-[12px] text-apple-ink-muted dark:text-white/60 leading-snug">
-                    <Info className="w-3.5 h-3.5 text-[#f06413] dark:text-[#fb9243] shrink-0 mt-px" />
+                  <div role="status" className="w-full sm:max-w-[340px] flex items-start gap-2 px-3 py-2 rounded-[12px] bg-ember/8 dark:bg-azure-400/10 border border-ember/15 dark:border-azure-400/15 text-[12px] text-apple-ink-muted dark:text-white/60 leading-snug">
+                    <Info className="w-3.5 h-3.5 text-ember dark:text-azure-400 shrink-0 mt-px" />
                     <span className="flex-1">
                       {(() => { const parts = t('pair.autoRename', { name: '\u0000' }).split('\u0000'); return (<>{parts[0]}<span className="font-semibold text-apple-ink dark:text-white">{session.deviceName}</span>{parts[1]}</>); })()}
                     </span>
@@ -1456,10 +1469,10 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
           aria-hidden
-          className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none bg-apple-canvas/85 dark:bg-[#131315]/85 backdrop-blur-[2px]"
+          className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none bg-apple-canvas/85 dark:bg-night-900/85 backdrop-blur-[2px]"
         >
-          <div className="flex flex-col items-center gap-3 px-10 py-8 rounded-[28px] border-2 border-dashed border-[#f06413]/50 dark:border-[#fb9243]/50">
-            <Upload className="w-8 h-8 text-[#f06413] dark:text-[#fb9243]" />
+          <div className="flex flex-col items-center gap-3 px-10 py-8 rounded-[24px] border-2 border-dashed border-ember/50 dark:border-azure-400/50">
+            <Upload className="w-8 h-8 text-ember dark:text-azure-400" />
             <p className="text-[17px] font-semibold text-apple-ink dark:text-white">{t('drop.send')}</p>
             <p className="text-[13px] font-medium text-apple-ink-muted dark:text-white/50">{t('drop.hint')}</p>
           </div>
@@ -1475,7 +1488,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
       onDragOver={panelMode === 'idle' ? onHomeDragOver : undefined}
       onDragLeave={panelMode === 'idle' ? onHomeDragLeave : undefined}
       onDrop={panelMode === 'idle' ? onHomeDrop : undefined}
-      className="relative isolate flex flex-col h-full overflow-hidden bg-apple-canvas dark:bg-[#131315]"
+      className="relative isolate flex flex-col h-full overflow-hidden bg-apple-canvas dark:bg-night-900"
     >
       {ambientGlow}
       {/* Soft top ambience — a wide, low-alpha ember/violet breath that keeps
@@ -1508,7 +1521,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
   const roomPanel = (
     <div
       className={cn(
-        "relative flex flex-col h-full min-h-0 overflow-hidden bg-[#f4f2ec] dark:bg-[#0f0f11]",
+        "relative flex flex-col h-full min-h-0 overflow-hidden bg-apple-canvas dark:bg-night-950",
         /* The animated dot field lives ONLY here: the desktop landing's
            right panel, before a connection exists. Not mobile, not in-room,
            not the pairing/connected states — one quiet stage for the hero. */
@@ -1521,25 +1534,25 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
           the two real devices (this ⇄ partner + live-status dot) instead of
           a generic wordmark, and the brand stays present at the right
           weight. Disconnect gets a calm two-press confirm, never a modal. */}
-      <div className="shrink-0 flex items-center justify-between gap-3 px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-[#f4f2ec]/80 dark:bg-[#0f0f11]/80 backdrop-blur-xl z-10">
+      <div className="shrink-0 flex items-center justify-between gap-3 px-5 py-3 border-b border-black/[0.06] dark:border-white/[0.08] bg-apple-canvas/80 dark:bg-night-950/80 backdrop-blur-xl z-10">
         <div className="flex items-center gap-2.5 min-w-0">
           {panelMode === 'connected' ? (
             <>
-              <span className="flex items-center justify-center w-7 h-7 rounded-[9px] bg-ember/10 border border-ember/20 text-ember shrink-0" aria-hidden>
+              <span className="flex items-center justify-center w-7 h-7 rounded-[8px] bg-ember/10 border border-ember/20 text-ember shrink-0" aria-hidden>
                 <ThisDeviceIcon className="w-4 h-4" />
               </span>
               <span className="text-[13px] font-semibold text-apple-ink dark:text-white truncate max-w-[110px]">{session.deviceName}</span>
               <ArrowRightLeft className="w-3.5 h-3.5 shrink-0 text-apple-ink-muted/50 dark:text-white/30" />
               <span className={cn(
-                "relative flex items-center justify-center w-7 h-7 rounded-[9px] shrink-0 transition-colors",
+                "relative flex items-center justify-center w-7 h-7 rounded-[8px] shrink-0 transition-colors",
                 session.connectionType === 'disconnected'
                   ? "bg-black/[0.05] dark:bg-white/[0.06] border border-apple-divider/40 dark:border-white/[0.08] text-apple-ink-muted/50 dark:text-white/30"
                   : session.connectionType === 'connecting'
                     ? "bg-status-warning/10 border border-status-warning/25 text-status-warning"
                     : "bg-status-success/10 border border-status-success/20 text-status-success"
               )}>
-                {session.connectionType === 'connecting' && <span aria-hidden className="absolute inset-0 rounded-[9px] bg-status-warning/20 st-halo-ring" />}
-                {session.connectionType !== 'disconnected' && session.connectionType !== 'connecting' && <span aria-hidden className="absolute inset-0 rounded-[9px] bg-status-success/20 st-halo-ring" />}
+                {session.connectionType === 'connecting' && <span aria-hidden className="absolute inset-0 rounded-[8px] bg-status-warning/20 st-halo-ring" />}
+                {session.connectionType !== 'disconnected' && session.connectionType !== 'connecting' && <span aria-hidden className="absolute inset-0 rounded-[8px] bg-status-success/20 st-halo-ring" />}
                 <PartnerDeviceIcon className="relative w-4 h-4" />
               </span>
               <span className="hidden md:flex flex-col leading-tight min-w-0">
@@ -1669,7 +1682,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
                   <div className="w-full max-w-[420px] space-y-3.5">
                     {[t('room.step.1'), t('room.step.2'), t('room.step.3')].map((step, i) => (
                       <div key={i} className="flex items-center gap-3">
-                        <span className="shrink-0 w-7 h-7 rounded-full bg-ember/[0.1] dark:bg-ember/[0.16] text-ember dark:text-[#fb9243] text-[13px] font-bold flex items-center justify-center">{i + 1}</span>
+                        <span className="shrink-0 w-7 h-7 rounded-full bg-ember/[0.1] dark:bg-ember/[0.16] text-ember dark:text-azure-400 text-[13px] font-bold flex items-center justify-center">{i + 1}</span>
                         <span className="text-[14px] font-medium text-apple-ink/85 dark:text-white/65 leading-snug">{step}</span>
                       </div>
                     ))}
@@ -1706,13 +1719,13 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
                   </p>
                   <div
                     aria-hidden
-                    className="w-full rounded-[18px] border border-dashed border-black/[0.12] dark:border-white/[0.12] bg-white/[0.55] dark:bg-white/[0.03] p-4 flex flex-col gap-2.5"
+                    className="w-full rounded-[16px] border border-dashed border-black/[0.12] dark:border-white/[0.12] bg-white/[0.55] dark:bg-white/[0.03] p-4 flex flex-col gap-2.5"
                   >
                     <span className="st-eyebrow">
                       {t('room.previewTitle')}
                     </span>
                     <div className="flex items-center gap-2.5">
-                      <span className="w-7 h-7 rounded-[9px] bg-ember/[0.1] dark:bg-ember/[0.16] flex items-center justify-center text-ember shrink-0">
+                      <span className="w-7 h-7 rounded-[8px] bg-ember/[0.1] dark:bg-ember/[0.16] flex items-center justify-center text-ember shrink-0">
                         <Upload className="w-3.5 h-3.5" />
                       </span>
                       <div className="flex-1 space-y-1.5">
@@ -1721,7 +1734,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
                       </div>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <span className="w-7 h-7 rounded-[9px] bg-ember/[0.1] dark:bg-ember/[0.16] flex items-center justify-center text-ember shrink-0">
+                      <span className="w-7 h-7 rounded-[8px] bg-ember/[0.1] dark:bg-ember/[0.16] flex items-center justify-center text-ember shrink-0">
                         <Upload className="w-3.5 h-3.5" />
                       </span>
                       <div className="flex-1 space-y-1.5">
@@ -1751,7 +1764,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
       onDragOver={onHomeDragOver}
       onDragLeave={onHomeDragLeave}
       onDrop={onHomeDrop}
-      className="relative isolate flex flex-col h-full overflow-hidden bg-apple-canvas dark:bg-[#131315] st-landing"
+      className="relative isolate flex flex-col h-full overflow-hidden bg-apple-canvas dark:bg-night-900 st-landing"
     >
       <div aria-hidden className="st-ambient" />
       {/* Sunrise horizon: warm light rising from the floor of the hero band.
@@ -1785,7 +1798,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
   /*  RENDER                                                          */
   /* ---------------------------------------------------------------- */
   return (
-    <div className="h-dvh lg:h-dvh overflow-hidden bg-apple-canvas dark:bg-[#131315] dot-bg">
+    <div className="h-dvh lg:h-dvh overflow-hidden bg-apple-canvas dark:bg-night-900 dot-bg">
       <CommandBar open={cmdOpen} onOpenChange={setCmdOpen} onSpace={(which) => setSpaceSheet(which)} />
       {/* Only the ACTIVE layout is mounted — the other branch stays unmounted
           so components (ChatView, composer, pairing input) exist exactly once
@@ -1824,7 +1837,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
         ) : (
           <div className="h-full overflow-y-auto overscroll-contain">
             <div className="flex flex-col min-h-full">
-              <div className="relative isolate flex flex-1 flex-col bg-apple-canvas dark:bg-[#131315] st-landing">
+              <div className="relative isolate flex flex-1 flex-col bg-apple-canvas dark:bg-night-900 st-landing">
                 {ambientGlow}
                 <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[46%] st-horizon opacity-55" />
                 {headerNode}
@@ -1845,9 +1858,9 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
       <AnimatePresence>
         {showQRScan && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/50 dark:bg-black/70 flex items-center justify-center p-4" onClick={() => setShowQRScan(false)}>
-            <motion.div ref={qrScanTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[360px] bg-white dark:bg-[#1a1a1e] rounded-[24px] p-6 shadow-2xl relative" role="dialog" aria-modal="true" aria-label={t('receive.scan')}>
+            <motion.div ref={qrScanTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[360px] bg-white dark:bg-surface-dark rounded-[24px] p-6 shadow-2xl relative" role="dialog" aria-modal="true" aria-label={t('receive.scan')}>
               <button onClick={() => setShowQRScan(false)} className="absolute top-3 right-3 min-w-[44px] min-h-[44px] rounded-full bg-apple-parchment dark:bg-white/5 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors z-10" aria-label={t('common.close')}><X className="w-4 h-4" /></button>
-              <kbd aria-hidden="true" className="hidden sm:inline absolute top-5 right-16 px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-white/10 bg-white/60 dark:bg-white/5 text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">Esc</kbd>
+              <kbd aria-hidden="true" className="hidden sm:inline absolute top-5 right-16 px-1.5 py-0.5 rounded-[4px] border border-apple-divider dark:border-white/10 bg-white/60 dark:bg-white/5 text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">Esc</kbd>
               <h3 className="text-[16px] font-semibold text-apple-ink dark:text-white mb-2">{t('qr.scan.title')}</h3>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/50 mb-4">{t('qr.scan.body')}</p>
               {/* Skeleton, not a text spinner: the lazy camera chunk loads in
@@ -1878,17 +1891,17 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
       <AnimatePresence>
         {showQROverlay && session.roomId && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-black/50 dark:bg-black/70 flex items-center justify-center p-6" onClick={() => setShowQROverlay(false)}>
-            <motion.div ref={qrDisplayTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[340px] bg-apple-canvas dark:bg-[#1a1a1e] rounded-[24px] p-6 pt-14 shadow-2xl text-center relative border border-apple-divider/50 dark:border-white/[0.08]" role="dialog" aria-modal="true" aria-label={t('qr.display.title')}>
+            <motion.div ref={qrDisplayTrapRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ type: 'spring', bounce: 0, duration: 0.35 }} onClick={e => e.stopPropagation()} className="w-full max-w-[340px] bg-apple-canvas dark:bg-surface-dark rounded-[24px] p-6 pt-14 shadow-2xl text-center relative border border-apple-divider/50 dark:border-white/[0.08]" role="dialog" aria-modal="true" aria-label={t('qr.display.title')}>
               {/* pt-14 reserves the top strip for the absolutely-positioned
                   close/Esc controls — instruction text can never run under
                   them again. */}
               <button onClick={() => setShowQROverlay(false)} className="absolute top-3 right-3 min-w-[44px] min-h-[44px] rounded-full bg-apple-parchment dark:bg-white/5 flex items-center justify-center text-apple-ink-muted hover:text-apple-ink dark:hover:text-white transition-colors" aria-label={t('common.close')}><X className="w-4 h-4" /></button>
-              <kbd aria-hidden="true" className="hidden sm:inline absolute top-5 right-16 px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-white/10 bg-white/60 dark:bg-white/5 text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">Esc</kbd>
+              <kbd aria-hidden="true" className="hidden sm:inline absolute top-5 right-16 px-1.5 py-0.5 rounded-[4px] border border-apple-divider dark:border-white/10 bg-white/60 dark:bg-white/5 text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">Esc</kbd>
               <p className="text-[15px] font-semibold text-apple-ink dark:text-white mb-2">{t('qr.display.title')}</p>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/60 mb-4 leading-relaxed">
                 {(() => { const parts = t('qr.display.body', { receive: '\u0000' }).split('\u0000'); return (<>{parts[0]}<strong className="text-apple-ink dark:text-white">{t('qr.display.receive')}</strong>{parts[1]}</>); })()}
               </p>
-              <div className="bg-white p-4 rounded-[18px] inline-flex items-center justify-center mb-4 shadow-sm border border-apple-divider/30 relative">
+              <div className="bg-white p-4 rounded-[16px] inline-flex items-center justify-center mb-4 shadow-sm border border-apple-divider/30 relative">
                 <QROverlayInner value={qrValue} />
                 {/* Scanner-frame corners in ember — the recognized visual
                     grammar for "aim your camera here", quieter than a

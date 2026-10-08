@@ -100,7 +100,7 @@ export function AttachmentPanel({ isOpen, onClose, onSelectType, buttonRef }: At
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
             transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
-            className="absolute bottom-[calc(100%+8px)] left-0 z-50 min-w-[210px] p-1.5 bg-white dark:bg-[#232327] border border-black/[0.08] dark:border-white/[0.08] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.28)] rounded-[18px] overflow-hidden"
+            className="absolute bottom-[calc(100%+8px)] left-0 z-50 min-w-[210px] p-1.5 bg-white dark:bg-apple-tile-2 border border-black/[0.08] dark:border-white/[0.08] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.28)] rounded-[16px] overflow-hidden"
           >
             <MenuItem
               icon={<ImageIcon className="w-[18px] h-[18px]" />}

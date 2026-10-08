@@ -63,7 +63,7 @@ export function LiveCodeDisplay({ secret, createdAt, onRefresh }: LiveCodeDispla
     "relative flex items-center justify-center rounded-[10px] sm:rounded-[14px] shadow-sm overflow-hidden",
     "flex-1 min-w-0",
     "h-[52px] sm:h-[64px] lg:h-[72px]",
-    "bg-apple-parchment dark:bg-[#212126] border border-apple-divider/60 dark:border-[#2c2c33]"
+    "bg-apple-parchment dark:bg-apple-tile-2 border border-apple-divider/60 dark:border-apple-tile-3"
   );
 
   return (
@@ -116,7 +116,7 @@ export function LiveCodeDisplay({ secret, createdAt, onRefresh }: LiveCodeDispla
                 animate={{ y: 0, scale: 1, opacity: 1 }}
                 exit={{ y: -8, scale: 0.96, opacity: 0 }}
                 transition={{ type: 'spring', bounce: 0, duration: 0.18, delay: i * 0.03 }}
-                className="font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum leading-none select-none"
+                className="font-bold text-apple-ink dark:text-white absolute font-mono tnum leading-none select-none"
                 style={{ fontSize: 'clamp(22px, 7vw, 40px)' }}
               >
                 {digit}
@@ -136,7 +136,7 @@ export function LiveCodeDisplay({ secret, createdAt, onRefresh }: LiveCodeDispla
                 animate={{ y: 0, scale: 1, opacity: 1 }}
                 exit={{ y: -8, scale: 0.96, opacity: 0 }}
                 transition={{ type: 'spring', bounce: 0, duration: 0.18, delay: i * 0.03 }}
-                className="font-bold text-apple-ink dark:text-[#f0f2f5] absolute font-mono tnum leading-none select-none"
+                className="font-bold text-apple-ink dark:text-white absolute font-mono tnum leading-none select-none"
                 style={{ fontSize: 'clamp(24px, 8vw, 42px)' }}
               >
                 {digit}

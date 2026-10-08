@@ -49,9 +49,9 @@ interface TactileButtonProps {
 }
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {
-  sm: 'px-4 py-2 text-[13px] gap-2 rounded-full min-h-[36px]',
-  md: 'px-5 py-2.5 text-[14px] gap-2.5 rounded-full min-h-[44px]',
-  lg: 'px-7 py-3.5 text-[15px] gap-3 rounded-full min-h-[52px]',
+  sm: 'px-4 py-2 text-[13px] gap-2 rounded-full min-h-[var(--st-control-sm)]',
+  md: 'px-5 py-2.5 text-[14px] gap-2.5 rounded-full min-h-[var(--st-control-md)]',
+  lg: 'px-7 py-3.5 text-[15px] gap-3 rounded-full min-h-[var(--st-control-lg)]',
 };
 
 // The ThreeDButton bevel recipes, retinted per variant. Solid brand keys use
@@ -68,7 +68,7 @@ const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; 
     shadowIdle: '0 1px 1px rgba(0,0,0,0.30), 0 3px 6px rgba(240,100,19,0.22), 0 8px 16px rgba(0,0,0,0.16), inset 0 1px 2px rgba(255,255,255,0.30), inset 0 -3px 6px rgba(120,42,3,0.45)',
     shadowHover: '0 1px 1px rgba(0,0,0,0.30), 0 4px 8px rgba(240,100,19,0.26), 0 12px 22px rgba(0,0,0,0.19), inset 0 1px 2px rgba(255,255,255,0.34), inset 0 -3px 6px rgba(120,42,3,0.42)',
     shadowPress: '0 1px 2px rgba(0,0,0,0.20), inset 0 2px 6px rgba(96,34,2,0.50), inset 0 -1px 1px rgba(255,255,255,0.10)',
-    gradient: 'linear-gradient(180deg, #f9743a 0%, #f06413 58%, #de5b0e 100%)',
+    gradient: 'var(--st-btn-primary-grad)',
   },
   soft: {
     base: 'text-white',
@@ -77,7 +77,7 @@ const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; 
     shadowIdle: '0 1px 1px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.10), 0 6px 12px rgba(240,100,19,0.16), inset 0 1px 2px rgba(255,255,255,0.40), inset 0 -2px 4px rgba(130,48,5,0.26)',
     shadowHover: '0 1px 1px rgba(0,0,0,0.08), 0 3px 6px rgba(0,0,0,0.11), 0 9px 18px rgba(240,100,19,0.20), inset 0 1px 2px rgba(255,255,255,0.44), inset 0 -2px 4px rgba(130,48,5,0.22)',
     shadowPress: '0 1px 1px rgba(0,0,0,0.05), inset 0 1px 2px rgba(112,42,3,0.26), inset 0 2px 4px rgba(112,42,3,0.12), inset 0 -1px 2px rgba(0,0,0,0.10)',
-    gradient: 'linear-gradient(180deg, #fb9a56 0%, #f98b41 58%, #ef7c30 100%)',
+    gradient: 'var(--st-btn-soft-grad)',
   },
   secondary: {
     base: 'text-apple-ink dark:text-white',
@@ -98,7 +98,7 @@ const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; 
 
 const SURFACE_FILLS: Record<ButtonVariant, string> = {
   primary: 'bg-ember',
-  soft: 'bg-[#f98b41]',
+  soft: 'bg-azure-500',
   secondary: 'bg-white dark:bg-apple-tile-2',
   ghost: '',
 };
@@ -121,7 +121,6 @@ export function TactileButton({
   const [isPressed, setIsPressed] = useState(false);
 
   const vs = VARIANT_STYLES[variant];
-  const busy = loading || success;
   const inactive = disabled || loading;
 
   // Pointer light position (normalized) + spring-smoothed follow.
@@ -191,7 +190,7 @@ export function TactileButton({
 
   // The in-flight spinner tints with its surface: white on the colored
   // keycaps, ember on the paper ones — never orange-on-orange.
-  const spinnerClass = variant === 'primary' || variant === 'soft' ? 'text-white' : 'text-ember dark:text-[#fb9243]';
+  const spinnerClass = variant === 'primary' || variant === 'soft' ? 'text-white' : 'text-ember dark:text-azure-400';
 
   const boxShadow = useTransform(
     [shadowY, shadowOpacity],

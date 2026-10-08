@@ -35,7 +35,7 @@ export function PhoneFrame({
       {/* Body. */}
       <div
         className={cn(
-          'relative rounded-[26px] p-[4.5%] sm:rounded-[30px]',
+          'relative rounded-[24px] p-[4.5%] sm:rounded-[24px]',
           'bg-[linear-gradient(170deg,#4a4a52_0%,#2c2c32_45%,#1d1d21_100%)]',
           'shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_18px_36px_-16px_rgba(20,16,10,0.5)]',
           'dark:bg-[linear-gradient(170deg,#38383f_0%,#212126_45%,#16161a_100%)]',
@@ -45,17 +45,17 @@ export function PhoneFrame({
         {/* Buttons: volume pair high-left, action + power on the right.
             Drawn as 2px slivers that protrude — the detail that makes a
             frame read as hardware instead of a rounded rectangle. */}
-        <span aria-hidden className="absolute -left-[1.5px] top-[17%] h-[6%] w-[3px] rounded-l-[2px] bg-[#5a5a63] dark:bg-[#3d3d44]" />
-        <span aria-hidden className="absolute -left-[1.5px] top-[25%] h-[9%] w-[3px] rounded-l-[2px] bg-[#5a5a63] dark:bg-[#3d3d44]" />
-        <span aria-hidden className="absolute -left-[1.5px] top-[36%] h-[9%] w-[3px] rounded-l-[2px] bg-[#5a5a63] dark:bg-[#3d3d44]" />
-        <span aria-hidden className="absolute -right-[1.5px] top-[28%] h-[12%] w-[3px] rounded-r-[2px] bg-[#5a5a63] dark:bg-[#3d3d44]" />
+        <span aria-hidden style={{ background: 'var(--iso-line)' }} className="absolute -left-[1.5px] top-[17%] h-[6%] w-[3px] rounded-l-[2px]" />
+        <span aria-hidden style={{ background: 'var(--iso-line)' }} className="absolute -left-[1.5px] top-[25%] h-[9%] w-[3px] rounded-l-[2px]" />
+        <span aria-hidden style={{ background: 'var(--iso-line)' }} className="absolute -left-[1.5px] top-[36%] h-[9%] w-[3px] rounded-l-[2px]" />
+        <span aria-hidden style={{ background: 'var(--iso-line)' }} className="absolute -right-[1.5px] top-[28%] h-[12%] w-[3px] rounded-r-[2px]" />
 
         {/* Glass. */}
         <div
           role="img"
           aria-label={label}
           className={cn(
-            'relative aspect-[9/19.5] w-full overflow-hidden rounded-[20px] sm:rounded-[23px]',
+            'relative aspect-[9/19.5] w-full overflow-hidden rounded-[20px] sm:rounded-[24px]',
             'bg-apple-canvas ring-1 ring-black/20 dark:bg-night-900 dark:ring-white/[0.08]',
           )}
         >

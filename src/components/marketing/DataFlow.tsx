@@ -87,7 +87,7 @@ export function DataFlow({ className }: { className?: string }) {
         <div className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6">
           <DeviceTile icon="laptop" label="Your device" sub="the browser you already have" />
           <span className="flex flex-col items-center gap-1 px-1">
-            <span className="rounded-full bg-ember/10 px-3 py-1.5 text-[11px] font-semibold text-ember dark:bg-ember/[0.16] dark:text-[#fb9243]">
+            <span className="rounded-full bg-ember/10 px-3 py-1.5 text-[11px] font-semibold text-ember dark:bg-ember/[0.16] dark:text-azure-400">
               encrypted
             </span>
             <span className="hidden text-[10.5px] font-medium uppercase tracking-[0.08em] text-apple-ink-muted/70 dark:text-white/35 sm:block">
@@ -113,7 +113,7 @@ export function DataFlow({ className }: { className?: string }) {
         {STEPS.map((step, i) => (
           <li key={step.title} className="flex flex-col">
             <span className="flex items-center gap-2">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ember/10 text-[12px] font-bold text-ember dark:bg-ember/[0.16] dark:text-[#fb9243]">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ember/10 text-[12px] font-bold text-ember dark:bg-ember/[0.16] dark:text-azure-400">
                 {i + 1}
               </span>
               <step.icon className="h-4 w-4 text-apple-ink-muted dark:text-white/45" aria-hidden />
@@ -158,7 +158,7 @@ function DeviceTile({
       </span>
       <span className="text-[13.5px] font-semibold text-apple-ink dark:text-white">{label}</span>
       <span className="text-[12px] leading-snug text-apple-ink-muted dark:text-white/50">{sub}</span>
-      <span className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-[#2b9e49] dark:text-[#4fd071]">
+      <span className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-status-success-ink dark:text-status-success-ink-dark">
         <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
         no account
       </span>

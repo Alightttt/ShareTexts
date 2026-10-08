@@ -72,7 +72,7 @@ export function SettingsOverlay({
             className="w-full sm:max-w-[400px]"
             data-testid="settings-overlay"
           >
-            <div className="relative sm:rounded-[22px] sm:overflow-hidden rounded-t-[26px] bg-white/95 dark:bg-[#1c1c21]/95 backdrop-blur-2xl sm:shadow-[0_24px_70px_-12px_rgba(0,0,0,0.4)] shadow-[0_-8px_40px_-8px_rgba(0,0,0,0.3)] pb-[max(env(safe-area-inset-bottom),14px)] sm:pb-0">
+            <div className="relative sm:rounded-[20px] sm:overflow-hidden rounded-t-[24px] bg-white/95 dark:bg-surface-dark/95 backdrop-blur-2xl sm:shadow-[0_24px_70px_-12px_rgba(0,0,0,0.4)] shadow-[0_-8px_40px_-8px_rgba(0,0,0,0.3)] pb-[max(env(safe-area-inset-bottom),14px)] sm:pb-0">
               <div className="sm:hidden flex justify-center pt-2.5 pb-1" aria-hidden>
                 <span className="w-9 h-1 rounded-full bg-black/15 dark:bg-white/20" />
               </div>
@@ -102,7 +102,7 @@ export function SettingsOverlay({
                       'shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
                       isDark
                         ? 'bg-white/[0.07] text-white/70'
-                        : 'bg-[#f59e0b]/10 text-[#d97706]'
+                        : 'bg-status-warning/10 text-status-warning-ink'
                     )}
                     aria-hidden
                   >

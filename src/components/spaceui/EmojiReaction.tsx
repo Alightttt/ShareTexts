@@ -47,7 +47,7 @@ const EMOJI_DATA = {
   emojis: EMOJI_FILES,
 };
 
-const SURFACE = 'bg-[#f4f4f7] dark:bg-[#2a2a30]';
+const SURFACE = 'bg-apple-parchment dark:bg-apple-tile-2';
 
 const BURST_COUNT = 5;
 const HOLD_INTERVAL = 550;

@@ -34,7 +34,7 @@ export function LaptopFrame({
       {/* Lid + glass. */}
       <div
         className={cn(
-          'relative rounded-[13px] p-[7px]',
+          'relative rounded-[14px] p-[7px]',
           'bg-[linear-gradient(180deg,#45454c_0%,#2b2b31_55%,#232327_100%)]',
           'shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_20px_44px_-20px_rgba(20,16,10,0.45)]',
           'dark:bg-[linear-gradient(180deg,#34343a_0%,#202024_55%,#1a1a1e_100%)]',
@@ -50,7 +50,7 @@ export function LaptopFrame({
           role="img"
           aria-label={label}
           className={cn(
-            'relative aspect-[16/10] w-full overflow-hidden rounded-[7px]',
+            'relative aspect-[16/10] w-full overflow-hidden rounded-[8px]',
             'bg-apple-canvas ring-1 ring-black/15 dark:bg-night-900 dark:ring-white/[0.07]',
           )}
         >

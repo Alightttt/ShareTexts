@@ -51,7 +51,7 @@ export function OfflineBanner({ className }: { className?: string }) {
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           className={cn(
-            'fixed left-0 right-0 top-3 z-[85] mx-auto flex w-max max-w-[92vw] items-center gap-2 rounded-full bg-apple-ink px-3.5 py-2 shadow-lg dark:bg-[#2e2e33]',
+            'fixed left-0 right-0 top-3 z-[85] mx-auto flex w-max max-w-[92vw] items-center gap-2 rounded-full bg-apple-ink px-3.5 py-2 shadow-lg dark:bg-apple-tile-3',
             className
           )}
         >

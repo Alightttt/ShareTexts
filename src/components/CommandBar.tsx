@@ -343,7 +343,7 @@ export function CommandBar({ open: openProp, onOpenChange, onSpace }: CommandBar
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
             transition={{ type: 'spring', bounce: 0.12, duration: 0.38 }}
-            className="w-full max-w-[560px] rounded-[20px] bg-white/95 dark:bg-[#1c1c21]/95 border border-black/[0.06] dark:border-white/[0.08] shadow-[0_24px_70px_-12px_rgba(0,0,0,0.35)] overflow-hidden backdrop-blur-2xl"
+            className="w-full max-w-[560px] rounded-[20px] bg-white/95 dark:bg-surface-dark/95 border border-black/[0.06] dark:border-white/[0.08] shadow-[0_24px_70px_-12px_rgba(0,0,0,0.35)] overflow-hidden backdrop-blur-2xl"
             onPointerDown={(e) => e.stopPropagation()}
           >
             {statsOpen ? (
@@ -429,7 +429,7 @@ export function CommandBar({ open: openProp, onOpenChange, onSpace }: CommandBar
                             <span className={cn(
                               'flex items-center justify-center w-8 h-8 rounded-[10px] shrink-0 transition-colors',
                               active
-                                ? 'bg-ember/[0.12] dark:bg-ember/[0.2] text-ember dark:text-[#fb9243]'
+                                ? 'bg-ember/[0.12] dark:bg-ember/[0.2] text-ember dark:text-azure-400'
                                 : 'bg-black/[0.045] dark:bg-white/[0.06] text-apple-ink-muted dark:text-white/55'
                             )}>
                               {cmd.icon}

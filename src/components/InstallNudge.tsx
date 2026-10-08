@@ -69,7 +69,7 @@ export function InstallNudge() {
           className={cn(
             'fixed z-[80] flex items-start gap-3 rounded-[16px] border border-black/[0.08] bg-white/95 p-3.5 pr-2.5',
             'shadow-[0_16px_44px_-16px_rgba(20,16,10,0.35)] backdrop-blur-md',
-            'dark:border-white/[0.1] dark:bg-[#1e1e22]/95',
+            'dark:border-white/[0.1] dark:bg-apple-tile-2/95',
             'left-4 right-4 bottom-[max(env(safe-area-inset-bottom),16px)]',
             'sm:right-auto sm:bottom-16 sm:w-[330px]',
           )}
@@ -96,7 +96,7 @@ export function InstallNudge() {
                   the instruction in the body IS the action. A fake button
                   would be worse than none. */}
               {manual ? (
-                <span className="inline-flex min-h-[36px] items-center gap-1.5 text-[12.5px] font-semibold text-ember dark:text-[#fb9243]">
+                <span className="inline-flex min-h-[36px] items-center gap-1.5 text-[12.5px] font-semibold text-ember dark:text-azure-400">
                   <Share2 className="h-3.5 w-3.5" aria-hidden />
                   Share › Add to Home Screen
                 </span>

@@ -52,7 +52,7 @@ function DisconnectToast({ reason, onDone }: { reason: string, onDone: () => voi
     <div
       role="status"
       data-testid="disconnect-toast"
-      className="fixed top-4 left-1/2 -translate-x-1/2 z-[90] overflow-hidden max-w-[min(92vw,460px)] flex items-start gap-3 pl-3.5 pr-2 py-3 rounded-[16px] bg-white/95 dark:bg-[#232327]/95 backdrop-blur border border-black/[0.08] dark:border-white/[0.1] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)] animate-[toast-in_0.28s_cubic-bezier(0.22,1,0.36,1)]"
+      className="fixed top-4 left-1/2 -translate-x-1/2 z-[90] overflow-hidden max-w-[min(92vw,460px)] flex items-start gap-3 pl-3.5 pr-2 py-3 rounded-[16px] bg-white/95 dark:bg-apple-tile-2/95 backdrop-blur border border-black/[0.08] dark:border-white/[0.1] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.25)] animate-[toast-in_0.28s_cubic-bezier(0.22,1,0.36,1)]"
     >
       <span className="shrink-0 w-8 h-8 rounded-full bg-apple-parchment dark:bg-white/[0.07] flex items-center justify-center">
         <DoorOpen className="w-4 h-4 text-apple-ink-muted dark:text-white/60" />
@@ -82,7 +82,7 @@ function DisconnectToast({ reason, onDone }: { reason: string, onDone: () => voi
  */
 function RouteSkeleton({ wide }: { wide?: boolean }) {
   return (
-    <div className="min-h-screen bg-apple-canvas dark:bg-[#131315] font-sans">
+    <div className="min-h-screen bg-apple-canvas dark:bg-night-900 font-sans">
       <div className="max-w-6xl mx-auto px-6 h-14 flex items-center gap-2" aria-hidden>
         <div className="st-skeleton h-6 w-6 !rounded-[8px] bg-apple-ink/[0.07] dark:bg-white/[0.08]" />
         <div className="st-skeleton h-3.5 w-24 rounded-full bg-apple-ink/[0.07] dark:bg-white/[0.08]" />
@@ -137,7 +137,7 @@ function CapabilityGate({ children }: { children: React.ReactNode }) {
   });
   if (ok) return <>{children}</>;
   return (
-    <div className="min-h-dvh flex flex-col items-center justify-center text-center px-6 bg-apple-canvas dark:bg-[#131315]">
+    <div className="min-h-dvh flex flex-col items-center justify-center text-center px-6 bg-apple-canvas dark:bg-night-900">
       <ShareTextsLogo size={44} mono />
       <h1 className="mt-5 text-[19px] font-semibold text-apple-ink dark:text-white max-w-[420px]">{t('compat.title')}</h1>
       <p className="mt-3 text-[14px] text-apple-ink-muted dark:text-white/55 leading-relaxed max-w-[440px]">{t('compat.body')}</p>
@@ -151,7 +151,7 @@ function ErrorFallback({ onReset }: { onReset: () => void }) {
   // Design: calm recovery — the brand lockup, one honest headline, one
   // explanation, one primary path forward and two quiet alternatives.
   return (
-    <div className="min-h-screen flex flex-col bg-apple-canvas dark:bg-[#131315] dot-bg">
+    <div className="min-h-screen flex flex-col bg-apple-canvas dark:bg-night-900 dot-bg">
       {/* Static English, same header geometry as the rest of the product.
           The theme switch is deliberately absent: the error can fire before
           the providers mount, and a control that cannot work is worse than
@@ -177,7 +177,7 @@ function ErrorFallback({ onReset }: { onReset: () => void }) {
       <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
         {/* The state is the icon: the mark mid-"connecting" inside a calm
             tile — a system that hiccuped, not a product that broke. */}
-        <div className="w-[76px] h-[76px] rounded-[24px] bg-white dark:bg-[#1c1c21] border border-apple-divider/70 dark:border-white/[0.08] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.18)] flex items-center justify-center mb-7">
+        <div className="w-[76px] h-[76px] rounded-[24px] bg-white dark:bg-surface-dark border border-apple-divider/70 dark:border-white/[0.08] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.18)] flex items-center justify-center mb-7">
           <ShareTextsLogo size={36} motion="connecting" className="opacity-90" />
         </div>
         <h2 className="st-display text-[30px] sm:text-[34px] text-apple-ink dark:text-white mb-2.5">Something went wrong</h2>
@@ -283,7 +283,7 @@ function AppContent() {
     // The 404 is a DESIGNED screen, not a dead end: brand, honest state,
     // and both ways forward (home primary, docs secondary).
     return (
-      <div className="min-h-screen flex flex-col bg-apple-canvas dark:bg-[#131315] dot-bg">
+      <div className="min-h-screen flex flex-col bg-apple-canvas dark:bg-night-900 dot-bg">
         {/* The same header the rest of the non-room screens use, so a dead
             link still feels like the product. */}
         <PageHeader
@@ -299,7 +299,7 @@ function AppContent() {
               square off its corners; the badge sits OUTSIDE that clip in a
               sibling wrapper, otherwise overflow-hidden ate its right half. */}
           <div className="relative mb-7">
-            <div className="relative w-[76px] h-[76px] rounded-[24px] bg-white dark:bg-[#1c1c21] overflow-hidden border border-apple-divider/70 dark:border-white/[0.08] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.18)] flex items-center justify-center">
+            <div className="relative w-[76px] h-[76px] rounded-[24px] bg-white dark:bg-surface-dark overflow-hidden border border-apple-divider/70 dark:border-white/[0.08] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.18)] flex items-center justify-center">
               {/* Sunrise horizon inside the tile: light rising from the bottom
                   edge — the same depth language as the landing and About. */}
               <span aria-hidden className="st-horizon absolute inset-x-0 bottom-0 h-[56%] opacity-90" />

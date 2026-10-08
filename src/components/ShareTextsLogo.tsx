@@ -78,6 +78,10 @@ export function ShareTextsLogo({
 
 /** Unique gradient id per instance avoids SVG defs collisions when the
  *  mark appears multiple times on one page (header + footer + overlays). */
+// Raw hex inside allowlisted brand mark (SVG-const rule): the logo IS the
+// brand — stops use var(--color-honey/ember) where possible and keep hard
+// hex only as fallbacks and the mid stop; mirrors @theme. Any color change
+// belongs in the logo review, not a token sweep.
 let gradientSeq = 0;
 
 function Mark({ motion, mono }: { motion?: BrandMotion; mono?: boolean }) {

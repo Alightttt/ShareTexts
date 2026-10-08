@@ -45,17 +45,17 @@ const NAV_ITEMS: NavItem[] = [
 
 function CodeBlock({ code, language = 'bash' }: { code: string; language?: string }) {
   return (
-    <div className="relative rounded-[12px] bg-gray-900 dark:bg-gray-950 border border-gray-800 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800">
-        <span className="text-[12px] font-medium text-gray-400">{language}</span>
+    <div className="relative rounded-[12px] bg-night-800 dark:bg-night-950 border border-white/[0.08] overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.08]">
+        <span className="text-[12px] font-medium text-white/40">{language}</span>
         <button
           onClick={() => navigator.clipboard.writeText(code)}
-          className="text-[12px] text-gray-400 hover:text-white transition-colors"
+          className="text-[12px] text-white/40 hover:text-white/80 transition-colors"
         >
           Copy
         </button>
       </div>
-      <pre className="p-4 overflow-x-auto text-[13px] leading-relaxed text-gray-300 font-mono">
+      <pre className="p-4 overflow-x-auto text-[13px] leading-relaxed text-white/70 font-mono">
         <code>{code}</code>
       </pre>
     </div>
@@ -65,8 +65,8 @@ function CodeBlock({ code, language = 'bash' }: { code: string; language?: strin
 function StepCard({ number, title, description, icon }: { number: number; title: string; description: string; icon: React.ReactNode }) {
   return (
     <div className="flex gap-4 items-start">
-      <div className="shrink-0 w-10 h-10 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/10 flex items-center justify-center">
-        <span className="text-[14px] font-semibold text-[#f06413] dark:text-[#fb9243]">{number}</span>
+      <div className="shrink-0 w-10 h-10 rounded-full bg-ember/10 dark:bg-azure-400/10 flex items-center justify-center">
+        <span className="text-[14px] font-semibold text-ember dark:text-azure-400">{number}</span>
       </div>
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-1">
@@ -96,7 +96,7 @@ function OverviewSection() {
           { icon: <Lock className="w-5 h-5" />, title: 'Verified', desc: 'SHA-256 on every transfer. Bit-perfect.' },
         ].map((f, i) => (
           <div key={i} className="flex gap-3.5 p-4 rounded-[14px] bg-white dark:bg-apple-tile-1 border border-apple-divider/50 dark:border-apple-tile-3">
-            <div className="w-10 h-10 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/10 flex items-center justify-center shrink-0 text-[#f06413] dark:text-[#fb9243]">{f.icon}</div>
+            <div className="w-10 h-10 rounded-full bg-ember/10 dark:bg-azure-400/10 flex items-center justify-center shrink-0 text-ember dark:text-azure-400">{f.icon}</div>
             <div>
               <p className="text-[14px] font-semibold text-apple-ink dark:text-white mb-0.5">{f.title}</p>
               <p className="text-[13px] text-apple-ink-muted dark:text-white/55 leading-snug">{f.desc}</p>
@@ -140,8 +140,8 @@ function TransferSection() {
           { n: '3', title: 'Transfer', desc: 'Type, paste, or attach. It appears instantly on the other device.' },
         ].map((s, i) => (
           <div key={i} className="flex gap-4 items-start">
-            <div className="shrink-0 w-9 h-9 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/10 flex items-center justify-center">
-              <span className="text-[14px] font-bold text-[#f06413] dark:text-[#fb9243]">{s.n}</span>
+            <div className="shrink-0 w-9 h-9 rounded-full bg-ember/10 dark:bg-azure-400/10 flex items-center justify-center">
+              <span className="text-[14px] font-bold text-ember dark:text-azure-400">{s.n}</span>
             </div>
             <div>
               <h3 className="text-[15px] font-semibold text-apple-ink dark:text-white mb-0.5">{s.title}</h3>
@@ -153,7 +153,7 @@ function TransferSection() {
 
       <div className="flex flex-wrap gap-2">
         {['Text', 'Links', 'Photos', 'Files'].map((t) => (
-          <span key={t} className="px-3 py-1.5 rounded-full bg-[#f06413]/8 dark:bg-[#f06413]/10 text-[13px] font-medium text-[#f06413] dark:text-[#fb9243]">{t}</span>
+          <span key={t} className="px-3 py-1.5 rounded-full bg-ember/8 dark:bg-ember/10 text-[13px] font-medium text-ember dark:text-azure-400">{t}</span>
         ))}
       </div>
     </div>
@@ -371,15 +371,15 @@ function AgentSection() {
         <h3 className="text-[18px] font-semibold text-apple-ink dark:text-white mb-4">Getting the Agent Token</h3>
         <ol className="space-y-3 text-[14px] text-apple-ink-muted dark:text-white/60">
           <li className="flex gap-3">
-            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-[#f06413]">1</span>
+            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-ember">1</span>
             <span>Open ShareTexts and create a room (click "Send")</span>
           </li>
           <li className="flex gap-3">
-            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-[#f06413]">2</span>
+            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-ember">2</span>
             <span>Click the <Terminal className="w-4 h-4 inline" /> icon in the header to open the agent panel</span>
           </li>
           <li className="flex gap-3">
-            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-[#f06413]">3</span>
+            <span className="shrink-0 w-6 h-6 rounded-full bg-azure-600/10 flex items-center justify-center text-[12px] font-semibold text-ember">3</span>
             <span>Copy the curl command or use the token directly</span>
           </li>
         </ol>
@@ -447,16 +447,16 @@ function APISection() {
             <div>
               <h4 className="text-[13px] font-semibold text-apple-ink dark:text-white mb-2">Headers</h4>
               <div className="space-y-1 text-[13px] font-mono text-apple-ink-muted dark:text-white/60">
-                <div><span className="text-[#f06413]">Authorization:</span> Bearer {'<token>'}</div>
-                <div><span className="text-[#f06413]">Content-Type:</span> application/json or application/octet-stream</div>
-                <div><span className="text-[#f06413]">X-File-Name:</span> (optional) filename for file transfers</div>
+                <div><span className="text-ember">Authorization:</span> Bearer {'<token>'}</div>
+                <div><span className="text-ember">Content-Type:</span> application/json or application/octet-stream</div>
+                <div><span className="text-ember">X-File-Name:</span> (optional) filename for file transfers</div>
               </div>
             </div>
             <div>
               <h4 className="text-[13px] font-semibold text-apple-ink dark:text-white mb-2">Body (JSON)</h4>
               <div className="space-y-1 text-[13px] font-mono text-apple-ink-muted dark:text-white/60">
-                <div><span className="text-[#f06413]">roomId:</span> string (required)</div>
-                <div><span className="text-[#f06413]">text:</span> string (for text transfers)</div>
+                <div><span className="text-ember">roomId:</span> string (required)</div>
+                <div><span className="text-ember">text:</span> string (for text transfers)</div>
               </div>
             </div>
           </div>
@@ -464,7 +464,7 @@ function APISection() {
 
         <div className="p-5 rounded-[16px] bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3">
           <div className="flex items-center gap-3 mb-3">
-            <span className="px-2 py-0.5 rounded-[4px] bg-blue-100 dark:bg-blue-900/30 text-[12px] font-semibold text-blue-700 dark:text-blue-400">GET</span>
+            <span className="px-2 py-0.5 rounded-[4px] bg-azure-100 dark:bg-azure-900/30 text-[12px] font-semibold text-azure-700 dark:text-azure-400">GET</span>
             <code className="text-[14px] font-mono text-apple-ink dark:text-white">/health</code>
           </div>
           <p className="text-[14px] text-apple-ink-muted dark:text-white/60">
@@ -474,7 +474,7 @@ function APISection() {
 
         <div className="p-5 rounded-[16px] bg-white dark:bg-apple-tile-1 border border-apple-divider dark:border-apple-tile-3">
           <div className="flex items-center gap-3 mb-3">
-            <span className="px-2 py-0.5 rounded-[4px] bg-blue-100 dark:bg-blue-900/30 text-[12px] font-semibold text-blue-700 dark:text-blue-400">GET</span>
+            <span className="px-2 py-0.5 rounded-[4px] bg-azure-100 dark:bg-azure-900/30 text-[12px] font-semibold text-azure-700 dark:text-azure-400">GET</span>
             <code className="text-[14px] font-mono text-apple-ink dark:text-white">/stats</code>
           </div>
           <p className="text-[14px] text-apple-ink-muted dark:text-white/60">
@@ -741,7 +741,7 @@ export function Docs() {
                     onClick={() => showSection(item.id)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-[14px] font-medium transition-colors ${
                       activeSection === item.id
-                        ? 'bg-azure-600/10 text-[#f06413] dark:text-[#fb9243]'
+                        ? 'bg-azure-600/10 text-ember dark:text-azure-400'
                         : 'text-apple-ink-muted dark:text-white/60 hover:bg-apple-parchment dark:hover:bg-apple-tile-1'
                     }`}
                   >
@@ -761,7 +761,7 @@ export function Docs() {
                     onClick={() => showSection(item.id)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-[8px] text-[14px] font-medium transition-colors ${
                       activeSection === item.id
-                        ? 'bg-azure-600/10 text-[#f06413] dark:text-[#fb9243]'
+                        ? 'bg-azure-600/10 text-ember dark:text-azure-400'
                         : 'text-apple-ink-muted dark:text-white/60 hover:bg-apple-parchment dark:hover:bg-apple-tile-1'
                     }`}
                   >
@@ -788,7 +788,7 @@ export function Docs() {
                   onClick={() => showSection(item.id)}
                   className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors ${
                     activeSection === item.id
-                      ? 'bg-[#f06413] text-white shadow-sm'
+                      ? 'bg-ember text-white shadow-sm'
                       : 'bg-apple-parchment dark:bg-apple-tile-2 text-apple-ink-muted dark:text-white/60'
                   }`}
                 >

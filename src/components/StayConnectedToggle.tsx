@@ -32,7 +32,7 @@ export function StayConnectedToggle({ className }: { className?: string }) {
         className={cn(
           'shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors',
           on
-            ? 'bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[#f06413] dark:text-[#fb9243]'
+            ? 'bg-ember/10 dark:bg-azure-400/15 text-ember dark:text-azure-400'
             : 'bg-apple-divider/40 dark:bg-white/[0.06] text-apple-ink-muted dark:text-white/40'
         )}
         aria-hidden
@@ -69,7 +69,7 @@ export function StayBadge({ className, onOpenDetails }: { className?: string; on
       title={t('stay.badge')}
       data-testid="stay-badge"
       className={cn(
-        'shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[#f06413] dark:text-[#fb9243]',
+        'shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-ember/10 dark:bg-azure-400/15 text-ember dark:text-azure-400',
         className
       )}
     >
@@ -89,7 +89,7 @@ export function StayBadge({ className, onOpenDetails }: { className?: string; on
       className="shrink-0 w-11 h-11 -m-2 flex items-center justify-center rounded-full active:scale-90 transition-transform"
     >
       <span
-        className="w-7 h-7 rounded-full flex items-center justify-center bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[#f06413] dark:text-[#fb9243]"
+        className="w-7 h-7 rounded-full flex items-center justify-center bg-ember/10 dark:bg-azure-400/15 text-ember dark:text-azure-400"
       >
         <InfinityIcon className="w-3.5 h-3.5" strokeWidth={2} aria-hidden />
       </span>

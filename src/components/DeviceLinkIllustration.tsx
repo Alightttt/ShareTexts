@@ -24,6 +24,10 @@ import { motion } from 'motion/react';
 
 export type LinkState = 'linked' | 'broken' | 'searching' | 'error';
 
+/* SVG has no access to CSS vars in all render paths used here (stroke
+   literals), so the two brand constants stay — but they MUST mirror the
+   @theme tokens: EMBER = --color-ember, EMBER_DARK = --color-azure-400.
+   If a token value changes, change it here too. */
 const EMBER = '#f06413';
 const EMBER_DARK = '#fb9243';
 const GREEN = '#34c759';
@@ -125,7 +129,7 @@ export function PacketTrain({
         <motion.span
           key={i}
           aria-hidden="true"
-          className="absolute rounded-full bg-[#f06413] dark:bg-[#fb9243]"
+          className="absolute rounded-full bg-[#f06413] dark:bg-azure-400"
           style={{
             width: c.size,
             height: c.size,

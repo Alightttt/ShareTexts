@@ -248,8 +248,8 @@ export function HeroDeviceDemo({
             }
           >
             <div className="-translate-x-1/2 -translate-y-1/2">
-              <div className="flex items-center gap-[5px] rounded-[9px] border border-apple-divider/70 bg-white/95 py-[4px] pl-[4px] pr-[7px] shadow-[0_8px_20px_-8px_rgba(20,16,10,0.5)] backdrop-blur-[2px] dark:border-white/[0.09] dark:bg-night-800/95">
-                <span className="flex h-[15px] w-[15px] items-center justify-center rounded-[5px] bg-ember text-[6.5px] font-bold text-white">PDF</span>
+              <div className="flex items-center gap-[5px] rounded-[8px] border border-apple-divider/70 bg-white/95 py-[4px] pl-[4px] pr-[7px] shadow-[0_8px_20px_-8px_rgba(20,16,10,0.5)] backdrop-blur-[2px] dark:border-white/[0.09] dark:bg-night-800/95">
+                <span className="flex h-[15px] w-[15px] items-center justify-center rounded-[4px] bg-ember text-[6.5px] font-bold text-white">PDF</span>
                 <span className="text-[8.5px] font-semibold leading-none text-apple-ink dark:text-white">plan.pdf</span>
                 <SpinLoader size={9} className="text-ember" />
               </div>
@@ -541,7 +541,7 @@ function LaptopScreen({
           </div>
 
           <div className={cn(
-            'rounded-[9px] border bg-white p-[7px] transition-colors duration-300 dark:bg-white/[0.04]',
+            'rounded-[8px] border bg-white p-[7px] transition-colors duration-300 dark:bg-white/[0.04]',
             step <= 1 ? 'border-ember/30 dark:border-ember/25' : 'border-apple-divider/60 dark:border-white/[0.07]',
           )}>
             <span className="mb-[5px] block text-[7px] font-bold uppercase tracking-[0.09em] text-apple-ink-muted/80 dark:text-white/40">
@@ -559,13 +559,13 @@ function LaptopScreen({
                 <span
                   className={cn(
                     'h-[5px] w-[5px] shrink-0 rounded-full transition-colors duration-300',
-                    row.ok ? 'bg-[#34c759]' : 'bg-apple-ink/20 dark:bg-white/25',
+                    row.ok ? 'bg-status-success' : 'bg-apple-ink/20 dark:bg-white/25',
                   )}
                 />
                 <span className="min-w-0 flex-1 truncate text-[8.5px] font-medium leading-none">{row.name}</span>
                 <span className={cn(
                   'shrink-0 text-[7.5px] leading-none transition-colors',
-                  row.ok ? 'text-[#2b9e49] dark:text-[#4fd071]' : 'text-apple-ink-muted/70 dark:text-white/35',
+                  row.ok ? 'text-status-success-ink dark:text-status-success-ink-dark' : 'text-apple-ink-muted/70 dark:text-white/35',
                 )}>
                   {row.state}
                 </span>
@@ -575,7 +575,7 @@ function LaptopScreen({
 
           <div className="mt-auto flex items-center justify-between gap-2 rounded-[8px] border border-apple-divider/50 px-[6px] py-[5px] dark:border-white/[0.06]">
             <span className="truncate text-[7.5px] font-medium text-apple-ink-muted dark:text-white/45">{t('demo.stay')}</span>
-            <span className="relative h-[9px] w-[16px] shrink-0 rounded-full bg-[#34c759]">
+            <span className="relative h-[9px] w-[16px] shrink-0 rounded-full bg-status-success">
               <span className="absolute right-[1px] top-[1px] h-[7px] w-[7px] rounded-full bg-white" />
             </span>
           </div>
@@ -597,7 +597,7 @@ function LaptopScreen({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.26, ease: EASE }}
-                  className="flex shrink-0 items-center gap-[3px] rounded-full bg-ember/10 px-[6px] py-[3px] text-[7.5px] font-semibold text-ember dark:bg-ember/[0.16] dark:text-[#fb9243]"
+                  className="flex shrink-0 items-center gap-[3px] rounded-full bg-ember/10 px-[6px] py-[3px] text-[7.5px] font-semibold text-ember dark:bg-ember/[0.16] dark:text-azure-400"
                 >
                   <Lock className="h-[8px] w-[8px]" />
                   {t('demo.encrypted')}
@@ -642,7 +642,7 @@ function LaptopScreen({
                   transition={{ type: 'spring', stiffness: 420, damping: 30 }}
                   className="flex flex-col items-end gap-[4px]"
                 >
-                  <span className="max-w-[80%] rounded-[11px] rounded-br-[4px] bg-ember px-[9px] py-[6px] text-[10px] leading-snug text-white shadow-[0_2px_6px_-2px_rgba(240,100,19,0.5)]">
+                  <span className="max-w-[80%] rounded-[10px] rounded-br-[4px] bg-ember px-[9px] py-[6px] text-[10px] leading-snug text-white shadow-[0_2px_6px_-2px_rgba(240,100,19,0.5)]">
                     {note}
                   </span>
                   <FileChip arrived={arrived} />
@@ -655,7 +655,7 @@ function LaptopScreen({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ type: 'spring', stiffness: 420, damping: 30 }}
-                  className="max-w-[80%] self-start rounded-[11px] rounded-bl-[4px] bg-apple-parchment px-[9px] py-[6px] text-[10px] leading-snug text-apple-ink dark:bg-white/[0.07] dark:text-white"
+                  className="max-w-[80%] self-start rounded-[10px] rounded-bl-[4px] bg-apple-parchment px-[9px] py-[6px] text-[10px] leading-snug text-apple-ink dark:bg-white/[0.07] dark:text-white"
                 >
                   {t('demo.reply')}
                 </motion.span>
@@ -687,14 +687,14 @@ function LaptopScreen({
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ type: 'spring', stiffness: 400, damping: 26 }}
-                    className="flex shrink-0 items-center gap-[3px] rounded-full bg-ember/10 px-[5px] py-[2px] text-[7.5px] font-semibold text-ember dark:bg-ember/[0.16] dark:text-[#fb9243]"
+                    className="flex shrink-0 items-center gap-[3px] rounded-full bg-ember/10 px-[5px] py-[2px] text-[7.5px] font-semibold text-ember dark:bg-ember/[0.16] dark:text-azure-400"
                   >
                     plan.pdf
                   </motion.span>
                 )}
               </span>
               <motion.span
-                animate={composed || sent ? { scale: 1, backgroundColor: '#f06413' } : { scale: 0.94, backgroundColor: 'rgba(30,28,24,0.14)' }}
+                animate={composed || sent ? { scale: 1, backgroundColor: '#f06413' /* motion literal: framer cannot tween var() */ } : { scale: 0.94, backgroundColor: 'rgba(30,28,24,0.14)' }}
                 transition={{ type: 'spring', stiffness: 380, damping: 26 }}
                 className="flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-full text-white"
               >
@@ -765,8 +765,8 @@ function PhoneScreen({
               <ArrowLeft className="h-[9px] w-[9px] shrink-0 text-apple-ink-muted dark:text-white/45" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[8.5px] font-semibold leading-tight text-apple-ink dark:text-white">{t('demo.room')}</span>
-                <span className="flex items-center gap-[3px] text-[7px] leading-tight text-[#2b9e49] dark:text-[#4fd071]">
-                  <span className="h-[4px] w-[4px] rounded-full bg-[#34c759]" />
+                <span className="flex items-center gap-[3px] text-[7px] leading-tight text-status-success-ink dark:text-status-success-ink-dark">
+                  <span className="h-[4px] w-[4px] rounded-full bg-status-success" />
                   {t('demo.connected')}
                 </span>
               </span>
@@ -899,7 +899,7 @@ function FileChip({
         out ? 'bg-ember text-white' : 'bg-white text-apple-ink dark:bg-white/[0.08] dark:text-white',
         compact
           ? 'rounded-[10px] rounded-bl-[4px] px-[6px] py-[4px]'
-          : 'rounded-[11px] rounded-br-[4px] px-[8px] py-[5px]',
+          : 'rounded-[10px] rounded-br-[4px] px-[8px] py-[5px]',
       )}
     >
       <span
@@ -959,8 +959,8 @@ function RoomClosedVeil({ closed }: { closed: boolean }) {
           className="absolute inset-0 flex items-center justify-center bg-apple-canvas/45 dark:bg-night-950/55">
           {/* Dark side: a white stamp needs INK-dark text — but --color-apple-ink
               FLIPS to near-white inside .dark, so the token here is the canvas
-              (which stays #131315 in dark scope). text-apple-ink here rendered
-              white-on-white: a blank pill where "Room closed" should read. */}
+              (which stays at the night-page value in dark scope). text-apple-ink
+              here rendered white-on-white: a blank pill where "Room closed" should read. */}
           <span className="rounded-full bg-apple-ink/85 px-[8px] py-[4px] text-[8px] font-semibold text-white dark:bg-white/90 dark:text-apple-canvas">
             {t('demo.closed')}
           </span>

@@ -106,7 +106,7 @@ export function NearbyDetectOverlay({
             className="w-full sm:max-w-[380px]"
             data-testid="nearby-detect-overlay"
           >
-            <div className="relative sm:rounded-[22px] sm:overflow-hidden rounded-t-[26px] bg-white/95 dark:bg-[#1c1c21]/95 backdrop-blur-2xl sm:shadow-[0_24px_70px_-12px_rgba(0,0,0,0.4)] shadow-[0_-8px_40px_-8px_rgba(0,0,0,0.3)] pb-[max(env(safe-area-inset-bottom),14px)] sm:pb-0">
+            <div className="relative sm:rounded-[20px] sm:overflow-hidden rounded-t-[24px] bg-white/95 dark:bg-surface-dark/95 backdrop-blur-2xl sm:shadow-[0_24px_70px_-12px_rgba(0,0,0,0.4)] shadow-[0_-8px_40px_-8px_rgba(0,0,0,0.3)] pb-[max(env(safe-area-inset-bottom),14px)] sm:pb-0">
               {/* Grabber (mobile) + top cancel ✕ — the sheet grammar. */}
               <div className="sm:hidden flex justify-center pt-2.5 pb-1" aria-hidden>
                 <span className="w-9 h-1 rounded-full bg-black/15 dark:bg-white/20" />
@@ -126,8 +126,7 @@ export function NearbyDetectOverlay({
                 <motion.p
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05, duration: 0.25 }}
-                  className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#f06413] dark:text-[#fb9243]"
+                  transition={{ delay: 0.05, duration: 0.25 }}                        className="text-[11px] font-bold uppercase tracking-[0.08em] text-ember dark:text-azure-400"
                 >
                   {mode === 'incoming'
                     ? t('nearby.inviteTitle', { name: shown.name })
@@ -166,7 +165,7 @@ export function NearbyDetectOverlay({
                         role="status"
                         title={t('stay.badge')}
                         data-testid="nearby-detect-stay-badge"
-                        className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[#f06413] dark:text-[#fb9243]"
+                        className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center bg-ember/10 dark:bg-azure-400/15 text-ember dark:text-azure-400"
                       >
                         <InfinityIcon className="w-3.5 h-3.5" strokeWidth={2} aria-hidden />
                       </span>
@@ -214,7 +213,7 @@ export function NearbyDetectOverlay({
                     'w-full min-h-[48px] rounded-[14px] bg-ember hover:bg-brand-strong text-[15px] font-semibold text-white',
                     'transition-all active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none',
                     'flex items-center justify-center gap-2',
-                    armed && 'ring-2 ring-[#f06413]/35 dark:ring-[#fb9243]/40 ring-offset-2 ring-offset-white dark:ring-offset-[#1c1c21]'
+                    armed && 'ring-2 ring-ember/35 dark:ring-azure-400/40 ring-offset-2 ring-offset-white dark:ring-offset-surface-dark'
                   )}
                 >
                   {busy ? (

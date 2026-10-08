@@ -59,7 +59,7 @@ export function SiteFooter({ className }: { className?: string }) {
               {t('home.subtitle')}
             </p>
             <p className="mt-3 flex items-center gap-2 text-[12.5px] font-medium text-apple-ink-muted/80 dark:text-white/40">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#34c759]" aria-hidden />
+              <span className="h-1.5 w-1.5 rounded-full bg-status-success" aria-hidden />
               iPhone · Android · Windows · macOS · Linux
             </p>
           </div>
@@ -75,7 +75,7 @@ export function SiteFooter({ className }: { className?: string }) {
                     <a
                       href={link.href}
                       {...(link.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                      className="inline-flex min-h-[40px] items-center text-[13.5px] font-medium text-apple-ink/80 hover:text-ember dark:text-white/65 dark:hover:text-[#fb9243] transition-colors"
+                      className="inline-flex min-h-[40px] items-center text-[13.5px] font-medium text-apple-ink/80 hover:text-ember dark:text-white/65 dark:hover:text-azure-400 transition-colors"
                     >
                       {t(link.label)}
                     </a>

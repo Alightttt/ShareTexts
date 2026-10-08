@@ -56,7 +56,7 @@ export function Tooltip({ label, keys, children, className }: TooltipProps) {
         <span
           role="tooltip"
           id={id}
-          className="st-tooltip pointer-events-none absolute bottom-[calc(100%+7px)] left-1/2 z-40 whitespace-nowrap rounded-[8px] bg-apple-ink px-2.5 py-1.5 text-[12px] font-medium text-white shadow-lg dark:bg-[#2e2e33] dark:text-white/90"
+          className="st-tooltip pointer-events-none absolute bottom-[calc(100%+7px)] left-1/2 z-40 whitespace-nowrap rounded-[8px] bg-apple-ink px-2.5 py-1.5 text-[12px] font-medium text-white shadow-lg dark:bg-apple-tile-3 dark:text-white/90"
         >
           {label}
           {keys && keys.length > 0 && (
@@ -64,7 +64,7 @@ export function Tooltip({ label, keys, children, className }: TooltipProps) {
               {keys.map((k) => (
                 <kbd
                   key={k}
-                  className="rounded-[5px] bg-white/15 px-1.5 py-0.5 font-sans text-[10.5px] font-semibold text-white/80"
+                  className="rounded-[4px] bg-white/15 px-1.5 py-0.5 font-sans text-[10.5px] font-semibold text-white/80"
                 >
                   {k}
                 </kbd>

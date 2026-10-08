@@ -26,7 +26,7 @@ function Section({ icon, title, children }: { icon: React.ReactNode; title: stri
   return (
     <section className="pt-8 first:pt-0">
       <div className="flex items-center gap-2 mb-3">
-        <span className="w-7 h-7 rounded-[9px] bg-azure-600/10 dark:bg-azure-600/20 flex items-center justify-center shrink-0">
+        <span className="w-7 h-7 rounded-[8px] bg-azure-600/10 dark:bg-azure-600/20 flex items-center justify-center shrink-0">
           {icon}
         </span>
         <h2 className="text-[17px] font-semibold text-apple-ink dark:text-white tracking-[-0.02em]">{title}</h2>

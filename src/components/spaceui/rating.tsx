@@ -212,7 +212,7 @@ export function RateCard({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.24 }}
-            className="text-[12.5px] font-medium text-ember dark:text-[#fb9243]"
+            className="text-[12.5px] font-medium text-ember dark:text-azure-400"
             data-testid="rate-thanks"
           >
             {t('rate.thanks')}

@@ -36,7 +36,7 @@ function DeviceTile({ kindIcon, accent, lifted }: { kindIcon: 'phone' | 'monitor
   const Icon = kindIcon === 'phone' ? Smartphone : Monitor;
   return (
     <div
-      className="relative flex items-center justify-center rounded-[20px] shrink-0 bg-white dark:bg-[#1a1a1e] border transition-shadow duration-300"
+      className="relative flex items-center justify-center rounded-[20px] shrink-0 bg-white dark:bg-surface-dark border transition-shadow duration-300"
       style={{
         width: TILE,
         height: TILE,
@@ -57,7 +57,7 @@ function SweepRing({ accent }: { accent: string }) {
   return (
     <motion.span
       aria-hidden="true"
-      className="absolute -inset-[7px] rounded-[26px]"
+      className="absolute -inset-[7px] rounded-[24px]"
       style={{
         background: `conic-gradient(from 0deg, transparent 0deg, transparent 300deg, ${accent}66 345deg, transparent 360deg)`,
         WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), black calc(100% - 2px))',
@@ -77,6 +77,9 @@ export function ConnectHandshake({ phase, localIcon = 'phone', partnerName, quie
   const isPhone = localIcon === 'phone';
 
   // One hue telling the truth: ember while linking, system green when live.
+  // Raw hex by design (SVG-const rule): these strings get "66" concatenated
+  // for alpha tints, which breaks var() — mirrors --color-status-success /
+  // --color-focus in @theme; update both together.
   const accent = connected ? '#34c759' : 'var(--ht-accent, #f06413)';
   // Fixed gap — the devices never move, so the scene is always level and
   // still (the animated width read as a diagonal "slide").

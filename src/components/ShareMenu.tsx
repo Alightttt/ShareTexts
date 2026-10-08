@@ -179,8 +179,8 @@ export function ShareMenu({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ type: 'spring', stiffness: 460, damping: 30 }}
             className={cn(
-              'absolute z-50 mt-2 w-[248px] p-3 rounded-[18px] border border-apple-divider/70 dark:border-white/10',
-              'bg-white dark:bg-[#232328] shadow-[0_18px_44px_-18px_rgba(0,0,0,0.45)]',
+              'absolute z-50 mt-2 w-[248px] p-3 rounded-[16px] border border-apple-divider/70 dark:border-white/10',
+              'bg-white dark:bg-apple-tile-2 shadow-[0_18px_44px_-18px_rgba(0,0,0,0.45)]',
               align === 'end' ? 'right-0' : 'left-0'
             )}
           >

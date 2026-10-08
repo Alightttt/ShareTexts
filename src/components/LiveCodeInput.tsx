@@ -64,7 +64,7 @@ export function LiveCodeInput({ onComplete, isJoining, error }: { onComplete: (c
                 key={i}
                 className={cn(
                   'h-[3px] flex-1 rounded-full transition-colors duration-200',
-                  i < digitCount ? 'bg-ember dark:bg-[#fb9243]' : 'bg-apple-divider dark:bg-white/[0.12]'
+                  i < digitCount ? 'bg-ember dark:bg-azure-400' : 'bg-apple-divider dark:bg-white/[0.12]'
                 )}
               />
             ))}

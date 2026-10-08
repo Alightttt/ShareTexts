@@ -76,7 +76,7 @@ function ProgressRing({ progress }: { progress: number }) {
         <span
           className="absolute inset-0 rounded-[10px]"
           style={{
-            background: 'conic-gradient(#34c759 0deg 360deg)',
+            background: 'conic-gradient(var(--color-status-success) 0deg 360deg)',
             WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 2px), black calc(100% - 1.5px))',
             mask: 'radial-gradient(farthest-side, transparent calc(100% - 2px), black calc(100% - 1.5px))',
           }}
@@ -131,7 +131,7 @@ export function TransferFlight({ feedRef, progress, reverse, name, size }: Trans
         animate={{ transform: `translate3d(${lineBase}px, ${track.y + CHIP_H / 2 - 1}px, 0) scaleX(${p})` }}
         transition={{ duration: 0.25, ease: EASE_IN_OUT }}
       >
-        <div className="h-px bg-[#f06413]/25 dark:bg-[#fb9243]/25" style={{ width }} />
+        <div className="h-px bg-ember/25 dark:bg-azure-400/25" style={{ width }} />
       </motion.div>
 
       {/* The traveling object. */}
@@ -153,11 +153,11 @@ export function TransferFlight({ feedRef, progress, reverse, name, size }: Trans
           animate={{ opacity: 1, scale: swell }}
           exit={(custom: unknown) => (custom === 'settle' ? 'settle' : 'fade')}
           transition={{ duration: 0.2, ease: EASE_OUT }}
-          className="relative flex items-center gap-2 pl-1.5 pr-3 rounded-[10px] bg-white dark:bg-[#151b2b] border border-apple-divider dark:border-white/10 shadow-[0_10px_28px_rgba(15,18,32,0.16)]"
+          className="relative flex items-center gap-2 pl-1.5 pr-3 rounded-[10px] bg-white dark:bg-apple-tile-2 border border-apple-divider dark:border-white/10 shadow-[0_10px_28px_rgba(15,18,32,0.16)]"
         >
-          <span className="relative w-7 h-7 rounded-[7px] bg-[#f06413]/12 dark:bg-[#fb9243]/14 flex items-center justify-center shrink-0">
+          <span className="relative w-7 h-7 rounded-[8px] bg-ember/12 dark:bg-azure-400/14 flex items-center justify-center shrink-0">
             <ProgressRing progress={p} />
-            <FileText className="w-3.5 h-3.5 text-[#d9560e] dark:text-[#fb9243]" />
+            <FileText className="w-3.5 h-3.5 text-brand-strong dark:text-azure-400" />
           </span>
           <span className="max-w-[96px] truncate text-[12px] font-semibold text-apple-ink dark:text-white" title={name}>{name}</span>
           <span className="text-[10px] font-medium text-apple-ink-muted/70 dark:text-white/40 whitespace-nowrap tnum">{formatBytes(size)}</span>

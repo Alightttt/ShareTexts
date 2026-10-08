@@ -70,7 +70,7 @@ export function OverlaySheet({
             exit={{ y: '100%', opacity: 0.4 }}
             transition={{ type: 'spring', stiffness: 380, damping: 36 }}
             style={{ maxWidth }}
-            className="relative w-full rounded-t-[24px] sm:rounded-[20px] bg-apple-canvas dark:bg-[#1c1c21] border border-apple-divider/60 dark:border-white/[0.08] shadow-sheet sm:shadow-2xl p-5 sm:p-6 pb-[max(env(safe-area-inset-bottom),20px)] sm:pb-6 max-h-[90dvh] overflow-y-auto"
+            className="relative w-full rounded-t-[24px] sm:rounded-[20px] bg-apple-canvas dark:bg-surface-dark border border-apple-divider/60 dark:border-white/[0.08] shadow-sheet sm:shadow-2xl p-5 sm:p-6 pb-[max(env(safe-area-inset-bottom),20px)] sm:pb-6 max-h-[90dvh] overflow-y-auto"
             data-testid={testId}
           >
             {/* Grabber — the mobile sheet grammar; hidden on desktop where

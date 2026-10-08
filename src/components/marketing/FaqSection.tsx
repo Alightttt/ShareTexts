@@ -74,7 +74,7 @@ export function FaqSection({
                   <ChevronRight
                     className={cn(
                       'h-4 w-4 shrink-0 text-apple-ink-muted transition-transform duration-200 dark:text-white/40',
-                      isOpen && 'rotate-90 text-ember dark:text-[#fb9243]',
+                      isOpen && 'rotate-90 text-ember dark:text-azure-400',
                     )}
                     aria-hidden
                   />

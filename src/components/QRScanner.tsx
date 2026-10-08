@@ -73,10 +73,10 @@ export function QRScanner({ onScan, onErrorFallback }: { onScan: (text: string) 
           long as any scanner instance can be constructed here. */}
       <div
         id="qr-reader"
-        className={errorBranch ? 'hidden' : 'w-full max-w-[320px] rounded-[18px] overflow-hidden bg-black mb-6'}
+        className={errorBranch ? 'hidden' : 'w-full max-w-[320px] rounded-[16px] overflow-hidden bg-black mb-6'}
       ></div>
       {errorBranch ? (
-        <div className="flex flex-col items-center justify-center p-8 bg-apple-parchment dark:bg-apple-tile-1 rounded-[18px] text-center w-full max-w-[320px] mb-6">
+        <div className="flex flex-col items-center justify-center p-8 bg-apple-parchment dark:bg-apple-tile-1 rounded-[16px] text-center w-full max-w-[320px] mb-6">
           <CameraOff className="w-10 h-10 text-apple-ink-muted mb-4" />
           <p className="text-[17px] font-medium text-apple-ink dark:text-white mb-2">{error}</p>
           <button onClick={() => fallbackRef.current()} className="text-apple-blue text-[17px]">

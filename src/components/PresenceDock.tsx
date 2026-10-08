@@ -55,7 +55,7 @@ export function PresenceDock({ entries, title, subtitle, className }: PresenceDo
               'relative flex items-center justify-center w-9 h-9 rounded-[12px] border',
               'bg-white dark:bg-apple-tile-2 border-apple-divider dark:border-white/10',
               'text-apple-ink-muted dark:text-white/70',
-              entry.isSelf && 'text-[#f06413] dark:text-[#fb9243] border-[#f06413]/25 dark:border-[#fb9243]/25',
+              entry.isSelf && 'text-ember dark:text-azure-400 border-ember/25 dark:border-azure-400/25',
               i > 0 && '-ml-2.5'
             )}
             style={{ zIndex: entries.length - i }}
@@ -63,7 +63,7 @@ export function PresenceDock({ entries, title, subtitle, className }: PresenceDo
             {entry.icon}
             <span
               className={cn(
-                'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-apple-canvas dark:border-[#141418]',
+                'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-apple-canvas dark:border-night-900',
                 STATE_DOT[entry.state]
               )}
             />

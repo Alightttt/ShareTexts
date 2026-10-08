@@ -105,7 +105,7 @@ function ToggleRow({ icon, active, title, hint, onClick, ariaLabel, testId, rowT
         className={cn(
           'shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-colors',
           active
-            ? 'bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[#f06413] dark:text-[#fb9243]'
+            ? 'bg-ember/10 dark:bg-azure-400/15 text-ember dark:text-azure-400'
             : 'bg-apple-divider/40 dark:bg-white/[0.06] text-apple-ink-muted dark:text-white/40'
         )}
         aria-hidden
@@ -539,19 +539,19 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
                     className={cn(
                       'group flex items-center gap-3 px-3.5 py-3 min-h-[56px] rounded-[14px] text-left',
                       'bg-white dark:bg-apple-tile-1 border border-apple-divider/50 dark:border-apple-tile-3 shadow-xs',
-                      'hover:border-[#f06413]/40 dark:hover:border-[#fb9243]/45 hover:shadow-card',
+                      'hover:border-ember/40 dark:hover:border-azure-400/45 hover:shadow-card',
                       'active:scale-[0.985] transition-all',
                       'disabled:opacity-50 disabled:pointer-events-none',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ember/60'
                     )}
                   >
                     <span className={cn(
-                      'relative shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-[#f06413] dark:text-[#fb9243]',
+                      'relative shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-ember dark:text-azure-400',
                       busy
-                        ? 'bg-[#f06413] dark:bg-[#fb9243] text-white dark:text-[#1a1208]'
-                        : 'bg-[#f06413]/10 dark:bg-[#fb9243]/15'
+                        ? 'bg-ember dark:bg-azure-400 text-white dark:text-apple-ink'
+                        : 'bg-ember/10 dark:bg-azure-400/15'
                     )}>
-                      {busy && <span aria-hidden className="absolute -inset-1 rounded-full border border-[#f06413]/40 dark:border-[#fb9243]/40 st-halo-ring" />}
+                      {busy && <span aria-hidden className="absolute -inset-1 rounded-full border border-ember/40 dark:border-azure-400/40 st-halo-ring" />}
                       <DeviceArt kind={d.kind} model={d.model} gpu={d.gpu} size={36} />
                     </span>
                     <span className="flex-1 flex flex-col min-w-0 leading-tight">
@@ -559,7 +559,7 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
                       <span className={cn(
                         'text-[12.5px] font-medium flex items-center gap-1',
                         busy
-                          ? 'text-[#f06413] dark:text-[#fb9243] font-semibold'
+                          ? 'text-ember dark:text-azure-400 font-semibold'
                         : 'text-apple-ink-muted dark:text-white/45'
                       )}>
                         {busy ? t('nearby.waiting') : trusted ? (
@@ -568,17 +568,17 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
                       </span>
                     </span>
                     {busy ? (
-                      <SpinLoader size={16} className="text-[#f06413] dark:text-[#fb9243]" aria-hidden />
+                      <SpinLoader size={16} className="text-ember dark:text-azure-400" aria-hidden />
                     ) : trusted ? (
                       <span
-                        className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#f06413]/10 dark:bg-[#fb9243]/15 text-[12px] font-semibold text-[#f06413] dark:text-[#fb9243] group-hover:bg-[#f06413] group-hover:text-white dark:group-hover:bg-[#fb9243] dark:group-hover:text-[#1a1208] transition-colors"
+                        className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full bg-ember/10 dark:bg-azure-400/15 text-[12px] font-semibold text-ember dark:text-azure-400 group-hover:bg-ember group-hover:text-white dark:group-hover:bg-azure-400 dark:group-hover:text-apple-ink transition-colors"
                         aria-hidden
                       >
                         <ArrowRight className="w-3 h-3 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none" />
                       </span>
                     ) : (
                       <ArrowRight
-                        className="shrink-0 w-4 h-4 text-apple-ink-muted/40 dark:text-white/25 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#f06413] dark:group-hover:text-[#fb9243] motion-reduce:transition-none"
+                        className="shrink-0 w-4 h-4 text-apple-ink-muted/40 dark:text-white/25 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-ember dark:group-hover:text-azure-400 motion-reduce:transition-none"
                         aria-hidden
                       />
                     )}
@@ -654,8 +654,8 @@ export function NearbyDevices({ onStatus }: { onStatus?: (s: string | null) => v
             className="mt-2.5 flex items-center gap-2.5 px-1 py-1"
           >
             <span className="relative shrink-0 w-7 h-7 flex items-center justify-center" aria-hidden>
-              <span className="absolute inset-0 rounded-full border border-[#f06413]/25 dark:border-[#fb9243]/25 st-halo-ring" />
-              <Search className="relative w-3.5 h-3.5 text-[#f06413]/70 dark:text-[#fb9243]/70" strokeWidth={2.4} />
+              <span className="absolute inset-0 rounded-full border border-ember/25 dark:border-azure-400/25 st-halo-ring" />
+              <Search className="relative w-3.5 h-3.5 text-ember/70 dark:text-azure-400/70" strokeWidth={2.4} />
             </span>
             <span className="flex-1 flex flex-col min-w-0 leading-tight">
               {/* The standing instruction, promoted to the searching state's

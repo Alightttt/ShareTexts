@@ -37,7 +37,7 @@ export function IconButton3D({ label, children, onClick, href, active = false, c
     'hover:-translate-y-[1px] hover:shadow-[0_3px_0_0_rgba(0,0,0,0.07),inset_0_1px_0_rgba(255,255,255,0.95)]',
     'active:translate-y-[2px] active:shadow-[0_0_0_0_rgba(0,0,0,0),inset_0_2px_4px_rgba(0,0,0,0.10)]',
     'transition-[transform,box-shadow,color] duration-150 ease-out motion-reduce:transition-none motion-reduce:hover:translate-y-0',
-    active && 'text-ember dark:text-[#fb9243] shadow-[0_2px_0_0_rgba(240,100,19,0.35),inset_0_1px_0_rgba(255,255,255,0.9)]',
+    active && 'text-ember dark:text-azure-400 shadow-[0_2px_0_0_rgba(240,100,19,0.35),inset_0_1px_0_rgba(255,255,255,0.9)]',
     className
   );
   if (href) {

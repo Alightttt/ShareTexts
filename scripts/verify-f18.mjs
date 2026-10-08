@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { launchBrowser, sleep, tapTargetIssues, TAP_TARGET_MIN } from './lib.mjs';
 
-const BASE = 'http://localhost:3010';
+const BASE = process.env.URL || 'http://localhost:3010';
 const OUT = 'docs/audits/shots-f18';
 fs.mkdirSync(OUT, { recursive: true });
 

@@ -910,7 +910,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
   return (
     <div
       data-app-state="connected"
-      className={cn("relative flex flex-col bg-[#f4f2ec] dark:bg-[#0f0f11] font-sans", panelMode === "embedded" ? "h-full" : "h-dvh")}
+      className={cn("relative flex flex-col bg-apple-canvas dark:bg-night-950 font-sans", panelMode === "embedded" ? "h-full" : "h-dvh")}
       style={visualHeight ? { height: `${visualHeight}px` } : undefined}
       // The WHOLE room is the drop surface: header, messages, composer —
       // release anywhere. The messages list keeps its own handlers too;
@@ -942,7 +942,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           names, live status, and one tap to details (rename, encryption,
           rejoin code). The parent keeps `relative` so the details popover
           anchors just under the bar. */}
-      <div className="relative flex items-center justify-between gap-2 px-3 sm:px-5 py-2.5 shrink-0 border-b border-apple-divider/50 dark:border-white/[0.08] bg-[#f4f2ec]/95 dark:bg-[#0f0f11]/95 backdrop-blur-md z-30">
+      <div className="relative flex items-center justify-between gap-2 px-3 sm:px-5 py-2.5 shrink-0 border-b border-apple-divider/50 dark:border-white/[0.08] bg-apple-canvas/95 dark:bg-night-950/95 backdrop-blur-md z-30">
         <button
           type="button"
           data-testid="connection-details"
@@ -1088,7 +1088,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -4, scale: 0.98 }}
               transition={{ type: "spring", bounce: 0, duration: 0.28 }}
-              className="absolute top-[calc(100%+10px)] right-2 sm:right-4 left-2 sm:left-auto sm:w-[360px] p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[18px] shadow-2xl z-40 overflow-y-auto overscroll-contain max-h-[calc(100dvh-120px)]"
+              className="absolute top-[calc(100%+10px)] right-2 sm:right-4 left-2 sm:left-auto sm:w-[360px] p-4 bg-white dark:bg-surface-dark border border-apple-divider dark:border-apple-tile-3 rounded-[16px] shadow-2xl z-40 overflow-y-auto overscroll-contain max-h-[calc(100dvh-120px)]"
               role="dialog"
               aria-modal="true"
               aria-label={t('details.aria')}
@@ -1100,7 +1100,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                   {t('details.secure')}
                 </span>
                 <div className="flex items-center gap-1.5">
-                  <kbd aria-hidden="true" className="hidden sm:inline px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">Esc</kbd>
+                  <kbd aria-hidden="true" className="hidden sm:inline px-1.5 py-0.5 rounded-[4px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 text-[10px] font-medium text-apple-ink-muted/80 dark:text-white/40">Esc</kbd>
                   <button
                     onPointerDown={() => setShowConnectionDetails(false)}
                     aria-label={t('details.close')}
@@ -1113,8 +1113,8 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
               {/* The two devices — tap your name to rename; the other device
                   sees the change immediately. */}
               <div className="flex items-center gap-2">
-                <div className="flex-1 flex flex-col items-center gap-1 rounded-[14px] bg-[#f06413]/5 dark:bg-[#fb9243]/5 border border-apple-divider/60 dark:border-apple-tile-3 p-2.5 min-w-0">
-                  <ThisDeviceIcon className="w-5 h-5 text-[#f06413] dark:text-[#fb9243]" />
+                <div className="flex-1 flex flex-col items-center gap-1 rounded-[14px] bg-ember/5 dark:bg-azure-400/5 border border-apple-divider/60 dark:border-apple-tile-3 p-2.5 min-w-0">
+                  <ThisDeviceIcon className="w-5 h-5 text-ember dark:text-azure-400" />
                   {editingName ? (
                     <input
                       autoFocus
@@ -1127,7 +1127,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                       }}
                       aria-label={t('pair.renameField')}
                       maxLength={32}
-                      className="w-full text-center text-[12px] font-medium text-apple-ink dark:text-white bg-transparent border-b border-[#f06413]/50 dark:border-[#fb9243]/50 outline-none"
+                      className="w-full text-center text-[12px] font-medium text-apple-ink dark:text-white bg-transparent border-b border-ember/50 dark:border-azure-400/50 outline-none"
                     />
                   ) : (
                     <button
@@ -1170,8 +1170,8 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
               {/* One-time auto-rename explanation (mobile joiners never see
                   the desktop summary) — dismissible. */}
               {nameNoticeOpen && (
-                <div role="status" className="mt-3 flex items-start gap-2 p-2.5 rounded-[12px] bg-[#f06413]/8 dark:bg-[#fb9243]/10 border border-[#f06413]/15 dark:border-[#fb9243]/15 text-[12px] text-apple-ink-muted dark:text-white/60 leading-snug">
-                  <Info className="w-3.5 h-3.5 text-[#f06413] dark:text-[#fb9243] shrink-0 mt-px" />
+                <div role="status" className="mt-3 flex items-start gap-2 p-2.5 rounded-[12px] bg-ember/8 dark:bg-azure-400/10 border border-ember/15 dark:border-azure-400/15 text-[12px] text-apple-ink-muted dark:text-white/60 leading-snug">
+                  <Info className="w-3.5 h-3.5 text-ember dark:text-azure-400 shrink-0 mt-px" />
                   <span className="flex-1">{t('pair.autoRename', { name: session.deviceName })}</span>
                   <button
                     onPointerDown={() => setNameNoticeOpen(false)}
@@ -1377,7 +1377,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                         type="button"
                         data-testid={s.key}
                         onClick={s.run}
-                        className="inline-flex items-center min-h-[36px] px-3.5 rounded-full border border-apple-divider dark:border-white/[0.12] bg-white/70 dark:bg-white/[0.05] text-[12.5px] font-semibold text-apple-ink/80 dark:text-white/70 hover:border-ember/40 hover:text-ember dark:hover:text-[#fb9243] active:scale-[0.97] transition-all"
+                        className="inline-flex items-center min-h-[36px] px-3.5 rounded-full border border-apple-divider dark:border-white/[0.12] bg-white/70 dark:bg-white/[0.05] text-[12.5px] font-semibold text-apple-ink/80 dark:text-white/70 hover:border-ember/40 hover:text-ember dark:hover:text-azure-400 active:scale-[0.97] transition-all"
                       >
                         {t(s.key)}
                       </button>
@@ -1486,10 +1486,10 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           )}
         </AnimatePresence>
         {dragOver && (
-          <div className="absolute inset-0 z-20 m-2 rounded-[20px] border-2 border-dashed border-ember dark:border-[#fb9243] bg-ember/10 dark:bg-[#fb9243]/10 pointer-events-none flex items-center justify-center">
-            <div className="flex flex-col items-center gap-2 px-8 py-6 bg-white dark:bg-surface-dark rounded-[20px] border border-ember/20 dark:border-[#fb9243]/20">
-              <div className="w-12 h-12 rounded-full bg-ember/10 dark:bg-[#fb9243]/10 flex items-center justify-center">
-                <ArrowUp className="w-5 h-5 text-ember dark:text-[#fb9243]" />
+          <div className="absolute inset-0 z-20 m-2 rounded-[20px] border-2 border-dashed border-ember dark:border-azure-400 bg-ember/10 dark:bg-azure-400/10 pointer-events-none flex items-center justify-center">
+            <div className="flex flex-col items-center gap-2 px-8 py-6 bg-white dark:bg-surface-dark rounded-[20px] border border-ember/20 dark:border-azure-400/20">
+              <div className="w-12 h-12 rounded-full bg-ember/10 dark:bg-azure-400/10 flex items-center justify-center">
+                <ArrowUp className="w-5 h-5 text-ember dark:text-azure-400" />
               </div>
               <span className="text-[15px] font-semibold text-apple-ink dark:text-white">{t('chat.drop.title')}</span>
               <span className="text-[13px] text-apple-ink-muted dark:text-white/50">{t('chat.drop.subtitle')}</span>
@@ -1500,13 +1500,13 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
       {/* Input Area — on phones the composer floats just above the bottom
           edge (breathing room + safe area) instead of gluing to it, where
           thumbs and browser chrome crowd it. */}
-      <div className="p-3 sm:p-5 bg-white/80 dark:bg-[#131315]/80 border-t border-black/[0.06] dark:border-white/[0.04] z-10 pb-[max(env(safe-area-inset-bottom),10px)] sm:pb-5 relative">
+      <div className="p-3 sm:p-5 bg-white/80 dark:bg-night-900/80 border-t border-black/[0.06] dark:border-white/[0.04] z-10 pb-[max(env(safe-area-inset-bottom),10px)] sm:pb-5 relative">
         <form onSubmit={handleSend} className="max-w-3xl 2xl:max-w-4xl mx-auto flex flex-col gap-2">
           <div className="hidden sm:flex items-center justify-end gap-1.5 text-[11px] font-medium text-apple-ink-muted/70 dark:text-white/40 px-1">
-            <kbd className="px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">{t('composer.enter')}</kbd>
+            <kbd className="px-1.5 py-0.5 rounded-[4px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">{t('composer.enter')}</kbd>
             <span>{t('composer.toSend')}</span>
             <span className="opacity-50">·</span>
-            <kbd className="px-1.5 py-0.5 rounded-[5px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">{t('composer.shiftEnter')}</kbd>
+            <kbd className="px-1.5 py-0.5 rounded-[4px] border border-apple-divider dark:border-apple-tile-3 bg-white/60 dark:bg-white/5 font-sans">{t('composer.shiftEnter')}</kbd>
             <span>{t('composer.newLine')}</span>
           </div>
           {/* Multi-device recipient row — visible the moment the room has
@@ -1557,7 +1557,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
           {inputText.length >= 1024 && (
             <div className="hidden sm:flex items-center justify-end gap-1.5 text-[11px] font-medium text-apple-ink-muted/70 dark:text-white/40 px-1" aria-live="polite">
               {isLargeInput && (
-                <span className="text-[#f06413] dark:text-[#fb9243] font-semibold">{t('composer.largePayload')}</span>
+                <span className="text-ember dark:text-azure-400 font-semibold">{t('composer.largePayload')}</span>
               )}
               <span className={cn('tnum', isLargeInput && 'font-semibold')}>{formatBytes(inputBytes)}</span>
             </div>
@@ -1581,14 +1581,14 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
               onContextMenu={(e) => e.preventDefault()}
               aria-label={t('attach.add')}
               aria-expanded={showAttachmentMenu}
-              className="min-w-[44px] min-h-[44px] w-[44px] h-[44px] rounded-full flex items-center justify-center shrink-0 bg-white dark:bg-[#232327] border border-apple-divider/70 dark:border-white/[0.08] shadow-[0_1px_2px_rgba(0,0,0,0.05)] text-apple-ink dark:text-white hover:bg-apple-parchment dark:hover:bg-[#2b2b30] transition-colors active:scale-90 select-none [touch-action:manipulation] [-webkit-touch-callout:none]"
+              className="min-w-[44px] min-h-[44px] w-[44px] h-[44px] rounded-full flex items-center justify-center shrink-0 bg-white dark:bg-apple-tile-2 border border-apple-divider/70 dark:border-white/[0.08] shadow-[0_1px_2px_rgba(0,0,0,0.05)] text-apple-ink dark:text-white hover:bg-apple-parchment dark:hover:bg-apple-tile-3 transition-colors active:scale-90 select-none [touch-action:manipulation] [-webkit-touch-callout:none]"
             >
               <Plus className={cn("w-5 h-5 transition-transform duration-200", showAttachmentMenu && "rotate-45")} />
             </button>
             {/* No `layout` here: the pill resizes on every keystroke (auto-grow
                 textarea), and FLIP measurement per keystroke was real jank on
                 phones. Attachment previews keep their own small layout anims. */}
-            <motion.div className="relative flex-1 min-w-0 rounded-[26px] bg-white dark:bg-[#232327] overflow-visible shadow-[0_1px_2px_rgba(0,0,0,0.05),0_10px_28px_-14px_rgba(0,0,0,0.16)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-14px_rgba(0,0,0,0.55)] border border-black/[0.04] dark:border-white/[0.06] focus-within:ring-2 focus-within:ring-ember/25 transition-shadow">
+            <motion.div className="relative flex-1 min-w-0 rounded-[24px] bg-white dark:bg-apple-tile-2 overflow-visible shadow-[0_1px_2px_rgba(0,0,0,0.05),0_10px_28px_-14px_rgba(0,0,0,0.16)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_12px_32px_-14px_rgba(0,0,0,0.55)] border border-black/[0.04] dark:border-white/[0.06] focus-within:ring-2 focus-within:ring-ember/25 transition-shadow">
             {/* Composer teaching row — visible only while the composer is
                 empty AND untouched, it names the four real input paths in
                 product vocabulary (Type · Paste · Drop · Pick a file) so the
@@ -1733,7 +1733,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                           aria-label={label}
                           data-testid={`format-${kind}`}
                           onClick={() => applyFormatting(kind)}
-                          className="w-10 h-10 rounded-[10px] flex items-center justify-center text-apple-ink-muted dark:text-white/50 hover:text-ember dark:hover:text-[#fb9243] hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:scale-95 transition-all"
+                          className="w-10 h-10 rounded-[10px] flex items-center justify-center text-apple-ink-muted dark:text-white/50 hover:text-ember dark:hover:text-azure-400 hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:scale-95 transition-all"
                         >
                           {glyph}
                         </button>
@@ -1782,7 +1782,7 @@ export function ChatView({ panelMode }: { panelMode?: 'embedded' | 'standalone' 
                 onClick={handleSend}
                 disabled={(!inputText.trim() && attachments.length === 0) || (!session.partnerConnected && !(recipients.length > 0) && !isMultiRoom)}
                 aria-label={t('composer.send')}
-                className="w-[44px] h-[44px] rounded-full flex items-center justify-center shrink-0 transition-all duration-200 active:scale-90 text-white bg-ember hover:bg-[#d9560e] disabled:bg-apple-hairline dark:disabled:bg-white/15 disabled:shadow-none disabled:text-apple-ink-muted/50 dark:disabled:text-white/30 shadow-[0_1px_3px_rgba(240,100,19,0.35)]"
+                className="w-[44px] h-[44px] rounded-full flex items-center justify-center shrink-0 transition-all duration-200 active:scale-90 text-white bg-ember hover:bg-brand-strong disabled:bg-apple-hairline dark:disabled:bg-white/15 disabled:shadow-none disabled:text-apple-ink-muted/50 dark:disabled:text-white/30 shadow-[0_1px_3px_rgba(240,100,19,0.35)]"
               >
                 {/* Arrow ↔ check morph: the arrow lifts away, a check springs
                     in — a real shape transition, not a crossfade. */}

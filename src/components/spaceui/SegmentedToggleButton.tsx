@@ -125,6 +125,10 @@ export const SegmentedToggleButton = forwardRef<
         <span
           aria-hidden
           className={cn(
+            // Raw hex inside allowlisted control furniture (SVG-const rule):
+            // the sliding knob's graphite thumb deliberately sits between the
+            // night tiles so it reads against ANY well; mirrors the spaceui
+            // furniture contract. Update beside --color-apple-tile-*.
             "pointer-events-none absolute top-1 bottom-1 left-1 rounded-lg bg-white dark:bg-[#54545b]",
             "shadow-[0_2px_4px_rgba(0,0,0,0.15),0_1px_1px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.95),inset_0_-2px_3px_rgba(0,0,0,0.06)]",
             SEGMENT_MOTION,

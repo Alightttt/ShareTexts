@@ -137,7 +137,7 @@
   --radius-sm: 12px;
   --radius-md: 16px;
   --radius-lg: 20px;
-  --radius-xl: 28px;
+  --radius-xl: 24px; /* display tier — snapped to --st-radius-display */
 
   /* ── Shadows — restrained, not decorative ───────────────────────────── */
   --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.04);
@@ -164,32 +164,52 @@
   /* ── Geometry — the ONE set of control heights and corner radii.
      Controls are 36 (compact) / 44 (default touch floor) / 52 (hero).
      Corners: controls 12, cards 16, sheets/overlays 20, pills round.
-     Anything outside these numbers is a one-off with a written reason. ── */
+     One-off radii live ONLY here — no new radius in a component, ever:
+     chip/inline-code 6 · device frame 14 · display-card 24 · hero-sheet 26 */
   --st-control-sm: 36px;
   --st-control-md: 44px;
   --st-control-lg: 52px;
-  --st-radius-control: 12px;
-  --st-radius-card: 16px;
+  /* Radii ship as px in components, verbatim to the ladder — except the two
+     semantic shapes below, which dark code overrides in .dark (see below). */
   --st-radius-sheet: 20px;
+  --st-radius-hero: 26px;     /* the hero phone-stage, one per app      */
 
   /* ── Elevation — exactly three levels. Depth is a hierarchy tool, not a
      decoration: flat = resting on the canvas (border or tone only);
      raised = a card the user can act on (one soft drop + hairline);
      floating = a surface above the page (overlay/sheet/popover). Nothing
      on this app is allowed a fourth level, and nothing rests at floating. */
-  --st-elev-flat: none;
+  --st-elev-flat: 0 0 0 rgba(0,0,0,0); /* explicit "no shadow", var()-safe */
   --st-elev-raised: 0 1px 2px rgba(31, 27, 21, 0.06), 0 2px 8px rgba(31, 27, 21, 0.05);
   --st-elev-floating: 0 2px 6px rgba(31, 27, 21, 0.08), 0 12px 32px rgba(31, 27, 21, 0.14);
 
+  /* (Night palette note: the deliberate dark ladder lives in --color-night-*
+     and --color-apple-tile-* above — one source of truth, no duplicate set.) */
+
+  /* ── Status — the two missing semantic pairs drift-prone code used to
+     hand-mix. Soft = translucent fills for truth pills w/ ink-on-tint. */
+  --color-status-success-ink: #1d7a35;     /* success on soft, light theme   */
+  --color-status-success-ink-dark: #4fd071;/* success on soft, dark theme    */
+  --color-status-success-soft: rgba(52, 199, 89, 0.12);
+  --color-status-warning-soft: rgba(255, 149, 0, 0.10);
+  --color-status-danger-soft: rgba(255, 59, 48, 0.10);
+  --color-status-danger-ink: #c22e24;      /* danger on soft, light theme    */
+  --color-status-danger-ink-dark: #ff7a72;/* danger on soft, dark theme      */
+  --color-status-danger-strong: #e5352a;   /* pressed/hover danger fill       */
+
+  /* ── RESERVED dark-mode vocabulary (not var() tokens — a contract):
+     idle wells = bg-white/[0.05] · hover wells = bg-white/[0.07] (iOS 26
+     press: 0.10) · press sink = scale 0.97 (motion-reduce: none). The
+     verify-visual-system gate enforces these exact values. */
+
   /* ── Tactile surfaces (theme-aware button gradients) ────────────────── */
   --st-btn-primary-grad: linear-gradient(180deg, #f9743a 0%, #f06413 60%, #e05c0f 100%);
+  --st-btn-soft-grad: linear-gradient(180deg, #fb9a56 0%, #f98b41 58%, #ef7c30 100%);
   --st-btn-secondary-grad: linear-gradient(180deg, #ffffff 0%, #f4f1ea 55%, #ebe6dc 100%);
-  /* Keycap edges — the solid bottom lip the button sits on. Pressing
+  /* Keycap edge — the solid bottom lip the primary key sits on. Pressing
      compresses the lip (shadow Y 4px → 1px) while the body sinks into it:
      the "real key" press, in brand colors. */
   --st-btn-primary-edge: #c04b09;
-  --st-btn-soft-edge: #d96f22;
-  --st-btn-secondary-edge: rgba(30, 28, 24, 0.16);
 }
 
 @layer base {
@@ -255,10 +275,12 @@
     --color-honey: #ffc25c;
     --gradient-ember: var(--gradient-ember-dark);
     --st-btn-primary-grad: linear-gradient(180deg, #fb8447 0%, #f06413 60%, #d9560e 100%);
+    --st-btn-soft-grad: linear-gradient(180deg, #ffb778 0%, #fb9243 58%, #f58235 100%);
     --st-btn-secondary-grad: linear-gradient(180deg, #2b2b31 0%, #26262c 55%, #212127 100%);
     --st-btn-primary-edge: #a83f06;
-    --st-btn-soft-edge: #c25c15;
-    --st-btn-secondary-edge: rgba(0, 0, 0, 0.55);
+    /* Night radius relight: 26px reads bulbous on graphite; the hero stage
+       drops one tier — the only radius the dark theme is allowed to retune. */
+    --st-radius-hero: 22px;
 
     /* Isometric illustration palette, night relight: same geometry, the
        paper becomes graphite. Line weights and accents are unchanged. */
