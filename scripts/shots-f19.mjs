@@ -35,20 +35,25 @@ async function setLang(page, lang) {
   await page.evaluate((l) => { try { localStorage.setItem('sharetext.locale', l); } catch {} }, lang);
 }
 
-// Deterministic demo frame: seek to the transfer beat, then pause.
-async function pinDemo(page, fraction) {
-  await page.evaluate((f) => {
-    const rail = document.querySelector('[data-testid="demo-scrubber"]');
-    if (!rail) return;
-    const r = rail.getBoundingClientRect();
-    rail.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: r.left + r.width * f, clientY: r.top + r.height / 2 }));
-  }, fraction);
-  await sleep(700);
-  await page.evaluate(() => {
-    const b = document.querySelector('[data-testid="demo-play"]');
-    if (b) b.click();
-  });
-  await sleep(500);
+// A demo shot must be deterministic: from `open`, tap Send and hold the
+// machine on the sending beat; if it already walked, hold on the arrived
+// still instead — both are fixed, short states of the same story.
+async function pinDemo(page, _fraction) {
+  const state = await page.evaluate(() => document.querySelector('[data-testid="hero-demo"]')?.getAttribute('data-state'));
+  if (state === 'open') {
+    await page.evaluate(() => { document.querySelector('[data-testid="demo-send"]')?.click(); });
+    await page.waitForFunction(
+      () => document.querySelector('[data-testid="hero-demo"]')?.getAttribute('data-state') === 'sending',
+      null, { timeout: 8000 },
+    );
+    await sleep(650); // settle: springs land before the shutter
+  } else {
+    await page.waitForFunction(
+      () => ['received', 'done'].includes(document.querySelector('[data-testid="hero-demo"]')?.getAttribute('data-state') || ''),
+      null, { timeout: 8000 },
+    ).catch(() => {});
+    await sleep(300);
+  }
 }
 
 async function seedSpace() {

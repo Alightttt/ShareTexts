@@ -15,15 +15,14 @@ try {
   // Dark is where the bug lived (white-on-white), so emulate it explicitly.
   const p = await browser.newPage({ viewport: { width: 1440, height: 900 }, colorScheme: 'dark' });
   await p.goto(BASE, { waitUntil: 'domcontentloaded' });
-  await p.waitForSelector('[data-testid="demo-scrubber"]', { timeout: 20000 });
-  await p.evaluate(() => {
-    const play = document.querySelector('[data-testid="demo-play"]');
-    if (play && /pause/i.test(play.getAttribute('aria-label') || '')) play.click();
-    const scrubber = document.querySelector('[data-testid="demo-scrubber"]');
-    scrubber?.focus();
-    scrubber?.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
-  });
-  await p.waitForFunction(() => (document.querySelector('[data-testid="demo-caption"]')?.textContent || '').includes('Close the room'), null, { timeout: 5000 });
+  await p.waitForSelector('[data-testid="demo-send"]', { timeout: 20000 });
+  // The visitor's walk: one tap moves the machine open → … → done on fixed
+  // beats, ending at the closed state the stamp check needs.
+  await p.evaluate(() => { document.querySelector('[data-testid="demo-send"]')?.click(); });
+  await p.waitForFunction(
+    () => document.querySelector('[data-testid="hero-demo"]')?.getAttribute('data-state') === 'done',
+    null, { timeout: 12000 },
+  );
   const veil = await p.evaluate(() => {
     const spans = [...document.querySelectorAll('span')].filter(s => (s.getAttribute('class') || '').includes('dark:bg-white/90'));
     return spans.map(s => ({ text: s.textContent, color: getComputedStyle(s).color }));
@@ -43,7 +42,7 @@ try {
 
   await pa.goto(BASE, { waitUntil: 'domcontentloaded' });
   await pa.waitForTimeout(1200);
-  await pa.getByRole('button', { name: 'Send', exact: true }).click();
+  await pa.click('[data-testid="home-send"]');
   await pa.waitForFunction(() => !!localStorage.getItem('sharetext.session.v1'), null, { timeout: 20000 });
   const { roomId } = await pa.evaluate(() => JSON.parse(localStorage.getItem('sharetext.session.v1')));
   const short = roomId.replace(/-/g, '').slice(0, 8);

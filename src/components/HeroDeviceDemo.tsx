@@ -6,54 +6,59 @@ import type { MsgKey } from '../lib/messages/types';
 import { LaptopFrame } from './mockups/LaptopFrame';
 import { PhoneFrame, PhoneStatusBar } from './mockups/PhoneFrame';
 import { ShareTextsLogo } from './ShareTextsLogo';
-import { IconButton3D } from './IconButton3D';
 import { SpinLoader } from './SpinLoader';
+import { TactileButton } from './TactileButton';
 import {
-  CheckDouble, Lock, Paperclip, PaperPlane, ArrowLeft, Gear, Code, Bars,
+  CheckDouble, Lock, Paperclip, PaperPlane, ArrowLeft, Gear,
 } from '@gravity-ui/icons';
 
 /**
- * HeroDeviceDemo — the product explaining itself, in loop.
+ * HeroDeviceDemo — the visitor causes the transfer; the picture reports it.
  *
- * One timeline drives two live device screens and the caption under them, so
- * the words can never drift from the picture: `step` is the single source of
- * truth, every visual state is DERIVED from it, and the caption is looked up
- * by the same index. The loop restarts from step 0 with no reset code —
- * because step 0 IS the resting state of every element.
+ * One machine, five states, ONE tap: the visitor presses Send and the
+ * transfer runs — connect, fly, arrive, close — then rests until restarted.
+ * There is no loop, no autoplayed story, and no state the picture does not
+ * show: `phase` is the single source of truth, every visual is DERIVED from
+ * it, and the caption is looked up by the same key, so the words can never
+ * drift from what is on screen.
  *
- * The story, in seven beats (~18s):
- *   0 laptop opens a room and shows its code
- *   1 the phone types that code in
- *   2 connected — the channel draws, "encrypted" appears
- *   3 a note is typed and a file is attached
- *   4 the packet crosses the channel, both ends showing progress
- *   5 it lands, ticks, and the phone answers
- *   6 the room closes — nothing kept — and the scene resets
+ *   open       both devices ready, the payload composed, nothing moving
+ *   connecting the phone types the laptop's code in; the channel draws
+ *   sending    the packet crosses the channel — device to device
+ *   received   it lands, ticks, done
+ *   done       the room closes; nothing is kept; restart is offered
  *
  * Why it is built this way:
- *   · The screens are REAL DOM at real sizes (no scaled screenshots), so the
- *     text stays sharp and the mini app is genuinely ours: ember bubbles,
- *     our radii, our tokens — not a reskinned WhatsApp mockup.
- *   · Only `step` is state; everything else is a declarative target, so a
- *     beat change is one spring per element instead of a remount. Nothing
- *     pops, nothing re-mounts the tree mid-story.
- *   · The packet animates in TRANSFORMS (x/y in px, measured once) — it
- *     never animates `left`/`top`, so the flight costs no layout.
- *   · Autoplay is paused by: reduced-motion preference, a manual pause, the
- *     demo leaving the viewport, or the tab going to the background. An
- *     infinitely looping animation has no business burning battery off
- *     screen — and the rail doubles as manual stepping, so a paused demo is
- *     still a usable explainer.
+ *   · The screens are REAL DOM at real sizes (no scaled screenshots), so
+ *     the text stays sharp and the mini app is genuinely ours: ember
+ *     bubbles, our radii, our tokens.
+ *   · Nothing is "invented": the payload, the code, the starters and the
+ *     closed room are the real app's objects and states. No fake counts,
+ *     no fake notifications, no decorative motion — motion only when a
+ *     payload actually moves.
+ *   · Auto-transitions after the tap are SHORT (~6s total) and interruptible
+ *     (Restart works at every state). Nothing plays off screen or in a
+ *     hidden tab.
+ *   · Reduced motion hands over the same informative still and skips the
+ *     flight: one tap lands the transfer instantly.
  */
-const STEPS: { key: MsgKey; sub: MsgKey; ms: number }[] = [
-  { key: 'demo.h1', sub: 'demo.s1', ms: 2400 },
-  { key: 'demo.h2', sub: 'demo.s2', ms: 3000 },
-  { key: 'demo.h3', sub: 'demo.s3', ms: 2600 },
-  { key: 'demo.h4', sub: 'demo.s4', ms: 3000 },
-  { key: 'demo.h5', sub: 'demo.s5', ms: 2800 },
-  { key: 'demo.h6', sub: 'demo.s6', ms: 2800 },
-  { key: 'demo.h7', sub: 'demo.s7', ms: 2600 },
-];
+export type DemoPhase = 'open' | 'connecting' | 'sending' | 'received' | 'done';
+
+/** The caption per state — the same keys the screens derive from. */
+const CAPTIONS: Record<DemoPhase, { key: MsgKey; sub: MsgKey }> = {
+  open: { key: 'demo.h1', sub: 'demo.s1' },
+  connecting: { key: 'demo.h2', sub: 'demo.s2' },
+  sending: { key: 'demo.h5', sub: 'demo.s5' },
+  received: { key: 'demo.h6', sub: 'demo.s6' },
+  done: { key: 'demo.h7', sub: 'demo.s7' },
+};
+
+/** Where the machine walks on its own after the visitor's tap, and how fast. */
+const AUTO: Partial<Record<DemoPhase, { next: DemoPhase; ms: number }>> = {
+  connecting: { next: 'sending', ms: 1700 },
+  sending: { next: 'received', ms: 1600 },
+  received: { next: 'done', ms: 2800 },
+};
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const EASE_IN_OUT = [0.45, 0, 0.25, 1] as const;
@@ -70,11 +75,9 @@ export function HeroDeviceDemo({
 }) {
   const { t } = useI18n();
   const reduced = useReducedMotion();
-  // Reduced motion starts on the most informative frame instead of an empty
-  // one: everything landed, ticks on, thread intact — the state a static
-  // reader should be handed. The rail still steps it manually.
-  const [step, setStep] = useState(() => (reduced ? 5 : 0));
-  const [paused, setPaused] = useState(false);
+  // The resting opening: the transfer has NOT happened — the visitor makes
+  // it happen. Reduced motion opens on this same honest still.
+  const [phase, setPhase] = useState<DemoPhase>('open');
   const [onScreen, setOnScreen] = useState(ASSUME_VISIBLE);
   const [tabVisible, setTabVisible] = useState(true);
 
@@ -82,17 +85,18 @@ export function HeroDeviceDemo({
   const canvasRef = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
 
-  const running = !reduced && !paused && onScreen && tabVisible && box.w > 0;
+  // Only the transit states own a clock — and only while the demo is
+  // actually on screen and the tab is live. `open`, `received` (reduced)
+  // and `done` rest forever until the visitor acts.
+  const running = !reduced && onScreen && tabVisible && box.w > 0;
 
-  /* ── The clock ──────────────────────────────────────────────────────── */
+  /* ── The clock: each auto-beat advances the machine once ────────────── */
   useEffect(() => {
-    if (!running) return;
-    const timer = setTimeout(
-      () => setStep((s) => (s + 1) % STEPS.length),
-      STEPS[step].ms,
-    );
+    const auto = AUTO[phase];
+    if (!running || !auto) return;
+    const timer = setTimeout(() => setPhase(auto.next), auto.ms);
     return () => clearTimeout(timer);
-  }, [running, step]);
+  }, [running, phase]);
 
   /* ── Pause when off screen or in a background tab ───────────────────── */
   useEffect(() => {
@@ -130,14 +134,12 @@ export function HeroDeviceDemo({
     return () => ro.disconnect();
   }, []);
 
-  /* ── Derived beats. Level IS the step index. ────────────────────────── */
-  const linked = step >= 2;
-  const composed = step >= 3 && step <= 3; // the composer is typing this beat
-  const sent = step >= 4;
-  const flying = step >= 4 && step <= 4;
-  const arrived = step >= 5;
-  const replied = step >= 5;
-  const closed = step >= 6;
+  /* ── Derived states. Everything reads the phase. ────────────────────── */
+  const linked = phase !== 'open'; // the channel and the connected pill
+  const sent = phase === 'sending' || phase === 'received' || phase === 'done';
+  const flying = phase === 'sending';
+  const arrived = phase === 'received' || phase === 'done';
+  const closed = phase === 'done';
 
   const { w, h } = box;
   const px = (fx: number, fy: number) => ({ x: fx * w, y: fy * h });
@@ -157,18 +159,22 @@ export function HeroDeviceDemo({
     return { start, over, land };
   }, [w, h]);
 
-  const caption = t(STEPS[step].key);
-  const captionSub = t(STEPS[step].sub);
+  const caption = t(CAPTIONS[phase].key);
+  const captionSub = t(CAPTIONS[phase].sub);
 
-  /** Click-to-seek on the scrubber: the beat under the pointer, clamped. */
-  const seek = (e: React.MouseEvent<HTMLDivElement>) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    const f = (e.clientX - r.left) / Math.max(r.width, 1);
-    setStep(Math.min(STEPS.length - 1, Math.max(0, Math.floor(f * STEPS.length))));
-  };
+  /** The visitor's tap. Under reduced motion there is no flight to watch —
+   *  one tap lands the transfer on the final informative still instead. */
+  const runTransfer = () => setPhase(reduced ? 'received' : 'connecting');
+  const restart = () => setPhase('open');
 
   return (
-    <div ref={hostRef} className={cn('w-full select-none', className)} data-testid="hero-demo">
+    <div
+      ref={hostRef}
+      className={cn('w-full select-none', className)}
+      data-testid="hero-demo"
+      data-state={phase}
+      aria-label={t('demo.title')}
+    >
       {/* ── The canvas ─────────────────────────────────────────────────── */}
       <div
         ref={canvasRef}
@@ -180,13 +186,14 @@ export function HeroDeviceDemo({
         {variant === 'full' && (
           <div className="absolute left-0 top-0 w-[68%]">
             <LaptopFrame label={t('demo.laptopAlt')}>
-              <LaptopScreen step={step} composed={composed} sent={sent} arrived={arrived} replied={replied} closed={closed} linked={linked} />
+              <LaptopScreen linked={linked} sent={sent} arrived={arrived} closed={closed} />
             </LaptopFrame>
           </div>
         )}
 
         {/* The channel: drawn the moment the two ends are paired, then the
-            live pulse rides it during the transfer beat. */}
+            live pulse rides it during the transfer. The line IS the
+            connection — it explains what the code does before any words. */}
         {variant === 'full' && channel !== '' && (
           <svg
             aria-hidden
@@ -199,7 +206,6 @@ export function HeroDeviceDemo({
               stroke="currentColor"
               strokeWidth={1.5}
               strokeLinecap="round"
-              strokeDasharray="0.5 0"
               className="text-apple-ink/15 dark:text-white/20"
               initial={false}
               animate={{ pathLength: linked ? 1 : 0 }}
@@ -229,7 +235,7 @@ export function HeroDeviceDemo({
         {/* The packet: a file card that leaves the laptop's screen and lands
             on the phone's. Transform-only, measured, and it dissolves into
             the bubble that receives it — the hand-off reads as one event. */}
-        {flight && (
+        {variant === 'full' && flight && (
           <motion.div
             aria-hidden
             className="pointer-events-none absolute left-0 top-0"
@@ -243,7 +249,7 @@ export function HeroDeviceDemo({
             }
             transition={
               flying
-                ? { duration: 1.6, ease: EASE_IN_OUT, times: [0, 0.55, 1] }
+                ? { duration: 1.5, ease: EASE_IN_OUT, times: [0, 0.55, 1] }
                 : { duration: 0.24, ease: EASE }
             }
           >
@@ -260,42 +266,34 @@ export function HeroDeviceDemo({
         {variant === 'full' ? (
           <div className="absolute bottom-0 right-0 w-[25%]">
             <PhoneFrame label={t('demo.phoneAlt')}>
-              <PhoneScreen step={step} composed={composed} sent={sent} arrived={arrived} replied={replied} closed={closed} flying={flying} />
+              <PhoneScreen joined={phase !== 'open' && phase !== 'connecting'} typing={phase === 'connecting'} flying={flying} arrived={arrived} closed={closed} />
             </PhoneFrame>
           </div>
         ) : (
           <div className="absolute inset-0">
             <PhoneFrame label={t('demo.phoneAlt')}>
-              <PhoneScreen step={step} composed={composed} sent={sent} arrived={arrived} replied={replied} closed={closed} flying={flying} />
+              <PhoneScreen joined={phase !== 'open' && phase !== 'connecting'} typing={phase === 'connecting'} flying={flying} arrived={arrived} closed={closed} />
             </PhoneFrame>
           </div>
         )}
       </div>
 
-      {/* ── The captions, wired to the same index ──────────────────────── */}
+      {/* ── Caption + controls, wired to the same phase ────────────────── */}
       <div className="mt-4 sm:mt-5">
-        {/* Caption anatomy, wired to the same index as everything else:
-            a step marker, a short headline, and one quiet explanation line.
-            aria-hidden: the visible caption loops by design, so it is the
-            wrong thing to read to assistive tech. The sr-only list below
-            carries all seven beats once, in order, as real content. */}
-        <div className="relative min-h-[4.2em]" aria-hidden>
-          <AnimatePresence initial={false}>
+        {/* The caption IS state output: role=status (live, polite) so the
+            transfer the visitor caused is announced as it happens. The
+            min-height reserves its two lines so phase changes never move
+            the controls below. */}
+        <div className="relative min-h-[4.2em]" role="status" data-testid="demo-caption">
+          <AnimatePresence initial={false} mode="wait">
             <motion.div
-              key={step}
-              initial={{ opacity: 0, y: 4, filter: 'blur(3px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, y: -4, filter: 'blur(3px)' }}
-              transition={{ duration: reduced ? 0 : 0.32, ease: EASE }}
+              key={phase}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: reduced ? 0 : 0.28, ease: EASE }}
               className="absolute inset-x-0 top-0"
-              data-testid="demo-caption"
             >
-              <span
-                aria-hidden
-                className="mb-1 block text-[10px] font-bold uppercase tracking-[0.09em] text-ember"
-              >
-                {t('demo.step', { n: step + 1, total: STEPS.length })}
-              </span>
               <p className="text-[15px] font-medium leading-snug text-apple-ink dark:text-white sm:text-[16px]">
                 {caption}
               </p>
@@ -306,101 +304,44 @@ export function HeroDeviceDemo({
           </AnimatePresence>
         </div>
 
-        <ol
-          className="sr-only"
-          data-testid="demo-caption-list"
-          aria-label={t('demo.title')}
-        >
-          {STEPS.map((s, i) => (
-            <li key={s.key}>
-              {t('demo.step', { n: i + 1, total: STEPS.length })} {t(s.key)} {t(s.sub)}
-            </li>
-          ))}
-        </ol>
-
-        <div className="mt-3 flex items-center gap-3">
-          {/* One scrubber, not seven dots. A 6px dot fails the touch contract
-              this app ships on every other control, and a target you can
-              actually hit is the difference between a loop you can steer and
-              one you just watch. Click anywhere to jump; arrows step; the
-              ticks show the seven beats and the ember fill shows how far the
-              current one has run. */}
-          <div
-            role="slider"
-            tabIndex={0}
-            aria-label={t('demo.rail')}
-            aria-valuemin={1}
-            aria-valuemax={STEPS.length}
-            aria-valuenow={step + 1}
-            aria-valuetext={caption}
-            data-testid="demo-scrubber"
-            onClick={seek}
-            onKeyDown={(e) => {
-              if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-                e.preventDefault();
-                setStep((s) => (s + 1) % STEPS.length);
-              } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-                e.preventDefault();
-                setStep((s) => (s - 1 + STEPS.length) % STEPS.length);
-              } else if (e.key === 'Home') {
-                e.preventDefault();
-                setStep(0);
-              } else if (e.key === 'End') {
-                e.preventDefault();
-                setStep(STEPS.length - 1);
-              }
-            }}
-            className="group relative flex h-[40px] min-w-0 flex-1 cursor-pointer items-center rounded-full px-1 outline-none focus-visible:ring-2 focus-visible:ring-ember/40"
-          >
-            <span className="relative block h-[4px] w-full rounded-full bg-apple-ink/[0.12] transition-colors group-hover:bg-apple-ink/[0.18] dark:bg-white/[0.16] dark:group-hover:bg-white/[0.22]">
-              {STEPS.map((s, i) =>
-                i === 0 ? null : (
-                  <span
-                    key={s.key}
-                    aria-hidden
-                    className="absolute top-[-2px] h-[8px] w-px bg-apple-canvas dark:bg-night-900"
-                    style={{ left: `${(i / STEPS.length) * 100}%` }}
-                  />
-                ),
-              )}
-              <span
-                aria-hidden
-                className="absolute left-0 top-0 h-full rounded-full bg-ember/30"
-                style={{ width: `${(step / STEPS.length) * 100}%` }}
-              />
-              <span
-                aria-hidden
-                className="absolute top-0 h-full overflow-hidden rounded-full"
-                style={{ left: `${(step / STEPS.length) * 100}%`, width: `${100 / STEPS.length}%` }}
-              >
-                <span
-                  key={`${step}-${running ? 'run' : 'hold'}`}
-                  className="st-demo-fill block h-full w-full origin-left rounded-full bg-ember"
-                  style={{
-                    animationDuration: `${STEPS[step].ms}ms`,
-                    animationPlayState: running ? 'running' : 'paused',
-                  }}
-                />
-              </span>
-            </span>
-          </div>
-
-          {/* A demo that loops forever must hand back the control. Small,
-              quiet, and out of the caption's way — at the component's own
-              44×40 minimum, not shrunk below the app's hit-target floor. */}
-          {!reduced && (
-            <IconButton3D
-              label={paused ? t('demo.play') : t('demo.pause')}
-              onClick={() => setPaused((p) => !p)}
-              className="ml-auto border-black/[0.04] dark:border-white/[0.06]"
-              testId="demo-play"
+        <div className="flex min-h-[40px] items-center gap-3">
+          {/* The visitor's control — the same verb the real app's key carries.
+              It exists only while the transfer hasn't run; during the walk
+              the row stays reserved but quiet; at done, Restart takes over. */}
+          {phase === 'open' && (
+            <TactileButton
+              variant="primary"
+              size="sm"
+              onClick={runTransfer}
+              data-testid="demo-send"
+              className="min-w-[104px]"
             >
-              {paused ? (
-                <PlayGlyph className="h-3 w-3" />
-              ) : (
-                <PauseGlyph className="h-3 w-3" />
-              )}
-            </IconButton3D>
+              {t('demo.send')}
+            </TactileButton>
+          )}
+          {closed && (
+            <TactileButton
+              variant="secondary"
+              size="sm"
+              onClick={restart}
+              data-testid="demo-restart"
+              className="min-w-[104px]"
+            >
+              {t('demo.restart')}
+            </TactileButton>
+          )}
+          {/* Under reduced motion the tap lands at `received` with nothing
+              left to play — Restart is offered from there on. */}
+          {reduced && phase === 'received' && (
+            <TactileButton
+              variant="secondary"
+              size="sm"
+              onClick={restart}
+              data-testid="demo-restart"
+              className="min-w-[104px]"
+            >
+              {t('demo.restart')}
+            </TactileButton>
           )}
         </div>
       </div>
@@ -411,15 +352,6 @@ export function HeroDeviceDemo({
 /* ────────────────────────────────────────────────────────────────────────
    The two screens
    ──────────────────────────────────────────────────────────────────────── */
-
-type ScreenProps = {
-  step: number;
-  composed: boolean;
-  sent: boolean;
-  arrived: boolean;
-  replied: boolean;
-  closed: boolean;
-};
 
 /** The room code, as the app shows it: six digits, one tile each. */
 const CODE = ['4', '1', '8', '3', '0', '2'] as const;
@@ -438,9 +370,8 @@ function CodeTiles({
   /** Light the tiles one at a time — the joiner typing the code in. */
   stagger?: boolean;
 }) {
-  const big = size === 'md';
   return (
-    <div className={cn('grid grid-cols-6', big ? 'gap-[3px]' : 'gap-[2px]')}>
+    <div className={cn('grid grid-cols-6', size === 'md' ? 'gap-[3px]' : 'gap-[2px]')}>
       {CODE.map((d, i) => {
         const on = i < filled;
         const delay = stagger && on ? i * 0.15 : 0;
@@ -449,17 +380,16 @@ function CodeTiles({
             key={i}
             style={{ transitionDelay: `${stagger && on ? i * 150 : 0}ms` }}
             className={cn(
-              'flex items-center justify-center rounded-[4px] font-semibold tabular-nums transition-colors duration-200',
-              big
-                ? 'h-[19px] text-[11px] sm:h-[22px] sm:text-[12.5px]'
-                : 'h-[13px] text-[8px]',
+              'flex items-center justify-center rounded-[8px] transition-colors duration-300',
+              size === 'md'
+                ? 'h-[22px] text-[11px]'
+                : 'h-[16px] text-[8px]',
               on
                 ? cn(
                     'bg-white dark:bg-white/[0.1]',
-                    'ring-1',
                     highlight
-                      ? 'ring-ember/35 dark:ring-ember/30'
-                      : 'ring-apple-divider/80 dark:ring-white/[0.12]',
+                      ? 'ring-1 ring-ember/35 dark:ring-ember/30'
+                      : 'ring-1 ring-apple-divider/80 dark:ring-white/[0.12]',
                   )
                 : 'bg-black/[0.05] ring-1 ring-transparent dark:bg-white/[0.05]',
             )}
@@ -480,53 +410,14 @@ function CodeTiles({
   );
 }
 
-/** The typing line — kept in its own component so the keystrokes re-render
- *  one line instead of the whole demo. */
-function TypingLine({
-  text,
-  active,
-  className,
-  caretClassName,
-}: {
-  text: string;
-  active: boolean;
-  className?: string;
-  caretClassName?: string;
-}) {
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    if (!active) {
-      setN(0);
-      return;
-    }
-    let tick: ReturnType<typeof setInterval> | undefined;
-    const start = setTimeout(() => {
-      let i = 0;
-      tick = setInterval(() => {
-        i += 1;
-        setN(i);
-        if (i >= text.length && tick) clearInterval(tick);
-      }, 38);
-    }, 240);
-    return () => {
-      clearTimeout(start);
-      if (tick) clearInterval(tick);
-    };
-  }, [active, text]);
-
-  return (
-    <span className={className}>
-      {text.slice(0, n)}
-      {active && n < text.length && (
-        <span className={cn('ml-[1px] inline-block w-[1px] bg-current align-middle', caretClassName)} style={{ height: '1em' }} />
-      )}
-    </span>
-  );
-}
-
 function LaptopScreen({
-  step, composed, sent, arrived, replied, closed, linked,
-}: ScreenProps & { linked: boolean }) {
+  linked, sent, arrived, closed,
+}: {
+  linked: boolean;
+  sent: boolean;
+  arrived: boolean;
+  closed: boolean;
+}) {
   const { t } = useI18n();
   const note = t('demo.note');
 
@@ -542,12 +433,12 @@ function LaptopScreen({
 
           <div className={cn(
             'rounded-[8px] border bg-white p-[7px] transition-colors duration-300 dark:bg-white/[0.04]',
-            step <= 1 ? 'border-ember/30 dark:border-ember/25' : 'border-apple-divider/60 dark:border-white/[0.07]',
+            linked ? 'border-apple-divider/60 dark:border-white/[0.07]' : 'border-ember/30 dark:border-ember/25',
           )}>
             <span className="mb-[5px] block text-[7px] font-bold uppercase tracking-[0.09em] text-apple-ink-muted/80 dark:text-white/40">
               {t('demo.roomCode')}
             </span>
-            <CodeTiles filled={6} highlight={step <= 1} />
+            <CodeTiles filled={6} highlight={!linked} />
           </div>
 
           <div className="flex flex-col gap-[5px]">
@@ -608,11 +499,12 @@ function LaptopScreen({
 
           <div className="flex min-h-0 flex-1 flex-col justify-end gap-[6px] overflow-hidden p-[10px]">
             <AnimatePresence initial={false}>
-              {/* Before anything is sent, the room offers what the real room
+              {/* Before the transfer the room offers what the real room
                   offers: the three one-tap starters, in the real words. It
                   fills the empty thread honestly and teaches the same thing
-                  the live app teaches — no invented placeholder copy. */}
-              {step <= 3 && (
+                  the live app teaches. The payload sits composed in the
+                  composer below — the state the visitor is looking at. */}
+              {!sent && (
                 <motion.div
                   key="starters"
                   initial={{ opacity: 0 }}
@@ -638,7 +530,6 @@ function LaptopScreen({
                   key="note"
                   initial={{ opacity: 0, y: 8, scale: 0.97 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 4 }}
                   transition={{ type: 'spring', stiffness: 420, damping: 30 }}
                   className="flex flex-col items-end gap-[4px]"
                 >
@@ -648,53 +539,29 @@ function LaptopScreen({
                   <FileChip arrived={arrived} />
                 </motion.div>
               )}
-              {replied && (
-                <motion.span
-                  key="reply"
-                  initial={{ opacity: 0, y: 8, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ type: 'spring', stiffness: 420, damping: 30 }}
-                  className="max-w-[80%] self-start rounded-[10px] rounded-bl-[4px] bg-apple-parchment px-[9px] py-[6px] text-[10px] leading-snug text-apple-ink dark:bg-white/[0.07] dark:text-white"
-                >
-                  {t('demo.reply')}
-                </motion.span>
-              )}
             </AnimatePresence>
           </div>
 
-          {/* Composer — with the formatting row, because formatting is real. */}
+          {/* Composer — the payload, composed and waiting for the visitor. */}
           <div className="shrink-0 border-t border-apple-divider/70 px-[9px] py-[7px] dark:border-white/[0.06]">
-            <div className="mb-[6px] flex items-center gap-[3px] text-apple-ink-muted/70 dark:text-white/35">
-              {[1, 2, 3, 4].map((k) => (
-                <span key={k} className="flex h-[13px] w-[13px] items-center justify-center rounded-[4px] bg-black/[0.04] text-[7px] font-bold dark:bg-white/[0.06]">
-                  {k === 1 ? 'B' : k === 2 ? 'I' : k === 3 ? <Code className="h-[7px] w-[7px]" /> : <Bars className="h-[7px] w-[7px]" />}
-                </span>
-              ))}
-            </div>
             <div className="flex items-center gap-[7px]">
               <span className="flex min-w-0 flex-1 items-center gap-[6px] rounded-full bg-black/[0.045] px-[8px] py-[5px] text-[9.5px] dark:bg-white/[0.06]">
                 <Paperclip className="h-[9px] w-[9px] shrink-0 text-apple-ink-muted dark:text-white/40" />
                 <span className="min-w-0 flex-1 truncate text-apple-ink dark:text-white">
-                  {composed ? (
-                    <TypingLine text={note} active className="text-apple-ink dark:text-white" />
-                  ) : (
+                  {sent ? (
                     <span className="text-apple-ink-muted dark:text-white/35">{t('demo.placeholder')}</span>
+                  ) : (
+                    note
                   )}
                 </span>
-                {composed && (
-                  <motion.span
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 26 }}
-                    className="flex shrink-0 items-center gap-[3px] rounded-full bg-ember/10 px-[5px] py-[2px] text-[7.5px] font-semibold text-ember dark:bg-ember/[0.16] dark:text-azure-400"
-                  >
+                {!sent && (
+                  <span className="flex shrink-0 items-center gap-[3px] rounded-full bg-ember/10 px-[5px] py-[2px] text-[7.5px] font-semibold text-ember dark:bg-ember/[0.16] dark:text-azure-400">
                     plan.pdf
-                  </motion.span>
+                  </span>
                 )}
               </span>
               <motion.span
-                animate={composed || sent ? { scale: 1, backgroundColor: '#f06413' /* motion literal: framer cannot tween var() */ } : { scale: 0.94, backgroundColor: 'rgba(30,28,24,0.14)' }}
+                animate={sent ? { scale: 1, backgroundColor: 'rgba(20,18,14,0.14)' } : { scale: 1, backgroundColor: '#f06413' /* motion literal: framer cannot tween var() */ }}
                 transition={{ type: 'spring', stiffness: 380, damping: 26 }}
                 className="flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-full text-white"
               >
@@ -711,20 +578,24 @@ function LaptopScreen({
 }
 
 function PhoneScreen({
-  step, arrived, replied, closed, flying,
-}: ScreenProps & { flying: boolean }) {
+  joined, typing, flying, arrived, closed,
+}: {
+  /** The phone is IN the room (past the join screen). */
+  joined: boolean;
+  /** The phone is typing the code in (the `connecting` walk). */
+  typing: boolean;
+  flying: boolean;
+  arrived: boolean;
+  closed: boolean;
+}) {
   const { t } = useI18n();
-  const joined = step >= 2;
-  const typedCells = step >= 1 ? CODE.length : 0;
-  const joinReady = typedCells === CODE.length;
 
   return (
     <div className="relative flex h-full w-full flex-col bg-apple-canvas dark:bg-night-900">
       <PhoneStatusBar />
 
       <AnimatePresence mode="popLayout" initial={false}>
-        {!joined ? (
-          <motion.div
+        {!joined ? (          <motion.div
             key="join"
             initial={false}
             exit={{ opacity: 0, y: -6, filter: 'blur(2px)' }}
@@ -738,12 +609,14 @@ function PhoneScreen({
             <span className="text-[10px] font-semibold leading-tight text-apple-ink dark:text-white">{t('demo.joinTitle')}</span>
             <span className="mt-[3px] text-[7.5px] leading-tight text-apple-ink-muted dark:text-white/45">{t('demo.joinHint')}</span>
             <div className="mt-[9%]">
-              <CodeTiles filled={typedCells} size="sm" stagger />
+              {/* The tiles light one by one — the code being typed in while
+                  the machine is in `connecting`. */}
+              <CodeTiles filled={typing ? 6 : 0} size="sm" stagger />
             </div>
             <span
               className={cn(
                 'mt-[10%] flex items-center justify-center rounded-full py-[6px] text-[8.5px] font-semibold transition-colors duration-300',
-                joinReady
+                typing
                   ? 'bg-ember text-white'
                   : 'bg-black/[0.06] text-apple-ink-muted dark:bg-white/[0.07] dark:text-white/40',
               )}
@@ -776,29 +649,6 @@ function PhoneScreen({
             {/* Thread */}
             <div className="flex min-h-0 flex-1 flex-col justify-end gap-[5px] overflow-hidden px-[6%] py-[5%]">
               <AnimatePresence initial={false}>
-                {/* Same three starters the phone's real empty room shows,
-                    stacked the way they wrap on a narrow screen. Before the
-                    first message the phone is not "blank" — it is waiting
-                    with something to tap. */}
-                {step <= 3 && (
-                  <motion.div
-                    key="starters"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0, y: -3 }}
-                    transition={{ duration: 0.3, ease: EASE }}
-                    className="flex flex-1 flex-col items-center justify-center gap-[4px]"
-                  >
-                    {(['chat.suggest.hi', 'chat.suggest.photo', 'chat.suggest.link'] as MsgKey[]).map((k) => (
-                      <span
-                        key={k}
-                        className="flex h-[15px] max-w-full items-center truncate rounded-full border border-apple-divider/80 bg-white/70 px-[6px] text-[7.5px] font-semibold text-apple-ink/70 dark:border-white/[0.12] dark:bg-white/[0.05] dark:text-white/60"
-                      >
-                        {t(k)}
-                      </span>
-                    ))}
-                  </motion.div>
-                )}
                 {flying && (
                   <motion.span
                     key="receiving"
@@ -817,7 +667,6 @@ function PhoneScreen({
                       key="note-in"
                       initial={{ opacity: 0, y: 9, scale: 0.96 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0 }}
                       transition={{ type: 'spring', stiffness: 420, damping: 30 }}
                       className="max-w-[86%] self-start rounded-[10px] rounded-bl-[4px] bg-white px-[7px] py-[5px] text-[8.5px] leading-snug text-apple-ink shadow-[0_1px_3px_rgba(20,16,10,0.07)] dark:bg-white/[0.08] dark:text-white"
                     >
@@ -827,25 +676,12 @@ function PhoneScreen({
                       key="file-in"
                       initial={{ opacity: 0, y: 9, scale: 0.9 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0 }}
                       transition={{ type: 'spring', stiffness: 420, damping: 30, delay: 0.06 }}
                       className="self-start"
                     >
-                      <FileChip arrived side="in" compact />
+                      <FileChip side="in" compact />
                     </motion.div>
                   </>
-                )}
-                {replied && (
-                  <motion.span
-                    key="reply-out"
-                    initial={{ opacity: 0, y: 9, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ type: 'spring', stiffness: 420, damping: 30, delay: 0.2 }}
-                    className="max-w-[86%] self-end rounded-[10px] rounded-br-[4px] bg-ember px-[7px] py-[5px] text-[8.5px] leading-snug text-white shadow-[0_2px_6px_-2px_rgba(240,100,19,0.5)]"
-                  >
-                    {t('demo.reply')}
-                  </motion.span>
                 )}
               </AnimatePresence>
             </div>
@@ -856,10 +692,7 @@ function PhoneScreen({
                 <Paperclip className="h-[8px] w-[8px] shrink-0" />
                 <span className="truncate">{t('demo.placeholder')}</span>
               </span>
-              <span className={cn(
-                'flex h-[16px] w-[16px] shrink-0 items-center justify-center rounded-full transition-colors duration-300',
-                replied ? 'bg-ember text-white' : 'bg-black/[0.08] text-apple-ink-muted dark:bg-white/[0.09] dark:text-white/40',
-              )}>
+              <span className="flex h-[16px] w-[16px] shrink-0 items-center justify-center rounded-full bg-black/[0.08] text-apple-ink-muted dark:bg-white/[0.09] dark:text-white/40">
                 <PaperPlane className="h-[8px] w-[8px]" />
               </span>
             </div>
@@ -875,18 +708,18 @@ function PhoneScreen({
 /**
  * The file the story sends — one component, both sides of the transfer.
  *
- * `side="out"` carries the live states (a progress ring, then the tick) and
- * wears the sender's ember; `side="in"` is the same object after it landed,
- * quiet, white, tick-free — a receiver doesn't need to be told it worked
- * twice. Same geometry on both ends, so the hand-off reads as one object
- * that moved rather than two that resemble each other.
+ * `side="out"` carries the live states (the spinner while it is in flight,
+ * then the tick) and wears the sender's ember; `side="in"` is the same
+ * object after it landed, quiet, white, tick-free — a receiver doesn't need
+ * to be told it worked twice. Same geometry on both ends, so the hand-off
+ * reads as one object that moved rather than two that resemble each other.
  */
 function FileChip({
-  arrived,
+  arrived = false,
   side = 'out',
   compact = false,
 }: {
-  arrived: boolean;
+  arrived?: boolean;
   side?: 'out' | 'in';
   compact?: boolean;
 }) {
@@ -915,16 +748,6 @@ function FileChip({
       {/* No invented byte count — this is a controlled demo, not a transfer
           log. The sender's chip says what the state IS; the receiver's chip
           says nothing, because arrival is already told by the thread. */}
-      {out && !arrived && (
-        <span
-          className={cn(
-            'leading-none opacity-70',
-            compact ? 'text-[7px]' : 'text-[7.5px]',
-          )}
-        >
-          {t('demo.sendingTag')}
-        </span>
-      )}
       {out && (
         <AnimatePresence mode="wait" initial={false}>
           {arrived ? (
@@ -942,11 +765,9 @@ function FileChip({
   );
 }
 
-/** The close beat: the room empties and dims, then the loop starts over.
- *  A RESTING veil, not a whiteout: the first cut (canvas at 70% + blur)
- *  erased the room underneath, so the closed beat read as a rendering glitch
- *  on light screens. Half-strength, no blur — the room stays legible while
- *  the pill does the talking. */
+/** The done beat: the room empties and dims — nothing is kept. A RESTING
+ *  veil, not a whiteout: the room stays legible while the pill does the
+ *  talking, and Restart reopens the machine from `open`. */
 function RoomClosedVeil({ closed }: { closed: boolean }) {
   const { t } = useI18n();
   return (
@@ -955,7 +776,8 @@ function RoomClosedVeil({ closed }: { closed: boolean }) {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}          transition={{ duration: 0.4, ease: EASE }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4, ease: EASE }}
           className="absolute inset-0 flex items-center justify-center bg-apple-canvas/45 dark:bg-night-950/55">
           {/* Dark side: a white stamp needs INK-dark text — but --color-apple-ink
               FLIPS to near-white inside .dark, so the token here is the canvas
@@ -969,18 +791,5 @@ function RoomClosedVeil({ closed }: { closed: boolean }) {
     </AnimatePresence>
   );
 }
-
-/* ──────────────────────────────────────────────────────────────────────── */
-const PlayGlyph = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
-    <path d="M8 5.5v13l11-6.5-11-6.5Z" />
-  </svg>
-);
-const PauseGlyph = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
-    <rect x="7" y="5.5" width="3.4" height="13" rx="1.2" />
-    <rect x="13.6" y="5.5" width="3.4" height="13" rx="1.2" />
-  </svg>
-);
 
 export default HeroDeviceDemo;

@@ -30,23 +30,26 @@ async function setLang(page, lang) {
   await page.evaluate((l) => { try { localStorage.setItem('sharetext.locale', l); } catch {} }, lang);
 }
 
-// A demo shot must be deterministic: seek to the transfer beat, then pause,
-// so BEFORE and AFTER freeze on the same frame of the same story.
-async function pinDemo(page, fraction) {
-  await page.evaluate((f) => {
-    const rail = document.querySelector('[data-testid="demo-scrubber"]');
-    if (!rail) return;
-    const r = rail.getBoundingClientRect();
-    rail.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: r.left + r.width * f, clientY: r.top + r.height / 2 }));
-  }, fraction);
-  await sleep(700);
-  await page.evaluate(() => {
-    const b = document.querySelector('[data-testid="demo-play"]');
-    if (b) b.click();
-  });
-  await sleep(500);
+// A demo shot must be deterministic: from `open`, tap Send and hold the
+// machine on the sending beat; if it already walked, hold on the arrived
+// still instead — both are fixed, short states of the same story.
+async function pinDemo(page, _fraction) {
+  const state = await page.evaluate(() => document.querySelector('[data-testid="hero-demo"]')?.getAttribute('data-state'));
+  if (state === 'open') {
+    await page.evaluate(() => { document.querySelector('[data-testid="demo-send"]')?.click(); });
+    await page.waitForFunction(
+      () => document.querySelector('[data-testid="hero-demo"]')?.getAttribute('data-state') === 'sending',
+      null, { timeout: 8000 },
+    );
+    await sleep(650); // settle: springs land before the shutter
+  } else {
+    await page.waitForFunction(
+      () => ['received', 'done'].includes(document.querySelector('[data-testid="hero-demo"]')?.getAttribute('data-state') || ''),
+      null, { timeout: 8000 },
+    ).catch(() => {});
+    await sleep(300);
+  }
 }
-
 function png1x1() {
   const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const body = Buffer.concat([Buffer.from(type), data]); const t = [...Array(256)].map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; }); let crc = 0xffffffff; for (const b of body) crc = t[(crc ^ b) & 0xff] ^ (crc >>> 8); crc = (crc ^ 0xffffffff) >>> 0; const cb = Buffer.alloc(4); cb.writeUInt32BE(crc); return Buffer.concat([len, body, cb]); };
   const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(1, 0); ihdr.writeUInt32BE(1, 4); ihdr[8] = 8; ihdr[9] = 2;

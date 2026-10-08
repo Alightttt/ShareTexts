@@ -770,7 +770,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
                   label↔action mapping is unambiguous (audit #11). */}
               <div className="order-3 mt-6 grid grid-cols-2 gap-x-3 gap-y-1 max-w-[360px] mx-auto sm:mx-0">
                 <div className="flex flex-col items-center gap-1.5 min-w-0">
-                  <TactileButton onClick={handleSend} variant="primary" size="lg" className="w-full lg:text-[16px] lg:min-h-[56px]" icon={<SendCircleIcon size={18} />} disabled={isCreating}>{t('home.send')}</TactileButton>
+                  <TactileButton onClick={handleSend} variant="primary" size="lg" data-testid="home-send" className="w-full lg:text-[16px] lg:min-h-[56px]" icon={<SendCircleIcon size={18} />} disabled={isCreating}>{t('home.send')}</TactileButton>
                   <span className="text-[12.5px] font-medium text-apple-ink-muted/70 dark:text-white/45">{t('home.sendHint')}</span>
                 </div>
                 <div className="flex flex-col items-center gap-1.5 min-w-0">
