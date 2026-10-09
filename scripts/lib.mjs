@@ -62,7 +62,9 @@ export async function readLiveCode(page) {
   // the OLD digits while the new ones enter), and an unscoped read can pick
   // up countdown or mid-animation digits and produce a hybrid code. Two
   // consecutive identical reads after the animation settles are trustworthy.
-  const group = page.getByRole('group', { name: 'Pairing code' });
+  // Locale-free anchor: the group's aria-label is translated (Arabic RTL
+  // suites read the code too), so address it by testid, not English name.
+  const group = page.getByTestId('pairing-code');
   for (let attempt = 0; attempt < 10; attempt++) {
     const digits = await group.locator('span').filter({ hasText: /^\d$/ }).allTextContents();
     if (digits.length >= 6) {

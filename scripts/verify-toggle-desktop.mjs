@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 const BASE = process.env.URL || 'http://localhost:3010';
-const out = (name, ok, extra = '') => console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`);
+let failures = 0;
+const out = (name, ok, extra = '') => { if (!ok) failures++; console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`); };
 
 const browser = await chromium.launch();
 try {
@@ -18,14 +19,16 @@ try {
     const tr = track.getBoundingClientRect(), th = thumb.getBoundingClientRect();
     return { w: +tr.width.toFixed(1), h: +tr.height.toFixed(1), tw: +th.width.toFixed(1), thh: +th.height.toFixed(1), x: +(th.x - tr.x).toFixed(1) };
   });
-  // Current design system: the header ThemeToggle ships at 64×30 with a
-  // 40×26 thumb (the in-composer switches standardized at 44×28).
-  out('desktop-toggle-82x36', Math.abs(tg.w - 64) < 1.5 && Math.abs(tg.h - 30) < 1.5, JSON.stringify(tg));
-  out('desktop-thumb-50x32', Math.abs(tg.tw - 40) < 1.5 && Math.abs(tg.thh - 26) < 1.5);
+  // Current design system: the header ThemeToggle ships at 56×26 with a
+  // 34×22 thumb — ThemeToggle.tsx's own visual-contract docblock.
+  out('desktop-toggle-56x26', Math.abs(tg.w - 56) < 1.5 && Math.abs(tg.h - 26) < 1.5, JSON.stringify(tg));
+  out('desktop-thumb-34x22', Math.abs(tg.tw - 34) < 1.5 && Math.abs(tg.thh - 22) < 1.5);
 
-  // 2. Tracker: below buttons, left-aligned, count >= 113, white label
+  // 2. Live tracker: ABOVE the buttons (headline → subline → tracker →
+  //    Send/Receive), left-aligned with the subline, count ≥ 113, white
+  //    label token in dark.
   const tk = await page.evaluate(() => {
-    const el = [...document.querySelectorAll('div')].filter(d => d.children.length >= 2 && /rooms made till now/i.test(d.textContent) && d.textContent.length < 60).pop();
+    const el = [...document.querySelectorAll('div')].filter(d => d.children.length >= 2 && /connections made so far/i.test(d.textContent) && d.textContent.length < 60).pop();
     if (!el) return null;
     const r = el.getBoundingClientRect();
     const btns = [...document.querySelectorAll('button')].filter(b => /send|receive/i.test(b.textContent) && b.querySelector('svg'));
@@ -34,16 +37,18 @@ try {
     const label = el.lastElementChild, count = el.children[1];
     const leftSibling = el.previousElementSibling ? el.previousElementSibling.getBoundingClientRect() : null;
     return {
-      y: Math.round(r.y), x: Math.round(r.x),
+      y: Math.round(r.y), bottom: Math.round(r.bottom), x: Math.round(r.x),
       count: count.textContent, countWeight: getComputedStyle(count).fontWeight,
       labelColor: getComputedStyle(label).color,
-      btnBottom: br ? Math.round(br.bottom) : null,
+      btnTop: br ? Math.round(br.top) : null,
       alignDiff: leftSibling ? Math.round(r.x - leftSibling.x) : null,
     };
   });
-  out('desktop-tracker-below-buttons-left-aligned', !!tk && tk.y > tk.btnBottom && Math.abs(tk.alignDiff) < 8, JSON.stringify(tk));
-  out('desktop-tracker-count-113-plus', !!tk && parseInt(tk.count.replace(/,/g, '')) >= 113, tk?.count);
-  out('desktop-tracker-label-white-in-dark', !!tk && (tk.labelColor === 'rgb(255, 255, 255)' || tk.labelColor === 'rgba(255, 255, 255, 1)'), tk?.labelColor);
+  out('desktop-tracker-above-buttons-left-aligned', !!tk && tk.bottom <= tk.btnTop && Math.abs(tk.alignDiff) < 8, JSON.stringify(tk));
+  out('desktop-tracker-count-113-plus', !!tk && parseInt((tk?.count || '').replace(/[^0-9]/g, '')) >= 113, tk?.count);
+  // Dark label = the white token at 50% — Chrome serializes translucent
+  // whites as oklab(0.99… / 0.5), opaque ones as rgb(255, 255, 255).
+  out('desktop-tracker-label-white-in-dark', !!tk && /^(rgb\(255, 255, 255\)|oklab\(0\.99)/.test(tk?.labelColor || ''), tk?.labelColor);
 
   // 3. Header: language + docs gap ≈ docs + toggle gap
   const gap = await page.evaluate(() => {
@@ -57,10 +62,12 @@ try {
   // Header rhythm is an 8px gap grid since the single-rhythm header landed.
   out('desktop-header-gaps-tight', gap.length >= 2 && Math.max(...gap.slice(-3)) <= 8.5, JSON.stringify(gap));
 
-  // 4. Hero heading restored + title has AirDrop
+  // 4. Hero heading + the shipped <title> (verify-seo's contract: the
+  //    title says what the product IS; AirDrop comparisons live only in
+  //    og:title now).
   const meta = await page.evaluate(() => ({ h1: document.querySelector('h1')?.innerText, title: document.title }));
   out('hero-heading-restored', /Move anything/i.test(meta.h1 || ''), meta.h1);
-  out('site-title-airdrop', /AirDrop/i.test(meta.title));
+  out('site-title-describes-product', /ShareTexts/i.test(meta.title) && /Between Devices/i.test(meta.title), meta.title);
 
   out('no-page-errors', errors.length === 0, errors.join(' | ').slice(0, 200));
 } catch (e) {
@@ -68,3 +75,5 @@ try {
 } finally {
   await browser.close();
 }
+// Gate the run: this suite used to print FAILs and still exit 0.
+process.exit(failures === 0 ? 0 : 1);

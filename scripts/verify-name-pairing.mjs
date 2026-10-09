@@ -1,7 +1,8 @@
 // Verify the P3 name fix end-to-end on a REAL pairing:
-//   1. Two devices with the SAME platform user agent both default to
-//      "Guest iPhone" — the joiner must auto-rename to "Guest iPhone 2"
-//      while the creator's name stays the anchor.
+//   1. Two devices with the SAME platform user agent both default to the
+//      modern platform name ("iPhone" — the "Guest " prefix was dropped
+//      and legacy defaults migrate) — the joiner must auto-rename to
+//      "iPhone 2" while the creator's name stays the anchor.
 //   2. The connected panel must show both names and a one-time notice on
 //      the joiner.
 //   3. Renaming via the UI (tap name → type → Enter) must update the
@@ -38,22 +39,25 @@ async function main() {
   await A.getByRole('group', { name: 'Pairing code' }).waitFor({ timeout: 10000 });
   const code = await readLiveCode(A);
   await B.getByRole('button', { name: 'Receive' }).first().click();
-  await B.locator('input[inputmode="numeric"]').fill(code);
+  // The join code is now a six-slot OTP: fill the first slot — its
+  // paste/fill-forward path distributes the digits across all six, which
+  // is exactly what a human paste does.
+  await B.locator('input[inputmode="numeric"]').first().fill(code);
   await waitForChat(B, 'B');
   await waitForChat(A, 'A');
 
   // --- 1. Auto-disambiguation: joiner renames, creator stays anchor ---
   // The re-announced hello must have landed by the time both are connected.
-  await B.getByText('Guest iPhone 2', { exact: false }).first().waitFor({ timeout: 10000 }).catch(() => {});
+  await B.getByText('iPhone 2', { exact: false }).first().waitFor({ timeout: 10000 }).catch(() => {});
   await sleep(1500);
-  ok((await deviceName(A)) === 'Guest iPhone', `A (creator) kept its default name, got "${await deviceName(A)}"`);
-  ok((await deviceName(B)) === 'Guest iPhone 2', `B (joiner) auto-renamed to "Guest iPhone 2", got "${await deviceName(B)}"`);
+  ok((await deviceName(A)) === 'iPhone', `A (creator) kept its default name, got "${await deviceName(A)}"`);
+  ok((await deviceName(B)) === 'iPhone 2', `B (joiner) auto-renamed to "iPhone 2", got "${await deviceName(B)}"`);
 
   // --- 2. Connected panels show both names; notice only on the joiner ---
   const aBody = await A.locator('body').innerText();
   const bBody = await B.locator('body').innerText();
-  ok(aBody.includes('Guest iPhone 2'), 'A sees the joiner as "Guest iPhone 2"');
-  ok(bBody.includes('Guest iPhone') && bBody.includes('Guest iPhone 2'), 'B sees both names (own + partner)');
+  ok(aBody.includes('iPhone 2'), 'A sees the joiner as "iPhone 2"');
+  ok(bBody.includes('iPhone 2'), 'B sees both names (own "iPhone 2" + partner)');
   ok(bBody.includes('Both devices had the same name'), 'B got the one-time auto-adjust notice');
   ok(!aBody.includes('Both devices had the same name'), 'A (unchanged) got no notice');
 

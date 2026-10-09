@@ -177,7 +177,7 @@ try {
   const pa = await ctxA.newPage(); const pb = await ctxB.newPage();
   watch(pa, 'room-a'); watch(pb, 'room-b');
   await pa.goto(BASE, { waitUntil: 'domcontentloaded' });
-  await pa.getByRole('button', { name: 'Send', exact: true }).click();
+  await pa.getByTestId('home-send').click(); // exact-name 'Send' is ambiguous vs the hero demo's control
   await pa.waitForFunction(() => !!localStorage.getItem('sharetext.session.v1'), null, { timeout: 20000 });
   const { roomId } = await pa.evaluate(() => JSON.parse(localStorage.getItem('sharetext.session.v1')));
   await pb.goto(`${BASE}/s/${roomId.replace(/-/g, '').slice(0, 8)}`, { waitUntil: 'domcontentloaded' });

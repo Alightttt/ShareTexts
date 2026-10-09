@@ -18,7 +18,7 @@ try {
   // --- Creator: create a room ---
   await pa.goto(BASE, { waitUntil: 'domcontentloaded' });
   await pa.waitForSelector('[data-testid]', { timeout: 20000 }).catch(() => {});
-  await pa.getByRole('button', { name: 'Send', exact: true }).click();
+  await pa.click('[data-testid="home-send"]');
   await pa.waitForFunction(() => !!localStorage.getItem('sharetext.session.v1'), null, { timeout: 20000 });
   const { roomId } = await pa.evaluate(() => JSON.parse(localStorage.getItem('sharetext.session.v1')));
   out('creator room created', !!roomId);

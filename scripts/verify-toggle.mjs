@@ -2,9 +2,11 @@
 // Usage: node scripts/verify-toggle.mjs [url]
 //
 // Asserts the iOS-class contract against the REAL rendered pixels:
-//   track 60×34 r17 · thumb 30×30 circular · 2px inset · travel 26
-//   ON  → green track, thumb right (green margin both sides)
-//   OFF → gray track,  thumb left, identical dimensions
+//   track 56×26 r13 · thumb 34×22 r11 pill · 2px inset · travel 18
+//   ON  → green track (#5CCB67), thumb right (green margin both sides)
+//   OFF → dark-gray track (#39393d — the designed OFF on parchment),
+//         thumb left, identical dimensions
+// Contract mirrored from ThemeToggle.tsx's own visual-contract docblock.
 import { chromium } from 'playwright';
 import fs from 'fs';
 import path from 'path';
@@ -66,8 +68,8 @@ fs.mkdirSync(path.join(root, '.audit-shots'), { recursive: true });
 fs.writeFileSync(path.join(root, '.audit-shots', 'toggle-rendered-on.png'), await sw.screenshot({ scale: 'css' }));
 const on = await snapAndMeasure('rendered ON ');
 
-// CONTRACT: 60×34 track, 30×30 thumb, 2px margins, ON sits right.
-const REF = { track: { w: 60, h: 34 }, thumb: { w: 30, h: 30 }, leftGap: 2, rightGap: 2 };
+// CONTRACT: 56×26 track, 34×22 thumb, 2px margins, ON sits right.
+const REF = { track: { w: 56, h: 26 }, thumb: { w: 34, h: 22 }, leftGap: 2, rightGap: 2 };
 const near = (a, b, tol) => Math.abs(a - b) <= tol;
 const pass = !!on
   && near(on.track.w, REF.track.w, 2) && near(on.track.h, REF.track.h, 2)
@@ -110,12 +112,13 @@ const off = await page.evaluate(() => {
   const r = pill.getBoundingClientRect();
   return { bg: getComputedStyle(pill).backgroundColor, x: m.m41, w: r.width, h: r.height };
 });
-const same = near(off.w, 60, 1) && near(off.h, 34, 1);
+const same = near(off.w, REF.track.w, 1) && near(off.h, REF.track.h, 1);
 const left = off.x <= 1;
-const gray = off.bg === 'rgb(233, 233, 234)';
+const gray = off.bg === 'rgb(57, 57, 61)'; // #39393d — designed OFF on parchment
 console.log(same ? 'PASS: OFF keeps the exact track dimensions' : 'FAIL: OFF changed track dimensions');
 console.log(left ? 'PASS: OFF places the thumb on the left' : 'FAIL: OFF thumb not on the left');
-console.log(gray ? 'PASS: OFF track is neutral gray' : 'FAIL: OFF track color ' + off.bg);
+console.log(gray ? 'PASS: OFF track is the designed gray' : 'FAIL: OFF track color ' + off.bg);
 
 await b.close();
-process.exit(pass ? 0 : 1);
+// Every check gates the exit code — OFF-state failures used to print and pass.
+process.exit(pass && same && left && gray ? 0 : 1);

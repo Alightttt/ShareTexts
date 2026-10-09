@@ -106,7 +106,7 @@ export function LiveCodeDisplay({ secret, createdAt, onRefresh }: LiveCodeDispla
       </div>
 
       {/* Pairing code — 6 digits, mathematically constrained to never overflow */}
-      <div className="flex justify-center items-center gap-1.5 sm:gap-2 px-3 sm:px-5 pb-4 sm:pb-6 w-full" role="group" aria-label={t('code.pairingAria')}>
+      <div className="flex justify-center items-center gap-1.5 sm:gap-2 px-3 sm:px-5 pb-4 sm:pb-6 w-full" role="group" aria-label={t('code.pairingAria')} data-testid="pairing-code">
         {digits.slice(0, 3).map((digit, i) => (
           <div key={'a' + i} className={digitTileClass}>
             <AnimatePresence mode="popLayout">

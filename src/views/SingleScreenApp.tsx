@@ -774,7 +774,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
                   <span className="text-[12.5px] font-medium text-apple-ink-muted/70 dark:text-white/45">{t('home.sendHint')}</span>
                 </div>
                 <div className="flex flex-col items-center gap-1.5 min-w-0">
-                  <TactileButton onClick={handleReceive} variant="soft" size="lg" className="w-full lg:text-[16px] lg:min-h-[56px]" icon={<ReceiveCircleIcon size={18} />}>{t('home.receive')}</TactileButton>
+                  <TactileButton onClick={handleReceive} variant="soft" size="lg" data-testid="home-receive" className="w-full lg:text-[16px] lg:min-h-[56px]" icon={<ReceiveCircleIcon size={18} />}>{t('home.receive')}</TactileButton>
                   <span className="text-[12.5px] font-medium text-apple-ink-muted/70 dark:text-white/45">{t('home.receiveHint')}</span>
                 </div>
               </div>
@@ -988,14 +988,14 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
               {/* On mobile the hero image already carries mb-5 before this
                   row — a second mt-10 stacked on top read as a dead gap.
                   mt-2 keeps one breath of air, nothing more. */}
-              {/* Nearby discovery is an OPTIONAL shortcut, and it is the
-                  last block in the column: on a window too short to hold the
-                  whole landing it would be sliced in half at the fold, which
-                  reads as a broken page. Shown when there is room for it,
-                  stepped aside when there is not — the Send/Receive path
-                  above is unaffected, and the pairing screen carries the
-                  same hint anyway. */}
-              <div className="order-6 mt-8 w-full flex flex-col items-center lg:[@media(max-height:999px)]:hidden lg:items-start">
+              {/* Nearby discovery is the PRIMARY path (§1): always
+                  rendered on desktop — the old max-height:999 hide made
+                  code/QR the only visible way to connect on every 13" laptop.
+                  On a short window (<768px inner height) it also moves UP
+                  ahead of the space rows (order-3 vs order-4): nearby is
+                  primary, the secondary connection methods may sit one
+                  scroll below, and main genuinely scrolls for them. */}
+              <div className="order-6 mt-6 w-full flex flex-col items-center lg:items-start lg:[@media(max-height:767px)]:order-3">
                 <div className="w-full max-w-md lg:max-w-none">
                   <NearbyDevices onStatus={setNearbyStatus} />
                 </div>

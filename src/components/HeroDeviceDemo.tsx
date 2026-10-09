@@ -173,6 +173,10 @@ export function HeroDeviceDemo({
       className={cn('w-full select-none', className)}
       data-testid="hero-demo"
       data-state={phase}
+      // role=group makes the aria-label real: a named container so assistive
+      // tech announces "…the demo…" on entry and the demo's Send never
+      // reads as a second bare "Send" beside the hero's real one.
+      role="group"
       aria-label={t('demo.title')}
     >
       {/* ── The canvas ─────────────────────────────────────────────────── */}
@@ -304,14 +308,16 @@ export function HeroDeviceDemo({
           </AnimatePresence>
         </div>
 
-        <div className="flex min-h-[40px] items-center gap-3">
+        <div className="flex min-h-[44px] items-center gap-3">
           {/* The visitor's control — the same verb the real app's key carries.
               It exists only while the transfer hasn't run; during the walk
-              the row stays reserved but quiet; at done, Restart takes over. */}
+              the row stays reserved but quiet; at done, Restart takes over.
+              size md (44px): the demo is real UI, so the repo's 40px
+              tap-target floor applies to it like any other control. */}
           {phase === 'open' && (
             <TactileButton
               variant="primary"
-              size="sm"
+              size="md"
               onClick={runTransfer}
               data-testid="demo-send"
               className="min-w-[104px]"
@@ -322,7 +328,7 @@ export function HeroDeviceDemo({
           {closed && (
             <TactileButton
               variant="secondary"
-              size="sm"
+              size="md"
               onClick={restart}
               data-testid="demo-restart"
               className="min-w-[104px]"
@@ -335,7 +341,7 @@ export function HeroDeviceDemo({
           {reduced && phase === 'received' && (
             <TactileButton
               variant="secondary"
-              size="sm"
+              size="md"
               onClick={restart}
               data-testid="demo-restart"
               className="min-w-[104px]"

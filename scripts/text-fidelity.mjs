@@ -102,7 +102,7 @@ await A.getByRole('button', { name: 'Send', exact: true }).first().click();
 await A.getByRole('group', { name: 'Pairing code' }).waitFor({ timeout: 10000 });
 const code = await readLiveCode(A);
 await B.getByRole('button', { name: 'Receive', exact: true }).first().click();
-await B.locator('input[inputmode="numeric"]').fill(code);
+await B.locator('input[inputmode="numeric"]').first().fill(code); // six-slot OTP: first slot forwards the paste
 await waitForChat(A, 'A'); await waitForChat(B, 'B');
 console.log('OK  paired — running fidelity matrix');
 

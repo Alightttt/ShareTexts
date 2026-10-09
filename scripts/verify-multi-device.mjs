@@ -36,27 +36,27 @@ async function main() {
 
   // --- A creates; B and C join with the code (no ROOM_FULL rejection) -----
   await A.goto(URL, { waitUntil: 'networkidle' });
-  await A.getByRole('button', { name: 'Send' }).first().click();
+  await A.click('[data-testid="home-send"]');
   await A.getByRole('group', { name: 'Pairing code' }).waitFor({ timeout: 15000 });
   const code = await readLiveCode(A);
   ok('A created a room and shows a pairing code', /^\d{6}$/.test(code), code);
 
   await B.goto(URL, { waitUntil: 'networkidle' });
-  await B.getByRole('button', { name: 'Receive' }).first().click();
-  await B.locator('input[inputmode="numeric"]').fill(code);
+  await B.click('[data-testid="home-receive"]');
+  await B.locator('input[inputmode="numeric"]').first().fill(code);
   await waitForChat(B, 'B');
   await waitForChat(A, 'A');
   ok('B joined the room', true);
 
   // C joins the SAME room — the core multi-device assertion.
   await C.goto(URL, { waitUntil: 'networkidle' });
-  await C.getByRole('button', { name: 'Receive' }).first().click();
+  await C.click('[data-testid="home-receive"]');
   const { TOTP } = await import('otpauth');
   const stored = await A.evaluate(() => localStorage.getItem('sharetext.session.v1'));
   const { secret, createdAt } = JSON.parse(stored);
   const totp = new TOTP({ issuer: 'ShareText', label: 'Session', algorithm: 'SHA1', digits: 6, period: 40, secret });
   const freshCode = totp.generate({ timestamp: Date.now() - (createdAt || 0) });
-  await C.locator('input[inputmode="numeric"]').fill(freshCode);
+  await C.locator('input[inputmode="numeric"]').first().fill(freshCode);
   const cOk = await waitForChat(C, 'C').then(() => true).catch(() => false);
   ok('C joined the same room (no product cap)', cOk);
   if (!cOk) {

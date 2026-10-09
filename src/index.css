@@ -818,6 +818,16 @@ html[st-theme-vt] {
   content-visibility: auto;
   contain-intrinsic-size: auto 72px;
 }
+/* The LANDING's grid is the exception. content-visibility:auto carries paint
+   containment, and containment made "main is scrollable" (the promise in the
+   landing's own comment) a lie: overflow past the fold was clipped at the
+   padding box and never counted toward scrollHeight, so anything below the
+   fold — the nearby-devices block — was silently unreachable. The chat
+   thread keeps the virtualization; the landing lays out fully and scrolls
+   exactly as documented. Unlayered, so it wins over the utility cascade. */
+.st-landing .room-scroll > * > * {
+  content-visibility: visible;
+}
 .dark .room-scroll {
   scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
 }
