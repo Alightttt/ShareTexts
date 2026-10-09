@@ -1,7 +1,7 @@
 /* ShareText Guide Pages — Design System
  * Matches the main app's Apple-inspired visual language:
  * - SF Pro typography
- * - Blue brand (#f06413)
+ * - Ember brand (#f06413)
  * - Clean surfaces with subtle depth
  * - Layered dark mode (not inverted)
  * - Rounded corners (12-20px)
@@ -18,20 +18,20 @@
   --brand-border: rgba(240,100,19,.15);
   
   /* Surface */
-  --bg: #ffffff;
-  --bg-secondary: #f5f5f7;
-  --bg-elevated: #fafafc;
+  --bg: #f7f4ee;
+  --bg-secondary: #efece3;
+  --bg-elevated: #fbfaf7;
   --surface: #ffffff;
-  --surface-raised: #f7f8fa;
+  --surface-raised: #ffffff;
   
   /* Text */
-  --text: #1d1d1f;
-  --text-secondary: #6e737b;
-  --text-muted: #aeaeb2;
+  --text: #1e1c18;
+  --text-secondary: #635f57;
+  --text-muted: #a49f96;
   
   /* Border */
-  --border: #e8e8ed;
-  --border-subtle: #f0f0f5;
+  --border: #e5e0d3;
+  --border-subtle: #ece7dc;
   
   /* Status */
   --success: #34c759;
@@ -50,23 +50,23 @@
 /* Dark palette — the html.dark class is set by guides/theme.js before paint
    (saved preference, else system). One source of truth, no media-query split. */
 html.dark {
-  --brand: #4d9dff;
-  --brand-hover: #72b3ff;
-  --brand-light: rgba(77,157,255,.08);
-  --brand-border: rgba(77,157,255,.2);
+  --brand: #fb7a2e;
+  --brand-hover: #ff8a45;
+  --brand-light: rgba(251,122,46,.10);
+  --brand-border: rgba(251,122,46,.25);
 
-  --bg: #080c16;
-  --bg-secondary: #0c1220;
-  --bg-elevated: #141c2e;
-  --surface: #141c2e;
-  --surface-raised: #1a2438;
+  --bg: #131315;
+  --bg-secondary: #202025;
+  --bg-elevated: #212126;
+  --surface: #1a1a1e;
+  --surface-raised: #1a1a1e;
 
-  --text: #f0f2f5;
-  --text-secondary: #8a93a6;
-  --text-muted: #555d6e;
+  --text: #f2f0eb;
+  --text-secondary: #b0aba2;
+  --text-muted: #7c7a76;
 
-  --border: rgba(240,242,245,.08);
-  --border-subtle: rgba(240,242,245,.04);
+  --border: #323239;
+  --border-subtle: rgba(255,255,255,.06);
 
   --success: #55d18c;
   --success-bg: rgba(85,209,140,.08);
@@ -79,23 +79,23 @@ html.dark {
 /* No-JS fallback: follow the system preference until theme.js can decide. */
 @media (prefers-color-scheme: dark) {
   html:not(.light):not(.dark) {
-    --brand: #4d9dff;
-    --brand-hover: #72b3ff;
-    --brand-light: rgba(77,157,255,.08);
-    --brand-border: rgba(77,157,255,.2);
+    --brand: #fb7a2e;
+    --brand-hover: #ff8a45;
+    --brand-light: rgba(251,122,46,.10);
+    --brand-border: rgba(251,122,46,.25);
 
-    --bg: #080c16;
-    --bg-secondary: #0c1220;
-    --bg-elevated: #141c2e;
-    --surface: #141c2e;
-    --surface-raised: #1a2438;
+    --bg: #131315;
+    --bg-secondary: #202025;
+    --bg-elevated: #212126;
+    --surface: #1a1a1e;
+    --surface-raised: #1a1a1e;
 
-    --text: #f0f2f5;
-    --text-secondary: #8a93a6;
-    --text-muted: #555d6e;
+    --text: #f2f0eb;
+    --text-secondary: #b0aba2;
+    --text-muted: #7c7a76;
 
-    --border: rgba(240,242,245,.08);
-    --border-subtle: rgba(240,242,245,.04);
+    --border: #323239;
+    --border-subtle: rgba(255,255,255,.06);
 
     --success: #55d18c;
     --success-bg: rgba(85,209,140,.08);
@@ -120,15 +120,17 @@ body {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: rgba(255,255,255,.88);
+  background: rgba(247,244,238,.88);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-bottom: 1px solid var(--border);
   padding: 0 24px;
 }
-html.dark .header { background: rgba(8,12,22,.88); }
+html.dark .header { background: rgba(19,19,21,.88); }
 @media (prefers-color-scheme: dark) {
-  .header { background: rgba(8,12,22,.88); }
+  /* Scoped to "no decision yet": a saved LIGHT preference must keep the
+     light header even when the system is dark. */
+  html:not(.light):not(.dark) .header { background: rgba(19,19,21,.88); }
 }
 .header-inner {
   max-width: 720px;

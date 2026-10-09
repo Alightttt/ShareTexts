@@ -91,7 +91,11 @@ function saveCreds(spaceId: string, rec: { token: string; manageKey?: string; na
   for (const [id, r] of Object.entries(map)) {
     if (Date.now() - r.expiresAt > 24 * 3600_000) delete map[id];
   }
-  map[spaceId] = { ...rec, lastOpen: Date.now() };
+  // A plain join (link, refresh, rejoin) carries no manage key — it must
+  // not ERASE one this device already holds: the creator's "Close now"
+  // (and the whole close lifecycle) lives in that field.
+  const prev = map[spaceId];
+  map[spaceId] = { ...rec, manageKey: rec.manageKey ?? prev?.manageKey, lastOpen: Date.now() };
   writeCreds(map);
 }
 

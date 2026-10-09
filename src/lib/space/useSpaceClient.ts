@@ -82,7 +82,7 @@ export function useSpaceClient(spaceId: string, token: string): SpaceClient {
             if (disposed) return;
             switch (e.event) {
               case 'space_sync': {
-                setSnapshot(prev => prev ? { ...prev, name: e.payload.name, expiresAt: e.payload.expiresAt, memberCount: e.payload.memberCount } : prev);
+                setSnapshot(prev => prev ? { ...prev, name: e.payload.name, expiresAt: e.payload.expiresAt, memberCount: e.payload.memberCount, members: e.payload.members ?? prev.members } : prev);
                 seqRef.current = Math.max(seqRef.current, e.payload.seq);
                 upsertSorted([...e.payload.items]);
                 break;
@@ -104,7 +104,7 @@ export function useSpaceClient(spaceId: string, token: string): SpaceClient {
                 break;
               }
               case 'members_changed': {
-                setSnapshot(prev => prev ? { ...prev, memberCount: e.payload.memberCount } : prev);
+                setSnapshot(prev => prev ? { ...prev, memberCount: e.payload.memberCount, members: e.payload.members ?? prev.members } : prev);
                 break;
               }
               case 'space_closed': {

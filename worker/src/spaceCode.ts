@@ -32,10 +32,13 @@ export function normalizeSpaceCode(raw: string): string {
 }
 
 /** Display form: ABCD-72QK (4+4). Codes never contain ambiguous chars, so
- *  the hyphen is pure formatting — stripped on every round-trip. */
+ *  the hyphen is pure formatting — stripped on every round-trip. The group
+ *  appears as soon as the second half starts (length > 4), so the field is
+ *  visibly 4+4 WHILE typing, not only once complete. Keep in sync with
+ *  src/lib/space/spaceCode.ts. */
 export function formatSpaceCode(code: string): string {
   const c = normalizeSpaceCode(code);
-  return c.length === 8 ? `${c.slice(0, 4)}-${c.slice(4)}` : c;
+  return c.length > 4 ? `${c.slice(0, 4)}-${c.slice(4)}` : c;
 }
 
 /** Strict validity check AFTER normalization. */

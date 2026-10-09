@@ -14,8 +14,9 @@
 import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ArrowLeft, ArrowUp, Check, Clock, Copy, Download, File as FileIcon, Image as ImageIcon,
-  Link2, Pause, Play, Plus, QrCode, Share2, Trash2, UploadCloud, X, XCircle,
+  ArrowLeft, ArrowUp, Check, ChevronDown, Clock, Copy, Download, File as FileIcon,
+  Image as ImageIcon, Link2, Pause, Play, Plus, QrCode, Share2, Trash2, UploadCloud,
+  X, XCircle,
 } from 'lucide-react';
 import { SpinLoader } from '../components/SpinLoader';
 import { IsometricSpaceIllustration } from '../components/isometric/IsometricIllustrations';
@@ -445,6 +446,7 @@ export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): 
             type="button"
             onClick={generateCode}
             className="shrink-0 min-h-[44px] px-3.5 rounded-[12px] text-[13px] font-semibold text-apple-ink dark:text-white/80 bg-white dark:bg-white/[0.05] border border-apple-divider dark:border-white/[0.1] hover:border-apple-ink/25 dark:hover:border-white/25 transition-colors"
+            data-testid="space-code-generate"
           >
             {t('space.codeGenerate')}
           </button>
@@ -457,7 +459,17 @@ export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): 
             : t('space.codeInvalid')}
         </p>
 
-        <label className="block mt-4 text-[13px] font-medium text-apple-ink dark:text-white/80" htmlFor="space-name">{t('space.nameLabel')}</label>
+        {/* Progressive disclosure (§2): the primary path is CODE → Create.
+            Name, lifetime and the reminder are real options, but they are
+            not the first decision — collapsed by default so a first-time
+            create is one simple action, one tap away when wanted. */}
+        <details className="mt-4 group" data-testid="space-create-optional">
+          <summary className="cursor-pointer list-none min-h-[42px] rounded-[12px] inline-flex w-full items-center justify-center gap-2 text-[13.5px] font-medium text-apple-ink-muted dark:text-white/60 bg-white dark:bg-white/[0.05] border border-apple-divider dark:border-white/[0.1] hover:border-apple-ink/25 dark:hover:border-white/25 transition-colors">
+            <ChevronDown className="w-4 h-4 transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none" aria-hidden />
+            {t('space.optionalLabel')}
+          </summary>
+          <div className="pt-4">
+        <label className="block text-[13px] font-medium text-apple-ink dark:text-white/80" htmlFor="space-name">{t('space.nameLabel')}</label>
         <input
           id="space-name"
           value={name}
@@ -511,6 +523,8 @@ export function SpaceCreateSheet({ open, onClose }: { open: boolean; onClose(): 
             {support === 'supported' ? t('space.remindLabel') : t('space.remindUnavailable')}
           </span>
         </label>
+          </div>
+        </details>
 
         {error && <p className="mt-3 text-[13px] text-red-600 dark:text-red-400" role="alert">{error}</p>}
 
@@ -538,6 +552,7 @@ export function SpaceJoinSheet({ open, onClose, initialCode }: { open: boolean; 
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Arriving from a QR scan or a /space/join?code=… link: skip the typing
   // and join directly — same auto-submit path as typing the 8th character.
@@ -591,6 +606,10 @@ export function SpaceJoinSheet({ open, onClose, initialCode }: { open: boolean; 
       else if (e instanceof SpaceApiError && e.status === 429) setError(t('space.joinRate'));
       else if (e instanceof SpaceApiError && e.closed) setError(t('space.joinClosed'));
       else setError((e as Error)?.message || t('space.errGeneric'));
+      // Recovery in one gesture: the failed code text gets selected, so the
+      // next keystroke replaces it — the message says what to check.
+      inputRef.current?.focus();
+      inputRef.current?.select();
       setBusy(false);
     }
   };
@@ -600,6 +619,7 @@ export function SpaceJoinSheet({ open, onClose, initialCode }: { open: boolean; 
       <h2 className="text-[16.5px] font-semibold text-apple-ink dark:text-white tracking-[-0.01em]">{t('space.joinTitle')}</h2>
         <p className="mt-1.5 text-[13.5px] text-apple-ink-muted dark:text-white/55">{t('space.joinSub')}</p>
         <input
+          ref={inputRef}
           value={formatSpaceCode(code)}
           onChange={e => setCodeTyped(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && code.trim() && !busy) void go(); }}
@@ -648,28 +668,66 @@ function ShareSheet({ open, spaceId, token, code, onClose }: { open: boolean; sp
       setTimeout(() => setCopied(null), 1600);
     } catch { /* clipboard blocked */ }
   };
+  // Native share is the fastest exit where the platform offers it; the
+  // sheet never forces it — copy and QR are always here as equivalents.
+  const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+  const nativeShare = async () => {
+    try { await navigator.share({ title: 'ShareTexts', text: code ? t('space.codeDisplayLabel') + ': ' + formatSpaceCode(code) : undefined, url: link }); } catch { /* user closed the sheet */ }
+  };
   return (
     <OverlaySheet open={open} onClose={onClose} label={t('space.share')} maxWidth={420} testId="space-share">
       <h2 className="text-[16.5px] font-semibold text-apple-ink dark:text-white">{t('space.share')}</h2>
         {code ? (
           <>
             <p className="mt-1.5 text-[13px] leading-relaxed text-apple-ink-muted dark:text-white/55">{t('space.codeShareHint')}</p>
+            {/* CODE is the share — the human-readable code owns the top of
+                the sheet; everything else is a way to hand it over. */}
             <div className="mt-4 rounded-[16px] border border-apple-divider dark:border-white/[0.1] bg-white dark:bg-white/[0.04] px-4 py-3.5 text-center">
               <p className="text-[11px] font-semibold uppercase tracking-[0.09em] text-apple-ink-muted/80 dark:text-white/45">{t('space.codeDisplayLabel')}</p>
               <p className="mt-1 font-mono text-[30px] font-bold tracking-[0.1em] text-apple-ink dark:text-white leading-none" data-testid="space-share-code">{formatSpaceCode(code)}</p>
             </div>
-            <button
-              onClick={() => void copy('code')}
-              className="mt-3 w-full min-h-[46px] rounded-full inline-flex items-center justify-center gap-2 bg-apple-ink dark:bg-white text-white dark:text-night-900 text-[14px] font-semibold active:scale-[0.97] transition-transform"
-              data-testid="space-share-copy-code"
-            >
-              {copied === 'code' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copied === 'code' ? t('space.copied') : t('space.copyCode')}
-            </button>
+            {/* Order follows the brief: QR → share → copy. Three equal
+                exits in one row, no primary/secondary hierarchy to parse. */}
+            <div className="mt-3 flex items-stretch gap-2">
+              <button
+                onClick={() => setShowQr(v => !v)}
+                aria-expanded={showQr}
+                className="flex-1 min-h-[44px] rounded-[12px] inline-flex items-center justify-center gap-1.5 text-[13.5px] font-semibold text-apple-ink dark:text-white/80 bg-white dark:bg-white/[0.05] border border-apple-divider dark:border-white/[0.1] hover:border-apple-ink/25 dark:hover:border-white/25 transition-colors"
+                data-testid="space-share-qr"
+              >
+                <QrCode className="w-4 h-4" /> QR
+              </button>
+              {canNativeShare && (
+                <button
+                  onClick={() => void nativeShare()}
+                  className="flex-1 min-h-[44px] rounded-[12px] inline-flex items-center justify-center gap-1.5 text-[13.5px] font-semibold text-apple-ink dark:text-white/80 bg-white dark:bg-white/[0.05] border border-apple-divider dark:border-white/[0.1] hover:border-apple-ink/25 dark:hover:border-white/25 transition-colors"
+                  data-testid="space-share-native"
+                >
+                  <Share2 className="w-4 h-4" /> {t('space.share')}
+                </button>
+              )}
+              <button
+                onClick={() => void copy('code')}
+                className="flex-1 min-h-[44px] rounded-[12px] inline-flex items-center justify-center gap-1.5 text-[13.5px] font-semibold bg-apple-ink dark:bg-white text-white dark:text-night-900 active:scale-[0.97] transition-transform"
+                data-testid="space-share-copy-code"
+              >
+                {copied === 'code' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copied === 'code' ? t('space.copied') : t('space.copyCode')}
+              </button>
+            </div>
+            {showQr && (
+              <div className="mt-4 flex justify-center rounded-[16px] bg-white p-4">
+                <Suspense fallback={<span className="w-[208px] h-[208px] flex items-center justify-center"><SpinLoader size={24} className="text-apple-ink-muted" /></span>}>
+                  <QRCode value={`${window.location.origin}/space/join?code=${formatSpaceCode(code)}`} size={208} />
+                </Suspense>
+              </div>
+            )}
           </>
         ) : (
           <p className="mt-1.5 text-[13px] leading-relaxed text-apple-ink-muted dark:text-white/55">{t('space.shareHint')}</p>
         )}
+        {/* The link is a secondary technical convenience — collapsed, below
+            the code, never competing with it. */}
         <details className="mt-3 group">
           <summary className="cursor-pointer list-none min-h-[44px] rounded-[12px] inline-flex w-full items-center justify-center gap-2 text-[13.5px] font-medium text-apple-ink-muted dark:text-white/60 bg-white dark:bg-white/[0.05] border border-apple-divider dark:border-white/[0.1] hover:border-apple-ink/25 dark:hover:border-white/25 transition-colors">
             <Link2 className="w-4 h-4" /> {t('space.shareLinkSecondary')}
@@ -686,19 +744,6 @@ function ShareSheet({ open, spaceId, token, code, onClose }: { open: boolean; sp
             </button>
           </div>
         </details>
-        <button
-          onClick={() => setShowQr(v => !v)}
-          className="mt-3 w-full min-h-[44px] rounded-[12px] inline-flex items-center justify-center gap-2 text-[13.5px] font-semibold text-apple-ink dark:text-white/80 bg-white dark:bg-white/[0.05] border border-apple-divider dark:border-white/[0.1] hover:border-apple-ink/25 dark:hover:border-white/25 transition-colors"
-        >
-          <QrCode className="w-4 h-4" /> QR
-        </button>
-        {showQr && (
-          <div className="mt-4 flex justify-center rounded-[16px] bg-white p-4">
-            <Suspense fallback={<span className="w-[208px] h-[208px] flex items-center justify-center"><SpinLoader size={24} className="text-apple-ink-muted" /></span>}>
-              <QRCode value={code ? `${window.location.origin}/space/join?code=${formatSpaceCode(code)}` : link} size={208} />
-            </Suspense>
-          </div>
-        )}
     </OverlaySheet>
   );
 }
@@ -723,6 +768,12 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const myPid = snapshot?.participantId;
+  // Who's in the space — the roster behind the header's count. The wire
+  // always pairs it with memberCount, so list and number can't disagree.
+  const roster = snapshot?.members ?? [];
+  // One trigger for the header hairline AND the in-content note, so the two
+  // can never tell different stories about the same clock.
+  const closingSoon = !!snapshot && isRunningOut(snapshot.createdAt ?? snapshot.expiresAt - 24 * 3_600_000, snapshot.expiresAt, nowMs);
 
   const localToken = token || localCreds(spaceId)?.token || '';
 
@@ -833,7 +884,7 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
         {/* Lifetime hairline — time actually spent of the promised window.
             Renders only once the shelf is genuinely running out (≥60% spent
             or the last hour); calm metadata before that, no fake urgency. */}
-        {snapshot && isRunningOut(snapshot.createdAt ?? snapshot.expiresAt - 24 * 3_600_000, snapshot.expiresAt, nowMs) && (
+        {snapshot && closingSoon && (
           <div
             aria-hidden
             className="absolute bottom-0 left-0 h-[2px] bg-ember/70 transition-[width] duration-1000 ease-linear"
@@ -908,6 +959,29 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
             </motion.p>
           )}
         </AnimatePresence>
+        {/* Near expiry says exactly what happens next — calm and truthful,
+            no manufactured urgency. Same trigger as the header hairline. */}
+        {snapshot && closingSoon && (
+          <p className="mb-3 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-ember" role="status" data-testid="space-closing-note">
+            <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden />
+            {t('space.closesSoonNote')}
+          </p>
+        )}
+        {/* The devices behind the count — who else is in this space. Hidden
+            while you're alone: the header's count already says it. */}
+        {snapshot && roster.length > 1 && (
+          <ul className="mb-3 flex flex-wrap gap-1.5" aria-label={t('space.devicesLabel')} data-testid="space-devices">
+            {roster.map(m => (
+              <li key={m.participantId} className="inline-flex items-center gap-1.5 rounded-full bg-white dark:bg-surface-dark border border-apple-divider/70 dark:border-white/[0.08] px-2.5 py-1 text-[12px] font-medium text-apple-ink dark:text-white/75">
+                <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-emerald-500 dark:bg-emerald-400" aria-hidden />
+                {m.name}
+                {m.participantId === snapshot.participantId && (
+                  <span className="text-apple-ink-muted/70 dark:text-white/40">· {t('space.thisDevice')}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
         {loadingFirst ? (
           /* One loading language: the same skeleton grammar the QR overlays
              use — shape first, words never. */

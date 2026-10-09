@@ -150,6 +150,13 @@ interface MemberRecord {
   joinedAt: number;
 }
 
+/** The roster paired with every memberCount so a device list and its
+ *  number can never disagree. Device names already label every item in the
+ *  room, so the list leaks nothing the room doesn't know. */
+function rosterOf(members: Record<string, { name: string }>): Array<{ participantId: string; name: string }> {
+  return Object.entries(members).map(([participantId, m]) => ({ participantId, name: m.name }));
+}
+
 interface ItemMeta {
   id: string;
   seq: number;             // 0 while staged/unfinished
@@ -319,7 +326,7 @@ export class Space extends DurableObject<Env> {
     s.members[participantId] = { name: name || 'A device', joinedAt: now, lastSeen: now };
     await this.ctx.storage.put('member:' + participantId, { name: name || 'A device', joinedAt: now } satisfies MemberRecord);
     await this.saveSpace();
-    this.broadcast('members_changed', { memberCount: Object.keys(s.members).length });
+    this.broadcast('members_changed', { memberCount: Object.keys(s.members).length, members: rosterOf(s.members) });
     return true;
   }
 
@@ -444,12 +451,13 @@ export class Space extends DurableObject<Env> {
           type: 'event', event: 'space_sync', payload: {
             name: s.name, expiresAt: s.expiresAt, seq: s.itemSeq,
             memberCount: Object.keys(s.members).length,
+            members: rosterOf(s.members),
             isCreator: joinerIsCreator,
             items,
           },
         }));
       } catch { /* noop */ }
-      this.broadcast('members_changed', { memberCount: Object.keys(s.members).length });
+      this.broadcast('members_changed', { memberCount: Object.keys(s.members).length, members: rosterOf(s.members) });
       return;
     }
 
@@ -471,7 +479,7 @@ export class Space extends DurableObject<Env> {
     const meta = this.conns.get(cid);
     this.conns.delete(cid);
     if (meta?.authorized) {
-      this.broadcast('members_changed', { memberCount: this.liveMemberCount() });
+      this.broadcast('members_changed', { memberCount: this.liveMemberCount(), members: rosterOf(this.space?.members ?? {}) });
     }
   }
 
@@ -579,6 +587,7 @@ export class Space extends DurableObject<Env> {
       spaceId: s.spaceId, name: s.name,
       createdAt: s.createdAt, expiresAt: s.expiresAt, durationMs: s.durationMs,
       memberCount: Object.keys(s.members).length,
+      members: rosterOf(s.members),
       isCreator: isManager,
       participantId,
       items,

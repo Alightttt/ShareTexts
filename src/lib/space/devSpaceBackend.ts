@@ -464,7 +464,7 @@ export class SpaceDev {
     }
     if (Object.keys(s.members).length >= MEMBERS_SOFT_CAP) return false;
     s.members[participantId] = { name: name || 'A device', joinedAt: now, lastSeen: now };
-    this.broadcastTo(s.spaceId, 'members_changed', { memberCount: Object.keys(s.members).length });
+    this.broadcastTo(s.spaceId, 'members_changed', { memberCount: Object.keys(s.members).length, members: rosterOf(s.members) });
     return true;
   }
 
@@ -557,6 +557,7 @@ export class SpaceDev {
       spaceId: db.space.spaceId, name: db.space.name,
       createdAt: db.space.createdAt, expiresAt: db.space.expiresAt, durationMs: db.space.durationMs,
       memberCount: Object.keys(db.space.members).length,
+      members: rosterOf(db.space.members),
       isCreator: isManager,
       participantId,
       items: this.listItems(db, 0),
@@ -964,11 +965,12 @@ export class SpaceDev {
           event: 'space_sync', payload: {
             name: db.space.name, expiresAt: db.space.expiresAt, seq: db.space.itemSeq,
             memberCount: Object.keys(db.space.members).length,
+            members: rosterOf(db.space.members),
             isCreator: timingSafeEqual(hash, db.space.manageHash),
             items: this.listItems(db, 0),
           },
         });
-        this.broadcastTo(sid, 'members_changed', { memberCount: Object.keys(db.space.members).length });
+        this.broadcastTo(sid, 'members_changed', { memberCount: Object.keys(db.space.members).length, members: rosterOf(db.space.members) });
         ack?.({ ok: true });
       });
 
@@ -980,7 +982,7 @@ export class SpaceDev {
             if (set.size === 0) this.sockets.delete(spaceId);
           }
           const db = this.dbs.get(spaceId);
-          if (db) this.broadcastTo(spaceId, 'members_changed', { memberCount: Object.keys(db.space.members).length });
+          if (db) this.broadcastTo(spaceId, 'members_changed', { memberCount: Object.keys(db.space.members).length, members: rosterOf(db.space.members) });
         }
       });
     });
@@ -1016,6 +1018,13 @@ function deviceKeyOf(req: express.Request): string {
 }
 
 /** Device-scoped participant id: token hash (secret) + device seed. */
+/** The roster paired with every memberCount so a device list and its
+ *  number can never disagree. Device names already label every item in the
+ *  room, so the list leaks nothing the room doesn't know. */
+function rosterOf(members: Record<string, { name: string }>): Array<{ participantId: string; name: string }> {
+  return Object.entries(members).map(([participantId, m]) => ({ participantId, name: m.name }));
+}
+
 function pidFor(tokenHash: string, deviceKey: string): string {
   return 'p_' + sha256Hex(tokenHash + '.' + deviceKey).slice(0, 16);
 }

@@ -17,6 +17,13 @@ export interface SpaceItem {
   state: 'READY' | 'UPLOADING';
 }
 
+/** One device in the space. Names are already member-visible (they label
+ *  every item), so the roster exposes nothing new to the room. */
+export interface SpaceMember {
+  participantId: string;
+  name: string;
+}
+
 export interface SpaceSnapshot {
   spaceId: string;
   name: string;
@@ -24,6 +31,8 @@ export interface SpaceSnapshot {
   expiresAt: number;
   durationMs?: number;
   memberCount: number;
+  /** Who is in the space — always paired with memberCount on the wire. */
+  members?: SpaceMember[];
   isCreator: boolean;
   participantId: string;
   items: SpaceItem[];
@@ -74,9 +83,9 @@ export interface UploadStatus {
 }
 
 export type SpaceLiveEvent =
-  | { event: 'space_sync'; payload: { name: string; expiresAt: number; seq: number; memberCount: number; isCreator: boolean; items: SpaceItem[] } }
+  | { event: 'space_sync'; payload: { name: string; expiresAt: number; seq: number; memberCount: number; members?: SpaceMember[]; isCreator: boolean; items: SpaceItem[] } }
   | { event: 'item_added'; payload: { item: SpaceItem } }
   | { event: 'item_deleted'; payload: { itemId: string } }
-  | { event: 'members_changed'; payload: { memberCount: number } }
+  | { event: 'members_changed'; payload: { memberCount: number; members?: SpaceMember[] } }
   | { event: 'space_closed'; payload: { reason: string; expiresAt: number } }
   | { event: 'space_auth_failed'; payload: Record<string, never> };
