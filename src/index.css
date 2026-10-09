@@ -203,13 +203,23 @@
      verify-visual-system gate enforces these exact values. */
 
   /* ── Tactile surfaces (theme-aware button gradients) ────────────────── */
-  --st-btn-primary-grad: linear-gradient(180deg, #f9743a 0%, #f06413 60%, #e05c0f 100%);
+  /* Deepened from the bright brand stops so WHITE labels clear WCAG AA
+     (≥4.5:1) at every point of the ramp — the brand's bright ember lives
+     in the icon artwork (gated by verify-brand-assets), buttons carry a
+     deeper "pressed" ember. */
+  --st-btn-primary-grad: linear-gradient(180deg, #c94d06 0%, #c24705 60%, #b34003 100%);
   --st-btn-soft-grad: linear-gradient(180deg, #fb9a56 0%, #f98b41 58%, #ef7c30 100%);
   --st-btn-secondary-grad: linear-gradient(180deg, #ffffff 0%, #f4f1ea 55%, #ebe6dc 100%);
   /* Keycap edge — the solid bottom lip the primary key sits on. Pressing
      compresses the lip (shadow Y 4px → 1px) while the body sinks into it:
      the "real key" press, in brand colors. */
-  --st-btn-primary-edge: #c04b09;
+  --st-btn-primary-edge: #a33e05;
+  /* Primary key solid under the gradient overlay + the ink label the
+     light-key (soft) recipe carries in BOTH themes — AA-verified values
+     (white-on-deep-ember ≥4.5:1, ink-on-soft ≈7.8:1). Consumed by
+     TactileButton's base classes. */
+  --st-btn-ember-deep: #c94d06;
+  --st-btn-soft-ink: #1e1c18;
 }
 
 @layer base {
@@ -274,10 +284,10 @@
     --color-ember: #fb7a2e;
     --color-honey: #ffc25c;
     --gradient-ember: var(--gradient-ember-dark);
-    --st-btn-primary-grad: linear-gradient(180deg, #fb8447 0%, #f06413 60%, #d9560e 100%);
+    --st-btn-primary-grad: linear-gradient(180deg, #c94d06 0%, #c24705 60%, #b34003 100%);
     --st-btn-soft-grad: linear-gradient(180deg, #ffb778 0%, #fb9243 58%, #f58235 100%);
     --st-btn-secondary-grad: linear-gradient(180deg, #2b2b31 0%, #26262c 55%, #212127 100%);
-    --st-btn-primary-edge: #a83f06;
+    --st-btn-primary-edge: #933704;
     /* Night radius relight: 26px reads bulbous on graphite; the hero stage
        drops one tier — the only radius the dark theme is allowed to retune. */
     --st-radius-hero: 22px;

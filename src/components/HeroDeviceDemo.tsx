@@ -428,7 +428,11 @@ function LaptopScreen({
   const note = t('demo.note');
 
   return (
-    <div className="relative flex h-full w-full flex-col bg-white text-apple-ink dark:bg-night-900 dark:text-white">
+    // The rendered screens are a PICTURE of the product: their mini-UI text
+    // (file rows, status bars) is decorative context, not content — hidden
+    // from assistive tech so it can't be mistaken for real page text (and
+    // so image-text contrast rules correctly treat it as an image).
+    <div aria-hidden="true" className="relative flex h-full w-full flex-col bg-white text-apple-ink dark:bg-night-900 dark:text-white">
       <div className="flex min-h-0 flex-1">
         {/* Rail: brand · the code · who's here. */}
         <div className="hidden w-[32%] shrink-0 flex-col gap-[8px] border-r border-apple-divider/70 bg-apple-parchment/60 p-[9px] dark:border-white/[0.06] dark:bg-white/[0.02] sm:flex">
@@ -597,7 +601,7 @@ function PhoneScreen({
   const { t } = useI18n();
 
   return (
-    <div className="relative flex h-full w-full flex-col bg-apple-canvas dark:bg-night-900">
+    <div aria-hidden="true" className="relative flex h-full w-full flex-col bg-apple-canvas dark:bg-night-900">
       <PhoneStatusBar />
 
       <AnimatePresence mode="popLayout" initial={false}>

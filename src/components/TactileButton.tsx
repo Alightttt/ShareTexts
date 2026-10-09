@@ -71,7 +71,11 @@ const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; 
     gradient: 'var(--st-btn-primary-grad)',
   },
   soft: {
-    base: 'text-white',
+    // Light-key recipe: ink label in BOTH themes, NOT white — white on
+    // the soft-ember surface is ~2.3:1 (WCAG fail); ink is ~7.8:1 and
+    // reads like the platform's warm-orange pills. (dark pin because the
+    // dark theme would otherwise flip apple-ink to near-white.)
+    base: 'text-apple-ink dark:text-[var(--st-btn-soft-ink)]',
     // Light-key recipe lifted onto the soft-ember surface: the original's
     // neutral drop ladder warms slightly so the key sits on the page.
     shadowIdle: '0 1px 1px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.10), 0 6px 12px rgba(240,100,19,0.16), inset 0 1px 2px rgba(255,255,255,0.40), inset 0 -2px 4px rgba(130,48,5,0.26)',
@@ -97,7 +101,11 @@ const VARIANT_STYLES: Record<ButtonVariant, { base: string; shadowIdle: string; 
 };
 
 const SURFACE_FILLS: Record<ButtonVariant, string> = {
-  primary: 'bg-ember',
+  // Deepened from bg-ember: white labels on bright ember (3.2:1 light /
+  // 2.65:1 dark remap) fail WCAG at label sizes; the token clears 4.5:1
+  // with white in BOTH themes (bright brand ember stays in icons/links/
+  // artwork, where the 3:1 graphic rule applies).
+  primary: 'bg-[var(--st-btn-ember-deep)]',
   soft: 'bg-azure-500',
   secondary: 'bg-white dark:bg-apple-tile-2',
   ghost: '',
@@ -190,7 +198,7 @@ export function TactileButton({
 
   // The in-flight spinner tints with its surface: white on the colored
   // keycaps, ember on the paper ones — never orange-on-orange.
-  const spinnerClass = variant === 'primary' || variant === 'soft' ? 'text-white' : 'text-ember dark:text-azure-400';
+  const spinnerClass = variant === 'primary' ? 'text-white' : variant === 'soft' ? 'text-apple-ink dark:text-[var(--st-btn-soft-ink)]' : 'text-ember dark:text-azure-400';
 
   const boxShadow = useTransform(
     [shadowY, shadowOpacity],
