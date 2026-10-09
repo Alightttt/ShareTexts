@@ -18,6 +18,7 @@ const ja: Dict = {
   'app.ended.share': 'ShareTexts を誰かに教える',
   'app.ended.shareDone': 'リンクをコピーしました',
   'nav.docs': 'ドキュメント',
+  'nav.guides': 'ガイド',
   'nav.about': '概要',
   'nav.privacy': 'プライバシー',
   'nav.terms': '利用規約',

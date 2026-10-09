@@ -18,6 +18,7 @@ const de: Dict = {
   'app.ended.share': 'Empfiehl ShareTexts jemandem, den du kennst',
   'app.ended.shareDone': 'Link kopiert',
   'nav.docs': 'Dokumentation',
+  'nav.guides': 'Guides',
   'nav.about': 'Über',
   'nav.privacy': 'Datenschutz',
   'nav.terms': 'Nutzungsbedingungen',

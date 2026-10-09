@@ -14,6 +14,7 @@ import { BrandLockup } from './components/BrandLockup';
 import { TactileButton } from './components/TactileButton';
 import { markAppUsed } from './lib/rating';
 import { InstallNudge } from './components/InstallNudge';
+import { Bar } from './components/SkeletonScreen';
 import { OfflineBanner } from './components/AnnouncementBar';
 
 // SingleScreenApp (the landing IS the app) loads eagerly — one less network
@@ -84,8 +85,8 @@ function RouteSkeleton({ wide }: { wide?: boolean }) {
   return (
     <div className="min-h-screen bg-apple-canvas dark:bg-night-900 font-sans">
       <div className="max-w-6xl mx-auto px-6 h-14 flex items-center gap-2" aria-hidden>
-        <div className="st-skeleton h-6 w-6 !rounded-[8px] bg-apple-ink/[0.07] dark:bg-white/[0.08]" />
-        <div className="st-skeleton h-3.5 w-24 rounded-full bg-apple-ink/[0.07] dark:bg-white/[0.08]" />
+        <Bar className="h-6 w-6 !rounded-[8px]" />
+        <Bar className="h-3.5 w-24" />
       </div>
       <div
         role="status"
@@ -93,16 +94,16 @@ function RouteSkeleton({ wide }: { wide?: boolean }) {
         aria-label="Loading"
         className={cnRoute(wide)}
       >
-        <div className="st-skeleton h-8 w-[55%] rounded-full bg-apple-ink/[0.07] dark:bg-white/[0.08]" />
-        <div className="st-skeleton mt-4 h-3 w-[35%] rounded-full bg-apple-ink/[0.07] dark:bg-white/[0.08]" />
+        <Bar className="h-8 w-[55%]" />
+        <Bar className="mt-4 h-3 w-[35%]" />
         <div className="mt-9 space-y-3">
           {[92, 100, 96, 88, 100, 74].map((w, i) => (
-            <div key={i} className="st-skeleton h-3 rounded-full bg-apple-ink/[0.07] dark:bg-white/[0.08]" style={{ width: `${w}%` }} />
+            <Bar key={i} className="h-3" style={{ width: `${w}%` }} />
           ))}
         </div>
         <div className="mt-8 space-y-3">
           {[100, 94, 82].map((w, i) => (
-            <div key={i} className="st-skeleton h-3 rounded-full bg-apple-ink/[0.07] dark:bg-white/[0.08]" style={{ width: `${w}%` }} />
+            <Bar key={i} className="h-3" style={{ width: `${w}%` }} />
           ))}
         </div>
       </div>

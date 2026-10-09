@@ -19,11 +19,18 @@ import { cn } from '../lib/utils';
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-/** One quiet bar — the only primitive a skeleton needs. */
-function Bar({ className }: { className?: string }) {
+/** One quiet bar — the only primitive a skeleton needs. Exported so
+ *  every loading surface (routes, space, cards) draws from ONE tone and
+ *  one motion instead of re-declaling per-site colors. */
+export function Bar(props: { className?: string; style?: React.CSSProperties; key?: React.Key }) {
+  // NOTE: the type declares `key` only so `<Bar key={i}>` typechecks in
+  // maps — React extracts it before props arrive, so it is never read
+  // here (accessing props.key warns "key is not a prop" and fails gates).
+  const { className, style } = props;
   return (
     <div
       aria-hidden="true"
+      style={style}
       className={cn(
         'st-skeleton h-3.5 rounded-full bg-apple-ink/[0.07] dark:bg-white/[0.08]',
         className

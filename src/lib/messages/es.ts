@@ -18,6 +18,7 @@ const es: Dict = {
   'app.ended.share': 'Envía ShareTexts a alguien que conozcas',
   'app.ended.shareDone': 'Enlace copiado',
   'nav.docs': 'Documentación',
+  'nav.guides': 'Guías',
   'nav.about': 'Acerca de',
   'nav.privacy': 'Privacidad',
   'nav.terms': 'Condiciones',

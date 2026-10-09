@@ -41,6 +41,10 @@
       "destination": "/seo/terms.html"
     },
     {
+      "source": "/guides",
+      "destination": "/guides/index.html"
+    },
+    {
       "source": "/",
       "destination": "/index.html"
     },
@@ -51,6 +55,13 @@
     {
       "source": "/space/:uuid",
       "destination": "/index.html"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/guides/",
+      "destination": "/guides",
+      "permanent": true
     }
   ],
   "headers": [

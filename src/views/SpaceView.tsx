@@ -19,6 +19,7 @@ import {
   X, XCircle,
 } from 'lucide-react';
 import { SpinLoader } from '../components/SpinLoader';
+import { Bar } from '../components/SkeletonScreen';
 import { IsometricSpaceIllustration } from '../components/isometric/IsometricIllustrations';
 import { useI18n } from '../lib/i18n';
 import { TactileButton } from '../components/TactileButton';
@@ -988,8 +989,8 @@ export function SpaceView({ spaceId, token }: { spaceId: string; token: string }
           <div className="space-y-2.5" aria-label={t('space.contentLabel')} data-testid="space-loading">
             {[64, 44, 52].map((h, i) => (
               <div key={i} className="rounded-[16px] bg-white dark:bg-surface-dark border border-apple-divider/70 dark:border-white/[0.08] p-3.5">
-                <span className="st-skeleton block rounded-[8px]" style={{ height: h / 2 + 8 }} />
-                <span className="st-skeleton mt-2 block h-2.5 w-1/3 rounded-full" />
+                <Bar className="block rounded-[8px]" style={{ height: h / 2 + 8 }} />
+                <Bar className="mt-2 h-2.5 w-1/3" />
               </div>
             ))}
           </div>

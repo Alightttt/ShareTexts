@@ -4,6 +4,7 @@ import { useSession } from '../lib/SessionContext';
 import { useTheme } from '../lib/theme';
 import { LANGS, useI18n } from '../lib/i18n';
 import { cn, shortCodeOf } from '../lib/utils';
+import { DUR, SPRING } from '../lib/motion/tokens';
 // Gravity UI icons aliased onto the names this file already uses; the few
 // Gravity has no equivalent for (slashed-logo disconnect, gauge) stay lucide.
 import {
@@ -329,7 +330,7 @@ export function CommandBar({ open: openProp, onOpenChange, onSpace }: CommandBar
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
+          transition={{ duration: DUR.micro }}
           className="fixed inset-0 z-[80] bg-black/25 dark:bg-black/55 flex items-start justify-center pt-[10vh] sm:pt-[12vh] px-4 backdrop-blur-[2px]"
           role="dialog"
           aria-modal="true"
@@ -342,7 +343,7 @@ export function CommandBar({ open: openProp, onOpenChange, onSpace }: CommandBar
             initial={{ opacity: 0, y: 12, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.98 }}
-            transition={{ type: 'spring', bounce: 0.12, duration: 0.38 }}
+            transition={SPRING.panel}
             className="w-full max-w-[560px] rounded-[20px] bg-white/95 dark:bg-surface-dark/95 border border-black/[0.06] dark:border-white/[0.08] shadow-[0_24px_70px_-12px_rgba(0,0,0,0.35)] overflow-hidden backdrop-blur-2xl"
             onPointerDown={(e) => e.stopPropagation()}
           >

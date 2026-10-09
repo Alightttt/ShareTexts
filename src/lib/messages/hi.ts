@@ -18,6 +18,7 @@ const hi: Dict = {
   'app.ended.share': 'ShareTexts किसी जानने वाले को भेजें',
   'app.ended.shareDone': 'लिंक कॉपी हो गया',
   'nav.docs': 'दस्तावेज़',
+  'nav.guides': 'गाइड',
   'nav.about': 'परिचय',
   'nav.privacy': 'गोपनीयता',
   'nav.terms': 'शर्तें',

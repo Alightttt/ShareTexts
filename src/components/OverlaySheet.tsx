@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { useI18n } from '../lib/i18n';
 import { useFocusTrap } from '../lib/useFocusTrap';
+import { DUR, SPRING } from '../lib/motion/tokens';
 
 /**
  * OverlaySheet — the app's ONE overlay container: bottom sheet on mobile
@@ -56,7 +57,7 @@ export function OverlaySheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
+            transition={{ duration: DUR.short }}
             className="absolute inset-0 bg-black/35 backdrop-blur-[2px]"
             onClick={onClose}
           />
@@ -68,7 +69,7 @@ export function OverlaySheet({
             initial={{ y: '100%', opacity: 0.6 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: '100%', opacity: 0.4 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 36 }}
+            transition={SPRING.sheet}
             style={{ maxWidth }}
             className="relative w-full rounded-t-[24px] sm:rounded-[20px] bg-apple-canvas dark:bg-surface-dark border border-apple-divider/60 dark:border-white/[0.08] shadow-sheet sm:shadow-2xl p-5 sm:p-6 pb-[max(env(safe-area-inset-bottom),20px)] sm:pb-6 max-h-[90dvh] overflow-y-auto"
             data-testid={testId}

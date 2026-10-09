@@ -78,14 +78,20 @@ async function runLocale(lang, labels) {
   ok(/^\d{6}$/.test(code), `${lang}: read a stable 6-digit code (${code})`);
 
   await B.getByRole('button', { name: labels.receive }).first().click();
-  await B.locator('input[inputmode="numeric"]').fill(code);
+  // The join screen is a 6-slot OTP (one input per digit).
+  const slots = B.locator('input[inputmode="numeric"]');
+  await slots.first().waitFor({ timeout: 15000 });
+  for (let i = 0; i < 6; i++) await slots.nth(i).fill(code[i]);
   await B.getByTestId('composer').first().waitFor({ timeout: 20000 });
   await A.getByTestId('composer').first().waitFor({ timeout: 20000 });
   ok(true, `${lang}: paired — both devices in the room`);
 
   // ── connected: translated chat marker + transfer works ──
-  const chatMarker = await B.evaluate((m) => document.body.innerText.includes(m), labels.readyMarker);
-  ok(chatMarker, `${lang}: connected room shows translated "${labels.readyMarker}"`);
+  // The room's translated marker is the composer placeholder (chat.ready
+  // is no longer rendered); placeholders are attributes, not innerText.
+  const chatMarker = await B.evaluate((m) =>
+    [...document.querySelectorAll('textarea')].some(t => (t.getAttribute('placeholder') || '').includes(m)), labels.readyMarker);
+  ok(chatMarker, `${lang}: connected room shows translated composer placeholder`);
 
   await A.locator('textarea').first().fill(labels.testMsg);
   await A.getByTestId('send').click();
@@ -120,13 +126,13 @@ async function runLocale(lang, labels) {
 
 await runLocale('ar', {
   send: 'إرسال', receive: 'استقبال', pairingCode: 'رمز الاقتران',
-  readyMarker: 'جاهز للنقل', // chat.ready (exact ar string)
+  readyMarker: 'أفلت أي شيء', // composer.placeholder (ar, distinctive prefix)
   testMsg: 'مرحبا من الجهاز الأول',
   shots: true,
 });
 await runLocale('es', {
   send: 'Enviar', receive: 'Recibir', pairingCode: 'Código de emparejamiento',
-  readyMarker: 'Listo para transferir', // chat.ready
+  readyMarker: 'Suelta lo que quieras', // composer.placeholder (es, distinctive prefix)
   testMsg: 'Hola desde el dispositivo uno',
   shots: true,
 });

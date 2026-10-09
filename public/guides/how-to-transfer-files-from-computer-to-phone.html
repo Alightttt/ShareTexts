@@ -82,12 +82,70 @@
     article p a, article li a, article .callout a,
     .steps a, footer p a, .footer p a { padding: 11px 0; }
 </style>
+<style>
+    /* st-crumb — injected by scripts/seo-harden.mjs (idempotent). */
+    .st-crumb { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; margin: 0 0 4px; }
+    .st-crumb a { display: inline-flex; align-items: center; min-height: 40px; color: var(--brand, #d9560e); text-decoration: none; font-weight: 500; }
+    .st-crumb a:hover { text-decoration: underline; }
+    .st-crumb [aria-current] { display: inline-flex; align-items: center; min-height: 40px; color: var(--text-secondary, #635f57); }
+    html.dark .st-crumb [aria-current] { color: #b0aba2; }
+    @media (prefers-color-scheme: dark) { html:not(.light):not(.dark) .st-crumb [aria-current] { color: #b0aba2; } }
+  </style>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "ShareTexts",
+      "item": "https://sharetexts.online/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Guides",
+      "item": "https://sharetexts.online/guides"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "How to Transfer Files from Computer to Phone",
+      "item": "https://sharetexts.online/guides/how-to-transfer-files-from-computer-to-phone.html"
+    }
+  ]
+}
+  </script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Why Not Email It to Yourself?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "You could — but ShareTexts is faster. No waiting for email sync, no file size limits from your email provider, no login. The file moves directly between your two devices."
+      }
+    }
+  ]
+}
+  </script>
 </head>
 <body>
   <header><div class="hdr-inner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span>ShareTexts</span><a href="/" class="back">Home →</a></div></header>
 
   <main class="container"><article>
     <p class="muted" style="font-size:13px; margin-bottom:8px;">Guide</p>
+    <nav class="st-crumb" aria-label="Breadcrumb">
+      <a href="/">ShareTexts</a>
+      <span aria-hidden="true">›</span>
+      <a href="/guides">Guides</a>
+      <span aria-hidden="true">›</span>
+      <span aria-current="page">How to Transfer Files from Computer to Phone</span>
+    </nav>
     <h1>How to Transfer Files from Computer to Phone</h1>
     <p class="subtitle">Move a file, photo, document, or link from your computer to your phone — directly from the browser. No USB cable, no cloud upload.</p>
 

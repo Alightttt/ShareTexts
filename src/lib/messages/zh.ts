@@ -18,6 +18,7 @@ const zh: Dict = {
   'app.ended.share': '把 ShareTexts 推荐给身边的人',
   'app.ended.shareDone': '链接已复制',
   'nav.docs': '文档',
+  'nav.guides': '指南',
   'nav.about': '关于',
   'nav.privacy': '隐私',
   'nav.terms': '条款',

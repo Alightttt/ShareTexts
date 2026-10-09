@@ -18,6 +18,7 @@ const ar: Dict = {
   'app.ended.share': 'أرسل ShareTexts إلى شخص تعرفه',
   'app.ended.shareDone': 'تم نسخ الرابط',
   'nav.docs': 'التوثيق',
+  'nav.guides': 'أدلة',
   'nav.about': 'حول',
   'nav.privacy': 'الخصوصية',
   'nav.terms': 'الشروط',

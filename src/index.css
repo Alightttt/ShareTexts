@@ -434,13 +434,10 @@ html:not(.dark) .st-ambient {
   background-position: 0 0, 15px 19px;
   -webkit-mask-image: radial-gradient(ellipse 92% 82% at 50% 42%, black 30%, transparent 76%);
   mask-image: radial-gradient(ellipse 92% 82% at 50% 42%, black 30%, transparent 76%);
-  /* Drift (background-position) and twinkle (opacity) compose: two
-     animations touching different properties, so the field slides while
-     its dots pulse bold ↔ light. */
-  animation:
-    st-dot-drift 34s linear infinite alternate,
-    st-dot-twinkle 6.5s ease-in-out infinite;
-  will-change: background-position, opacity;
+  /* F24 motion brief: the field is still. The old drift+twinkle loops
+     ran forever on the landing background communicating no state, cause,
+     or relationship — decorative idle work, removed. The gradients above
+     carry the same texture with zero GPU time. */
 }
 html.dark .st-dotfield::before {
   background-image:
@@ -453,34 +450,24 @@ html.dark .st-dotfield::before {
   inset: 0;
   pointer-events: none;
   background: radial-gradient(560px 400px at 50% 36%, rgba(240, 100, 19, 0.075), transparent 68%);
-  animation: st-dot-glow 13s ease-in-out infinite alternate;
 }
 html.dark .st-dotfield::after {
   background: radial-gradient(560px 400px at 50% 36%, rgba(249, 123, 61, 0.11), transparent 68%);
 }
-@keyframes st-dot-drift {
-  from { background-position: 0 0, 15px 19px; }
-  to   { background-position: 60px 30px, -44px 38px; }
-}
-/* Bold ↔ light: the layer swells to full strength then relaxes to a
-   whisper — dots read as alive, never static, never flashing. */
-@keyframes st-dot-twinkle {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.38; }
-}
-@keyframes st-dot-glow {
-  from { transform: translate3d(-14px, 8px, 0); opacity: 0.85; }
-  to   { transform: translate3d(18px, -10px, 0); opacity: 1; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .st-dotfield::before, .st-dotfield::after { animation: none; }
+/* ── Motion durations (F24) — the CSS half of src/lib/motion/tokens.ts.
+   The easing family (--ease-out/in-out/spring) lives with the other
+   tokens; these are the duration ladder CSS can name. Every var here is
+   consumed below (the visual-system gate deletes dead --st-* tokens). */
+:root {
+  --st-dur-micro: 120ms;   /* press, toggle, copy-confirm, tooltip in */
+  --st-dur-long: 480ms;    /* image settle — the longest UI beat */
 }
 
 /* Hero image — a quiet fade-settle when it loads (never pops in). */
 .st-img-fade {
   opacity: 0;
   transform: translateY(6px) scale(0.995);
-  transition: opacity 480ms var(--ease-out), transform 480ms var(--ease-out);
+  transition: opacity var(--st-dur-long) var(--ease-out), transform var(--st-dur-long) var(--ease-out);
 }
 .st-img-fade.st-img-loaded {
   opacity: 1;
@@ -488,25 +475,6 @@ html.dark .st-dotfield::after {
 }
 @media (prefers-reduced-motion: reduce) {
   .st-img-fade { opacity: 1; transform: none; transition: none; }
-}
-
-/* Typing caret for the code input — a smooth, quick fade blink (ease
-   reads alive; the old step-end made 2px vanish/reappear so abruptly the
-   caret looked frozen). Under reduced motion it holds steady instead. */
-.st-caret {
-  animation: st-caret-blink 0.9s ease-in-out infinite;
-  /* will-change keeps the animation off the compositor's throttle list on
-     iOS Safari, where long-running opacity animations on unfocused layers
-     can otherwise stall — the reported "caret doesn't blink on mobile". */
-  will-change: opacity;
-  transform: translateZ(0);
-}
-@keyframes st-caret-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .st-caret { animation: none; }
 }
 
 /* Landing (st-landing) — landscape-phone compaction. A phone held sideways
@@ -528,19 +496,6 @@ html.dark .st-dotfield::after {
   .st-landing .st-hide-landscape-sm {
     display: none !important;
   }
-}
-
-/* SpinLoader — one rotation for the one spinner. The arc's dash array is
-   tuned so the gap visibly chases the cap: momentum, not a wheel. */
-.st-spin {
-  animation: st-rotate 0.9s cubic-bezier(0.45, 0.15, 0.55, 0.85) infinite;
-  transform-origin: 50% 50%;
-}
-@keyframes st-rotate {
-  to { transform: rotate(360deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .st-spin { animation: none; }
 }
 
 /* Status dot: the quiet "alive" beat on device tiles (DeviceArt pulse). */
@@ -668,7 +623,7 @@ html.dark .st-dotfield::after {
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 .st-tooltip {
-  animation: st-tip-in 140ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: st-tip-in var(--st-dur-micro) var(--ease-out) both;
 }
 @media (prefers-reduced-motion: reduce) {
   .st-tooltip { animation-duration: 1ms; }
@@ -700,25 +655,6 @@ html.dark .st-dotfield::after {
 }
 @media (prefers-reduced-motion: reduce) {
   .st-flow-pulse { animation: none; }
-}
-
-/* ── Hero demo: the beat that is currently playing ───────────────────────
-   One scaleX, origin left, duration set inline from the step's own length.
-   The element is keyed per step, so every beat starts its own fill instead
-   of inheriting a half-drawn one; pausing the demo pauses the fill, because
-   the animation is what the timeline is. Transform-only: no layout, no
-   paint on the track behind it. */
-@keyframes st-demo-fill {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
-}
-.st-demo-fill {
-  animation: st-demo-fill 2400ms linear both;
-  will-change: transform;
-}
-@media (prefers-reduced-motion: reduce) {
-  /* No animation, no fake progress: the beat is simply "here". */
-  .st-demo-fill { animation: none; }
 }
 
 /* ── Theme change: one cross-fade, old layer only ────────────────────────

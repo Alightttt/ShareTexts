@@ -19,6 +19,7 @@ const en = {
 
   // ── brand / nav / landing ──────────────────────────────────────────
   'nav.docs': 'Docs',
+  'nav.guides': 'Guides',
   'nav.about': 'About',
   'nav.privacy': 'Privacy',
   'nav.terms': 'Terms',

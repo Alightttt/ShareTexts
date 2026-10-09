@@ -65,6 +65,7 @@ import {
 import { Wifi, WifiOff, ServerOff, Infinity as InfinityIcon } from 'lucide-react';
 import { SpaceCreateSheet, SpaceJoinSheet } from './SpaceView';
 import { recentSpaces } from '../lib/space/api';
+import { Bar } from '../components/SkeletonScreen';
 import { remainingShort as remainingShortOf } from '../lib/space/time';
 import { generateTOTP } from '../lib/totp';
 import { useFocusTrap } from '../lib/useFocusTrap';
@@ -1439,6 +1440,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
           <a href="/about" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.about')}</a>
           <a href="/privacy" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.privacy')}</a>
           <a href="/terms" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.terms')}</a>
+          <a href="/guides" className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] -my-2.5 hover:text-apple-ink dark:hover:text-white transition-colors">{t('nav.guides')}</a>
         </nav>
         <a
           href="https://x.com/0xalyt"
@@ -1729,8 +1731,8 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
                         <Upload className="w-3.5 h-3.5" />
                       </span>
                       <div className="flex-1 space-y-1.5">
-                        <div className="st-skeleton bg-black/[0.09] dark:bg-white/10 h-[9px] w-3/4 rounded-full" />
-                        <div className="st-skeleton bg-black/[0.09] dark:bg-white/10 h-[9px] w-1/3 rounded-full" />
+                        <Bar className="bg-black/[0.09] dark:bg-white/10 h-[9px] w-3/4" />
+                        <Bar className="bg-black/[0.09] dark:bg-white/10 h-[9px] w-1/3" />
                       </div>
                     </div>
                     <div className="flex items-center gap-2.5">
@@ -1738,8 +1740,8 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
                         <Upload className="w-3.5 h-3.5" />
                       </span>
                       <div className="flex-1 space-y-1.5">
-                        <div className="st-skeleton bg-black/[0.09] dark:bg-white/10 h-[9px] w-1/2 rounded-full" />
-                        <div className="st-skeleton bg-black/[0.09] dark:bg-white/10 h-[9px] w-1/4 rounded-full" />
+                        <Bar className="bg-black/[0.09] dark:bg-white/10 h-[9px] w-1/2" />
+                        <Bar className="bg-black/[0.09] dark:bg-white/10 h-[9px] w-1/4" />
                       </div>
                     </div>
                   </div>
@@ -1871,7 +1873,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
               <Suspense
                 fallback={
                   <div className="w-full h-[280px] rounded-[16px] bg-apple-parchment dark:bg-white/5 overflow-hidden relative" aria-hidden>
-                    <span className="st-skeleton absolute inset-0 bg-apple-ink/[0.05] dark:bg-white/[0.05]" />
+                    <Bar className="absolute inset-0 rounded-none bg-apple-ink/[0.05] dark:bg-white/[0.05]" />
                   </div>
                 }
               >
@@ -1968,7 +1970,7 @@ function QROverlayInner({ value }: { value: string }) {
   // viewfinder shell, so both QR surfaces speak identically.
   if (!Comp) return (
     <div className="w-[220px] h-[220px] rounded-[10px] relative overflow-hidden" aria-hidden>
-      <span className="st-skeleton absolute inset-0 bg-apple-ink/[0.05]" />
+      <Bar className="absolute inset-0 rounded-none bg-apple-ink/[0.05]" />
     </div>
   );
   return <Comp value={value} size={220} level="M" />;

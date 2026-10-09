@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useI18n } from '../lib/i18n';
 import { useFocusTrap } from '../lib/useFocusTrap';
+import { DUR } from '../lib/motion/tokens';
 
 /**
  * ConfirmSheet — an Apple-style bottom action sheet for one decision.
@@ -56,7 +57,7 @@ export function ConfirmSheet({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.18 }}
+          transition={{ duration: DUR.short }}
           className="fixed inset-0 z-[90] bg-black/35 dark:bg-black/60 flex items-end sm:items-center justify-center sm:p-6"
           role="dialog"
           aria-modal="true"

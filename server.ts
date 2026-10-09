@@ -1568,6 +1568,12 @@ async function start() {
     app.get('/about', (_req, res) => {
       res.sendFile(path.join(process.cwd(), 'public', 'guides', 'about.html'));
     });
+    // The guides hub at its canonical extensionless URL, before Vite's SPA
+    // fallback (which would otherwise serve the app shell and the client
+    // would render its 404 view on a 200 status).
+    app.get('/guides', (_req, res) => {
+      res.sendFile(path.join(process.cwd(), 'public', 'guides', 'index.html'));
+    });
     // Dev parity note: /docs, /privacy and /terms fall through to Vite and
     // render the React views, exactly like production after hydration. The
     // prerendered shells (scripts/seo-routes.mjs → dist/seo/) matter only
@@ -1576,6 +1582,12 @@ async function start() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
+    // The guides hub at its canonical (extensionless) URL — served directly
+    // so /guides never 301s into /guides/ (canonical mismatch) and never
+    // falls through to the SPA shell.
+    app.get('/guides', (_req, res) => {
+      res.sendFile(path.join(distPath, 'guides', 'index.html'));
+    });
     // Hashed build assets are immutable — cache them hard; everything else
     // (html, manifest, icons, guides, og images) revalidates cheaply.
     app.use('/assets', express.static(path.join(distPath, 'assets'), { maxAge: '1y', immutable: true }));
