@@ -18,7 +18,9 @@ const CODE = freshCode();
 const CODE_DASH = `${CODE.slice(0, 4)}-${CODE.slice(4)}`;
 const UNKNOWN = freshCode(); // random 8, never created
 
-const BASE = process.env.URL || 'http://localhost:3012';
+// Default 3010 like the rest of the battery — the old 3012 server no
+// longer exists and only produced connection-refused phantom failures.
+const BASE = process.env.URL || 'http://localhost:3010';
 let pass = 0, fail = 0;
 const ok = (n, c, x = '') => { if (c) { pass++; console.log(`  ok  ${n}${x ? ' — ' + x : ''}`); } else { fail++; console.log(`FAIL  ${n}${x ? ' — ' + x : ''}`); } };
 

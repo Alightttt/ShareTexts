@@ -23,8 +23,15 @@ for (const [name, w, h, scheme] of views) {
   // #main-content to the first actually-scrollable ancestor (desktop scrolls
   // main itself; mobile scrolls an outer wrapper).
   const scrolled = await p.evaluate(() => {
+    // Walk up to the first ACTUALLY scrollable ancestor: content taller than
+    // the box AND overflow that permits scrolling (mobile has an inner
+    // min-h-full wrapper that overflows but cannot itself scroll).
+    const canScroll = (el) => {
+      const oy = getComputedStyle(el).overflowY;
+      return el.scrollHeight > el.clientHeight + 1 && (oy === 'auto' || oy === 'scroll');
+    };
     let el = document.getElementById('main-content');
-    while (el && el.scrollHeight <= el.clientHeight + 1) el = el.parentElement;
+    while (el && !canScroll(el)) el = el.parentElement;
     const target = el || document.scrollingElement;
     target.scrollTo({ top: target.scrollHeight, behavior: 'instant' });
     return { tag: target.tagName, id: target.id, scrollTop: Math.round(target.scrollTop) };

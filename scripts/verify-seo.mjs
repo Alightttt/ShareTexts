@@ -18,7 +18,12 @@
 
 import { chromium } from 'playwright';
 
-const BASE = process.env.URL || 'http://localhost:3012';
+// PROD serving model by default (3013): the audit asserts real 404 status,
+// noindex on the 404 page, static FAQPage JSON-LD and route-correct
+// canonicals — things only the built server emits (the dev SPA fallback
+// answers unknown routes with 200 + shell). The old 3012 default is gone;
+// 114/114 verified against 3013 after `npm run build`.
+const BASE = process.env.URL || 'http://localhost:3013';
 const ORIGIN = 'https://sharetexts.online';
 
 let pass = 0;
