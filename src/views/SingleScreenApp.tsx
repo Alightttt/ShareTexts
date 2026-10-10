@@ -1791,8 +1791,12 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
         {/* min-h-full (not h-full): the hero fills the first screen and the
             footer lives at the END of this scroll — below the fold, revealed
             by scrolling, never pinned over the hero (design owner: the footer
-            must not be always visible). */}
-        <div className="mx-auto w-full max-w-[1200px] min-h-full px-8 2xl:px-12 flex flex-col">
+            must not be always visible). shrink-0 is LOAD-BEARING: without it
+            this container flex-shrinks toward min-h-full when the hero copy
+            is taller than the viewport, and the squeezed hero rows overflow
+            ONTO the footer band — the footer then intercepts their clicks
+            (caught by verify-autoconnect-trusted at 1100×800). */}
+        <div className="mx-auto w-full max-w-[1200px] min-h-full shrink-0 px-8 2xl:px-12 flex flex-col">
           <div className="flex-1 min-h-0 grid grid-cols-[minmax(0,10fr)_minmax(0,9fr)] items-center gap-10 xl:gap-16 py-6">
             {/* Left: the words and the actions (headline → subline → live
                 tracker → Send/Receive → space + nearby). */}

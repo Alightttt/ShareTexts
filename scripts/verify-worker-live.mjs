@@ -151,11 +151,20 @@ async function main() {
   const sig = await signalReceived;
   check('signal forwarded to creator', sig?.from === joinerCid && sig?.signal?.type === 'offer');
 
-  // 7. relay — text
+  // 7. relay — text. The OWASP message-validation gate only forwards
+  //    ciphertext-shaped payloads (enc: base64 or a v2 chunk envelope).
   const relayText = joiner.waitFor('relay_message');
-  await creator.send('relay_message', { data: '{"enc":"ciphertext"}' });
+  await creator.send('relay_message', { data: 'enc:AAAA' });
   const rt = await relayText;
-  check('relay_message (text) forwarded', rt?.data === '{"enc":"ciphertext"}');
+  check('relay_message (text) forwarded', rt?.data === 'enc:AAAA');
+  // The plaintext JSON shape must be REJECTED — and the waiter is registered
+  // BEFORE the send so a regression can't slip past an unwatched window
+  // (the relay isn't acked, so the send blocks until its client-side timeout).
+  const rejectWait = joiner.waitFor('relay_message', 400);
+  const rejectSend = creator.send('relay_message', { data: '{"enc":"ciphertext"}' });
+  const rejected = await rejectWait;
+  await rejectSend;
+  check('malformed relay payload rejected', !rejected || rejected.data !== '{"enc":"ciphertext"}');
 
   // 8. relay — binary (encrypted file chunk shape)
   const relayBin = new Promise((resolve) => joiner.events.set('__binary', resolve));
@@ -164,18 +173,26 @@ async function main() {
   const rb = await relayBin;
   check('relay_message (binary) forwarded intact', rb instanceof ArrayBuffer && new Uint8Array(rb).length === chunk.length && new Uint8Array(rb)[21] === 98);
 
-  // 9. third device rejected
+  // 9. F13 multi-device rooms: there is deliberately no product-level
+  //    participant cap — a third device JOINS the same room. It stays
+  //    connected through step 10 so its presence doesn't enter disconnect
+  //    grace and muddy the peer_disconnected assertions below.
   const third = new Client();
   await third.open(roomId);
   const thirdRes = await third.send('join_with_code', { code });
-  check('third device rejected', thirdRes.success === false && thirdRes.code === 'ROOM_FULL', thirdRes.error || thirdRes.code);
-  third.close();
+  check('third device joins (multi-device rooms)', thirdRes.success === true && thirdRes.roomId === roomId, thirdRes.error || thirdRes.code || '');
 
-  // 10. disconnect → peer_disconnected; resume → peer_joined again
-  const disc = creator.waitFor('peer_disconnected');
+  // 10. disconnect → 60s disconnect grace: the seat is HELD and the other
+  //     devices see nothing yet (a tab refresh must not raise a banner);
+  //     when the window expires the DO alarm evicts the seat and the
+  //     survivor gets peer_disconnected for real.
+  const earlyDisc = creator.waitFor('peer_disconnected', 2500);
   joiner.close();
+  const early = await earlyDisc;
+  check('no immediate peer_disconnected during grace', !early);
+  const disc = creator.waitFor('peer_disconnected', 75000);
   const pd = await disc;
-  check('creator sees peer_disconnected', pd?.peerId === joinerCid);
+  check('creator sees peer_disconnected after grace', pd?.peerId === joinerCid);
   const rejoin = new Client();
   await rejoin.open(roomId);
   const rejoinedWait = creator.waitFor('peer_joined');
@@ -201,6 +218,7 @@ async function main() {
 
   creator.close();
   rejoin.close();
+  third.close();
 
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed === 0 ? 0 : 1);

@@ -26,7 +26,12 @@ async function main() {
   await A.getByRole('group', { name: 'Pairing code' }).waitFor({ timeout: 15000 });
   const code = await readLiveCode(A);
   await B.getByRole('button', { name: 'Receive' }).first().click();
-  await B.locator('input[inputmode="numeric"]').fill(code);
+  // The join input is now Rare UI's OtpInput — six slot inputs, all
+  // inputmode=numeric. Fill the FIRST slot: its fill-forward distributes
+  // the whole code across all six, exactly like a human paste (same path
+  // verify-mobile-ui uses). The old strict locator resolved to 6 elements
+  // and crashed before pairing ever started.
+  await B.locator('input[inputmode="numeric"]').first().fill(code);
   await waitForChat(B, 'B');
   await waitForChat(A, 'A');
   ok('pair → both in chat', true);

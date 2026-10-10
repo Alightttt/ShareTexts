@@ -12,7 +12,9 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const URL = process.argv[2] || process.env.URL || 'http://localhost:3001/';
+// Default 3010 like the rest of the battery — the old 3001 default no
+// longer exists and only produced connection-refused phantom failures.
+const URL = process.argv[2] || process.env.URL || 'http://localhost:3010/';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 function measure(data, w, h) {
