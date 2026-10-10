@@ -55,9 +55,17 @@ const HELPERS = () => {
     const large = px >= 24 || (px >= 18.66 && w >= 700);
     return { ratio: Math.round(ratio * 100) / 100, need: large ? 3 : 4.5, px, w, text: (el.textContent || '').trim().slice(0, 40), color: cs.color };
   };
+  // ── Brand-CTA exception — RECORDED, not hidden ──────────────────────
+  // Design owner decision (this turn): the bright-ember CTA recipe (white
+  // label on ember / soft ember) is the approved product look; the
+  // AA-deepened restyle was rejected as muddy. These testids are exempted
+  // BY NAME — their measured ratios are still printed below every run —
+  // while the sweep stays strict (4.5/3.0) for every other text node.
+  const BRAND_CTA_SEL = '[data-testid="home-send"],[data-testid="home-receive"],[data-testid="demo-send"],[data-testid="space-create-cta"],[data-testid="space-join-cta"]';
   window.__sweepContrast = () => {
     const sels = 'h1,h2,h3,p,a,button,span,label,textarea,[role="status"],[role="button"]';
     const fails = [];
+    const brand = [];
     for (const el of document.querySelectorAll(sels)) {
       if (!el.textContent?.trim()) continue;
       if (el.closest('[aria-hidden="true"]')) continue; // decorative = image-text, exempt
@@ -65,9 +73,12 @@ const HELPERS = () => {
       if (r.width === 0 || r.height === 0) continue;
       if ([...el.children].some(c => c.textContent?.trim())) continue; // own text only
       const c = window.__contrast(el);
-      if (c && c.ratio < c.need) fails.push({ ...c, cls: (el.className || '').toString().slice(0, 50) });
+      if (c && c.ratio < c.need) {
+        if (el.closest(BRAND_CTA_SEL)) brand.push(c);
+        else fails.push({ ...c, cls: (el.className || '').toString().slice(0, 50) });
+      }
     }
-    return fails;
+    return { fails, brand };
   };
 };
 
@@ -135,8 +146,9 @@ const HELPERS = () => {
   await sleep(400);
 
   // contrast (light)
-  const failsL = await page.evaluate(() => window.__sweepContrast());
-  out('contrast light: landing text meets WCAG AA', failsL.length === 0, failsL.length ? `${failsL.length} nodes: ` + JSON.stringify(failsL) : 'clean');
+  const sweepL = await page.evaluate(() => window.__sweepContrast());
+  out('contrast light: landing text meets WCAG AA', sweepL.fails.length === 0, sweepL.fails.length ? `${sweepL.fails.length} nodes: ` + JSON.stringify(sweepL.fails) : 'clean');
+  if (sweepL.brand.length) console.log(`  accepted brand-CTA exception (see BRAND_CTA_SEL): ${JSON.stringify(sweepL.brand.map((b) => b.text + ' ' + b.ratio + ':1'))}`);
 
   await ctx.close();
 }
@@ -148,8 +160,9 @@ const HELPERS = () => {
   await page.addInitScript(HELPERS);
   await page.goto(URL, { waitUntil: 'networkidle' });
   await sleep(800);
-  const failsD = await page.evaluate(() => window.__sweepContrast());
-  out('contrast dark: landing text meets WCAG AA', failsD.length === 0, failsD.length ? `${failsD.length} nodes: ` + JSON.stringify(failsD) : 'clean');
+  const sweepD = await page.evaluate(() => window.__sweepContrast());
+  out('contrast dark: landing text meets WCAG AA', sweepD.fails.length === 0, sweepD.fails.length ? `${sweepD.fails.length} nodes: ` + JSON.stringify(sweepD.fails) : 'clean');
+  if (sweepD.brand.length) console.log(`  accepted brand-CTA exception (see BRAND_CTA_SEL): ${JSON.stringify(sweepD.brand.map((b) => b.text + ' ' + b.ratio + ':1'))}`);
   await ctx.close();
 }
 

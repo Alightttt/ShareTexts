@@ -966,19 +966,20 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
                   the real connected UI. Scales itself; breaks out of the
                   hero column to use the full half-pane width. Desktop shows
                   the same scene in the room pane, so hide it here. */}
-              {/* Mobile: the same demo the desktop hero runs, in its
-                  phone-only shape — one story, one component, two sizes. A
-                  laptop mockup at 320px would be unreadable mush; the phone
-                  standing alone is the honest crop. order-5 keeps it last
-                  inside this ordered flex column, and the bottom margin
-                  keeps clear air before the nearby-devices row. */}
+              {/* Mobile runs the SAME full scene as desktop — laptop + phone +
+                  the channel between them (design owner: the transfer story
+                  needs both ends; a phone-only crop hid the other half).
+                  Everything in the full variant is proportional (%-based),
+                  so at phone widths both devices stay legible as devices.
+                  order-5 keeps it last inside this ordered flex column, and
+                  the bottom margin keeps clear air before the nearby row. */}
               <div className="st-hide-landscape order-5 lg:hidden mt-4 sm:mt-8 mb-5 flex justify-center">
-                <div className="w-full max-w-[340px] px-1">
+                <div className="w-full max-w-[420px] px-1">
                   {/* Only mounted when the layout is actually the phone one.
                       `lg:hidden` alone would leave a second, invisible copy
                       of the whole demo in the desktop DOM — display:none
                       hides it from the eye, not from the tree. */}
-                  {!isDesktopLayout && <HeroDeviceDemo variant="phone" />}
+                  {!isDesktopLayout && <HeroDeviceDemo />}
                 </div>
               </div>
               {/* Nearby device discovery — an OPTIONAL extra path. The old
@@ -1332,13 +1333,17 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
           )}
     </AnimatePresence>
   );  const footerNode = (
-    <footer className="shrink-0 px-6 lg:px-10 pt-3 pb-[max(env(safe-area-inset-bottom),10px)] sm:pb-3.5 border-t border-apple-divider/60 dark:border-white/[0.06]">
-        {/* A product footer for the LANDING only: the brand states the deal once, then three tiny groups answer "what next?" — use it,
-            read it, the legal words — and the project link lives at the end.
-            Groups are INLINE on desktop (the landing must stay one screen,
-            so the footer stays one band tall) and stack on mobile. */}
-        <div className="max-w-6xl mx-auto flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
-          <div className="flex flex-col gap-1 min-w-[170px]">
+    <footer className="shrink-0 px-6 lg:px-10 pt-8 pb-[max(env(safe-area-inset-bottom),24px)] sm:pb-9 border-t border-apple-divider/60 dark:border-white/[0.06]">
+        {/* A product footer for the LANDING only. It sits at the END of the
+            hero's scroll — below the fold, revealed by scrolling, never
+            pinned over the hero (the footer must not be always visible).
+            Two ranks: the brand states the deal once and signs it; three
+            groups answer "what next?" — use it, read it (guides included),
+            the legal words — and the project link closes the row. Groups
+            are INLINE on desktop and stack on mobile; every link keeps its
+            40px tap floor via -my-2. */}
+        <div className="max-w-6xl mx-auto flex flex-wrap items-start justify-between gap-x-10 gap-y-7">
+          <div className="flex flex-col gap-2 min-w-[200px]">
             <span className="flex items-center gap-1.5" aria-hidden>
               <ShareTextsLogo size={18} />
               <span className="font-display font-bold tracking-[-0.03em] leading-none text-[14.5px] text-apple-ink dark:text-white/90">
@@ -1347,6 +1352,9 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
             </span>
             <span className="text-[12px] font-medium leading-none text-apple-ink-muted/75 dark:text-white/40">
               {t('footer.noApp')} · {t('footer.noAccount')} · {t('footer.temporary')}
+            </span>
+            <span className="text-[11.5px] font-medium leading-none text-apple-ink-muted/55 dark:text-white/30">
+              © 2026 ShareTexts
             </span>
           </div>
           {/* Three tiny groups, one band tall: the label carries the
@@ -1364,6 +1372,7 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
             {
               title: t('footer.read'),
               items: [
+                { label: t('nav.guides'), href: '/guides' },
                 { label: t('nav.about'), href: '/about' },
                 { label: t('footer.devs'), href: '/llms.txt' },
               ],
@@ -1775,8 +1784,15 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
       <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] st-horizon opacity-60" />
       {homeDropVeil}
       {headerNode}
-      <main id="main-content" className="relative z-10 flex-1 min-h-0 overflow-y-auto overscroll-contain room-scroll">
-        <div className="mx-auto w-full max-w-[1200px] h-full px-8 2xl:px-12 flex flex-col">
+      <main
+        id="main-content"
+        className="relative z-10 flex-1 min-h-0 overflow-y-auto overscroll-contain room-scroll flex flex-col"
+      >
+        {/* min-h-full (not h-full): the hero fills the first screen and the
+            footer lives at the END of this scroll — below the fold, revealed
+            by scrolling, never pinned over the hero (design owner: the footer
+            must not be always visible). */}
+        <div className="mx-auto w-full max-w-[1200px] min-h-full px-8 2xl:px-12 flex flex-col">
           <div className="flex-1 min-h-0 grid grid-cols-[minmax(0,10fr)_minmax(0,9fr)] items-center gap-10 xl:gap-16 py-6">
             {/* Left: the words and the actions (headline → subline → live
                 tracker → Send/Receive → space + nearby). */}
@@ -1791,8 +1807,8 @@ export function SingleScreenApp({ initialSpaceSheet, initialSpaceCode }: { initi
             </div>
           </div>
         </div>
+        {footerNode}
       </main>
-      {footerNode}
     </div>
   );
 
