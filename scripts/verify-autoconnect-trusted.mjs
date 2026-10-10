@@ -14,7 +14,14 @@
 // Run: URL=http://localhost:3010 node scripts/verify-autoconnect-trusted.mjs
 import { chromium } from 'playwright';
 
-const URL = process.env.URL || 'http://localhost:3013';
+// Default 3010 like every other suite (and like this file's own Run line
+// above). 3013 could never pass: prod builds bake VITE_SIGNALING_URL
+// (.env.production) and the worker's origin allowlist (worker/src/index.ts
+// DEFAULT_ALLOWED_ORIGINS) has no http://localhost:3013 — every signaling
+// call from a local prod build is 403'd, so the overlay can never appear.
+// Verified working against the real origin (scripts/probe-live-site.mjs:
+// announce + overlay true/true on sharetexts.online).
+const URL = process.env.URL || 'http://localhost:3010';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const results = [];
 const out = (name, ok, extra = '') => { results.push(ok); console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`); };
