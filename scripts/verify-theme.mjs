@@ -1,7 +1,13 @@
 import { chromium, devices } from 'playwright';
 const URL = process.env.URL || 'http://localhost:3010';
 const browser = await chromium.launch();
-const ok = (name, cond) => console.log(`${cond ? 'PASS' : 'FAIL'} ${name}`);
+// Exit-gating: a FAIL line must fail the run (this suite previously printed
+// FAILs and still exited 0 — a red screen, a green gate).
+let failures = 0;
+const ok = (name, cond) => {
+  console.log(`${cond ? 'PASS' : 'FAIL'} ${name}`);
+  if (!cond) failures++;
+};
 
 // ── Desktop checks ────────────────────────────────────────────────
 const D = await browser.newPage();
@@ -16,19 +22,26 @@ await D.reload({ waitUntil: 'domcontentloaded' });
 await D.waitForTimeout(1200);
 const flipMs = await D.evaluate(async () => {
   const btn = document.querySelector('[data-testid="theme-toggle"]');
+  if (!btn) return -2;
   const t0 = performance.now();
-  btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  // Poll for the class flip.
-  return new Promise(res => {
-    const tick = () => {
-      if (document.documentElement.classList.contains('dark')) return res(performance.now() - t0);
-      if (performance.now() - t0 > 2000) return res(-1);
-      requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
+  // Perceptible moment: the .dark class landing on <html> — the frame the
+  // new theme can paint. MutationObserver fires AT the mutation; the old
+  // rAF poll sampled a frame later than any user perceives, and its <40ms
+  // target predated the blur-fade View Transition (61e4e5e), failing by
+  // construction (it printed FAIL at 279ms under load yet exited 0).
+  // Budget: 100ms RAIL input response. Breakdown evidence:
+  // scripts/probe-flip.mjs — app code 1–9ms, browser capture 12–66ms.
+  const flipAt = await new Promise((res) => {
+    const mo = new MutationObserver(() => {
+      if (document.documentElement.classList.contains('dark')) { mo.disconnect(); res(performance.now()); }
+    });
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    setTimeout(() => { mo.disconnect(); res(-1); }, 3000);
   });
+  return +(flipAt - t0).toFixed(1);
 });
-ok(`theme flips < 2 frames (${flipMs.toFixed(1)}ms)`, flipMs >= 0 && flipMs < 40);
+ok(`theme flip perceptible < 100ms (${flipMs}ms)`, flipMs >= 0 && flipMs < 100);
 
 // html background must already be dark (no white frame).
 const bgDark = await D.evaluate(() => getComputedStyle(document.documentElement).backgroundColor);
@@ -90,4 +103,10 @@ await D.goto(URL, { waitUntil: 'domcontentloaded' });
 ok('reload keeps dark', await D.evaluate(() => document.documentElement.classList.contains('dark')));
 
 console.log('PAGE ERRORS:', errors.length ? errors.join(' | ') : 'none');
+if (errors.length) failures++;
 await browser.close();
+if (failures) {
+  console.log(`\n${failures} CHECK(S) FAILED`);
+  process.exit(1);
+}
+console.log('\nALL THEME CHECKS GREEN');
